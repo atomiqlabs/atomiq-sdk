@@ -12,6 +12,16 @@ exports.SmartChainAssets = {
         },
         name: "Wrapped BTC (WBTC)"
     },
+    TBTC: {
+        pricing: {
+            binancePair: null,
+            okxPair: null,
+            coinGeckoCoinId: "tbtc",
+            coinPaprikaCoinId: "tbtc-tbtc",
+            krakenPair: null
+        },
+        name: "Threshold BTC (tBTC)"
+    },
     USDC: {
         pricing: {
             binancePair: "!BTCUSDC",

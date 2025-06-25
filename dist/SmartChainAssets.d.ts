@@ -9,6 +9,16 @@ export declare const SmartChainAssets: {
         };
         readonly name: "Wrapped BTC (WBTC)";
     };
+    readonly TBTC: {
+        readonly pricing: {
+            readonly binancePair: any;
+            readonly okxPair: any;
+            readonly coinGeckoCoinId: "tbtc";
+            readonly coinPaprikaCoinId: "tbtc-tbtc";
+            readonly krakenPair: any;
+        };
+        readonly name: "Threshold BTC (tBTC)";
+    };
     readonly USDC: {
         readonly pricing: {
             readonly binancePair: "!BTCUSDC";

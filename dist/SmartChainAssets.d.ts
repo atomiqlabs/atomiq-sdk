@@ -89,5 +89,25 @@ export declare const SmartChainAssets: {
         };
         readonly name: "Starknet";
     };
+    readonly CBTC: {
+        readonly pricing: {
+            readonly binancePair: "$fixed-100000000";
+            readonly okxPair: "$fixed-100000000";
+            readonly coinGeckoCoinId: "$fixed-100000000";
+            readonly coinPaprikaCoinId: "$fixed-100000000";
+            readonly krakenPair: "$fixed-100000000";
+        };
+        readonly name: "Citrea BTC";
+    };
+    readonly BBTC: {
+        readonly pricing: {
+            readonly binancePair: "$fixed-100000000";
+            readonly okxPair: "$fixed-100000000";
+            readonly coinGeckoCoinId: "$fixed-100000000";
+            readonly coinPaprikaCoinId: "$fixed-100000000";
+            readonly krakenPair: "$fixed-100000000";
+        };
+        readonly name: "Botanix BTC";
+    };
 };
 export type SmartChainAssetTickers = keyof typeof SmartChainAssets;

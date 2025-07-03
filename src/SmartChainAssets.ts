@@ -90,6 +90,26 @@ export const SmartChainAssets = {
             krakenPair: "STRKUSD;!XXBTZUSD"
         },
         name: "Starknet"
+    },
+    CBTC: {
+        pricing: {
+            binancePair: "$fixed-100000000",
+            okxPair: "$fixed-100000000",
+            coinGeckoCoinId: "$fixed-100000000",
+            coinPaprikaCoinId: "$fixed-100000000",
+            krakenPair: "$fixed-100000000"
+        },
+        name: "Citrea BTC"
+    },
+    BBTC: {
+        pricing: {
+            binancePair: "$fixed-100000000",
+            okxPair: "$fixed-100000000",
+            coinGeckoCoinId: "$fixed-100000000",
+            coinPaprikaCoinId: "$fixed-100000000",
+            krakenPair: "$fixed-100000000"
+        },
+        name: "Botanix BTC"
     }
 } as const;
 

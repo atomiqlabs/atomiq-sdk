@@ -27,7 +27,7 @@ npm install @atomiqlabs/chain-evm@dev
 - Swaps:
   - [Smart Chain -> BTC L1](#swap-smart-chain---bitcoin-on-chain)
   - [BTC L1 -> Solana (Old swap protocol)](#swap-bitcoin-on-chain---solana)
-  - [BTC L1 -> Starknet/EVM (New swap protocol)](#swap-bitcoin-on-chain---starknet-evm)
+  - [BTC L1 -> Starknet/EVM (New swap protocol)](#swap-bitcoin-on-chain---starknetevm)
   - [Smart Chain -> BTC Lightning network L2](#swap-smart-chain---bitcoin-lightning-network)
   - [Smart Chain -> BTC Lightning network L2 (LNURL-pay)](#swap-smart-chain---bitcoin-lightning-network-1)
   - [BTC Lightning network L2 -> Smart Chain](#swap-bitcoin-lightning-network---smart-chain)

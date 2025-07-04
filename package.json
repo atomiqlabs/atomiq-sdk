@@ -21,8 +21,8 @@
   "author": "adambor",
   "license": "ISC",
   "dependencies": {
-    "@atomiqlabs/base": "github:atomiqlabs/atomiq-base#add-evm",
-    "@atomiqlabs/sdk-lib": "github:atomiqlabs/atomiq-sdk-lib#add-evm"
+    "@atomiqlabs/base": "^10.0.0-dev.1",
+    "@atomiqlabs/sdk-lib": "^14.0.0-dev.3"
   },
   "devDependencies": {
     "@types/node": "22.13.5",

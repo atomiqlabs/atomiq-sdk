@@ -6,7 +6,7 @@ Example SDK integration in NodeJS available [here](https://github.com/atomiqlabs
 
 ## Installation
 ```
-npm install @atomiqlabs/sdk
+npm install @atomiqlabs/sdk@dev
 ```
 
 ## Installing chain-specific connectors
@@ -14,8 +14,9 @@ npm install @atomiqlabs/sdk
 You can install only the chain-specific connectors that your project requires
 
 ```
-npm install @atomiqlabs/chain-solana
-npm install @atomiqlabs/chain-starknet
+npm install @atomiqlabs/chain-solana@dev
+npm install @atomiqlabs/chain-starknet@dev
+npm install @atomiqlabs/chain-evm@dev
 ```
 
 ## How to use?
@@ -26,7 +27,7 @@ npm install @atomiqlabs/chain-starknet
 - Swaps:
   - [Smart Chain -> BTC L1](#swap-smart-chain---bitcoin-on-chain)
   - [BTC L1 -> Solana (Old swap protocol)](#swap-bitcoin-on-chain---solana)
-  - [BTC L1 -> Starknet (New swap protocol)](#swap-bitcoin-on-chain---starknet)
+  - [BTC L1 -> Starknet/EVM (New swap protocol)](#swap-bitcoin-on-chain---starknet-evm)
   - [Smart Chain -> BTC Lightning network L2](#swap-smart-chain---bitcoin-lightning-network)
   - [Smart Chain -> BTC Lightning network L2 (LNURL-pay)](#swap-smart-chain---bitcoin-lightning-network-1)
   - [BTC Lightning network L2 -> Smart Chain](#swap-bitcoin-lightning-network---smart-chain)
@@ -48,7 +49,8 @@ Set Solana & Starknet RPC URL to use
 
 ```typescript
 const solanaRpc = "https://api.mainnet-beta.solana.com";
-const starknetRpc = "https://starknet-mainnet.public.blastapi.io/rpc/v0_7";
+const starknetRpc = "https://starknet-mainnet.public.blastapi.io/rpc/v0_8";
+const citreaRpc = "https://rpc.testnet.citrea.xyz";
 ```
 
 Create swapper factory, here we can pick and choose which chains we want to have supported in the SDK, ensure the "as const" keyword is used such that the typescript compiler can properly infer the types.
@@ -56,9 +58,10 @@ Create swapper factory, here we can pick and choose which chains we want to have
 ```typescript
 import {SolanaInitializer, SolanaInitializerType} from "@atomiqlabs/chain-solana";
 import {StarknetInitializer, StarknetInitializerType} from "@atomiqlabs/chain-starknet";
+import {CitreaInitializer, CitreaInitializerType} from "@atomiqlabs/chain-evm";
 import {SwapperFactory} from "@atomiqlabs/sdk";
 
-const Factory = new SwapperFactory<[SolanaInitializerType, StarknetInitializerType]>([SolanaInitializer, StarknetInitializer] as const);
+const Factory = new SwapperFactory<[SolanaInitializerType, StarknetInitializerType, CitreaInitializerType]>([SolanaInitializer, StarknetInitializer, CitreaInitializer] as const);
 const Tokens = Factory.Tokens; //Get the supported tokens for all the specified chains.
 ```
 
@@ -75,7 +78,10 @@ const swapper = Factory.newSwapper({
             rpcUrl: solanaRpc //You can also pass Connection object here
         },
         STARKNET: {
-            rpcUrl: starknetRpc //You can also pass Provider object here
+            rpcUrl: starknetRpc //You can also pass Provider object here           
+        },
+        CITREA: {
+            rpcUrl: citreaRpc, //You can also pass JsonApiProvider object here
         }
     },
     bitcoinNetwork: BitcoinNetwork.TESTNET //or BitcoinNetwork.MAINNET, BitcoinNetwork.TESTNET4 - this also sets the network to use for Solana (solana devnet for bitcoin testnet) & Starknet (sepolia for bitcoin testnet)
@@ -105,6 +111,9 @@ const swapper = Factory.newSwapper({
         },
         STARKNET: {
             rpcUrl: starknetRpc //You can also pass Provider object here
+        },
+        CITREA: {
+            rpcUrl: citreaRpc, //You can also pass JsonApiProvider object here
         }
     },
     bitcoinNetwork: BitcoinNetwork.TESTNET, //or BitcoinNetwork.MAINNET - this also sets the network to use for Solana (solana devnet for bitcoin testnet) & Starknet (sepolia for bitcoin testnet)
@@ -144,9 +153,17 @@ const solanaSigner = new SolanaSigner(new SolanaKeypairWallet(Keypair.fromSecret
 ```
 
 ```typescript
-import {SolanaKeypairWallet, SolanaSigner} from "@atomiqlabs/chain-solana";
+import {StarknetSigner, StarknetKeypairWallet} from "@atomiqlabs/chain-starknet";
 //Creating Starknet signer from private key
 const starknetSigner = new StarknetSigner(new StarknetKeypairWallet(starknetRpc, starknetKey));
+```
+
+```typescript
+import {BaseWallet, SigningKey} from "ethers";
+import {EVMSigner} from "@atomiqlabs/chain-evm";
+//Creating EVM signer from private key
+const wallet = new BaseWallet(new SigningKey(evmKey));
+const evmWallet = new EVMSigner(wallet, wallet.address);
 ```
 
 ### Initialization
@@ -371,9 +388,9 @@ try {
   - Swap funds are claimed to the user's wallet
 
 
-#### Swap Bitcoin on-chain -> Starknet
+#### Swap Bitcoin on-chain -> Starknet/EVM
 
-NOTE: Starknet uses a new swap protocol for Bitcoin on-chain -> Solana swaps, the flow here is different from the one for Solana!
+NOTE: Starknet & EVM uses a new swap protocol for Bitcoin on-chain -> Smart chain swaps, the flow here is different from the one for Solana!
 
 Getting swap quote
 
@@ -794,7 +811,7 @@ const swap = await swapper.swap(
     _amount,
     _exactIn, //Whether we define an input or output amount
     _lnurl, //Source LNURL for the swap
-    signer.getAddress() //Destination address
+    signer.getAddress(), //Destination address
 );
 
 //Get the amount required to pay and fee
@@ -1060,6 +1077,13 @@ const txns = await swap.txsCommit(); //Also works with txsClaim, txsRefund, txCo
 for(let tx of txns) {
     if(tx.type==="INVOKE") await starknetSigner.account.execute(tx.tx, tx.details);
     if(tx.type==="DEPLOY_ACCOUNT") await starknetSigner.account.deployAccount(tx.tx, tx.details);
+}
+await swap.waitTillCommited(); //Or other relevant waitTillClaimed, waitTillRefunded
+
+//Example for EVM
+const txns = await swap.txsCommit(); //Also works with txsClaim, txsRefund, txCommitAndClaim
+for(let tx of txns) {
+  await evmSigner.account.sendTransaction(tx);
 }
 await swap.waitTillCommited(); //Or other relevant waitTillClaimed, waitTillRefunded
 ```

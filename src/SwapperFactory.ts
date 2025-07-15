@@ -5,7 +5,7 @@ import {
     BaseTokenType,
     ChainType,
     StorageObject,
-    IStorageManager
+    IStorageManager, Messenger
 } from "@atomiqlabs/base";
 import {
     BitcoinTokens,
@@ -17,6 +17,7 @@ import {
 } from "@atomiqlabs/sdk-lib";
 import {SmartChainAssets} from "./SmartChainAssets";
 import {LocalStorageManager} from "./storage/LocalStorageManager";
+import {NostrMessenger} from "@atomiqlabs/messenger-nostr";
 
 type ChainInitializer<O, C extends ChainType, T extends BaseTokenType> = {
     chainId: ChainType["ChainId"],
@@ -67,6 +68,7 @@ export type MultichainSwapperOptions<T extends readonly ChainInitializer<any, an
     chainStorageCtor?: <T extends StorageObject>(name: string) => IStorageManager<T>,
     pricingFeeDifferencePPM?: bigint,
     mempoolApi?: MempoolApi | MempoolBitcoinRpc | string | string[],
+    messenger?: Messenger,
     getPriceFn?: CustomPriceFunction
 };
 
@@ -104,6 +106,10 @@ const mempoolUrls = {
         "https://mempool.tk7.mempool.space/testnet4/api/"
     ]
 }
+
+const nostrUrls: string[] = [
+    "wss://relay.damus.io", "wss://nostr.einundzwanzig.space", "wss://nostr.mutinywallet.com"
+];
 
 export class SwapperFactory<T extends readonly ChainInitializer<any, any, any>[]> {
 
@@ -146,6 +152,7 @@ export class SwapperFactory<T extends readonly ChainInitializer<any, any, any>[]
     newSwapper(options: MultichainSwapperOptions<T>) {
         options.bitcoinNetwork ??= BitcoinNetwork.MAINNET as any;
         options.storagePrefix ??= "atomiqsdk-"+options.bitcoinNetwork+"-";
+        options.messenger ??= new NostrMessenger(nostrUrls);
 
         options.defaultTrustedIntermediaryUrl ??= trustedIntermediaries[options.bitcoinNetwork];
 
@@ -191,6 +198,7 @@ export class SwapperFactory<T extends readonly ChainInitializer<any, any, any>[]
             chains as any,
             swapPricing,
             pricingAssets,
+            options.messenger,
             options
         );
     }

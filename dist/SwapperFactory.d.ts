@@ -1,4 +1,4 @@
-import { ChainData, BitcoinNetwork, BitcoinRpc, BaseTokenType, ChainType, StorageObject, IStorageManager } from "@atomiqlabs/base";
+import { ChainData, BitcoinNetwork, BitcoinRpc, BaseTokenType, ChainType, StorageObject, IStorageManager, Messenger } from "@atomiqlabs/base";
 import { BtcToken, CustomPriceFunction, MempoolApi, MempoolBitcoinRpc, SCToken, Swapper, SwapperOptions } from "@atomiqlabs/sdk-lib";
 type ChainInitializer<O, C extends ChainType, T extends BaseTokenType> = {
     chainId: ChainType["ChainId"];
@@ -33,6 +33,7 @@ export type MultichainSwapperOptions<T extends readonly ChainInitializer<any, an
     chainStorageCtor?: <T extends StorageObject>(name: string) => IStorageManager<T>;
     pricingFeeDifferencePPM?: bigint;
     mempoolApi?: MempoolApi | MempoolBitcoinRpc | string | string[];
+    messenger?: Messenger;
     getPriceFn?: CustomPriceFunction;
 };
 export declare class SwapperFactory<T extends readonly ChainInitializer<any, any, any>[]> {

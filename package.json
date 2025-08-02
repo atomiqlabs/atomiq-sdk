@@ -21,9 +21,9 @@
   "author": "adambor",
   "license": "ISC",
   "dependencies": {
-    "@atomiqlabs/base": "^10.0.0-dev.7",
+    "@atomiqlabs/base": "^10.0.0-dev.9",
     "@atomiqlabs/messenger-nostr": "^1.0.0-dev.2",
-    "@atomiqlabs/sdk-lib": "^14.0.0-dev.8"
+    "@atomiqlabs/sdk-lib": "^14.0.0-dev.28"
   },
   "devDependencies": {
     "@types/node": "22.13.5",

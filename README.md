@@ -30,8 +30,10 @@ npm install @atomiqlabs/chain-evm@dev
   - [BTC L1 -> Starknet/EVM (New swap protocol)](#swap-bitcoin-on-chain---starknetevm)
   - [Smart Chain -> BTC Lightning network L2](#swap-smart-chain---bitcoin-lightning-network)
   - [Smart Chain -> BTC Lightning network L2 (LNURL-pay)](#swap-smart-chain---bitcoin-lightning-network-1)
-  - [BTC Lightning network L2 -> Smart Chain](#swap-bitcoin-lightning-network---smart-chain)
-  - [BTC Lightning network L2 (LNURL-withdraw) -> Smart Chain](#swap-bitcoin-lightning-network---smart-chain-1)
+  - [BTC Lightning network L2 -> Solana (Old swap protocol)](#swap-bitcoin-lightning-network---solana)
+  - [BTC Lightning network L2 -> Starknet/EVM (New swap protocol)](#swap-bitcoin-lightning-network---starknetevm)
+  - [BTC Lightning network L2 (LNURL-withdraw) -> Solana (Old swap protocol)](#swap-bitcoin-lightning-network---solana-1)
+  - [BTC Lightning network L2 (LNURL-withdraw) -> Starknet/EVM (New swap protocol)](#swap-bitcoin-lightning-network---starknetevm-1)
 - [Swap states](#getting-state-of-the-swap)
 - [Swap size limits](#swap-size-limits)
 - [Stored swaps](#stored-swaps)
@@ -607,7 +609,9 @@ if(!result) {
 - ToBTCSwapState.REFUNDABLE = 4
     - Swap was initiated but counterparty failed to process it, the user can now refund his funds
 
-#### Swap Bitcoin lightning network -> Smart chain
+#### Swap Bitcoin lightning network -> Solana
+
+NOTE: Solana uses an old swap protocol for Bitcoin lightning network -> Solana swaps, the flow here is different from the one for Starknet and other chains.
 
 Getting swap quote
 
@@ -617,7 +621,7 @@ const _amount = 10000n; //Amount in BTC base units - sats
 
 const swap = await swapper.swap(
     Tokens.BITCOIN.BTCLN, //Swap from BTC-LN
-    Tokens.STARKNET.STRK, //Into specified destination token
+    Tokens.SOLANA.SOL, //Into specified destination token
     _amount,
     _exactIn, //Whether we define an input or output amount
     undefined, //Source address for the swap, not used for swaps from BTC-LN
@@ -698,6 +702,88 @@ or [sign and send transactions manually](#manually-signing-smart-chain-transacti
 - FromBTCLNSwapState.CLAIM_COMMITED = 2
   - Claiming of the funds was initiated
 - FromBTCLNSwapState.CLAIM_CLAIMED = 3
+  - Funds were successfully claimed & lightning network secret pre-image revealed, so the lightning network payment will settle now
+
+
+#### Swap Bitcoin lightning network -> Starknet/EVM
+
+Getting swap quote
+
+```typescript
+const _exactIn = true; //exactIn = true, so we specify the input amount
+const _amount = 10000n; //Amount in BTC base units - sats
+
+const swap = await swapper.swap(
+    Tokens.BITCOIN.BTCLN, //Swap from BTC-LN
+    Tokens.STARKNET.STRK, //Into specified destination token
+    _amount,
+    _exactIn, //Whether we define an input or output amount
+    undefined, //Source address for the swap, not used for swaps from BTC-LN
+    signer.getAddress(), //Destination address
+    {
+        gasAmount: 1_000_000_000_000_000_000n //We can also request a gas drop on the destination chain (here requesting 1 STRK)
+    }
+);
+
+//Get the bitcoin lightning network invoice (the invoice contains pre-entered amount)
+const receivingLightningInvoice: string = swap.getAddress();
+//Get the URI hyperlink (contains the lightning network invoice) which can be displayed also as QR code
+const qrCodeData: string = swap.getHyperlink();
+
+//Get the amount required to pay and fee
+const input: string = swap.getInputWithoutFee().toString(); //Input amount excluding fees
+const fee: string = swap.getFee().amountInSrcToken.toString(); //Fees paid on the output
+const inputWithFees: string = swap.getInput().toString(); //Total amount paid including fees
+
+const output: string = swap.getOutput().toString(); //Total output amount
+
+//Get swap expiration time
+const expiry: number = swap.getQuoteExpiry(); //Expiration time of the swap quote in UNIX milliseconds, swap needs to be initiated before this time
+
+//Get pricing info
+const swapPrice = swap.getPriceInfo().swapPrice; //Price of the current swap (excluding fees)
+const marketPrice = swap.getPriceInfo().marketPrice; //Current market price
+const difference = swap.getPriceInfo().difference; //Difference between the swap price & current market price
+```
+
+Pay the displayed lightning network invoice from an external lightning network wallet
+
+Wait for the payment to be received and settle the swap.
+
+```typescript
+//Start listening to incoming lightning network payment
+const success = await swap.waitForPayment();
+if(!success) {
+    //Lightning network payment not received in time and quote expired!
+    return;
+}
+
+//Swap should get automatically claimed by the watchtowers, if not we can call swap.claim() to claim the swap ourselves
+try {
+  await swap.waitTillClaimed(timeoutSignal(30*1000));
+} catch (e) {
+  //Claim ourselves when automatic claim doesn't happen in 30 seconds
+  await swap.claim(starknetSigner);
+}
+```
+
+##### Swap states
+
+- FromBTCLNAutoSwapState.FAILED = -4
+  - If the claiming of the funds was initiated, but never concluded, the user will get his lightning network payment refunded
+- FromBTCLNAutoSwapState.QUOTE_EXPIRED = -3
+  - Swap quote expired and cannot be executed anymore
+- FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED = -2
+  - Swap quote soft-expired (i.e. the quote probably expired, but if there is already an initialization transaction sent it might still succeed)
+- FromBTCLNAutoSwapState.EXPIRED = -1
+  - Lightning network invoice expired, meaning the swap is expired
+- FromBTCLNAutoSwapState.PR_CREATED = 0
+  - Swap is created, the user should now pay the provided lightning network invoice
+- FromBTCLNAutoSwapState.PR_PAID = 1
+  - Lightning network invoice payment was received (but cannot be settled by the counterparty yet)
+- FromBTCLNAutoSwapState.CLAIM_COMMITED = 2
+  - A swap HTLC was offered by the LP to the user
+- FromBTCLNAutoSwapState.CLAIM_CLAIMED = 3
   - Funds were successfully claimed & lightning network secret pre-image revealed, so the lightning network payment will settle now
 
 ### LNURLs & readable lightning identifiers
@@ -796,7 +882,9 @@ if(!result) {
 }
 ```
 
-#### Swap Bitcoin lightning network -> Smart chain
+#### Swap Bitcoin lightning network -> Solana
+
+NOTE: Solana uses an old swap protocol for Bitcoin lightning network -> Solana swaps, the flow here is different from the one for Starknet and other chains.
 
 Getting swap quote
 
@@ -807,7 +895,7 @@ const _amount = 10000n; //Amount in BTC base units - sats
 
 const swap = await swapper.swap(
     Tokens.BITCOIN.BTCLN, //Swap from BTC-LN
-    Tokens.STARKNET.STRK, //Into specified destination token
+    Tokens.SOLANA.SOL, //Into specified destination token
     _amount,
     _exactIn, //Whether we define an input or output amount
     _lnurl, //Source LNURL for the swap
@@ -863,6 +951,62 @@ try {
 ```
 
 or [sign and send transactions manually](#manually-signing-smart-chain-transactions)
+
+#### Swap Bitcoin lightning network -> Starknet/EVM
+
+Getting swap quote
+
+```typescript
+const _lnurl: string = "lnurl1dp68gurn8ghj7ampd3kx2ar0veekzar0wd5xjtnrdakj7tnhv4kxctttdehhwm30d3h82unvwqhkx6rfvdjx2ctvxyesuk0a27"; //Destination LNURL-pay or readable identifier
+const _exactIn = true; //exactIn = true, so we specify the input amount
+const _amount = 10000n; //Amount in BTC base units - sats
+
+const swap = await swapper.swap(
+    Tokens.BITCOIN.BTCLN, //Swap from BTC-LN
+    Tokens.STARKNET.STRK, //Into specified destination token
+    _amount,
+    _exactIn, //Whether we define an input or output amount
+    _lnurl, //Source LNURL for the swap
+    signer.getAddress(), //Destination address
+    {
+        gasAmount: 1_000_000_000_000_000_000n //We can also request a gas drop on the destination chain (here requesting 1 STRK)
+    }
+);
+
+//Get the amount required to pay and fee
+const input: string = swap.getInputWithoutFee().toString(); //Input amount excluding fees
+const fee: string = swap.getFee().amountInSrcToken.toString(); //Fees paid on the output
+const inputWithFees: string = swap.getInput().toString(); //Total amount paid including fees
+
+const output: string = swap.getOutput().toString(); //Total output amount
+
+//Get swap expiration time
+const expiry: number = swap.getQuoteExpiry(); //Expiration time of the swap quote in UNIX milliseconds, swap needs to be initiated before this time
+
+//Get pricing info
+const swapPrice = swap.getPriceInfo().swapPrice; //Price of the current swap (excluding fees)
+const marketPrice = swap.getPriceInfo().marketPrice; //Current market price
+const difference = swap.getPriceInfo().difference; //Difference between the swap price & current market price
+```
+
+Wait for the payment to be received & settle the swap.
+
+```typescript
+//Start listening to incoming lightning network payment
+const success = await swap.waitForPayment();
+if(!success) {
+  //Lightning network payment not received in time and quote expired!
+  return;
+}
+
+//Swap should get automatically claimed by the watchtowers, if not we can call swap.claim() to claim the swap ourselves
+try {
+  await swap.waitTillClaimed(timeoutSignal(30*1000));
+} catch (e) {
+  //Claim ourselves when automatic claim doesn't happen in 30 seconds
+  await swap.claim(starknetSigner);
+}
+```
 
 ### Getting state of the swap
 

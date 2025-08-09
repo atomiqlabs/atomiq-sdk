@@ -72,7 +72,7 @@ class SwapperFactory {
     newSwapper(options) {
         options.bitcoinNetwork ?? (options.bitcoinNetwork = base_1.BitcoinNetwork.MAINNET);
         options.storagePrefix ?? (options.storagePrefix = "atomiqsdk-" + options.bitcoinNetwork + "-");
-        options.messenger ?? (options.messenger = new messenger_nostr_1.NostrMessenger(nostrUrls));
+        options.messenger ?? (options.messenger = new messenger_nostr_1.NostrMessenger(options.bitcoinNetwork, nostrUrls));
         options.defaultTrustedIntermediaryUrl ?? (options.defaultTrustedIntermediaryUrl = trustedIntermediaries[options.bitcoinNetwork]);
         options.registryUrl ?? (options.registryUrl = registries[options.bitcoinNetwork]);
         const mempoolApi = options.mempoolApi ?? new sdk_lib_1.MempoolBitcoinRpc(mempoolUrls[options.bitcoinNetwork]);

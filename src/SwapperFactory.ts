@@ -152,7 +152,7 @@ export class SwapperFactory<T extends readonly ChainInitializer<any, any, any>[]
     newSwapper(options: MultichainSwapperOptions<T>) {
         options.bitcoinNetwork ??= BitcoinNetwork.MAINNET as any;
         options.storagePrefix ??= "atomiqsdk-"+options.bitcoinNetwork+"-";
-        options.messenger ??= new NostrMessenger(nostrUrls);
+        options.messenger ??= new NostrMessenger(options.bitcoinNetwork, nostrUrls);
 
         options.defaultTrustedIntermediaryUrl ??= trustedIntermediaries[options.bitcoinNetwork];
 

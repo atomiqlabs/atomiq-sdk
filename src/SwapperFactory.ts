@@ -203,4 +203,10 @@ export class SwapperFactory<T extends readonly ChainInitializer<any, any, any>[]
         );
     }
 
+    async newSwapperInitialized(options: MultichainSwapperOptions<T>) {
+        const swapper = this.newSwapper(options);
+        await swapper.init();
+        return swapper;
+    }
+
 }

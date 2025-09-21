@@ -47,5 +47,6 @@ export declare class SwapperFactory<T extends readonly ChainInitializer<any, any
     TokenResolver: GetAllTokenResolvers<T>;
     constructor(initializers: T);
     newSwapper(options: MultichainSwapperOptions<T>): Swapper<ToMultichain<T>>;
+    newSwapperInitialized(options: MultichainSwapperOptions<T>): Promise<Swapper<ToMultichain<T>>>;
 }
 export {};

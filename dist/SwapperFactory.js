@@ -109,5 +109,10 @@ class SwapperFactory {
             sdk_lib_1.RedundantSwapPrice.createFromTokenMap(options.pricingFeeDifferencePPM ?? 10000n, pricingAssets);
         return new sdk_lib_1.Swapper(bitcoinRpc, chains, swapPricing, pricingAssets, options.messenger, options);
     }
+    async newSwapperInitialized(options) {
+        const swapper = this.newSwapper(options);
+        await swapper.init();
+        return swapper;
+    }
 }
 exports.SwapperFactory = SwapperFactory;

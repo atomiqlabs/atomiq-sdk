@@ -252,13 +252,11 @@ if(!swapSuccessful) {
 - __1.__ Initiate the swap on the smart-chain side
 
   - __a.__ Commit with a signer
-  
   ```typescript
   await swap.commit(solanaSigner);
   ```
 
   - __b.__ Or get the transactions & [sign and send transaction manually](#manually-signing-smart-chain-transactions)
-  
   ```typescript
   const txsCommit = await swap.txsCommit();
   //Sign and send these...
@@ -268,15 +266,13 @@ if(!swapSuccessful) {
   ```
 
 - __2.__ Wait for the swap to execute and for the payment to be sent
-
-```typescript
-const swapSuccessful = await swap.waitForPayment();
-```
+  ```typescript
+  const swapSuccessful = await swap.waitForPayment();
+  ```
 
 - __3.__ In case the swap fails we can refund our funds on the source chain
 
   - __a.__ Refund with a signer
-  
   ```typescript
   if(!swapSuccessful) {
       await swap.refund(solanaSigner);
@@ -285,7 +281,6 @@ const swapSuccessful = await swap.waitForPayment();
   ```
 
   - __b.__ Or get the transactions & [sign and send transaction manually](#manually-signing-smart-chain-transactions)
-
   ```typescript
   if(!swapSuccessful) {
       const txsRefund = await swap.txsRefund();
@@ -400,10 +395,12 @@ if(!automaticSettlementSuccess) {
 <summary>Manual swap execution (advanced)</summary>
 
 - __1.__ Initiate the swap on the destination chain (Solana) by opening up the bitcoin swap address
+
   - __a.__ Commit using signer
   ```typescript
   await swap.commit(solanaWallet);
   ```
+
   - __b.__ Or get the transactions & [sign and send transaction manually](#manually-signing-smart-chain-transactions)
   ```typescript
   const txsCommit = await swap.txsCommit();
@@ -414,6 +411,7 @@ if(!automaticSettlementSuccess) {
   ```
 
 - __2.__ Send bitcoin transaction
+
   - __a.__ Get funded PSBT and sign it 
   ```typescript
     const {psbt, psbtHex, psbtBase64, signInputs} = await swap.getFundedPsbt({
@@ -424,6 +422,7 @@ if(!automaticSettlementSuccess) {
     const signedPsbt = ...; //Can be hex or base64 encoded
     const bitcoinTxId = await swap.submitPsbt(signedPsbt);
   ```
+
   - __b.__ Get the bitcoin address or deeplink and send from external wallet
   ```typescript
   //It is imporant to send the EXACT amount, sending different amount will lead to loss of funds!
@@ -432,27 +431,28 @@ if(!automaticSettlementSuccess) {
   ```
   
 - __3.__ Wait for the bitcoin on-chain transaction to confirm
-
-```typescript
-await swap.waitForBitcoinTransaction(
-    (txId, confirmations, targetConfirmations, txEtaMs) => {
-        //Bitcoin transaction confirmation status callback
-    }
-);
-```
+  ```typescript
+  await swap.waitForBitcoinTransaction(
+      (txId, confirmations, targetConfirmations, txEtaMs) => {
+          //Bitcoin transaction confirmation status callback
+      }
+  );
+  ```
 
 - __4.__ Wait for the automatic settlement of the swap
-```typescript
-const automaticSettlementSuccess = await swap.waitTillClaimed(30);
-```
+  ```typescript
+  const automaticSettlementSuccess = await swap.waitTillClaimed(30);
+  ```
 
 - __5.__ In case the automatic swap settlement fails, we can settle it manually using the wallet of the destination chain
+
   - __a.__ Claim with a signer
   ```typescript
   if(!automaticSettlementSuccess) {
       await swap.claim(solanaSigner);
   }
   ```
+
   - __b.__ Or get the transactions & [sign and send transaction manually](#manually-signing-smart-chain-transactions)
   ```typescript
   if(!automaticSettlementSuccess) {}
@@ -563,6 +563,7 @@ if(!automaticSettlementSuccess) {
 <summary>Manual swap execution (advanced)</summary>
 
 - __1.__ Send bitcoin transaction
+
   - __a.__ Get funded PSBT and sign it using external wallet (e.g. browser-based like Xverse, Unisat, Phantom, etc.)
   ```typescript
     //Obtain the funded PSBT (input already added) - ready for signing
@@ -572,6 +573,7 @@ if(!automaticSettlementSuccess) {
     //The SDK automatically recognizes hex & base64 encoded PSBTs
     const bitcoinTxId = await swap.submitPsbt(signedPsbtHexOrBase64);
   ```
+
   - __b.__ Or obtain raw PSBT to which inputs still need to be added
   ```typescript
   const {psbt, psbtHex, psbtBase64, in1sequence} = await swap.getPsbt();
@@ -585,27 +587,28 @@ if(!automaticSettlementSuccess) {
   ```
 
 - __2.__ Wait for the bitcoin on-chain transaction to confirm
-
-```typescript
-await swap.waitForBitcoinTransaction(
-    (txId, confirmations, targetConfirmations, txEtaMs) => {
-        //Bitcoin transaction confirmation status callback
-    }
-);
-```
+  ```typescript
+  await swap.waitForBitcoinTransaction(
+      (txId, confirmations, targetConfirmations, txEtaMs) => {
+          //Bitcoin transaction confirmation status callback
+      }
+  );
+  ```
 
 - __3.__ Wait for the automatic settlement of the swap
-```typescript
-const automaticSettlementSuccess = await swap.waitTillClaimed(60);
-```
+  ```typescript
+  const automaticSettlementSuccess = await swap.waitTillClaimed(60);
+  ```
 
 - __4.__ In case the automatic swap settlement fails, we can settle it manually using the wallet of the destination chain
+
   - __a.__ Claim with a signer
   ```typescript
   if(!automaticSettlementSuccess) {
       await swap.claim(starknetSigner);
   }
   ```
+
   - __b.__ Or get the transactions & [sign and send transaction manually](#manually-signing-smart-chain-transactions)
   ```typescript
   if(!automaticSettlementSuccess) {}
@@ -730,10 +733,9 @@ if(!swapSuccessful) {
   ```
 
 - __2.__ Wait for the swap to execute and for the payment to be sent
-
-```typescript
-const swapSuccessful = await swap.waitForPayment();
-```
+  ```typescript
+  const swapSuccessful = await swap.waitForPayment();
+  ```
 
 - __3.__ In case the swap fails we can refund our funds on the source chain
 
@@ -851,18 +853,18 @@ await swap.execute(
 <summary>Manual swap execution (advanced)</summary>
 
 - __1.__ Pay the LN invoice from a lightning network wallet
-```typescript
-const lightningInvoice = swap.getAddress();
-```
+  ```typescript
+  const lightningInvoice = swap.getAddress();
+  ```
 
 - __2.__ Start listening to incoming lightning network payment
-```typescript
-const success = await swap.waitForPayment();
-if(!success) {
-    //Lightning network payment not received in time and quote expired
-    return;
-}
-```
+  ```typescript
+  const success = await swap.waitForPayment();
+  if(!success) {
+      //Lightning network payment not received in time and quote expired
+      return;
+  }
+  ```
 
 - __3.__ Claim the swap at the destination
 
@@ -974,23 +976,23 @@ if(!automaticSettlementSuccess) {
 <summary>Manual swap execution (advanced)</summary>
 
 - __1.__ Pay the LN invoice from a lightning network wallet
-```typescript
-const lightningInvoice = swap.getAddress();
-```
+  ```typescript
+  const lightningInvoice = swap.getAddress();
+  ```
 
 - __2.__ Start listening to incoming lightning network payment
-```typescript
-const success = await swap.waitForPayment();
-if(!success) {
-    //Lightning network payment not received in time and quote expired
-    return;
-}
-```
+  ```typescript
+  const success = await swap.waitForPayment();
+  if(!success) {
+      //Lightning network payment not received in time and quote expired
+      return;
+  }
+  ```
 
 - __3.__ Wait for the swap to be automatically settled
-```typescript
-const automaticSettlementSuccess = await swap.waitTillClaimed(60);
-```
+  ```typescript
+  const automaticSettlementSuccess = await swap.waitTillClaimed(60);
+  ```
 
 - __4.__ In case the automatic swap settlement fails, we can settle it manually using the wallet of the destination chain
 
@@ -1155,9 +1157,9 @@ if(swap.hasSuccessAction()) {
 
 - __2.__ Wait for the swap to execute and for the payment to be sent
 
-```typescript
-const swapSuccessful = await swap.waitForPayment();
-```
+  ```typescript
+  const swapSuccessful = await swap.waitForPayment();
+  ```
 
 - __3.__ In case the swap fails we can refund our funds on the source chain
 
@@ -1243,13 +1245,13 @@ await swap.execute(
 <summary>Manual swap execution (advanced)</summary>
 
 - __1.__ Start listening to incoming lightning network payment (this also requests the payment from LNURL-withdraw service)
-```typescript
-const success = await swap.waitForPayment();
-if(!success) {
-    //Lightning network payment not received in time and quote expired
-    return;
-}
-```
+  ```typescript
+  const success = await swap.waitForPayment();
+  if(!success) {
+      //Lightning network payment not received in time and quote expired
+      return;
+  }
+  ```
 
 - __2.__ Claim the swap at the destination
 
@@ -1330,18 +1332,18 @@ if(!automaticSettlementSuccess) {
 <summary>Manual swap execution (advanced)</summary>
 
 - __1.__ Start listening to incoming lightning network payment (this also requests the payment from LNURL-withdraw service)
-```typescript
-const success = await swap.waitForPayment();
-if(!success) {
-    //Lightning network payment not received in time and quote expired
-    return;
-}
-```
+  ```typescript
+  const success = await swap.waitForPayment();
+  if(!success) {
+      //Lightning network payment not received in time and quote expired
+      return;
+  }
+  ```
 
 - __2.__ Wait for the swap to be automatically settled
-```typescript
-const automaticSettlementSuccess = await swap.waitTillClaimed(60);
-```
+  ```typescript
+  const automaticSettlementSuccess = await swap.waitTillClaimed(60);
+  ```
 
 - __3.__ In case the automatic swap settlement fails, we can settle it manually using the wallet of the destination chain
 
@@ -1467,14 +1469,12 @@ Returns swaps that are ready to be claimed by the client, this can happen if cli
 const claimableSolanaSwaps = await solanaSwapper.getClaimableSwaps("SOLANA", solanaSigner.getAddress());
 //Claim all the claimable swaps
 for(let swap of claimableSolanaSwaps) {
-    if(swap.canCommit()) await swap.commit(solanaSigner); //This is for Bitcoin (lightning) -> Smart chain swaps, where commit & claim procedure might be needed
     await swap.claim(solanaSigner);
 }
 //Get the swaps
 const claimableStarknetSwaps = await solanaSwapper.getClaimableSwaps("STARKNET", starknetSigner.getAddress());
 //Claim all the claimable swaps
 for(let swap of claimableStarknetSwaps) {
-  if(swap.canCommit()) await swap.commit(starknetSigner); //This is for Bitcoin (lightning) -> Smart chain swaps, where commit & claim procedure might be needed
   await swap.claim(starknetSigner);
 }
 ```

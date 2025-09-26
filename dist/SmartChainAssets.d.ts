@@ -1,4 +1,14 @@
 export declare const SmartChainAssets: {
+    readonly _TESTNET_WBTC_VESU: {
+        readonly pricing: {
+            readonly binancePair: "WBTCBTC";
+            readonly okxPair: "WBTC-BTC";
+            readonly coinGeckoCoinId: "wrapped-bitcoin";
+            readonly coinPaprikaCoinId: "wbtc-wrapped-bitcoin";
+            readonly krakenPair: "WBTCXBT";
+        };
+        readonly name: "Wrapped BTC (WBTC)";
+    };
     readonly WBTC: {
         readonly pricing: {
             readonly binancePair: "WBTCBTC";

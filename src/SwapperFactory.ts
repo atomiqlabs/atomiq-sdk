@@ -130,7 +130,7 @@ export class SwapperFactory<T extends readonly ChainInitializer<any, any, any>[]
                     chain: "SC",
                     chainId: initializer.chainId,
                     address: assetData.address,
-                    name: SmartChainAssets[ticker].name,
+                    name: SmartChainAssets[ticker]?.name ?? ticker,
                     decimals: assetData.decimals,
                     displayDecimals: assetData.displayDecimals,
                     ticker

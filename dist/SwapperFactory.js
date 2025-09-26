@@ -54,7 +54,7 @@ class SwapperFactory {
                     chain: "SC",
                     chainId: initializer.chainId,
                     address: assetData.address,
-                    name: SmartChainAssets_1.SmartChainAssets[ticker].name,
+                    name: SmartChainAssets_1.SmartChainAssets[ticker]?.name ?? ticker,
                     decimals: assetData.decimals,
                     displayDecimals: assetData.displayDecimals,
                     ticker

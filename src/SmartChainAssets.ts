@@ -1,5 +1,15 @@
 
 export const SmartChainAssets = {
+    _TESTNET_WBTC_VESU: {
+        pricing: {
+            binancePair: "WBTCBTC",
+            okxPair: "WBTC-BTC",
+            coinGeckoCoinId: "wrapped-bitcoin",
+            coinPaprikaCoinId: "wbtc-wrapped-bitcoin",
+            krakenPair: "WBTCXBT"
+        },
+        name: "Wrapped BTC (WBTC)"
+    },
     WBTC: {
         pricing: {
             binancePair: "WBTCBTC",

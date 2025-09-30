@@ -2,7 +2,7 @@
 
 A typescript multichain client for atomiqlabs trustlesss cross-chain swaps. Enables trustless swaps between smart chains (Solana, EVM, Starknet, etc.) and bitcoin (on-chain - L1 and lightning network - L2).
 
-Example SDK integration in NodeJS available [here](https://github.com/atomiqlabs/atomiq-sdk-demo/blob/main/src/index.ts)
+Example SDK integration in NodeJS available [here](https://github.com/atomiqlabs/atomiq-sdk-demo/tree/nostr-htlc)
 
 ## Installation
 ```

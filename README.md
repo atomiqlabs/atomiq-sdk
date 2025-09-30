@@ -6,7 +6,7 @@ Example SDK integration in NodeJS available [here](https://github.com/atomiqlabs
 
 ## Installation
 ```
-npm install @atomiqlabs/sdk@dev
+npm install @atomiqlabs/sdk@next
 ```
 
 ## Installing chain-specific connectors
@@ -14,9 +14,9 @@ npm install @atomiqlabs/sdk@dev
 You can install only the chain-specific connectors that your project requires
 
 ```
-npm install @atomiqlabs/chain-solana@dev
-npm install @atomiqlabs/chain-starknet@dev
-npm install @atomiqlabs/chain-evm@dev
+npm install @atomiqlabs/chain-solana@next
+npm install @atomiqlabs/chain-starknet@next
+npm install @atomiqlabs/chain-evm@next
 ```
 
 ## How to use?
@@ -97,7 +97,7 @@ if you want to use custom pricing api, mempool.space RPC url, or tune HTTP reque
 For NodeJS we need to use sqlite storage, for that we first need to install the sqlite storage adaptor
 
 ```
-npm install @atomiqlabs/storage-sqlite
+npm install @atomiqlabs/storage-sqlite@next
 ```
 
 Then use pass it in the newSwapper function
@@ -142,7 +142,7 @@ import {WalletAccount} from "starknet";
 import {StarknetSigner} from "@atomiqlabs/chain-starknet";
 //Browser, using get-starknet
 const swo = await connect();
-const wallet = new StarknetSigner(new WalletAccount(starknetRpc, swo.wallet));
+const wallet = new StarknetBrowserSigner(new WalletAccount(starknetRpc, swo.wallet));
 ```
 
 or

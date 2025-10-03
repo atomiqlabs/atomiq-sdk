@@ -410,7 +410,27 @@ const marketPrice = swap.getPriceInfo().marketPrice; //Current market price
 const difference = swap.getPriceInfo().difference; //Difference between the swap price & current market price
 ```
 
-Initiating the swap
+##### Initiating the swap
+
+Using external wallet (e.g. browser-based like Xverse, Unisat, Phantom, etc.)
+
+```typescript
+//Obtain the funded PSBT (input already added) - ready for signing
+const {psbt, signInputs} = await swap.getFundedPsbt({address: "", publicKey: ""});
+const psbtBase64 = Buffer.from(psbt.toPSBT(0)).toString("base64"); //Base64 encoded PSBT
+const psbtHex = Buffer.from(psbt.toPSBT(0)).toString("hex"); //hex encoded PSBT
+//Pass `psbtBase64` or `psbtHex` (and also `signInputs`) to an external signer like Xverse, Unisat, etc.
+const signedPsbtBase64 = await <signPsbt function of the external wallet>; //Call the signPsbt function of the external signer with psbtBase64 or psbtHex and signInputs
+//NOTE: The signPsbt can also return hex-encoded PSBT
+// const signedPsbtHex = await <signPsbt function of the external wallet>;
+//Parse signed PSBT back to transaction object
+const signedTransaction = Transaction.fromPSBT(Buffer.from(signedPsbtBase64, "base64")); //Import from @scure/btc-signer
+//Or if the returned PSBT is hex-encoded
+// const signedTransaction = Transaction.fromPSBT(Buffer.from(signedPsbtBase64, "hex")); //Import from @scure/btc-signer
+const bitcoinTxId = await swap.submitPsbt(signedTransaction);
+```
+
+or sign inputs using a private key
 
 ```typescript
 //Obtain the funded PSBT (input already added) - ready for signing

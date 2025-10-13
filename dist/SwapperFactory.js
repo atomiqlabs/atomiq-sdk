@@ -39,7 +39,7 @@ const mempoolUrls = {
     ]
 };
 const nostrUrls = [
-    "wss://relay.damus.io", "wss://nostr.einundzwanzig.space", "wss://nostr.mutinywallet.com"
+    "wss://relay.damus.io", "wss://nostr.einundzwanzig.space", "wss://relay01.lnfi.network/", "wss://relay.puresignal.news/", "wss://relay.fountain.fm/", "wss://sendit.nosflare.com/"
 ];
 class SwapperFactory {
     constructor(initializers) {

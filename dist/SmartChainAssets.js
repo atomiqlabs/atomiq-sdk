@@ -111,5 +111,15 @@ exports.SmartChainAssets = {
             krakenPair: "$fixed-100000000"
         },
         name: "Botanix BTC"
+    },
+    ABTC: {
+        pricing: {
+            binancePair: "$fixed-100000000",
+            okxPair: "$fixed-100000000",
+            coinGeckoCoinId: "$fixed-100000000",
+            coinPaprikaCoinId: "$fixed-100000000",
+            krakenPair: "$fixed-100000000"
+        },
+        name: "Alpen BTC"
     }
 };

@@ -229,7 +229,7 @@ if(!result) {
     await swap.refund();
 } else {
     //Swap successful, we can get the bitcoin txId
-    const bitcoinTxId = swap.getBitcoinTxId();
+    const bitcoinTxId = swap.getOutputTxId();
 }
 ```
 

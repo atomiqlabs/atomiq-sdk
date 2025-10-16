@@ -99,6 +99,16 @@ export declare const SmartChainAssets: {
         };
         readonly name: "Citrea BTC";
     };
+    readonly BTC: {
+        readonly pricing: {
+            readonly binancePair: "$fixed-100000000";
+            readonly okxPair: "$fixed-100000000";
+            readonly coinGeckoCoinId: "$fixed-100000000";
+            readonly coinPaprikaCoinId: "$fixed-100000000";
+            readonly krakenPair: "$fixed-100000000";
+        };
+        readonly name: "Bitcoin";
+    };
     readonly BBTC: {
         readonly pricing: {
             readonly binancePair: "$fixed-100000000";

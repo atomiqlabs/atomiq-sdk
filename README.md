@@ -2,11 +2,11 @@
 
 A typescript multichain client for atomiqlabs trustlesss cross-chain swaps. Enables trustless swaps between smart chains (Solana, EVM, Starknet, etc.) and bitcoin (on-chain - L1 and lightning network - L2).
 
-Example SDK integration in NodeJS available [here](https://github.com/atomiqlabs/atomiq-sdk-demo/tree/nostr-htlc)
+Example SDK integration in NodeJS available [here](https://github.com/atomiqlabs/atomiq-sdk-demo)
 
 ## Installation
 ```
-npm install @atomiqlabs/sdk@next
+npm install @atomiqlabs/sdk@latest
 ```
 
 ## Installing chain-specific connectors
@@ -14,9 +14,9 @@ npm install @atomiqlabs/sdk@next
 You can install only the chain-specific connectors that your project requires
 
 ```
-npm install @atomiqlabs/chain-solana@next
-npm install @atomiqlabs/chain-starknet@next
-npm install @atomiqlabs/chain-evm@next
+npm install @atomiqlabs/chain-solana@latest
+npm install @atomiqlabs/chain-starknet@latest
+npm install @atomiqlabs/chain-evm@latest
 ```
 
 ## How to use?
@@ -97,7 +97,7 @@ if you want to use custom pricing api, mempool.space RPC url, or tune HTTP reque
 For NodeJS we need to use sqlite storage, for that we first need to install the sqlite storage adaptor
 
 ```
-npm install @atomiqlabs/storage-sqlite@next
+npm install @atomiqlabs/storage-sqlite@latest
 ```
 
 Then use pass it in the newSwapper function

@@ -21,11 +21,11 @@ export declare const SmartChainAssets: {
     };
     readonly TBTC: {
         readonly pricing: {
-            readonly binancePair: any;
-            readonly okxPair: any;
+            readonly binancePair: undefined;
+            readonly okxPair: undefined;
             readonly coinGeckoCoinId: "tbtc";
             readonly coinPaprikaCoinId: "tbtc-tbtc";
-            readonly krakenPair: any;
+            readonly krakenPair: undefined;
         };
         readonly name: "Threshold BTC (tBTC)";
     };

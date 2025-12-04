@@ -9,7 +9,7 @@ export class LocalStorageManager<T extends StorageObject> implements IStorageMan
 
     rawData: {
         [hash: string]: any
-    } = null;
+    } = {};
     data: {
         [hash: string]: T
     } = {};

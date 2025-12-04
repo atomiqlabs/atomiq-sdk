@@ -6,7 +6,7 @@ exports.LocalStorageManager = void 0;
  */
 class LocalStorageManager {
     constructor(storageKey) {
-        this.rawData = null;
+        this.rawData = {};
         this.data = {};
         this.storageKey = storageKey;
     }

@@ -1,6 +1,6 @@
 import { Token } from "@atomiqlabs/sdk-lib";
 export declare function toHumanReadableString(amount: bigint, currencySpec: Token): string;
-export declare function fromHumanReadableString(amount: string, currencySpec: Token): bigint;
+export declare function fromHumanReadableString(amount: string, currencySpec: Token): bigint | null;
 /**
  * Returns an abort signal that aborts after a specified timeout in milliseconds
  *

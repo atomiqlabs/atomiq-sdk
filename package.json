@@ -24,7 +24,7 @@
   "license": "ISC",
   "dependencies": {
     "@atomiqlabs/base": "github:atomiqlabs/atomiq-base#ab/ts-strict",
-    "@atomiqlabs/messenger-nostr": "^1.0.1",
+    "@atomiqlabs/messenger-nostr": "github:atomiqlabs/atomiq-messenger-nostr#ab/ts-strict",
     "@atomiqlabs/sdk-lib": "github:atomiqlabs/atomiq-sdk-lib#ab/ts-strict"
   },
   "devDependencies": {

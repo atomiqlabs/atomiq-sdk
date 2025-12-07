@@ -1365,6 +1365,133 @@ if(!automaticSettlementSuccess) {
 
 </details>
 
+### Exact-In Smart Chain - Lightning swaps
+
+The main limitation of regular lightning network swaps (Smart chains -> Lightning), is the fact that exactIn swaps are not possible (as invoices need to have a fixed amount). LNURL-pay links solve this issue, but are not supported by all the wallets. Therefore, the SDK exposes a hook/callback that can be implemented by lightning wallets directly, which request fixed amount invoices on-demand. This then makes exact input amount swaps possible. The way it works:
+
+1. SDK sends a request to the LP saying it wants to swap `x` USDC to BTC, with a dummy invoice (either 1 sat or as specified in the `minMsats` parameter - this is requested from the `getInvoice()` function) - this dummy invoice is used to estimate the routing fees by the LP (extra care must be taken for both invoices, dummy and the real one to have the same destination node public key & routing hints).
+2. LP responds with the output amount of `y` BTC
+3. SDK calls the provided `getInvoice()` callback to request the real invoice for the `y` amount of BTC (in satoshis)
+4. SDK forwards the returned fixed amount (`y` BTC) lightning network invoice back to the LP to finish creating the quote
+
+Getting swap quote
+
+```typescript
+//Create the swap: swapping SOL to Bitcoin lightning
+const swap = await swapper.swap(
+    Tokens.SOLANA.SOL, //From specified source token
+    Tokens.BITCOIN.BTCLN, //Swap to BTC-LN
+    1_000_000_000n, //We can specify an amount for a lightning network payment!
+    SwapAmountType.EXACT_IN, //We can use exactIn=true here and set an amount in input token
+    solanaSigner.getAddress(), //Source address and smart chain signer
+    //Instead of the destination we pass a handler object
+    {
+        getInvoice: async (amountSats: number, abortSignal?: AbortSignal) => {
+            //Generate invoice with fixed amountSats here!
+            ...
+            return invoice;
+        },
+        //Optionally you can also specify minimum and maximum in msats (millisatoshis, 1 sat = 1000 msats)
+        minMsats: 1_000_000n,
+        maxMsats: 1_000_000_000n
+    },
+    {
+        comment: "Hello world" //For LNURL-pay we can also pass a comment to the recipient
+    }
+);
+
+//Get the amount required to pay and fee
+const input: string = swap.getInputWithoutFee().toString(); //Input amount excluding fees
+const fee: string = swap.getFee().amountInSrcToken.toString(); //Fees paid on the output
+const inputWithFees: string = swap.getInput().toString(); //Total amount paid including fees
+
+const output: string = swap.getOutput().toString(); //Total output amount
+
+//Get swap expiration time
+const expiry: number = swap.getQuoteExpiry(); //Expiration time of the swap quote in UNIX milliseconds, swap needs to be initiated before this time
+
+//Get pricing info
+const swapPrice = swap.getPriceInfo().swapPrice; //Price of the current swap (excluding fees)
+const marketPrice = swap.getPriceInfo().marketPrice; //Current market price
+const difference = swap.getPriceInfo().difference; //Difference between the swap price & current market price
+```
+
+
+Executing the swap (simple)
+
+```typescript
+const swapSuccessful = await swap.execute(
+    solanaSigner,
+    { //Callbacks
+        onSourceTransactionSent: (txId: string) => {
+            //Transaction on the source chain was sent
+        },
+        onSourceTransactionConfirmed: (txId: string) => {
+            //Transaction on the source chain was confirmed
+        },
+        onSwapSettled: (destinationTxId: string) => {
+            //Lightning payment on the destination chain was sent and swap settled
+        }
+    }
+);
+
+//Refund in case of failure
+if(!swapSuccessful) {
+    //Swap failed, money can be refunded
+    await swap.refund(solanaSigner);
+    return;
+}
+
+//Swap successful!
+const lightningSecret = swap.getSecret();
+```
+
+<details>
+<summary>Manual swap execution (advanced)</summary>
+
+- __1.__ Initiate the swap on the smart-chain side
+
+  - __a.__ Commit with a signer
+  ```typescript
+  await swap.commit(solanaSigner);
+  ```
+
+  - __b.__ Or get the transactions & [sign and send transaction manually](#manually-signing-smart-chain-transactions)
+  ```typescript
+  const txsCommit = await swap.txsCommit();
+  //Sign and send these...
+  ...
+  //Important to wait till SDK processes the swap initialization
+  await swap.waitTillCommited();
+  ```
+
+- __2.__ Wait for the swap to execute and for the payment to be sent
+
+  ```typescript
+  const swapSuccessful = await swap.waitForPayment();
+  ```
+
+- __3.__ In case the swap fails we can refund our funds on the source chain
+
+  - __a.__ Refund with a signer
+  ```typescript
+  if(!swapSuccessful) {
+      await swap.refund(solanaSigner);
+      return;
+  }
+  ```
+
+  - __b.__ Or get the transactions & [sign and send transaction manually](#manually-signing-smart-chain-transactions)
+  ```typescript
+  if(!swapSuccessful) {
+      const txsRefund = await swap.txsRefund();
+      //Sign and send these...
+      ...
+  }
+  ```
+
+</details>
+
 ### Getting state of the swap
 
 You can get the current state of the swap with:

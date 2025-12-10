@@ -15,7 +15,7 @@ import {
     RedundantSwapPriceAssets, SCToken, SingleSwapPrice, Swapper,
     SwapperOptions
 } from "@atomiqlabs/sdk-lib";
-import {SmartChainAssets} from "./SmartChainAssets";
+import {SmartChainAssets, SmartChainAssetTickers} from "./SmartChainAssets";
 import {LocalStorageManager} from "./storage/LocalStorageManager";
 import {NostrMessenger} from "@atomiqlabs/messenger-nostr";
 
@@ -72,18 +72,18 @@ export type MultichainSwapperOptions<T extends readonly ChainInitializer<any, an
     getPriceFn?: CustomPriceFunction
 };
 
-const registries = {
+const registries: {[key in BitcoinNetwork]?: string} = {
     [BitcoinNetwork.MAINNET]: "https://api.github.com/repos/adambor/SolLightning-registry/contents/registry-mainnet.json?ref=main",
     [BitcoinNetwork.TESTNET]: "https://api.github.com/repos/adambor/SolLightning-registry/contents/registry.json?ref=main",
     [BitcoinNetwork.TESTNET4]: "https://api.github.com/repos/adambor/SolLightning-registry/contents/registry-testnet4.json?ref=main"
 }
 
-const trustedIntermediaries = {
+const trustedIntermediaries: {[key in BitcoinNetwork]?: string} = {
     [BitcoinNetwork.MAINNET]: "https://node3.gethopa.com:34100",
     [BitcoinNetwork.TESTNET]: "https://node3.gethopa.com:24100"
 }
 
-const mempoolUrls = {
+const mempoolUrls: {[key in BitcoinNetwork]?: string[]} = {
     [BitcoinNetwork.MAINNET]: [
         "https://mempool.space/api/",
         // "https://mempool.holdings/api/",
@@ -111,7 +111,7 @@ const nostrUrls: string[] = [
     "wss://relay.damus.io", "wss://nostr.einundzwanzig.space", "wss://relay01.lnfi.network/", "wss://relay.puresignal.news/", "wss://relay.fountain.fm/", "wss://sendit.nosflare.com/"
 ];
 
-export class SwapperFactory<T extends readonly ChainInitializer<any, any, any>[]> {
+export class SwapperFactory<T extends readonly ChainInitializer<any, ChainType, any>[]> {
 
     Tokens: GetAllTokens<T> & {
         BITCOIN: {
@@ -128,38 +128,42 @@ export class SwapperFactory<T extends readonly ChainInitializer<any, any, any>[]
         initializers.forEach(initializer => {
             const addressMap: {[tokenAddress: string]: SCToken} = {};
 
-            this.Tokens[initializer.chainId] = {} as any;
+            const tokens = (this.Tokens[initializer.chainId as keyof GetAllTokens<T>] = {} as any);
 
             for(let ticker in initializer.tokens) {
                 const assetData = initializer.tokens[ticker] as any;
-                this.Tokens[initializer.chainId][ticker] = addressMap[assetData.address] = {
+                tokens[ticker] = addressMap[assetData.address] = {
                     chain: "SC",
                     chainId: initializer.chainId,
                     address: assetData.address,
-                    name: SmartChainAssets[ticker]?.name ?? ticker,
+                    name: SmartChainAssets[ticker as SmartChainAssetTickers]?.name ?? ticker,
                     decimals: assetData.decimals,
                     displayDecimals: assetData.displayDecimals,
                     ticker
                 } as any;
             }
 
-            this.TokenResolver[initializer.chainId] = {
+            this.TokenResolver[initializer.chainId as keyof GetAllTokenResolvers<T>] = {
                 getToken: (address: string) => addressMap[address]
             } as any;
         });
     }
 
     newSwapper(options: MultichainSwapperOptions<T>) {
-        options.bitcoinNetwork ??= BitcoinNetwork.MAINNET as any;
+        options.bitcoinNetwork ??= BitcoinNetwork.MAINNET;
         options.storagePrefix ??= "atomiqsdk-"+options.bitcoinNetwork+"-";
         options.messenger ??= new NostrMessenger(options.bitcoinNetwork, nostrUrls);
-
         options.defaultTrustedIntermediaryUrl ??= trustedIntermediaries[options.bitcoinNetwork];
-
         options.registryUrl ??= registries[options.bitcoinNetwork];
 
-        const mempoolApi = options.mempoolApi ?? new MempoolBitcoinRpc(mempoolUrls[options.bitcoinNetwork]);
-        const bitcoinRpc = mempoolApi instanceof MempoolBitcoinRpc ? mempoolApi : new MempoolBitcoinRpc(mempoolApi);
+        let bitcoinRpc: MempoolBitcoinRpc;
+        if(options.mempoolApi!=null) {
+            bitcoinRpc = options.mempoolApi instanceof MempoolBitcoinRpc ? options.mempoolApi : new MempoolBitcoinRpc(options.mempoolApi);
+        } else {
+            const urls = mempoolUrls[options.bitcoinNetwork];
+            if(urls==null) throw new Error(`No pre-configured urls for ${BitcoinNetwork[options.bitcoinNetwork]} network were found, please explicitly pass mempoolApi parameter!`);
+            bitcoinRpc = new MempoolBitcoinRpc(urls);
+        }
 
         const pricingAssets: (RedundantSwapPriceAssets<ToMultichain<T>>[number] & {ticker: string, name: string})[] = [];
         Object.keys(SmartChainAssets).forEach((ticker) => {
@@ -167,7 +171,7 @@ export class SwapperFactory<T extends readonly ChainInitializer<any, any, any>[]
             for(let {tokens, chainId} of this.initializers) {
                 if(tokens[ticker]!=null) chains[chainId] = tokens[ticker];
             }
-            const assetData = SmartChainAssets[ticker];
+            const assetData = SmartChainAssets[ticker as SmartChainAssetTickers];
             pricingAssets.push({
                 ...assetData.pricing,
                 chains,
@@ -180,8 +184,9 @@ export class SwapperFactory<T extends readonly ChainInitializer<any, any, any>[]
 
         const chains: {[key in T[number]["chainId"]]: ChainData<any>} = {} as any;
         for(let {initializer, chainId} of this.initializers) {
-            if(options.chains[chainId]==null) continue;
-            chains[chainId] = initializer(options.chains[chainId], bitcoinRpc, options.bitcoinNetwork, options.chainStorageCtor) as any;
+            const chainOptions = options.chains[chainId as keyof GetAllOptions<T>];
+            if(chainOptions==null) continue;
+            chains[chainId as T[number]["chainId"]] = initializer(chainOptions, bitcoinRpc, options.bitcoinNetwork, options.chainStorageCtor) as any;
         }
 
         const swapPricing = options.getPriceFn!=null ?

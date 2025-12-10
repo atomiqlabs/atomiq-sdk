@@ -36,7 +36,7 @@ export type MultichainSwapperOptions<T extends readonly ChainInitializer<any, an
     messenger?: Messenger;
     getPriceFn?: CustomPriceFunction;
 };
-export declare class SwapperFactory<T extends readonly ChainInitializer<any, any, any>[]> {
+export declare class SwapperFactory<T extends readonly ChainInitializer<any, ChainType, any>[]> {
     readonly initializers: T;
     Tokens: GetAllTokens<T> & {
         BITCOIN: {

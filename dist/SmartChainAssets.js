@@ -34,11 +34,11 @@ exports.SmartChainAssets = {
     },
     TBTC: {
         pricing: {
-            binancePair: null,
-            okxPair: null,
+            binancePair: undefined,
+            okxPair: undefined,
             coinGeckoCoinId: "tbtc",
             coinPaprikaCoinId: "tbtc-tbtc",
-            krakenPair: null
+            krakenPair: undefined
         },
         name: "Threshold BTC (tBTC)"
     },

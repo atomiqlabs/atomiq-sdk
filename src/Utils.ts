@@ -1,13 +1,17 @@
 import {toDecimal, fromDecimal, Token} from "@atomiqlabs/sdk-lib";
 
 export function toHumanReadableString(amount: bigint, currencySpec: Token): string {
-    if(amount==null) return null;
+    if(amount==null) return "";
     return toDecimal(amount, currencySpec.decimals, undefined, currencySpec.displayDecimals);
 }
 
-export function fromHumanReadableString(amount: string, currencySpec: Token): bigint {
+export function fromHumanReadableString(amount: string, currencySpec: Token): bigint | null {
     if(amount==="" || amount==null) return null;
-    return fromDecimal(amount, currencySpec.decimals);
+    try {
+        return fromDecimal(amount, currencySpec.decimals);
+    } catch (e) {
+        return null;
+    }
 }
 
 /**
@@ -18,7 +22,6 @@ export function fromHumanReadableString(amount: string, currencySpec: Token): bi
  * @param abortSignal Abort signal to extend
  */
 export function timeoutSignal(timeout: number, abortReason?: any, abortSignal?: AbortSignal): AbortSignal {
-    if(timeout==null) return abortSignal;
     const abortController = new AbortController();
     const timeoutHandle = setTimeout(() => abortController.abort(abortReason || new Error("Timed out")), timeout);
     if(abortSignal!=null) {

@@ -51,10 +51,10 @@ class SwapperFactory {
         this.initializers = initializers;
         initializers.forEach(initializer => {
             const addressMap = {};
-            this.Tokens[initializer.chainId] = {};
+            const tokens = (this.Tokens[initializer.chainId] = {});
             for (let ticker in initializer.tokens) {
                 const assetData = initializer.tokens[ticker];
-                this.Tokens[initializer.chainId][ticker] = addressMap[assetData.address] = {
+                tokens[ticker] = addressMap[assetData.address] = {
                     chain: "SC",
                     chainId: initializer.chainId,
                     address: assetData.address,
@@ -75,8 +75,16 @@ class SwapperFactory {
         options.messenger ?? (options.messenger = new messenger_nostr_1.NostrMessenger(options.bitcoinNetwork, nostrUrls));
         options.defaultTrustedIntermediaryUrl ?? (options.defaultTrustedIntermediaryUrl = trustedIntermediaries[options.bitcoinNetwork]);
         options.registryUrl ?? (options.registryUrl = registries[options.bitcoinNetwork]);
-        const mempoolApi = options.mempoolApi ?? new sdk_lib_1.MempoolBitcoinRpc(mempoolUrls[options.bitcoinNetwork]);
-        const bitcoinRpc = mempoolApi instanceof sdk_lib_1.MempoolBitcoinRpc ? mempoolApi : new sdk_lib_1.MempoolBitcoinRpc(mempoolApi);
+        let bitcoinRpc;
+        if (options.mempoolApi != null) {
+            bitcoinRpc = options.mempoolApi instanceof sdk_lib_1.MempoolBitcoinRpc ? options.mempoolApi : new sdk_lib_1.MempoolBitcoinRpc(options.mempoolApi);
+        }
+        else {
+            const urls = mempoolUrls[options.bitcoinNetwork];
+            if (urls == null)
+                throw new Error(`No pre-configured urls for ${base_1.BitcoinNetwork[options.bitcoinNetwork]} network were found, please explicitly pass mempoolApi parameter!`);
+            bitcoinRpc = new sdk_lib_1.MempoolBitcoinRpc(urls);
+        }
         const pricingAssets = [];
         Object.keys(SmartChainAssets_1.SmartChainAssets).forEach((ticker) => {
             const chains = {};
@@ -95,9 +103,10 @@ class SwapperFactory {
         options.chainStorageCtor ?? (options.chainStorageCtor = (name) => new LocalStorageManager_1.LocalStorageManager(name));
         const chains = {};
         for (let { initializer, chainId } of this.initializers) {
-            if (options.chains[chainId] == null)
+            const chainOptions = options.chains[chainId];
+            if (chainOptions == null)
                 continue;
-            chains[chainId] = initializer(options.chains[chainId], bitcoinRpc, options.bitcoinNetwork, options.chainStorageCtor);
+            chains[chainId] = initializer(chainOptions, bitcoinRpc, options.bitcoinNetwork, options.chainStorageCtor);
         }
         const swapPricing = options.getPriceFn != null ?
             new sdk_lib_1.SingleSwapPrice(options.pricingFeeDifferencePPM ?? 10000n, new sdk_lib_1.CustomPriceProvider(pricingAssets.map(val => {

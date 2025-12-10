@@ -4,14 +4,19 @@ exports.timeoutSignal = exports.fromHumanReadableString = exports.toHumanReadabl
 const sdk_lib_1 = require("@atomiqlabs/sdk-lib");
 function toHumanReadableString(amount, currencySpec) {
     if (amount == null)
-        return null;
+        return "";
     return (0, sdk_lib_1.toDecimal)(amount, currencySpec.decimals, undefined, currencySpec.displayDecimals);
 }
 exports.toHumanReadableString = toHumanReadableString;
 function fromHumanReadableString(amount, currencySpec) {
     if (amount === "" || amount == null)
         return null;
-    return (0, sdk_lib_1.fromDecimal)(amount, currencySpec.decimals);
+    try {
+        return (0, sdk_lib_1.fromDecimal)(amount, currencySpec.decimals);
+    }
+    catch (e) {
+        return null;
+    }
 }
 exports.fromHumanReadableString = fromHumanReadableString;
 /**
@@ -22,8 +27,6 @@ exports.fromHumanReadableString = fromHumanReadableString;
  * @param abortSignal Abort signal to extend
  */
 function timeoutSignal(timeout, abortReason, abortSignal) {
-    if (timeout == null)
-        return abortSignal;
     const abortController = new AbortController();
     const timeoutHandle = setTimeout(() => abortController.abort(abortReason || new Error("Timed out")), timeout);
     if (abortSignal != null) {

@@ -1,11 +1,13 @@
 {
   "name": "@atomiqlabs/sdk",
-  "version": "7.0.8",
+  "version": "7.1.0",
   "description": "atomiq labs SDK for cross-chain swaps between smart chains and bitcoin",
   "main": "./dist/index.js",
   "types:": "./dist/index.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:ts4": "npx -p typescript@4.9 tsc --noEmit",
+    "build:ts5": "npx -p typescript@5.9 tsc --noEmit"
   },
   "files": [
     "/dist",
@@ -21,12 +23,12 @@
   "author": "adambor",
   "license": "ISC",
   "dependencies": {
-    "@atomiqlabs/base": "^12.0.1",
-    "@atomiqlabs/messenger-nostr": "^1.0.1",
-    "@atomiqlabs/sdk-lib": "^16.2.1"
+    "@atomiqlabs/base": "github:atomiqlabs/atomiq-base#ab/ts-strict",
+    "@atomiqlabs/messenger-nostr": "github:atomiqlabs/atomiq-messenger-nostr#ab/ts-strict",
+    "@atomiqlabs/sdk-lib": "github:atomiqlabs/atomiq-sdk-lib#ab/ts-strict"
   },
   "devDependencies": {
     "@types/node": "22.13.5",
-    "typescript": "4.9.5"
+    "typescript": ">=4"
   }
 }

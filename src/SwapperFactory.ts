@@ -13,12 +13,13 @@ import {
     MempoolApi,
     MempoolBitcoinRpc, RedundantSwapPrice,
     RedundantSwapPriceAssets, SCToken, SingleSwapPrice, Swapper,
-    SwapperOptions
+    SwapperOptions, SwapType, SwapTypeMapping
 } from "@atomiqlabs/sdk-lib";
 import {SmartChainAssets, SmartChainAssetTickers} from "./SmartChainAssets";
 import {LocalStorageManager} from "./storage/LocalStorageManager";
 import {NostrMessenger} from "@atomiqlabs/messenger-nostr";
 
+//Helper types
 type ChainInitializer<O, C extends ChainType, T extends BaseTokenType> = {
     chainId: ChainType["ChainId"],
     chainType: ChainType,
@@ -33,22 +34,16 @@ type ChainInitializer<O, C extends ChainType, T extends BaseTokenType> = {
 }
 
 type TokensDict<T extends ChainInitializer<any, any, any>> = {
-    [K in T["chainId"]]: {
-        [val in keyof T["tokens"]]: SCToken<K>
-    }
+    [K in T["chainId"]]: TypedChainTokens<T>
 };
 type GetAllTokens<T extends readonly ChainInitializer<any, any, any>[]> =
     (T extends readonly [infer First extends ChainInitializer<any, any, any>, ...infer Rest extends ChainInitializer<any, any, any>[]]
         ? TokensDict<First> & GetAllTokens<Rest>
         : unknown);
 
-export type TokenResolverDict<T extends ChainInitializer<any, any, any>> = {[K in T["chainId"]]: {
-    getToken: (address: string) => SCToken<K>
-}};
-type GetAllTokenResolvers<T extends readonly ChainInitializer<any, any, any>[]> =
-    (T extends readonly [infer First extends ChainInitializer<any, any, any>, ...infer Rest extends ChainInitializer<any, any, any>[]]
-        ? TokenResolverDict<First> & GetAllTokenResolvers<Rest>
-        : unknown);
+export type TokenResolverDict<T extends ChainInitializer<any, any, any>> = {
+    [K in T["chainId"]]: TypedChainTokenResolver<T>
+};
 
 type OptionsDict<T extends ChainInitializer<any, any, any>> = {[K in T["chainId"]]: T["options"]};
 type GetAllOptions<T extends readonly ChainInitializer<any, any, any>[]> =
@@ -62,7 +57,8 @@ type ToMultichain<T extends readonly ChainInitializer<any, any, any>[]> =
         ? ChainTypeDict<First> & ToMultichain<Rest>
         : {});
 
-export type MultichainSwapperOptions<T extends readonly ChainInitializer<any, any, any>[]> = SwapperOptions & {
+//Exported types
+export type TypedSwapperOptions<T extends readonly ChainInitializer<any, any, any>[]> = SwapperOptions & {
     chains: GetAllOptions<T>
 } & {
     chainStorageCtor?: <T extends StorageObject>(name: string) => IStorageManager<T>,
@@ -71,6 +67,33 @@ export type MultichainSwapperOptions<T extends readonly ChainInitializer<any, an
     messenger?: Messenger,
     getPriceFn?: CustomPriceFunction
 };
+
+export type TypedChainTokenResolver<T extends ChainInitializer<any, any, any>> = {
+    getToken: (address: string) => SCToken<T["chainId"]>
+};
+
+export type TypedTokenResolvers<T extends readonly ChainInitializer<any, any, any>[]> =
+    (T extends readonly [infer First extends ChainInitializer<any, any, any>, ...infer Rest extends ChainInitializer<any, any, any>[]]
+        ? TokenResolverDict<First> & TypedTokenResolvers<Rest>
+        : unknown);
+
+export type TypedChainTokens<T extends ChainInitializer<any, any, any>> = {
+    [val in keyof T["tokens"]]: SCToken<T["chainId"]>
+};
+
+export type TypedTokens<T extends readonly ChainInitializer<any, ChainType, any>[]> = GetAllTokens<T> & {
+    BITCOIN: {
+        BTC: BtcToken<false>,
+        BTCLN: BtcToken<true>
+    }
+};
+
+export type TypedSwapper<T extends readonly ChainInitializer<any, ChainType, any>[]> = Swapper<ToMultichain<T>>;
+
+export type TypedSwap<
+    T extends ChainInitializer<any, ChainType, any>,
+    S extends SwapType
+> = SwapTypeMapping<T["chainType"]>[S];
 
 const registries: {[key in BitcoinNetwork]?: string} = {
     [BitcoinNetwork.MAINNET]: "https://api.github.com/repos/adambor/SolLightning-registry/contents/registry-mainnet.json?ref=main",
@@ -113,15 +136,10 @@ const nostrUrls: string[] = [
 
 export class SwapperFactory<T extends readonly ChainInitializer<any, ChainType, any>[]> {
 
-    Tokens: GetAllTokens<T> & {
-        BITCOIN: {
-            BTC: BtcToken<false>,
-            BTCLN: BtcToken<true>
-        }
-    } = {
+    Tokens: TypedTokens<T> = {
         BITCOIN: BitcoinTokens
     } as any;
-    TokenResolver: GetAllTokenResolvers<T> = {} as any;
+    TokenResolver: TypedTokenResolvers<T> = {} as any;
 
     constructor(readonly initializers: T) {
         this.initializers = initializers;
@@ -143,13 +161,13 @@ export class SwapperFactory<T extends readonly ChainInitializer<any, ChainType, 
                 } as any;
             }
 
-            this.TokenResolver[initializer.chainId as keyof GetAllTokenResolvers<T>] = {
+            this.TokenResolver[initializer.chainId as keyof TypedTokenResolvers<T>] = {
                 getToken: (address: string) => addressMap[address]
             } as any;
         });
     }
 
-    newSwapper(options: MultichainSwapperOptions<T>) {
+    newSwapper(options: TypedSwapperOptions<T>): TypedSwapper<T> {
         options.bitcoinNetwork ??= BitcoinNetwork.MAINNET;
         options.storagePrefix ??= "atomiqsdk-"+options.bitcoinNetwork+"-";
         options.messenger ??= new NostrMessenger(options.bitcoinNetwork, nostrUrls);
@@ -208,7 +226,7 @@ export class SwapperFactory<T extends readonly ChainInitializer<any, ChainType, 
         );
     }
 
-    async newSwapperInitialized(options: MultichainSwapperOptions<T>) {
+    async newSwapperInitialized(options: TypedSwapperOptions<T>): Promise<TypedSwapper<T>> {
         const swapper = this.newSwapper(options);
         await swapper.init();
         return swapper;

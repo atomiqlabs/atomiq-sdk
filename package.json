@@ -23,9 +23,9 @@
   "author": "adambor",
   "license": "ISC",
   "dependencies": {
-    "@atomiqlabs/base": "github:atomiqlabs/atomiq-base#ab/signed-txs",
-    "@atomiqlabs/messenger-nostr": "github:atomiqlabs/atomiq-messenger-nostr#ab/signed-txs",
-    "@atomiqlabs/sdk-lib": "github:atomiqlabs/atomiq-sdk-lib#ab/signed-txs"
+    "@atomiqlabs/base": "github:atomiqlabs/atomiq-base#develop",
+    "@atomiqlabs/messenger-nostr": "github:atomiqlabs/atomiq-messenger-nostr#develop",
+    "@atomiqlabs/sdk-lib": "github:atomiqlabs/atomiq-sdk-lib#develop"
   },
   "devDependencies": {
     "@types/node": "22.13.5",

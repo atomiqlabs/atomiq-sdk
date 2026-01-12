@@ -1,4 +1,8 @@
-
+/**
+ * @internal
+ * Asset definitions and pricing configurations for supported tokens.
+ * Used internally by SwapperFactory for price provider setup.
+ */
 export const SmartChainAssets = {
     _TESTNET_WBTC_VESU: {
         pricing: {
@@ -145,4 +149,5 @@ export const SmartChainAssets = {
     }
 } as const;
 
+/** @internal */
 export type SmartChainAssetTickers = keyof typeof SmartChainAssets;

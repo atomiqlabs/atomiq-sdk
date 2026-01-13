@@ -1,6 +1,6 @@
 /**
  * @module SwapperFactory
- * Factory aaaa for creating typed Swapper instances with multi-chain support.
+ * Factory for creating typed Swapper instances with multi-chain support.
  */
 
 import {

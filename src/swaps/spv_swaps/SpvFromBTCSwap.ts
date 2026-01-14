@@ -1,6 +1,7 @@
 import {isISwapInit, ISwap, ISwapInit} from "../ISwap";
 import {
-    ChainType, isAbstractSigner,
+    ChainType,
+    isAbstractSigner,
     SpvWithdrawalClaimedState,
     SpvWithdrawalClosedState,
     SpvWithdrawalFrontedState,
@@ -9,17 +10,9 @@ import {
 } from "@atomiqlabs/base";
 import {SwapType} from "../../enums/SwapType";
 import {SpvFromBTCTypeDefinition, SpvFromBTCWrapper} from "./SpvFromBTCWrapper";
-import {
-    extendAbortController,
-    getTxoHash
-} from "../../utils/Utils";
-import {
-    parsePsbtTransaction,
-    toBitcoinWallet,
-    toCoinselectAddressType,
-    toOutputScript
-} from "../../utils/BitcoinUtils";
-import {Address, getInputType, OutScript, Transaction} from "@scure/btc-signer";
+import {extendAbortController} from "../../utils/Utils";
+import {parsePsbtTransaction, toCoinselectAddressType, toOutputScript} from "../../utils/BitcoinUtils";
+import {getInputType, Transaction} from "@scure/btc-signer";
 import {Buffer} from "buffer";
 import {Fee} from "../../types/fees/Fee";
 import {IBitcoinWallet, isIBitcoinWallet} from "../../bitcoin/wallet/IBitcoinWallet";
@@ -35,7 +28,7 @@ import {BtcTxWithBlockheight} from "../../bitcoin/BitcoinRpcWithAddressIndex";
 import {FeeType} from "../../enums/FeeType";
 import {ppmToPercentage} from "../../types/fees/PercentagePPM";
 import {TokenAmount, toTokenAmount} from "../../types/TokenAmount";
-import {BitcoinTokens, BtcToken, SCToken, Token} from "../../types/Token";
+import {BitcoinTokens, BtcToken, SCToken} from "../../types/Token";
 import {getLogger, LoggerType} from "../../utils/Logger";
 import {timeoutPromise} from "../../utils/TimeoutUtils";
 import {
@@ -44,6 +37,7 @@ import {
     PriceInfoType,
     serializePriceInfoType
 } from "../../types/PriceInfoType";
+import {toBitcoinWallet} from "../../utils/BitcoinWalletUtils";
 
 export enum SpvFromBTCSwapState {
     CLOSED = -5,

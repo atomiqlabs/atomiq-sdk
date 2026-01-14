@@ -17,6 +17,7 @@ const Token_1 = require("../../types/Token");
 const Logger_1 = require("../../utils/Logger");
 const TimeoutUtils_1 = require("../../utils/TimeoutUtils");
 const PriceInfoType_1 = require("../../types/PriceInfoType");
+const BitcoinWalletUtils_1 = require("../../utils/BitcoinWalletUtils");
 var SpvFromBTCSwapState;
 (function (SpvFromBTCSwapState) {
     SpvFromBTCSwapState[SpvFromBTCSwapState["CLOSED"] = -5] = "CLOSED";
@@ -396,7 +397,7 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
      * @param additionalOutputs additional outputs to add to the PSBT - can be used to collect fees from users
      */
     async getFundedPsbt(_bitcoinWallet, feeRate, additionalOutputs) {
-        const bitcoinWallet = (0, BitcoinUtils_1.toBitcoinWallet)(_bitcoinWallet, this.wrapper.btcRpc, this.wrapper.options.bitcoinNetwork);
+        const bitcoinWallet = (0, BitcoinWalletUtils_1.toBitcoinWallet)(_bitcoinWallet, this.wrapper.btcRpc, this.wrapper.options.bitcoinNetwork);
         if (feeRate != null) {
             if (feeRate < this.minimumBtcFeeRate)
                 throw new Error("Bitcoin tx fee needs to be at least " + this.minimumBtcFeeRate + " sats/vB");
@@ -505,7 +506,7 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
         return this.data.getTxId();
     }
     async estimateBitcoinFee(_bitcoinWallet, feeRate) {
-        const bitcoinWallet = (0, BitcoinUtils_1.toBitcoinWallet)(_bitcoinWallet, this.wrapper.btcRpc, this.wrapper.options.bitcoinNetwork);
+        const bitcoinWallet = (0, BitcoinWalletUtils_1.toBitcoinWallet)(_bitcoinWallet, this.wrapper.btcRpc, this.wrapper.options.bitcoinNetwork);
         const txFee = await bitcoinWallet.getFundedPsbtFee((await this.getPsbt()).psbt, feeRate);
         if (txFee == null)
             return null;

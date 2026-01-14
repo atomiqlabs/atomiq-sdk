@@ -9,7 +9,6 @@ import {
 } from "../../../../utils/Utils";
 import {
     parsePsbtTransaction,
-    toBitcoinWallet,
     toOutputScript,
 } from "../../../../utils/BitcoinUtils";
 import {IBitcoinWallet, isIBitcoinWallet} from "../../../../bitcoin/wallet/IBitcoinWallet";
@@ -28,6 +27,7 @@ import {TokenAmount, toTokenAmount} from "../../../../types/TokenAmount";
 import {BitcoinTokens, BtcToken, SCToken, Token} from "../../../../types/Token";
 import {getLogger, LoggerType} from "../../../../utils/Logger";
 import {tryWithRetries} from "../../../../utils/RetryUtils";
+import {toBitcoinWallet} from "../../../../utils/BitcoinWalletUtils";
 
 export enum FromBTCSwapState {
     FAILED = -4,

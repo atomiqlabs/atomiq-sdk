@@ -1,9 +1,6 @@
 import {BTC_NETWORK, isBytes, PubT, validatePubkey} from "@scure/btc-signer/utils";
 import {Buffer} from "buffer";
 import {Address, OutScript, Transaction} from "@scure/btc-signer";
-import {IBitcoinWallet, isIBitcoinWallet} from "../bitcoin/wallet/IBitcoinWallet";
-import {BitcoinRpcWithAddressIndex} from "../bitcoin/BitcoinRpcWithAddressIndex";
-import {SingleAddressBitcoinWallet} from "../bitcoin/wallet/SingleAddressBitcoinWallet";
 import {CoinselectAddressTypes} from "../bitcoin/coinselect2";
 
 export function toOutputScript(network: BTC_NETWORK, address: string): Buffer {
@@ -87,14 +84,3 @@ export function parsePsbtTransaction(_psbt: Transaction | string): Transaction {
     }
 }
 
-export function toBitcoinWallet(
-    _bitcoinWallet: IBitcoinWallet | { address: string, publicKey: string },
-    btcRpc: BitcoinRpcWithAddressIndex<any>,
-    bitcoinNetwork: BTC_NETWORK
-): IBitcoinWallet {
-    if (isIBitcoinWallet(_bitcoinWallet)) {
-        return _bitcoinWallet;
-    } else {
-        return new SingleAddressBitcoinWallet(btcRpc, bitcoinNetwork, _bitcoinWallet);
-    }
-}

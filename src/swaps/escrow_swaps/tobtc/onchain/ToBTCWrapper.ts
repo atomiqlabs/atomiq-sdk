@@ -1,9 +1,6 @@
 import {ToBTCSwap, ToBTCSwapInit} from "./ToBTCSwap";
 import {IToBTCDefinition, IToBTCWrapper} from "../IToBTCWrapper";
-import {
-    ChainSwapType, ChainType,
-    BitcoinRpc, BigIntBufferUtils
-} from "@atomiqlabs/base";
+import {BigIntBufferUtils, BitcoinRpc, ChainSwapType, ChainType} from "@atomiqlabs/base";
 import {Intermediary, SingleChainReputationType} from "../../../../intermediaries/Intermediary";
 import {ISwapPrice} from "../../../../prices/abstract/ISwapPrice";
 import {EventEmitter} from "events";
@@ -12,11 +9,7 @@ import {Buffer} from "buffer";
 import {UserError} from "../../../../errors/UserError";
 import {IntermediaryError} from "../../../../errors/IntermediaryError";
 import {SwapType} from "../../../../enums/SwapType";
-import {
-    extendAbortController,
-    randomBytes,
-    throwIfUndefined
-} from "../../../../utils/Utils";
+import {extendAbortController, randomBytes, throwIfUndefined} from "../../../../utils/Utils";
 import {toOutputScript} from "../../../../utils/BitcoinUtils";
 import {IntermediaryAPI, ToBTCResponseType} from "../../../../intermediaries/apis/IntermediaryAPI";
 import {RequestError} from "../../../../errors/RequestError";

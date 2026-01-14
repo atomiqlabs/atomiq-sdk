@@ -1,5 +1,5 @@
 import {ChainType} from "@atomiqlabs/base";
-import { ISwap } from "./ISwap";
+import {ISwap} from "./ISwap";
 import {ISwapWrapper, SwapTypeDefinition} from "./ISwapWrapper";
 
 export function isIClaimableSwap(obj: any): obj is IClaimableSwap {

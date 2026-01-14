@@ -17,6 +17,7 @@ const TokenAmount_1 = require("../../../types/TokenAmount");
 const Token_1 = require("../../../types/Token");
 const Logger_1 = require("../../../utils/Logger");
 const TimeoutUtils_1 = require("../../../utils/TimeoutUtils");
+const BitcoinWalletUtils_1 = require("../../../utils/BitcoinWalletUtils");
 var OnchainForGasSwapState;
 (function (OnchainForGasSwapState) {
     OnchainForGasSwapState[OnchainForGasSwapState["EXPIRED"] = -3] = "EXPIRED";
@@ -263,7 +264,7 @@ class OnchainForGasSwap extends ISwap_1.ISwap {
         return await this.wrapper.btcRpc.sendRawTransaction(buffer_1.Buffer.from(psbt.toBytes(true, true)).toString("hex"));
     }
     async estimateBitcoinFee(_bitcoinWallet, feeRate) {
-        const bitcoinWallet = (0, BitcoinUtils_1.toBitcoinWallet)(_bitcoinWallet, this.wrapper.btcRpc, this.wrapper.options.bitcoinNetwork);
+        const bitcoinWallet = (0, BitcoinWalletUtils_1.toBitcoinWallet)(_bitcoinWallet, this.wrapper.btcRpc, this.wrapper.options.bitcoinNetwork);
         const txFee = await bitcoinWallet.getTransactionFee(this.address, this.inputAmount, feeRate);
         if (txFee == null)
             return null;

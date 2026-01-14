@@ -1,11 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.toBitcoinWallet = exports.parsePsbtTransaction = exports.toCoinselectAddressType = exports.toOutputScript = void 0;
+exports.parsePsbtTransaction = exports.toCoinselectAddressType = exports.toOutputScript = void 0;
 const utils_1 = require("@scure/btc-signer/utils");
 const buffer_1 = require("buffer");
 const btc_signer_1 = require("@scure/btc-signer");
-const IBitcoinWallet_1 = require("../bitcoin/wallet/IBitcoinWallet");
-const SingleAddressBitcoinWallet_1 = require("../bitcoin/wallet/SingleAddressBitcoinWallet");
 function toOutputScript(network, address) {
     const outputScript = (0, btc_signer_1.Address)(network).decode(address);
     switch (outputScript.type) {
@@ -98,12 +96,3 @@ function parsePsbtTransaction(_psbt) {
     }
 }
 exports.parsePsbtTransaction = parsePsbtTransaction;
-function toBitcoinWallet(_bitcoinWallet, btcRpc, bitcoinNetwork) {
-    if ((0, IBitcoinWallet_1.isIBitcoinWallet)(_bitcoinWallet)) {
-        return _bitcoinWallet;
-    }
-    else {
-        return new SingleAddressBitcoinWallet_1.SingleAddressBitcoinWallet(btcRpc, bitcoinNetwork, _bitcoinWallet);
-    }
-}
-exports.toBitcoinWallet = toBitcoinWallet;

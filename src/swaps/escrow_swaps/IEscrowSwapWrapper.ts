@@ -5,7 +5,9 @@ import {
     InitializeEvent,
     RefundEvent,
     SignatureData,
-    SignatureVerificationError, SwapCommitState, SwapEvent
+    SignatureVerificationError,
+    SwapCommitState,
+    SwapEvent
 } from "@atomiqlabs/base";
 import {ISwap} from "../ISwap";
 import {UnifiedSwapStorage} from "../../storage/UnifiedSwapStorage";
@@ -15,7 +17,6 @@ import {EventEmitter} from "events";
 import {SwapType} from "../../enums/SwapType";
 import {IEscrowSwap} from "./IEscrowSwap";
 import {Intermediary} from "../../intermediaries/Intermediary";
-import {AmountData} from "../../types/AmountData";
 import {tryWithRetries} from "../../utils/RetryUtils";
 
 export type IEscrowSwapDefinition<T extends ChainType, W extends IEscrowSwapWrapper<T, any>, S extends IEscrowSwap<T>> = SwapTypeDefinition<T, W, S>;

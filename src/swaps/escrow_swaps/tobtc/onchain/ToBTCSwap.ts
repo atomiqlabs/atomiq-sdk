@@ -6,7 +6,7 @@ import {Buffer} from "buffer";
 import {IntermediaryError} from "../../../../errors/IntermediaryError";
 import {toBigInt} from "../../../../utils/Utils";
 import {TokenAmount, toTokenAmount} from "../../../../types/TokenAmount";
-import {BitcoinTokens, BtcToken, Token} from "../../../../types/Token";
+import {BitcoinTokens, BtcToken} from "../../../../types/Token";
 import {getLogger, LoggerType} from "../../../../utils/Logger";
 
 

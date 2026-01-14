@@ -1,15 +1,12 @@
-import {IFromBTCDefinition, IFromBTCWrapper} from "./IFromBTCWrapper";
-import {
-    ChainType,
-    SignatureVerificationError,
-} from "@atomiqlabs/base";
+import {IFromBTCWrapper} from "./IFromBTCWrapper";
+import {ChainType, SignatureVerificationError,} from "@atomiqlabs/base";
 import {Fee} from "../../../types/fees/Fee";
 import {IAddressSwap} from "../../IAddressSwap";
 import {IEscrowSelfInitSwap, IEscrowSelfInitSwapDefinition, IEscrowSelfInitSwapInit} from "../IEscrowSelfInitSwap";
 import {FeeType} from "../../../enums/FeeType";
 import {ppmToPercentage} from "../../../types/fees/PercentagePPM";
 import {TokenAmount, toTokenAmount} from "../../../types/TokenAmount";
-import {BtcToken, SCToken, Token} from "../../../types/Token";
+import {BtcToken, SCToken} from "../../../types/Token";
 
 export type IFromBTCSelfInitDefinition<T extends ChainType, W extends IFromBTCWrapper<T, any>, S extends IFromBTCSelfInitSwap<T>> = IEscrowSelfInitSwapDefinition<T, W, S>;
 

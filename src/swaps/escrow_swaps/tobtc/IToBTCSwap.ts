@@ -1,7 +1,8 @@
 import {IToBTCDefinition, IToBTCWrapper} from "./IToBTCWrapper";
 import {
     ChainType,
-    isAbstractSigner, SignatureData,
+    isAbstractSigner,
+    SignatureData,
     SignatureVerificationError,
     SwapCommitState,
     SwapCommitStateType,
@@ -20,7 +21,7 @@ import {IRefundableSwap} from "../../IRefundableSwap";
 import {FeeType} from "../../../enums/FeeType";
 import {ppmToPercentage} from "../../../types/fees/PercentagePPM";
 import {TokenAmount, toTokenAmount} from "../../../types/TokenAmount";
-import {BtcToken, SCToken, Token} from "../../../types/Token";
+import {BtcToken, SCToken} from "../../../types/Token";
 import {timeoutPromise} from "../../../utils/TimeoutUtils";
 import {tryWithRetries} from "../../../utils/RetryUtils";
 

@@ -15,6 +15,7 @@ const TokenAmount_1 = require("../../../../types/TokenAmount");
 const Token_1 = require("../../../../types/Token");
 const Logger_1 = require("../../../../utils/Logger");
 const RetryUtils_1 = require("../../../../utils/RetryUtils");
+const BitcoinWalletUtils_1 = require("../../../../utils/BitcoinWalletUtils");
 var FromBTCSwapState;
 (function (FromBTCSwapState) {
     FromBTCSwapState[FromBTCSwapState["FAILED"] = -4] = "FAILED";
@@ -345,7 +346,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
         return await this.wrapper.btcRpc.sendRawTransaction(buffer_1.Buffer.from(psbt.toBytes(true, true)).toString("hex"));
     }
     async estimateBitcoinFee(_bitcoinWallet, feeRate) {
-        const bitcoinWallet = (0, BitcoinUtils_1.toBitcoinWallet)(_bitcoinWallet, this.wrapper.btcRpc, this.wrapper.options.bitcoinNetwork);
+        const bitcoinWallet = (0, BitcoinWalletUtils_1.toBitcoinWallet)(_bitcoinWallet, this.wrapper.btcRpc, this.wrapper.options.bitcoinNetwork);
         const txFee = await bitcoinWallet.getTransactionFee(this.address, this.amount, feeRate);
         if (txFee == null)
             return null;

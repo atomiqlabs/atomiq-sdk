@@ -3,16 +3,13 @@ import {ToBTCLNSwap} from "./ToBTCLNSwap";
 import {IToBTCDefinition, IToBTCWrapper} from "../IToBTCWrapper";
 import {UserError} from "../../../../errors/UserError";
 import {ChainSwapType, ChainType, SwapCommitState, SwapCommitStateType} from "@atomiqlabs/base";
-import {Intermediary, SingleChainReputationType} from "../../../../intermediaries/Intermediary";
+import {Intermediary} from "../../../../intermediaries/Intermediary";
 import {ISwapWrapperOptions, WrapperCtorTokens} from "../../../ISwapWrapper";
 import {ISwapPrice} from "../../../../prices/abstract/ISwapPrice";
 import {EventEmitter} from "events";
 import {IntermediaryError} from "../../../../errors/IntermediaryError";
 import {SwapType} from "../../../../enums/SwapType";
-import {
-    extendAbortController,
-    throwIfUndefined
-} from "../../../../utils/Utils";
+import {extendAbortController, throwIfUndefined} from "../../../../utils/Utils";
 import {IntermediaryAPI, ToBTCLNResponseType} from "../../../../intermediaries/apis/IntermediaryAPI";
 import {RequestError} from "../../../../errors/RequestError";
 import {LNURL, LNURLPaySuccessAction} from "../../../../lnurl/LNURL";

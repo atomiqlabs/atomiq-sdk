@@ -6,7 +6,9 @@ import {
     RelaySynchronizer,
     SpvVaultClaimEvent,
     SpvVaultCloseEvent,
-    SpvVaultFrontEvent, SpvVaultTokenBalance, SpvWithdrawalStateType
+    SpvVaultFrontEvent,
+    SpvVaultTokenBalance,
+    SpvWithdrawalStateType
 } from "@atomiqlabs/base";
 import {SpvFromBTCSwap, SpvFromBTCSwapInit, SpvFromBTCSwapState} from "./SpvFromBTCSwap";
 import {BTC_NETWORK, TEST_NETWORK} from "@scure/btc-signer/utils";
@@ -17,18 +19,9 @@ import {UnifiedSwapEventListener} from "../../events/UnifiedSwapEventListener";
 import {ISwapPrice} from "../../prices/abstract/ISwapPrice";
 import {EventEmitter} from "events";
 import {Intermediary} from "../../intermediaries/Intermediary";
-import {
-    extendAbortController,
-    randomBytes, throwIfUndefined
-} from "../../utils/Utils";
-import {
-    toCoinselectAddressType,
-    toOutputScript
-} from "../../utils/BitcoinUtils";
-import {
-    IntermediaryAPI,
-    SpvFromBTCPrepareResponseType
-} from "../../intermediaries/apis/IntermediaryAPI";
+import {extendAbortController, randomBytes, throwIfUndefined} from "../../utils/Utils";
+import {toCoinselectAddressType, toOutputScript} from "../../utils/BitcoinUtils";
+import {IntermediaryAPI, SpvFromBTCPrepareResponseType} from "../../intermediaries/apis/IntermediaryAPI";
 import {RequestError} from "../../errors/RequestError";
 import {IntermediaryError} from "../../errors/IntermediaryError";
 import {CoinselectAddressTypes} from "../../bitcoin/coinselect2";

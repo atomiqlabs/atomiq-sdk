@@ -11,7 +11,7 @@ import {IAddressSwap} from "../../IAddressSwap";
 import {FeeType} from "../../../enums/FeeType";
 import {ppmToPercentage} from "../../../types/fees/PercentagePPM";
 import {TokenAmount, toTokenAmount} from "../../../types/TokenAmount";
-import {BitcoinTokens, BtcToken, SCToken, Token} from "../../../types/Token";
+import {BitcoinTokens, BtcToken, SCToken} from "../../../types/Token";
 import {getLogger, LoggerType} from "../../../utils/Logger";
 import {timeoutPromise} from "../../../utils/TimeoutUtils";
 

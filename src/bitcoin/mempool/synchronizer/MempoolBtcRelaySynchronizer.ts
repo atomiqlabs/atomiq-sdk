@@ -1,4 +1,4 @@
-import {BtcRelay, BtcStoredHeader, RelaySynchronizer, StatePredictorUtils} from "@atomiqlabs/base";
+import {BtcRelay, BtcStoredHeader, RelaySynchronizer} from "@atomiqlabs/base";
 import {MempoolBitcoinBlock} from "../MempoolBitcoinBlock";
 import {MempoolBitcoinRpc} from "../MempoolBitcoinRpc";
 

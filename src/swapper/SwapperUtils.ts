@@ -11,9 +11,9 @@ import {bigIntMax, fromDecimal, randomBytes} from "../utils/Utils";
 import {MinimalBitcoinWalletInterface} from "../bitcoin/wallet/MinimalBitcoinWalletInterface";
 import {TokenAmount, toTokenAmount} from "../types/TokenAmount";
 import {BitcoinTokens, SCToken} from "../types/Token";
-import {toBitcoinWallet} from "../utils/BitcoinUtils";
 import {isLNURLWithdraw, LNURLWithdraw} from "../types/lnurl/LNURLWithdraw";
 import {isLNURLPay, LNURLPay} from "../types/lnurl/LNURLPay";
+import {toBitcoinWallet} from "../utils/BitcoinWalletUtils";
 
 export class SwapperUtils<T extends MultiChain> {
 

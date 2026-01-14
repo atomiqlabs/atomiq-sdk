@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { ToBTCSwap } from "./ToBTCSwap";
 import { IToBTCDefinition, IToBTCWrapper } from "../IToBTCWrapper";
-import { ChainType, BitcoinRpc } from "@atomiqlabs/base";
+import { BitcoinRpc, ChainType } from "@atomiqlabs/base";
 import { Intermediary } from "../../../../intermediaries/Intermediary";
 import { ISwapPrice } from "../../../../prices/abstract/ISwapPrice";
 import { EventEmitter } from "events";

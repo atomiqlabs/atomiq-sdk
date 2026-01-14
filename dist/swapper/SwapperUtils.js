@@ -10,9 +10,9 @@ const base_1 = require("@atomiqlabs/base");
 const Utils_1 = require("../utils/Utils");
 const TokenAmount_1 = require("../types/TokenAmount");
 const Token_1 = require("../types/Token");
-const BitcoinUtils_1 = require("../utils/BitcoinUtils");
 const LNURLWithdraw_1 = require("../types/lnurl/LNURLWithdraw");
 const LNURLPay_1 = require("../types/lnurl/LNURLPay");
+const BitcoinWalletUtils_1 = require("../utils/BitcoinWalletUtils");
 class SwapperUtils {
     constructor(root) {
         this.bitcoinNetwork = root.bitcoinNetwork;
@@ -298,7 +298,7 @@ class SwapperUtils {
             bitcoinWallet = new SingleAddressBitcoinWallet_1.SingleAddressBitcoinWallet(this.root.bitcoinRpc, this.bitcoinNetwork, { address: wallet, publicKey: "" });
         }
         else {
-            bitcoinWallet = (0, BitcoinUtils_1.toBitcoinWallet)(wallet, this.root.bitcoinRpc, this.bitcoinNetwork);
+            bitcoinWallet = (0, BitcoinWalletUtils_1.toBitcoinWallet)(wallet, this.root.bitcoinRpc, this.bitcoinNetwork);
         }
         let feeRate = options?.feeRate ?? await bitcoinWallet.getFeeRate();
         if (options?.minFeeRate != null)

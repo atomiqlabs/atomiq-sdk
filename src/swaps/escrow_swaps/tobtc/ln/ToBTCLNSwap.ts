@@ -6,9 +6,9 @@ import {ChainType, SwapData} from "@atomiqlabs/base";
 import {Buffer} from "buffer";
 import {sha256} from "@noble/hashes/sha2";
 import {IntermediaryError} from "../../../../errors/IntermediaryError";
-import {LNURL, LNURLPaySuccessAction, isLNURLPaySuccessAction} from "../../../../lnurl/LNURL";
+import {isLNURLPaySuccessAction, LNURL, LNURLPaySuccessAction} from "../../../../lnurl/LNURL";
 import {TokenAmount, toTokenAmount} from "../../../../types/TokenAmount";
-import {BitcoinTokens, BtcToken, Token} from "../../../../types/Token";
+import {BitcoinTokens, BtcToken} from "../../../../types/Token";
 import {getLogger, LoggerType} from "../../../../utils/Logger";
 import {LNURLDecodedSuccessAction} from "../../../../types/lnurl/LNURLPay";
 

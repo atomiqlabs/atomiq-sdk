@@ -2,12 +2,9 @@ import {SwapType} from "../../../enums/SwapType";
 import {ChainType} from "@atomiqlabs/base";
 import {PaymentAuthError} from "../../../errors/PaymentAuthError";
 import {toBigInt} from "../../../utils/Utils";
-import {parsePsbtTransaction, toBitcoinWallet, toOutputScript} from "../../../utils/BitcoinUtils";
+import {parsePsbtTransaction, toOutputScript} from "../../../utils/BitcoinUtils";
 import {isISwapInit, ISwap, ISwapInit} from "../../ISwap";
-import {
-    AddressStatusResponseCodes,
-    TrustedIntermediaryAPI
-} from "../../../intermediaries/apis/TrustedIntermediaryAPI";
+import {AddressStatusResponseCodes, TrustedIntermediaryAPI} from "../../../intermediaries/apis/TrustedIntermediaryAPI";
 import {OnchainForGasSwapTypeDefinition, OnchainForGasWrapper} from "./OnchainForGasWrapper";
 import {Fee} from "../../../types/fees/Fee";
 import {IBitcoinWallet, isIBitcoinWallet} from "../../../bitcoin/wallet/IBitcoinWallet";
@@ -23,9 +20,10 @@ import {
 import {FeeType} from "../../../enums/FeeType";
 import {ppmToPercentage} from "../../../types/fees/PercentagePPM";
 import {TokenAmount, toTokenAmount} from "../../../types/TokenAmount";
-import {BitcoinTokens, BtcToken, SCToken, Token} from "../../../types/Token";
+import {BitcoinTokens, BtcToken, SCToken} from "../../../types/Token";
 import {getLogger, LoggerType} from "../../../utils/Logger";
 import {timeoutPromise} from "../../../utils/TimeoutUtils";
+import {toBitcoinWallet} from "../../../utils/BitcoinWalletUtils";
 
 export enum OnchainForGasSwapState {
     EXPIRED = -3,

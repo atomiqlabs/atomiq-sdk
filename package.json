@@ -1,6 +1,6 @@
 {
   "name": "@atomiqlabs/sdk",
-  "version": "8.0.2",
+  "version": "8.0.3",
   "description": "atomiq labs SDK for cross-chain swaps between smart chains and bitcoin",
   "main": "./dist/index.js",
   "types:": "./dist/index.d.ts",
@@ -24,8 +24,14 @@
   "license": "ISC",
   "dependencies": {
     "@atomiqlabs/base": "github:atomiqlabs/atomiq-base#develop",
+    "@atomiqlabs/bolt11": "1.6.1",
     "@atomiqlabs/messenger-nostr": "github:atomiqlabs/atomiq-messenger-nostr#develop",
-    "@atomiqlabs/sdk-lib": "github:atomiqlabs/atomiq-sdk-lib#develop"
+    "@noble/ciphers": "^1.2.1",
+    "@noble/hashes": "^1.7.1",
+    "@scure/base": "^1.2.4",
+    "@scure/btc-signer": "1.7.0",
+    "buffer": "6.0.3",
+    "events": "3.3.0"
   },
   "devDependencies": {
     "@types/node": "22.13.5",

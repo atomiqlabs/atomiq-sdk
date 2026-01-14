@@ -194,30 +194,33 @@ export abstract class ISwapWrapper<
     public async init(noTimers: boolean = false, noCheckPastSwaps: boolean = false): Promise<void> {
         if(this.isInitialized) return;
 
-        //Save events received in the meantime into the event queue and process them only after we've checked and
-        // processed all the past swaps
-        let eventQueue: {
-            event: ChainEvent<T["Data"]>,
-            swap: D["Swap"]
-        }[] = [];
-        const initListener = (event: ChainEvent<T["Data"]>, swap: D["Swap"]) => {
-            eventQueue.push({event, swap});
-            return Promise.resolve();
-        }
-        if(this.processEvent!=null) this.unifiedChainEvents.registerListener(this.TYPE, initListener, this.swapDeserializer.bind(null, this));
-
-        if(!noCheckPastSwaps) await this.checkPastSwaps();
-
-        if(this.processEvent!=null) {
-            //Process accumulated event queue
-            for(let event of eventQueue) {
-                await this.processEvent(event.event, event.swap);
+        if(!noCheckPastSwaps) {
+            //Save events received in the meantime into the event queue and process them only after we've checked and
+            // processed all the past swaps
+            let eventQueue: {
+                event: ChainEvent<T["Data"]>,
+                swap: D["Swap"]
+            }[] = [];
+            const initListener = (event: ChainEvent<T["Data"]>, swap: D["Swap"]) => {
+                eventQueue.push({event, swap});
+                return Promise.resolve();
             }
+            if(this.processEvent!=null) this.unifiedChainEvents.registerListener(this.TYPE, initListener, this.swapDeserializer.bind(null, this));
 
-            //Register the correct event handler
-            this.unifiedChainEvents.unregisterListener(this.TYPE);
-            this.unifiedChainEvents.registerListener(this.TYPE, this.processEvent.bind(this), this.swapDeserializer.bind(null, this));
+            await this.checkPastSwaps();
+
+            if(this.processEvent!=null) {
+                //Process accumulated event queue
+                for(let event of eventQueue) {
+                    await this.processEvent(event.event, event.swap);
+                }
+
+                //Unregister the temporary event handler
+                this.unifiedChainEvents.unregisterListener(this.TYPE);
+            }
         }
+
+        if(this.processEvent!=null) this.unifiedChainEvents.registerListener(this.TYPE, this.processEvent.bind(this), this.swapDeserializer.bind(null, this));
 
         if(!noTimers) this.startTickInterval();
 

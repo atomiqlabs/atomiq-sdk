@@ -110,26 +110,28 @@ class ISwapWrapper {
     async init(noTimers = false, noCheckPastSwaps = false) {
         if (this.isInitialized)
             return;
-        //Save events received in the meantime into the event queue and process them only after we've checked and
-        // processed all the past swaps
-        let eventQueue = [];
-        const initListener = (event, swap) => {
-            eventQueue.push({ event, swap });
-            return Promise.resolve();
-        };
-        if (this.processEvent != null)
-            this.unifiedChainEvents.registerListener(this.TYPE, initListener, this.swapDeserializer.bind(null, this));
-        if (!noCheckPastSwaps)
+        if (!noCheckPastSwaps) {
+            //Save events received in the meantime into the event queue and process them only after we've checked and
+            // processed all the past swaps
+            let eventQueue = [];
+            const initListener = (event, swap) => {
+                eventQueue.push({ event, swap });
+                return Promise.resolve();
+            };
+            if (this.processEvent != null)
+                this.unifiedChainEvents.registerListener(this.TYPE, initListener, this.swapDeserializer.bind(null, this));
             await this.checkPastSwaps();
-        if (this.processEvent != null) {
-            //Process accumulated event queue
-            for (let event of eventQueue) {
-                await this.processEvent(event.event, event.swap);
+            if (this.processEvent != null) {
+                //Process accumulated event queue
+                for (let event of eventQueue) {
+                    await this.processEvent(event.event, event.swap);
+                }
+                //Unregister the temporary event handler
+                this.unifiedChainEvents.unregisterListener(this.TYPE);
             }
-            //Register the correct event handler
-            this.unifiedChainEvents.unregisterListener(this.TYPE);
-            this.unifiedChainEvents.registerListener(this.TYPE, this.processEvent.bind(this), this.swapDeserializer.bind(null, this));
         }
+        if (this.processEvent != null)
+            this.unifiedChainEvents.registerListener(this.TYPE, this.processEvent.bind(this), this.swapDeserializer.bind(null, this));
         if (!noTimers)
             this.startTickInterval();
         // this.logger.info("init(): Swap wrapper initialized");

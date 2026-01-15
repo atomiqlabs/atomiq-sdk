@@ -448,7 +448,7 @@ export abstract class ISwap<
     //////////////////////////////
     //// Events
 
-    protected _emitEvent() {
+    _emitEvent() {
         this.wrapper.events.emit("swapState", this);
         this.events.emit("swapState", this);
     }

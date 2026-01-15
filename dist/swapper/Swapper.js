@@ -1121,6 +1121,8 @@ class Swapper extends events_1.EventEmitter {
         this.logger.debug("_syncSwaps(): Done syncing " + swaps.length + " swaps, saving " + changedSwaps.length + " changed swaps, removing " + removeSwaps.length + " swaps!");
         await unifiedSwapStorage.saveAll(changedSwaps);
         await unifiedSwapStorage.removeAll(removeSwaps);
+        changedSwaps.forEach(swap => swap._emitEvent());
+        removeSwaps.forEach(swap => swap._emitEvent());
     }
     /**
      * Synchronizes swaps from chain, this is usually ran when SDK is initialized, deletes expired quotes

@@ -265,6 +265,8 @@ export abstract class ISwapWrapper<
         if (!noSave) {
             await this.unifiedStorage.removeAll(removeSwaps);
             await this.unifiedStorage.saveAll(changedSwaps);
+            changedSwaps.forEach(swap => swap._emitEvent());
+            removeSwaps.forEach(swap => swap._emitEvent());
         }
 
         return {

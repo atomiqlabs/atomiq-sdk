@@ -175,7 +175,7 @@ export declare abstract class ISwap<T extends ChainType = ChainType, D extends S
     serialize(): any;
     _save(): Promise<void>;
     _saveAndEmit(state?: S): Promise<void>;
-    protected _emitEvent(): void;
+    _emitEvent(): void;
     /**
      * Synchronizes swap state from chain and/or LP node, usually ran on startup
      *

@@ -17,7 +17,6 @@ import {EventEmitter} from "events";
 import {SwapType} from "../../enums/SwapType";
 import {IEscrowSwap} from "./IEscrowSwap";
 import {Intermediary} from "../../intermediaries/Intermediary";
-import {tryWithRetries} from "../../utils/RetryUtils";
 
 export type IEscrowSwapDefinition<T extends ChainType, W extends IEscrowSwapWrapper<T, any>, S extends IEscrowSwap<T>> = SwapTypeDefinition<T, W, S>;
 
@@ -87,18 +86,8 @@ export abstract class IEscrowSwapWrapper<
         abortSignal?: AbortSignal
     ): Promise<number> {
         const [feeRate, preFetchedSignatureData] = await Promise.all([feeRatePromise, preFetchSignatureVerificationData]);
-        await tryWithRetries(
-            () => this.contract.isValidInitAuthorization(initiator, data, signature, feeRate, preFetchedSignatureData),
-            undefined,
-            SignatureVerificationError,
-            abortSignal
-        );
-        return await tryWithRetries(
-            () => this.contract.getInitAuthorizationExpiry(data, signature, preFetchedSignatureData),
-            undefined,
-            SignatureVerificationError,
-            abortSignal
-        );
+        await this.contract.isValidInitAuthorization(initiator, data, signature, feeRate, preFetchedSignatureData);
+        return await this.contract.getInitAuthorizationExpiry(data, signature, preFetchedSignatureData);
     }
 
     /**

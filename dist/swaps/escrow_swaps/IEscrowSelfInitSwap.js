@@ -5,7 +5,6 @@ const IEscrowSwap_1 = require("./IEscrowSwap");
 const base_1 = require("@atomiqlabs/base");
 const TokenAmount_1 = require("../../types/TokenAmount");
 const TimeoutUtils_1 = require("../../utils/TimeoutUtils");
-const RetryUtils_1 = require("../../utils/RetryUtils");
 function isIEscrowSelfInitSwapInit(obj) {
     return typeof obj === "object" &&
         typeof (obj.feeRate) === "string" &&
@@ -84,7 +83,7 @@ class IEscrowSelfInitSwap extends IEscrowSwap_1.IEscrowSwap {
     async _verifyQuoteDefinitelyExpired() {
         if (this.data == null || this.signatureData == null)
             throw new Error("data or signature data are null!");
-        return (0, RetryUtils_1.tryWithRetries)(() => this.wrapper.contract.isInitAuthorizationExpired(this.data, this.signatureData));
+        return this.wrapper.contract.isInitAuthorizationExpired(this.data, this.signatureData);
     }
     /**
      * Checks if the swap's quote is still valid
@@ -93,7 +92,7 @@ class IEscrowSelfInitSwap extends IEscrowSwap_1.IEscrowSwap {
         if (this.data == null || this.signatureData == null)
             throw new Error("data or signature data are null!");
         try {
-            await (0, RetryUtils_1.tryWithRetries)(() => this.wrapper.contract.isValidInitAuthorization(this._getInitiator(), this.data, this.signatureData, this.feeRate), undefined, base_1.SignatureVerificationError);
+            await this.wrapper.contract.isValidInitAuthorization(this._getInitiator(), this.data, this.signatureData, this.feeRate);
             return true;
         }
         catch (e) {

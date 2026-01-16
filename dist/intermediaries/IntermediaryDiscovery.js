@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.IntermediaryDiscovery = exports.SwapHandlerType = void 0;
 const Intermediary_1 = require("./Intermediary");
 const SwapType_1 = require("../enums/SwapType");
-const base_1 = require("@atomiqlabs/base");
 const events_1 = require("events");
 const buffer_1 = require("buffer");
 const Utils_1 = require("../utils/Utils");
@@ -117,7 +116,7 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
             if (this.swapContracts[chain] != null) {
                 const { signature, address } = response.chains[chain];
                 try {
-                    await (0, RetryUtils_1.tryWithRetries)(() => this.swapContracts[chain].isValidDataSignature(buffer_1.Buffer.from(response.envelope), signature, address), { maxRetries: 3, delay: 100, exponential: true }, base_1.SignatureVerificationError, abortSignal);
+                    await this.swapContracts[chain].isValidDataSignature(buffer_1.Buffer.from(response.envelope), signature, address);
                     addresses[chain] = address;
                 }
                 catch (e) {

@@ -194,10 +194,7 @@ export class FromBTCLNAutoWrapper<
         );
 
         try {
-            const result = await tryWithRetries<bigint>(
-                () => this.contract.getClaimFee(this.chain.randomAddress(), dummySwapData),
-                undefined, undefined, abortController.signal
-            );
+            const result = await this.contract.getClaimFee(this.chain.randomAddress(), dummySwapData);
             return result * BigInt(Math.floor(options.feeSafetyFactor*1000000)) / 1_000_000n
         } catch (e) {
             abortController.abort(e);

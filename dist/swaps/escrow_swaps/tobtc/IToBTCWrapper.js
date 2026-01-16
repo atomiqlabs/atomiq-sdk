@@ -4,7 +4,6 @@ exports.IToBTCWrapper = void 0;
 const IToBTCSwap_1 = require("./IToBTCSwap");
 const IntermediaryError_1 = require("../../../errors/IntermediaryError");
 const IEscrowSwapWrapper_1 = require("../IEscrowSwapWrapper");
-const RetryUtils_1 = require("../../../utils/RetryUtils");
 class IToBTCWrapper extends IEscrowSwapWrapper_1.IEscrowSwapWrapper {
     constructor() {
         super(...arguments);
@@ -50,7 +49,8 @@ class IToBTCWrapper extends IEscrowSwapWrapper_1.IEscrowSwapWrapper {
      * @returns Fee rate
      */
     preFetchFeeRate(signer, amountData, claimHash, abortController) {
-        return (0, RetryUtils_1.tryWithRetries)(() => this.contract.getInitPayInFeeRate(signer, this.chain.randomAddress(), amountData.token, claimHash), undefined, undefined, abortController.signal).catch(e => {
+        return this.contract.getInitPayInFeeRate(signer, this.chain.randomAddress(), amountData.token, claimHash)
+            .catch(e => {
             this.logger.warn("preFetchFeeRate(): Error: ", e);
             abortController.abort(e);
             return undefined;

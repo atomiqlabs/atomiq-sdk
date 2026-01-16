@@ -35,7 +35,6 @@ import {BitcoinTokens, BtcToken, SCToken, Token} from "../../../../types/Token";
 import {getLogger, LoggerType} from "../../../../utils/Logger";
 import {timeoutPromise} from "../../../../utils/TimeoutUtils";
 import {isLNURLWithdraw, LNURLWithdraw, LNURLWithdrawParamsWithUrl} from "../../../../types/lnurl/LNURLWithdraw";
-import {tryWithRetries} from "../../../../utils/RetryUtils";
 import {
     deserializePriceInfoType,
     isPriceInfoType,
@@ -939,7 +938,7 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
 
         if(this.state===FromBTCLNAutoSwapState.CLAIM_COMMITED || this.state===FromBTCLNAutoSwapState.EXPIRED) {
             //Check if it's already successfully paid
-            commitStatus ??= await tryWithRetries(() => this.wrapper.contract.getCommitStatus(this._getInitiator(), this.data!));
+            commitStatus ??= await this.wrapper.contract.getCommitStatus(this._getInitiator(), this.data!);
             if(commitStatus?.type===SwapCommitStateType.PAID) {
                 if(this.claimTxId==null) this.claimTxId = await commitStatus.getClaimTxId();
                 this.state = FromBTCLNAutoSwapState.CLAIM_CLAIMED;
@@ -954,7 +953,7 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
 
         if(this.state===FromBTCLNAutoSwapState.PR_PAID) {
             //Check if it's already committed
-            commitStatus ??= await tryWithRetries(() => this.wrapper.contract.getCommitStatus(this._getInitiator(), this.data!));
+            commitStatus ??= await this.wrapper.contract.getCommitStatus(this._getInitiator(), this.data!);
             switch(commitStatus?.type) {
                 case SwapCommitStateType.COMMITED:
                     this.state = FromBTCLNAutoSwapState.CLAIM_COMMITED;

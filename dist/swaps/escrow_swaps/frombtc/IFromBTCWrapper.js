@@ -5,7 +5,6 @@ const IntermediaryError_1 = require("../../../errors/IntermediaryError");
 const Utils_1 = require("../../../utils/Utils");
 const base_1 = require("@atomiqlabs/base");
 const IEscrowSwapWrapper_1 = require("../IEscrowSwapWrapper");
-const RetryUtils_1 = require("../../../utils/RetryUtils");
 class IFromBTCWrapper extends IEscrowSwapWrapper_1.IEscrowSwapWrapper {
     /**
      * Returns a random sequence to be used for swaps
@@ -27,7 +26,8 @@ class IFromBTCWrapper extends IEscrowSwapWrapper_1.IEscrowSwapWrapper {
      * @returns Fee rate
      */
     preFetchFeeRate(signer, amountData, claimHash, abortController) {
-        return (0, RetryUtils_1.tryWithRetries)(() => this.contract.getInitFeeRate(this.chain.randomAddress(), signer, amountData.token, claimHash), undefined, undefined, abortController.signal).catch(e => {
+        return this.contract.getInitFeeRate(this.chain.randomAddress(), signer, amountData.token, claimHash)
+            .catch(e => {
             this.logger.warn("preFetchFeeRate(): Error: ", e);
             abortController.abort(e);
             return undefined;

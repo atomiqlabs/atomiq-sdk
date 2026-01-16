@@ -203,10 +203,10 @@ export class FromBTCWrapper<
 
         try {
             const [feePerBlock, btcRelayData, currentBtcBlock, claimFeeRate] = await Promise.all([
-                tryWithRetries(() => this.btcRelay.getFeePerBlock(), undefined, undefined, abortController.signal),
-                tryWithRetries(() => this.btcRelay.getTipData(), undefined, undefined, abortController.signal),
+                this.btcRelay.getFeePerBlock(),
+                this.btcRelay.getTipData(),
                 this.btcRpc.getTipHeight(),
-                tryWithRetries<bigint>(() => this.contract.getClaimFee(signer, dummySwapData), undefined, undefined, abortController.signal)
+                this.contract.getClaimFee(signer, dummySwapData)
             ]);
 
             if(btcRelayData==null) throw new Error("Btc relay not initialized!");

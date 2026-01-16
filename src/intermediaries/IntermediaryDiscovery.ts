@@ -182,12 +182,7 @@ export class IntermediaryDiscovery extends EventEmitter {
             if(this.swapContracts[chain]!=null) {
                 const {signature, address} = response.chains[chain];
                 try {
-                    await tryWithRetries(
-                        () => this.swapContracts[chain].isValidDataSignature(Buffer.from(response.envelope), signature, address),
-                        {maxRetries: 3, delay: 100, exponential: true},
-                        SignatureVerificationError,
-                        abortSignal
-                    );
+                    await this.swapContracts[chain].isValidDataSignature(Buffer.from(response.envelope), signature, address);
                     addresses[chain] = address;
                 } catch (e) {
                     logger.warn("Failed to verify "+chain+" signature for intermediary: "+url);

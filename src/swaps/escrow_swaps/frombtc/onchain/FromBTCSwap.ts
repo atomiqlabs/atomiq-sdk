@@ -26,7 +26,6 @@ import {BtcTxWithBlockheight} from "../../../../bitcoin/BitcoinRpcWithAddressInd
 import {TokenAmount, toTokenAmount} from "../../../../types/TokenAmount";
 import {BitcoinTokens, BtcToken, SCToken, Token} from "../../../../types/Token";
 import {getLogger, LoggerType} from "../../../../utils/Logger";
-import {tryWithRetries} from "../../../../utils/RetryUtils";
 import {toBitcoinWallet} from "../../../../utils/BitcoinWalletUtils";
 
 export enum FromBTCSwapState {
@@ -844,7 +843,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
     private async syncStateFromChain(quoteDefinitelyExpired?: boolean, commitStatus?: SwapCommitState): Promise<boolean> {
         if(this.state===FromBTCSwapState.PR_CREATED || this.state===FromBTCSwapState.QUOTE_SOFT_EXPIRED) {
             const quoteExpired = quoteDefinitelyExpired ?? await this._verifyQuoteDefinitelyExpired(); //Make sure we check for expiry here, to prevent race conditions
-            const status = commitStatus ?? await tryWithRetries(() => this.wrapper.contract.getCommitStatus(this._getInitiator(), this.data));
+            const status = commitStatus ?? await this.wrapper.contract.getCommitStatus(this._getInitiator(), this.data);
             switch(status?.type) {
                 case SwapCommitStateType.COMMITED:
                     this.state = FromBTCSwapState.CLAIM_COMMITED;
@@ -870,7 +869,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
         }
 
         if(this.state===FromBTCSwapState.CLAIM_COMMITED || this.state===FromBTCSwapState.BTC_TX_CONFIRMED || this.state===FromBTCSwapState.EXPIRED) {
-            const status = commitStatus ?? await tryWithRetries(() => this.wrapper.contract.getCommitStatus(this._getInitiator(), this.data));
+            const status = commitStatus ?? await this.wrapper.contract.getCommitStatus(this._getInitiator(), this.data);
             switch(status?.type) {
                 case SwapCommitStateType.PAID:
                     if(this.claimTxId==null) this.claimTxId = await status.getClaimTxId();

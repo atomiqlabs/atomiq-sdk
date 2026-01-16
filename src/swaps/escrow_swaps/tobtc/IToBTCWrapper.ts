@@ -5,8 +5,6 @@ import {Intermediary, SingleChainReputationType} from "../../../intermediaries/I
 import {IntermediaryError} from "../../../errors/IntermediaryError";
 import {IEscrowSwapWrapper} from "../IEscrowSwapWrapper";
 import {AmountData} from "../../../types/AmountData";
-import {tryWithRetries} from "../../../utils/RetryUtils";
-
 
 export type IToBTCDefinition<T extends ChainType, W extends IToBTCWrapper<T, any>, S extends IToBTCSwap<T>> = SwapTypeDefinition<T, W, S>;
 
@@ -52,14 +50,12 @@ export abstract class IToBTCWrapper<
      * @returns Fee rate
      */
     protected preFetchFeeRate(signer: string, amountData: Omit<AmountData, "amount">, claimHash: string | undefined, abortController: AbortController): Promise<string | undefined> {
-        return tryWithRetries(
-            () => this.contract.getInitPayInFeeRate(signer, this.chain.randomAddress(), amountData.token, claimHash),
-            undefined, undefined, abortController.signal
-        ).catch(e => {
-            this.logger.warn("preFetchFeeRate(): Error: ", e);
-            abortController.abort(e);
-            return undefined;
-        });
+        return this.contract.getInitPayInFeeRate(signer, this.chain.randomAddress(), amountData.token, claimHash)
+            .catch(e => {
+                this.logger.warn("preFetchFeeRate(): Error: ", e);
+                abortController.abort(e);
+                return undefined;
+            });
     }
 
     public readonly pendingSwapStates = [

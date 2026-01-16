@@ -23,7 +23,6 @@ import {ppmToPercentage} from "../../../types/fees/PercentagePPM";
 import {TokenAmount, toTokenAmount} from "../../../types/TokenAmount";
 import {BtcToken, SCToken} from "../../../types/Token";
 import {timeoutPromise} from "../../../utils/TimeoutUtils";
-import {tryWithRetries} from "../../../utils/RetryUtils";
 
 export type IToBTCSwapInit<T extends SwapData> = IEscrowSelfInitSwapInit<T> & {
     signatureData?: SignatureData,
@@ -533,10 +532,7 @@ export abstract class IToBTCSwap<
                 }
                 return processed;
             case RefundAuthorizationResponseCodes.REFUND_DATA:
-                await tryWithRetries(
-                    () => this.wrapper.contract.isValidRefundAuthorization(this.data, resp.data),
-                    undefined, SignatureVerificationError
-                );
+                await this.wrapper.contract.isValidRefundAuthorization(this.data, resp.data);
                 this.state = ToBTCSwapState.REFUNDABLE;
                 if(save) await this._saveAndEmit();
                 return true;
@@ -602,12 +598,9 @@ export abstract class IToBTCSwap<
                 return true;
             case RefundAuthorizationResponseCodes.REFUND_DATA:
                 const resultData = result.data;
-                await tryWithRetries(
-                    () => this.wrapper.contract.isValidRefundAuthorization(
-                        this.data,
-                        resultData
-                    ),
-                    undefined, SignatureVerificationError, abortSignal
+                await this.wrapper.contract.isValidRefundAuthorization(
+                    this.data,
+                    resultData
                 );
                 await this._saveAndEmit(ToBTCSwapState.REFUNDABLE);
                 return false;
@@ -759,7 +752,7 @@ export abstract class IToBTCSwap<
                 quoteExpired = quoteDefinitelyExpired ?? await this._verifyQuoteDefinitelyExpired();
             }
 
-            commitStatus ??= await tryWithRetries(() => this.wrapper.contract.getCommitStatus(this._getInitiator(), this.data));
+            commitStatus ??= await this.wrapper.contract.getCommitStatus(this._getInitiator(), this.data);
             switch(commitStatus?.type) {
                 case SwapCommitStateType.PAID:
                     if(this.claimTxId==null && commitStatus.getClaimTxId) this.claimTxId = await commitStatus.getClaimTxId();

@@ -6,7 +6,6 @@ import {BigIntBufferUtils, ChainType} from "@atomiqlabs/base";
 import {IEscrowSwapDefinition, IEscrowSwapWrapper} from "../IEscrowSwapWrapper";
 import {IEscrowSwap} from "../IEscrowSwap";
 import {AmountData} from "../../../types/AmountData";
-import {tryWithRetries} from "../../../utils/RetryUtils";
 
 export type IFromBTCDefinition<T extends ChainType, W extends IFromBTCWrapper<T, any>, S extends IEscrowSwap<T>> = IEscrowSwapDefinition<T, W, S>;
 
@@ -42,14 +41,12 @@ export abstract class IFromBTCWrapper<
         claimHash: string | undefined,
         abortController: AbortController
     ): Promise<string | undefined> {
-        return tryWithRetries(
-            () => this.contract.getInitFeeRate(this.chain.randomAddress(), signer, amountData.token, claimHash),
-            undefined, undefined, abortController.signal
-        ).catch(e => {
-            this.logger.warn("preFetchFeeRate(): Error: ", e);
-            abortController.abort(e);
-            return undefined;
-        });
+        return this.contract.getInitFeeRate(this.chain.randomAddress(), signer, amountData.token, claimHash)
+            .catch(e => {
+                this.logger.warn("preFetchFeeRate(): Error: ", e);
+                abortController.abort(e);
+                return undefined;
+            });
     }
 
     /**

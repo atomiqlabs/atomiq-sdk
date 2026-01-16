@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.IEscrowSwapWrapper = void 0;
 const ISwapWrapper_1 = require("../ISwapWrapper");
 const base_1 = require("@atomiqlabs/base");
-const RetryUtils_1 = require("../../utils/RetryUtils");
 class IEscrowSwapWrapper extends ISwapWrapper_1.ISwapWrapper {
     constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, options, events) {
         super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, options, events);
@@ -43,8 +42,8 @@ class IEscrowSwapWrapper extends ISwapWrapper_1.ISwapWrapper {
      */
     async verifyReturnedSignature(initiator, data, signature, feeRatePromise, preFetchSignatureVerificationData, abortSignal) {
         const [feeRate, preFetchedSignatureData] = await Promise.all([feeRatePromise, preFetchSignatureVerificationData]);
-        await (0, RetryUtils_1.tryWithRetries)(() => this.contract.isValidInitAuthorization(initiator, data, signature, feeRate, preFetchedSignatureData), undefined, base_1.SignatureVerificationError, abortSignal);
-        return await (0, RetryUtils_1.tryWithRetries)(() => this.contract.getInitAuthorizationExpiry(data, signature, preFetchedSignatureData), undefined, base_1.SignatureVerificationError, abortSignal);
+        await this.contract.isValidInitAuthorization(initiator, data, signature, feeRate, preFetchedSignatureData);
+        return await this.contract.getInitAuthorizationExpiry(data, signature, preFetchedSignatureData);
     }
     /**
      * Processes a single SC on-chain event

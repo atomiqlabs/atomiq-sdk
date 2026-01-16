@@ -220,7 +220,7 @@ export class SpvFromBTCWrapper<
      */
     private async preFetchFinalizedBlockHeight(abortController: AbortController): Promise<number | undefined> {
         try {
-            const block = await tryWithRetries(() => this.chain.getFinalizedBlock(), undefined, undefined, abortController.signal);
+            const block = await this.chain.getFinalizedBlock();
             return block.height;
         } catch (e) {
             abortController.abort(e);
@@ -256,10 +256,10 @@ export class SpvFromBTCWrapper<
                 claimFeeRate,
                 nativeTokenPrice
             ] = await Promise.all([
-                tryWithRetries(() => this.btcRelay.getFeePerBlock(), undefined, undefined, abortController.signal),
-                tryWithRetries(() => this.btcRelay.getTipData(), undefined, undefined, abortController.signal),
+                this.btcRelay.getFeePerBlock(),
+                this.btcRelay.getTipData(),
                 this.btcRpc.getTipHeight(),
-                tryWithRetries<bigint>(() => this.contract.getClaimFee(this.chain.randomAddress()), undefined, undefined, abortController.signal),
+                this.contract.getClaimFee(this.chain.randomAddress()),
                 nativeTokenPricePrefetch ?? (amountData.token===this.chain.getNativeCurrencyAddress() ?
                     pricePrefetch :
                     this.prices.preFetchPrice(this.chainIdentifier, this.chain.getNativeCurrencyAddress(), abortController.signal))

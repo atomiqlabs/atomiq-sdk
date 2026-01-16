@@ -18,7 +18,6 @@ const Token_1 = require("../../../../types/Token");
 const Logger_1 = require("../../../../utils/Logger");
 const TimeoutUtils_1 = require("../../../../utils/TimeoutUtils");
 const LNURLWithdraw_1 = require("../../../../types/lnurl/LNURLWithdraw");
-const RetryUtils_1 = require("../../../../utils/RetryUtils");
 const PriceInfoType_1 = require("../../../../types/PriceInfoType");
 var FromBTCLNAutoSwapState;
 (function (FromBTCLNAutoSwapState) {
@@ -764,7 +763,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
         }
         if (this.state === FromBTCLNAutoSwapState.CLAIM_COMMITED || this.state === FromBTCLNAutoSwapState.EXPIRED) {
             //Check if it's already successfully paid
-            commitStatus ??= await (0, RetryUtils_1.tryWithRetries)(() => this.wrapper.contract.getCommitStatus(this._getInitiator(), this.data));
+            commitStatus ??= await this.wrapper.contract.getCommitStatus(this._getInitiator(), this.data);
             if (commitStatus?.type === base_1.SwapCommitStateType.PAID) {
                 if (this.claimTxId == null)
                     this.claimTxId = await commitStatus.getClaimTxId();
@@ -778,7 +777,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
         }
         if (this.state === FromBTCLNAutoSwapState.PR_PAID) {
             //Check if it's already committed
-            commitStatus ??= await (0, RetryUtils_1.tryWithRetries)(() => this.wrapper.contract.getCommitStatus(this._getInitiator(), this.data));
+            commitStatus ??= await this.wrapper.contract.getCommitStatus(this._getInitiator(), this.data);
             switch (commitStatus?.type) {
                 case base_1.SwapCommitStateType.COMMITED:
                     this.state = FromBTCLNAutoSwapState.CLAIM_COMMITED;

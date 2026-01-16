@@ -17,7 +17,6 @@ const Token_1 = require("../../../../types/Token");
 const Logger_1 = require("../../../../utils/Logger");
 const TimeoutUtils_1 = require("../../../../utils/TimeoutUtils");
 const LNURLWithdraw_1 = require("../../../../types/lnurl/LNURLWithdraw");
-const RetryUtils_1 = require("../../../../utils/RetryUtils");
 var FromBTCLNSwapState;
 (function (FromBTCLNSwapState) {
     FromBTCLNSwapState[FromBTCLNSwapState["FAILED"] = -4] = "FAILED";
@@ -362,7 +361,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
                 const data = new this.wrapper.swapDataDeserializer(resp.data.data);
                 try {
                     await this.checkIntermediaryReturnedAuthData(this._getInitiator(), data, resp.data);
-                    this.expiry = await (0, RetryUtils_1.tryWithRetries)(() => this.wrapper.contract.getInitAuthorizationExpiry(data, resp.data));
+                    this.expiry = await this.wrapper.contract.getInitAuthorizationExpiry(data, resp.data);
                     this.state = FromBTCLNSwapState.PR_PAID;
                     this.data = data;
                     this.signatureData = {
@@ -421,8 +420,9 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
         if (data.hasSuccessAction())
             throw new IntermediaryError_1.IntermediaryError("Invalid has success action");
         await Promise.all([
-            (0, RetryUtils_1.tryWithRetries)(() => this.wrapper.contract.isValidInitAuthorization(this._getInitiator(), data, signature, this.feeRate), undefined, base_1.SignatureVerificationError),
-            (0, RetryUtils_1.tryWithRetries)(() => this.wrapper.contract.getCommitStatus(data.getClaimer(), data)).then(status => {
+            this.wrapper.contract.isValidInitAuthorization(this._getInitiator(), data, signature, this.feeRate),
+            this.wrapper.contract.getCommitStatus(data.getClaimer(), data)
+                .then(status => {
                 if (status?.type !== base_1.SwapCommitStateType.NOT_COMMITED)
                     throw new Error("Swap already committed on-chain!");
             })
@@ -474,7 +474,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             const sigData = resp.data;
             const swapData = new this.wrapper.swapDataDeserializer(resp.data.data);
             await this.checkIntermediaryReturnedAuthData(this._getInitiator(), swapData, sigData);
-            this.expiry = await (0, RetryUtils_1.tryWithRetries)(() => this.wrapper.contract.getInitAuthorizationExpiry(swapData, sigData));
+            this.expiry = await this.wrapper.contract.getInitAuthorizationExpiry(swapData, sigData);
             if (onPaymentReceived != null)
                 onPaymentReceived(this.getInputTxId());
             if (this.state === FromBTCLNSwapState.PR_CREATED || this.state === FromBTCLNSwapState.QUOTE_SOFT_EXPIRED) {
@@ -814,7 +814,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
         }
         if (this.state === FromBTCLNSwapState.CLAIM_COMMITED || this.state === FromBTCLNSwapState.EXPIRED) {
             //Check if it's already successfully paid
-            commitStatus ??= await (0, RetryUtils_1.tryWithRetries)(() => this.wrapper.contract.getCommitStatus(this._getInitiator(), this.data));
+            commitStatus ??= await this.wrapper.contract.getCommitStatus(this._getInitiator(), this.data);
             if (commitStatus?.type === base_1.SwapCommitStateType.PAID) {
                 if (this.claimTxId == null)
                     this.claimTxId = await commitStatus.getClaimTxId();
@@ -830,7 +830,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
         }
         if (this.state === FromBTCLNSwapState.PR_PAID || (this.state === FromBTCLNSwapState.QUOTE_SOFT_EXPIRED && this.signatureData != null)) {
             //Check if it's already committed
-            commitStatus ??= await (0, RetryUtils_1.tryWithRetries)(() => this.wrapper.contract.getCommitStatus(this._getInitiator(), this.data));
+            commitStatus ??= await this.wrapper.contract.getCommitStatus(this._getInitiator(), this.data);
             switch (commitStatus?.type) {
                 case base_1.SwapCommitStateType.COMMITED:
                     this.state = FromBTCLNSwapState.CLAIM_COMMITED;

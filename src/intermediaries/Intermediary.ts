@@ -164,8 +164,8 @@ export class Intermediary {
         token: string,
         abortSignal?: AbortSignal
     ): Promise<bigint> {
-        const result = await tryWithRetries(() =>
-            swapContract.getBalance(this.getAddress(chainIdentifier), token, true),
+        const result = await tryWithRetries(
+            () => swapContract.getBalance(this.getAddress(chainIdentifier), token, true),
             undefined, undefined, abortSignal
         );
 

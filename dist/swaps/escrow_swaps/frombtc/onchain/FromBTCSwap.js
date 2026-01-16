@@ -14,7 +14,6 @@ const IEscrowSelfInitSwap_1 = require("../../IEscrowSelfInitSwap");
 const TokenAmount_1 = require("../../../../types/TokenAmount");
 const Token_1 = require("../../../../types/Token");
 const Logger_1 = require("../../../../utils/Logger");
-const RetryUtils_1 = require("../../../../utils/RetryUtils");
 const BitcoinWalletUtils_1 = require("../../../../utils/BitcoinWalletUtils");
 var FromBTCSwapState;
 (function (FromBTCSwapState) {
@@ -708,7 +707,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
     async syncStateFromChain(quoteDefinitelyExpired, commitStatus) {
         if (this.state === FromBTCSwapState.PR_CREATED || this.state === FromBTCSwapState.QUOTE_SOFT_EXPIRED) {
             const quoteExpired = quoteDefinitelyExpired ?? await this._verifyQuoteDefinitelyExpired(); //Make sure we check for expiry here, to prevent race conditions
-            const status = commitStatus ?? await (0, RetryUtils_1.tryWithRetries)(() => this.wrapper.contract.getCommitStatus(this._getInitiator(), this.data));
+            const status = commitStatus ?? await this.wrapper.contract.getCommitStatus(this._getInitiator(), this.data);
             switch (status?.type) {
                 case base_1.SwapCommitStateType.COMMITED:
                     this.state = FromBTCSwapState.CLAIM_COMMITED;
@@ -733,7 +732,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             return false;
         }
         if (this.state === FromBTCSwapState.CLAIM_COMMITED || this.state === FromBTCSwapState.BTC_TX_CONFIRMED || this.state === FromBTCSwapState.EXPIRED) {
-            const status = commitStatus ?? await (0, RetryUtils_1.tryWithRetries)(() => this.wrapper.contract.getCommitStatus(this._getInitiator(), this.data));
+            const status = commitStatus ?? await this.wrapper.contract.getCommitStatus(this._getInitiator(), this.data);
             switch (status?.type) {
                 case base_1.SwapCommitStateType.PAID:
                     if (this.claimTxId == null)

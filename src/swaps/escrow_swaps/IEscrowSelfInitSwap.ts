@@ -5,7 +5,6 @@ import {SwapTypeDefinition} from "../ISwapWrapper";
 import {TokenAmount, toTokenAmount} from "../../types/TokenAmount";
 import {SCToken} from "../../types/Token";
 import {timeoutPromise} from "../../utils/TimeoutUtils";
-import {tryWithRetries} from "../../utils/RetryUtils";
 
 export type IEscrowSelfInitSwapInit<T extends SwapData> = IEscrowSwapInit<T> & {
     feeRate: string,
@@ -132,10 +131,8 @@ export abstract class IEscrowSelfInitSwap<
     async _verifyQuoteDefinitelyExpired(): Promise<boolean> {
         if(this.data==null || this.signatureData==null) throw new Error("data or signature data are null!");
 
-        return tryWithRetries(
-            () => this.wrapper.contract.isInitAuthorizationExpired(
-                this.data!, this.signatureData!
-            )
+        return this.wrapper.contract.isInitAuthorizationExpired(
+            this.data!, this.signatureData!
         );
     }
 
@@ -146,12 +143,8 @@ export abstract class IEscrowSelfInitSwap<
         if(this.data==null || this.signatureData==null) throw new Error("data or signature data are null!");
 
         try {
-            await tryWithRetries(
-                () => this.wrapper.contract.isValidInitAuthorization(
-                    this._getInitiator(), this.data!, this.signatureData!, this.feeRate
-                ),
-                undefined,
-                SignatureVerificationError
+            await this.wrapper.contract.isValidInitAuthorization(
+                this._getInitiator(), this.data!, this.signatureData!, this.feeRate
             );
             return true;
         } catch (e) {

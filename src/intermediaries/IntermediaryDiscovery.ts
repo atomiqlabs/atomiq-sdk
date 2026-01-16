@@ -3,7 +3,7 @@ import {SwapType} from "../enums/SwapType";
 import {SignatureVerificationError, SwapContract} from "@atomiqlabs/base";
 import {EventEmitter} from "events";
 import {Buffer} from "buffer";
-import {bigIntMax, bigIntMin} from "../utils/Utils";
+import {bigIntMax, bigIntMin, extendAbortController} from "../utils/Utils";
 import {IntermediaryAPI} from "./apis/IntermediaryAPI";
 import {getLogger} from "../utils/Logger";
 import {httpGet} from "../http/HttpUtils";
@@ -130,6 +130,10 @@ export class IntermediaryDiscovery extends EventEmitter {
     registryUrl: string;
 
     httpRequestTimeout?: number;
+    /**
+     * Maximum time (in millis) to wait for other LP's responses after the first one was founds
+     */
+    maxWaitForOthersTimeout?: number;
 
     private overrideNodeUrls?: string[];
 
@@ -137,13 +141,15 @@ export class IntermediaryDiscovery extends EventEmitter {
         swapContracts: {[key: string]: SwapContract},
         registryUrl: string = REGISTRY_URL,
         nodeUrls?: string[],
-        httpRequestTimeout?: number
+        httpRequestTimeout?: number,
+        maxWaitForOthersTimeout?: number
     ) {
         super();
         this.swapContracts = swapContracts;
         this.registryUrl = registryUrl;
         this.overrideNodeUrls = nodeUrls;
         this.httpRequestTimeout = httpRequestTimeout;
+        this.maxWaitForOthersTimeout = maxWaitForOthersTimeout;
     }
 
     /**
@@ -156,7 +162,10 @@ export class IntermediaryDiscovery extends EventEmitter {
             return this.overrideNodeUrls;
         }
 
-        const response = await httpGet<{content: string}>(this.registryUrl, this.httpRequestTimeout, abortSignal);
+        const response = await tryWithRetries(
+          () => httpGet<{content: string}>(this.registryUrl, this.httpRequestTimeout, abortSignal),
+          {maxRetries: 3, delay: 100, exponential: true}
+        );
 
         const content = response.content.replace(new RegExp("\\n", "g"), "");
 
@@ -164,7 +173,10 @@ export class IntermediaryDiscovery extends EventEmitter {
     }
 
     /**
-     * Returns data as reported by a specific node (as identified by its URL)
+     * Returns data as reported by a specific node (as identified by its URL). This function is specifically made
+     *  in a way, that in case the abortSignal fires AFTER the LP response was received (and during signature checking),
+     *  it proceeds with the addresses it was able to verify already. Hence after calling abort, this function is guaranteed
+     *  to either reject or resolve instantly.
      *
      * @param url
      * @param abortSignal
@@ -176,20 +188,32 @@ export class IntermediaryDiscovery extends EventEmitter {
             undefined,
             abortSignal
         );
+        abortSignal?.throwIfAborted();
 
+        const promises: Promise<void>[] = [];
         const addresses: {[key: string]: string} = {};
         for(let chain in response.chains) {
             if(this.swapContracts[chain]!=null) {
-                const {signature, address} = response.chains[chain];
-                try {
-                    await this.swapContracts[chain].isValidDataSignature(Buffer.from(response.envelope), signature, address);
-                    addresses[chain] = address;
-                } catch (e) {
-                    logger.warn("Failed to verify "+chain+" signature for intermediary: "+url);
-                }
+                promises.push((async () => {
+                    const {signature, address} = response.chains[chain];
+                    try {
+                        await this.swapContracts[chain].isValidDataSignature(Buffer.from(response.envelope), signature, address);
+                        addresses[chain] = address;
+                    } catch (e) {
+                        logger.warn("Failed to verify "+chain+" signature for intermediary: "+url);
+                    }
+                })());
             }
         }
-        if(abortSignal!=null) abortSignal.throwIfAborted();
+
+        if(abortSignal!=null) {
+            await Promise.race([
+                Promise.all(promises),
+                new Promise(resolve => abortSignal.addEventListener("abort", resolve))
+            ]);
+        } else {
+            await Promise.all(promises);
+        }
 
         //Handle legacy responses
         const info: InfoHandlerResponseEnvelope = JSON.parse(response.envelope);
@@ -209,6 +233,13 @@ export class IntermediaryDiscovery extends EventEmitter {
         };
     }
 
+    /**
+     * Inherits abort signal logic from `getNodeInfo()`, check those function docs to better understand
+     *
+     * @param url
+     * @param abortSignal
+     * @private
+     */
     private async loadIntermediary(url: string, abortSignal?: AbortSignal): Promise<Intermediary | null> {
         try {
             const nodeInfo = await this.getNodeInfo(url, abortSignal);
@@ -221,27 +252,6 @@ export class IntermediaryDiscovery extends EventEmitter {
             logger.warn("fetchIntermediaries(): Error contacting intermediary "+url+": ", e);
             return null;
         }
-    }
-
-    /**
-     * Fetches data about all intermediaries in the network, pinging every one of them and ensuring they are online
-     *
-     * @param abortSignal
-     * @private
-     * @throws {Error} When no online intermediary was found
-     */
-    private async fetchIntermediaries(abortSignal?: AbortSignal): Promise<Intermediary[]> {
-        const urls = await this.getIntermediaryUrls(abortSignal);
-
-        logger.debug("fetchIntermediaries(): Pinging intermediaries: ", urls.join());
-
-        const promises: Promise<Intermediary | null>[] = urls.map(url => this.loadIntermediary(url, abortSignal));
-
-        const activeNodes: Intermediary[] = (await Promise.all(promises))
-            .filter(intermediary => intermediary!=null) as Intermediary[];
-        if(activeNodes.length===0) throw new Error("No online intermediary found!");
-
-        return activeNodes;
     }
 
     /**
@@ -261,14 +271,29 @@ export class IntermediaryDiscovery extends EventEmitter {
      * @param abortSignal
      */
     async reloadIntermediaries(abortSignal?: AbortSignal): Promise<void> {
-        const fetchedIntermediaries = await tryWithRetries<Intermediary[]>(
-            () => this.fetchIntermediaries(abortSignal),
-            undefined, undefined, abortSignal
-        );
-        this.intermediaries = fetchedIntermediaries;
-        this.emit("added", fetchedIntermediaries);
+        //Get LP urls
+        const urls = await this.getIntermediaryUrls(abortSignal);
 
-        logger.info("reloadIntermediaries(): Using active intermediaries: ", fetchedIntermediaries.map(lp => lp.url).join());
+        logger.debug("reloadIntermediaries(): Pinging intermediaries: ", urls.join());
+
+        const abortController = extendAbortController(abortSignal);
+        let timer: any;
+        const intermediaries = await Promise.all(urls.map(url => this.loadIntermediary(url, abortController.signal).then(lp => {
+            if(lp!=null && timer==null) timer = setTimeout(() => {
+                //Trigger abort through the abort controller, such that all underlying promises resolve instantly
+                abortController.abort();
+            }, this.maxWaitForOthersTimeout ?? 5*1000);
+            return lp;
+        })));
+        if(timer!=null) clearTimeout(timer);
+
+        const activeNodes: Intermediary[] = intermediaries.filter(intermediary => intermediary!=null) as Intermediary[];
+        if(activeNodes.length===0) logger.error("reloadIntermediaries(): No online intermediary found! Swaps might not be possible!");
+
+        this.intermediaries = activeNodes;
+        this.emit("added", activeNodes);
+
+        logger.info("reloadIntermediaries(): Using active intermediaries: ", activeNodes.map(lp => lp.url).join());
     }
 
     /**

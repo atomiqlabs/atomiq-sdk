@@ -82,13 +82,14 @@ const REGISTRY_URL = "https://api.github.com/repos/adambor/SolLightning-registry
 //To allow for legacy responses from not-yet updated LPs
 const DEFAULT_CHAIN = "SOLANA";
 class IntermediaryDiscovery extends events_1.EventEmitter {
-    constructor(swapContracts, registryUrl = REGISTRY_URL, nodeUrls, httpRequestTimeout) {
+    constructor(swapContracts, registryUrl = REGISTRY_URL, nodeUrls, httpRequestTimeout, maxWaitForOthersTimeout) {
         super();
         this.intermediaries = [];
         this.swapContracts = swapContracts;
         this.registryUrl = registryUrl;
         this.overrideNodeUrls = nodeUrls;
         this.httpRequestTimeout = httpRequestTimeout;
+        this.maxWaitForOthersTimeout = maxWaitForOthersTimeout;
     }
     /**
      * Fetches the URLs of swap intermediaries from registry or from a pre-defined array of node urls
@@ -99,33 +100,47 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
         if (this.overrideNodeUrls != null && this.overrideNodeUrls.length > 0) {
             return this.overrideNodeUrls;
         }
-        const response = await (0, HttpUtils_1.httpGet)(this.registryUrl, this.httpRequestTimeout, abortSignal);
+        const response = await (0, RetryUtils_1.tryWithRetries)(() => (0, HttpUtils_1.httpGet)(this.registryUrl, this.httpRequestTimeout, abortSignal), { maxRetries: 3, delay: 100, exponential: true });
         const content = response.content.replace(new RegExp("\\n", "g"), "");
         return JSON.parse(buffer_1.Buffer.from(content, "base64").toString());
     }
     /**
-     * Returns data as reported by a specific node (as identified by its URL)
+     * Returns data as reported by a specific node (as identified by its URL). This function is specifically made
+     *  in a way, that in case the abortSignal fires AFTER the LP response was received (and during signature checking),
+     *  it proceeds with the addresses it was able to verify already. Hence after calling abort, this function is guaranteed
+     *  to either reject or resolve instantly.
      *
      * @param url
      * @param abortSignal
      */
     async getNodeInfo(url, abortSignal) {
         const response = await (0, RetryUtils_1.tryWithRetries)(() => IntermediaryAPI_1.IntermediaryAPI.getIntermediaryInfo(url, this.httpRequestTimeout, abortSignal), { maxRetries: 3, delay: 100, exponential: true }, undefined, abortSignal);
+        abortSignal?.throwIfAborted();
+        const promises = [];
         const addresses = {};
         for (let chain in response.chains) {
             if (this.swapContracts[chain] != null) {
-                const { signature, address } = response.chains[chain];
-                try {
-                    await this.swapContracts[chain].isValidDataSignature(buffer_1.Buffer.from(response.envelope), signature, address);
-                    addresses[chain] = address;
-                }
-                catch (e) {
-                    logger.warn("Failed to verify " + chain + " signature for intermediary: " + url);
-                }
+                promises.push((async () => {
+                    const { signature, address } = response.chains[chain];
+                    try {
+                        await this.swapContracts[chain].isValidDataSignature(buffer_1.Buffer.from(response.envelope), signature, address);
+                        addresses[chain] = address;
+                    }
+                    catch (e) {
+                        logger.warn("Failed to verify " + chain + " signature for intermediary: " + url);
+                    }
+                })());
             }
         }
-        if (abortSignal != null)
-            abortSignal.throwIfAborted();
+        if (abortSignal != null) {
+            await Promise.race([
+                Promise.all(promises),
+                new Promise(resolve => abortSignal.addEventListener("abort", resolve))
+            ]);
+        }
+        else {
+            await Promise.all(promises);
+        }
         //Handle legacy responses
         const info = JSON.parse(response.envelope);
         for (let swapType in info.services) {
@@ -144,6 +159,13 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
             info
         };
     }
+    /**
+     * Inherits abort signal logic from `getNodeInfo()`, check those function docs to better understand
+     *
+     * @param url
+     * @param abortSignal
+     * @private
+     */
     async loadIntermediary(url, abortSignal) {
         try {
             const nodeInfo = await this.getNodeInfo(url, abortSignal);
@@ -157,23 +179,6 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
             logger.warn("fetchIntermediaries(): Error contacting intermediary " + url + ": ", e);
             return null;
         }
-    }
-    /**
-     * Fetches data about all intermediaries in the network, pinging every one of them and ensuring they are online
-     *
-     * @param abortSignal
-     * @private
-     * @throws {Error} When no online intermediary was found
-     */
-    async fetchIntermediaries(abortSignal) {
-        const urls = await this.getIntermediaryUrls(abortSignal);
-        logger.debug("fetchIntermediaries(): Pinging intermediaries: ", urls.join());
-        const promises = urls.map(url => this.loadIntermediary(url, abortSignal));
-        const activeNodes = (await Promise.all(promises))
-            .filter(intermediary => intermediary != null);
-        if (activeNodes.length === 0)
-            throw new Error("No online intermediary found!");
-        return activeNodes;
     }
     /**
      * Returns the intermediary at the provided URL, either from the already fetched list of LPs or fetches the data on-demand
@@ -192,10 +197,27 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
      * @param abortSignal
      */
     async reloadIntermediaries(abortSignal) {
-        const fetchedIntermediaries = await (0, RetryUtils_1.tryWithRetries)(() => this.fetchIntermediaries(abortSignal), undefined, undefined, abortSignal);
-        this.intermediaries = fetchedIntermediaries;
-        this.emit("added", fetchedIntermediaries);
-        logger.info("reloadIntermediaries(): Using active intermediaries: ", fetchedIntermediaries.map(lp => lp.url).join());
+        //Get LP urls
+        const urls = await this.getIntermediaryUrls(abortSignal);
+        logger.debug("reloadIntermediaries(): Pinging intermediaries: ", urls.join());
+        const abortController = (0, Utils_1.extendAbortController)(abortSignal);
+        let timer;
+        const intermediaries = await Promise.all(urls.map(url => this.loadIntermediary(url, abortController.signal).then(lp => {
+            if (lp != null && timer == null)
+                timer = setTimeout(() => {
+                    //Trigger abort through the abort controller, such that all underlying promises resolve instantly
+                    abortController.abort();
+                }, this.maxWaitForOthersTimeout ?? 5 * 1000);
+            return lp;
+        })));
+        if (timer != null)
+            clearTimeout(timer);
+        const activeNodes = intermediaries.filter(intermediary => intermediary != null);
+        if (activeNodes.length === 0)
+            logger.error("reloadIntermediaries(): No online intermediary found! Swaps might not be possible!");
+        this.intermediaries = activeNodes;
+        this.emit("added", activeNodes);
+        logger.info("reloadIntermediaries(): Using active intermediaries: ", activeNodes.map(lp => lp.url).join());
     }
     /**
      * Initializes the discovery by fetching/reloading intermediaries

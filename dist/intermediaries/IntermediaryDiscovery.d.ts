@@ -46,10 +46,14 @@ export declare class IntermediaryDiscovery extends EventEmitter {
     };
     registryUrl: string;
     httpRequestTimeout?: number;
+    /**
+     * Maximum time (in millis) to wait for other LP's responses after the first one was founds
+     */
+    maxWaitForOthersTimeout?: number;
     private overrideNodeUrls?;
     constructor(swapContracts: {
         [key: string]: SwapContract;
-    }, registryUrl?: string, nodeUrls?: string[], httpRequestTimeout?: number);
+    }, registryUrl?: string, nodeUrls?: string[], httpRequestTimeout?: number, maxWaitForOthersTimeout?: number);
     /**
      * Fetches the URLs of swap intermediaries from registry or from a pre-defined array of node urls
      *
@@ -57,21 +61,23 @@ export declare class IntermediaryDiscovery extends EventEmitter {
      */
     private getIntermediaryUrls;
     /**
-     * Returns data as reported by a specific node (as identified by its URL)
+     * Returns data as reported by a specific node (as identified by its URL). This function is specifically made
+     *  in a way, that in case the abortSignal fires AFTER the LP response was received (and during signature checking),
+     *  it proceeds with the addresses it was able to verify already. Hence after calling abort, this function is guaranteed
+     *  to either reject or resolve instantly.
      *
      * @param url
      * @param abortSignal
      */
     private getNodeInfo;
-    private loadIntermediary;
     /**
-     * Fetches data about all intermediaries in the network, pinging every one of them and ensuring they are online
+     * Inherits abort signal logic from `getNodeInfo()`, check those function docs to better understand
      *
+     * @param url
      * @param abortSignal
      * @private
-     * @throws {Error} When no online intermediary was found
      */
-    private fetchIntermediaries;
+    private loadIntermediary;
     /**
      * Returns the intermediary at the provided URL, either from the already fetched list of LPs or fetches the data on-demand
      *

@@ -28,6 +28,10 @@ import {BitcoinTokens, BtcToken, SCToken, Token} from "../../../../types/Token";
 import {getLogger, LoggerType} from "../../../../utils/Logger";
 import {toBitcoinWallet} from "../../../../utils/BitcoinWalletUtils";
 
+/**
+ * State enum for FromBTC swaps
+ * @category Swaps
+ */
 export enum FromBTCSwapState {
     FAILED = -4,
     EXPIRED = -3,

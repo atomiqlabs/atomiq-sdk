@@ -1,3 +1,7 @@
+/**
+ * LNURL-pay request parameters
+ * @category Bitcoin
+ */
 export type LNURLPayParams = {
     tag: "payRequest";
     callback: string;
@@ -9,8 +13,16 @@ export type LNURLPayParams = {
     commentAllowed: number;
 }
 
+/**
+ * LNURL-pay parameters with URL
+ * @category Bitcoin
+ */
 export type LNURLPayParamsWithUrl = LNURLPayParams & { url: string };
 
+/**
+ * LNURL-pay specification
+ * @category Bitcoin
+ */
 export type LNURLPay = {
     type: "pay",
     min: bigint,
@@ -22,10 +34,18 @@ export type LNURLPay = {
     params: LNURLPayParamsWithUrl
 }
 
+/**
+ * Type guard for LNURL-pay parameters
+ * @category Bitcoin
+ */
 export function isLNURLPayParams(obj: any): obj is LNURLPayParams {
     return obj.tag === "payRequest";
 }
 
+/**
+ * Type guard for LNURL-pay
+ * @category Bitcoin
+ */
 export function isLNURLPay(value: any): value is LNURLPay {
     return (
         typeof value === "object" &&
@@ -41,6 +61,10 @@ export function isLNURLPay(value: any): value is LNURLPay {
     );
 }
 
+/**
+ * Decoded LNURL-pay success action
+ * @category Bitcoin
+ */
 export type LNURLDecodedSuccessAction = {
     description: string,
     text?: string,

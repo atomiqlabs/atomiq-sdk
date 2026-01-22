@@ -2,6 +2,10 @@ import {ChainIds, MultiChain} from "../../swapper/Swapper";
 import {Token} from "../../types/Token";
 import {PriceInfoType} from "../../types/PriceInfoType";
 
+/**
+ * Abstract base class for swap pricing implementations
+ * @category Pricing and LPs
+ */
 export abstract class ISwapPrice<T extends MultiChain = MultiChain> {
 
     maxAllowedFeeDifferencePPM: bigint;

@@ -1,5 +1,9 @@
 import {toBigInt} from "../utils/Utils";
 
+/**
+ * Pricing information for swap validation
+ * @category Pricing and LPs
+ */
 export type PriceInfoType = {
     isValid: boolean,
     differencePPM: bigint,
@@ -10,6 +14,10 @@ export type PriceInfoType = {
     swapPriceUSatPerToken: bigint
 };
 
+/**
+ * Type guard for PriceInfoType
+ * @category Pricing and LPs
+ */
 export function isPriceInfoType(obj: any): obj is PriceInfoType {
     return obj != null &&
         typeof (obj.isValid) === "boolean" &&
@@ -21,6 +29,10 @@ export function isPriceInfoType(obj: any): obj is PriceInfoType {
         typeof (obj.swapPriceUSatPerToken) === "bigint";
 }
 
+/**
+ * Serializes PriceInfoType for storage
+ * @category Pricing and LPs
+ */
 export function serializePriceInfoType(obj: PriceInfoType | undefined): any {
     if (obj == null) return null;
     return {
@@ -34,6 +46,10 @@ export function serializePriceInfoType(obj: PriceInfoType | undefined): any {
     }
 }
 
+/**
+ * Deserializes PriceInfoType from storage
+ * @category Pricing and LPs
+ */
 export function deserializePriceInfoType(obj: any): PriceInfoType | undefined {
     if (obj == null) return;
     if (

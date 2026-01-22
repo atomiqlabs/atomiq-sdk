@@ -39,6 +39,10 @@ import {
 } from "../../types/PriceInfoType";
 import {toBitcoinWallet} from "../../utils/BitcoinWalletUtils";
 
+/**
+ * State enum for SPV FromBTC swaps
+ * @category Swaps
+ */
 export enum SpvFromBTCSwapState {
     CLOSED = -5,
     FAILED = -4, //Btc tx double-spent, or btc tx inputs double-spent

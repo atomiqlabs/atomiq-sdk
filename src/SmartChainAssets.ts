@@ -1,4 +1,8 @@
 
+/**
+ * Asset definitions for supported smart chain tokens with pricing information
+ * @category Tokens
+ */
 export const SmartChainAssets = {
     _TESTNET_WBTC_VESU: {
         pricing: {
@@ -155,4 +159,8 @@ export const SmartChainAssets = {
     }
 } as const;
 
+/**
+ * Type representing valid smart chain asset ticker symbols
+ * @category Tokens
+ */
 export type SmartChainAssetTickers = keyof typeof SmartChainAssets;

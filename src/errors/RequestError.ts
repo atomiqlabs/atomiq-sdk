@@ -1,6 +1,7 @@
 
 /**
  * An error returned by the intermediary in a http response
+ * @category Errors
  */
 export class RequestError extends Error {
 
@@ -33,6 +34,7 @@ export class RequestError extends Error {
 
 /**
  * An error indicating out of bounds (amount too high or too low) on swap initialization
+ * @category Errors
  */
 export class OutOfBoundsError extends RequestError {
 

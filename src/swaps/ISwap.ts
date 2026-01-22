@@ -13,6 +13,10 @@ import {SwapExecutionAction} from "../types/SwapExecutionAction";
 import {LoggerType} from "../utils/Logger";
 import {isPriceInfoType, PriceInfoType} from "../types/PriceInfoType";
 
+/**
+ * Initialization data for creating a swap
+ * @category Swaps
+ */
 export type ISwapInit = {
     pricingInfo: PriceInfoType,
     url?: string,
@@ -22,6 +26,10 @@ export type ISwapInit = {
     exactIn: boolean
 };
 
+/**
+ * Type guard to check if an object is an ISwapInit
+ * @category Swaps
+ */
 export function isISwapInit(obj: any): obj is ISwapInit {
     return typeof obj === 'object' &&
         obj != null &&
@@ -33,6 +41,10 @@ export function isISwapInit(obj: any): obj is ISwapInit {
         (typeof obj.exactIn === 'boolean');
 }
 
+/**
+ * Base abstract class for all swap types
+ * @category Swaps
+ */
 export abstract class ISwap<
     T extends ChainType = ChainType,
     D extends SwapTypeDefinition<T, ISwapWrapper<T, D>, ISwap<T, D, S>> = SwapTypeDefinition<T, ISwapWrapper<T, any>, ISwap<T, any, any>>,

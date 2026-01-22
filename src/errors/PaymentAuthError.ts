@@ -1,5 +1,6 @@
 /**
  * An error when the payment authorization returned by the intermediary is invalid
+ * @category Errors
  */
 export class PaymentAuthError extends Error {
 

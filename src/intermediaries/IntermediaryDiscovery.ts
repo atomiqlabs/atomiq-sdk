@@ -9,6 +9,10 @@ import {getLogger} from "../utils/Logger";
 import {httpGet} from "../http/HttpUtils";
 import {tryWithRetries} from "../utils/RetryUtils";
 
+/**
+ * Swap handler type enum for intermediary communication
+ * @category Pricing and LPs
+ */
 export enum SwapHandlerType {
     TO_BTC = "TO_BTC",
     FROM_BTC = "FROM_BTC",
@@ -20,6 +24,10 @@ export enum SwapHandlerType {
     FROM_BTCLN_AUTO = "FROM_BTCLN_AUTO"
 }
 
+/**
+ * Swap handler information type
+ * @category Pricing and LPs
+ */
 export type SwapHandlerInfoType = {
     swapFeePPM: number,
     swapBaseFee: number,
@@ -37,6 +45,10 @@ type InfoHandlerResponseEnvelope = {
     }
 };
 
+/**
+ * Token bounds (min/max) for swaps
+ * @category Pricing and LPs
+ */
 export type TokenBounds = {
     [token: string]: {
         min: bigint,
@@ -44,14 +56,26 @@ export type TokenBounds = {
     }
 }
 
+/**
+ * Multi-chain token bounds
+ * @category Pricing and LPs
+ */
 export type MultichainTokenBounds = {
     [chainId: string]: TokenBounds
 }
 
+/**
+ * Swap bounds by type
+ * @category Pricing and LPs
+ */
 export type SwapBounds = {
     [key in SwapType]?: TokenBounds
 }
 
+/**
+ * Multi-chain swap bounds
+ * @category Pricing and LPs
+ */
 export type MultichainSwapBounds = {
     [key in SwapType]?: MultichainTokenBounds
 }
@@ -122,6 +146,10 @@ const REGISTRY_URL = "https://api.github.com/repos/adambor/SolLightning-registry
 //To allow for legacy responses from not-yet updated LPs
 const DEFAULT_CHAIN = "SOLANA";
 
+/**
+ * Discovery service for available liquidity providers/intermediaries
+ * @category Pricing and LPs
+ */
 export class IntermediaryDiscovery extends EventEmitter {
 
     intermediaries: Intermediary[] = [];

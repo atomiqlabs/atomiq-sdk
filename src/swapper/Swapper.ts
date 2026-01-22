@@ -69,6 +69,10 @@ import {isLNURLPay, LNURLPay} from "../types/lnurl/LNURLPay";
 import {tryWithRetries} from "../utils/RetryUtils";
 import {NotNever} from "../utils/TypeUtils";
 
+/**
+ * Configuration options for the Swapper
+ * @category Core
+ */
 export type SwapperOptions = {
     intermediaryUrl?: string | string[],
     registryUrl?: string,
@@ -92,6 +96,10 @@ export type SwapperOptions = {
     automaticClockDriftCorrection?: boolean
 };
 
+/**
+ * Type representing multiple blockchain configurations
+ * @category Core
+ */
 export type MultiChain = {
     [chainIdentifier in string]: ChainType;
 };
@@ -126,8 +134,16 @@ type CtorMultiChainData<T extends MultiChain> = {
     [chainIdentifier in keyof T]: ChainData<T[chainIdentifier]>
 };
 
+/**
+ * Type extracting chain identifiers from a MultiChain type
+ * @category Core
+ */
 export type ChainIds<T extends MultiChain> = keyof T & string;
 
+/**
+ * Type helper to check if a chain supports a specific swap type
+ * @category Core
+ */
 export type SupportsSwapType<
     C extends ChainType,
     Type extends SwapType
@@ -138,6 +154,10 @@ export type SupportsSwapType<
     Type extends SwapType.FROM_BTCLN_AUTO ? (C["Contract"]["supportsInitWithoutClaimer"] extends true ? true : false) :
         NotNever<C["Contract"]>;
 
+/**
+ * Core orchestrator for all swap operations with multi-chain support
+ * @category Core
+ */
 export class Swapper<T extends MultiChain> extends EventEmitter<{
     lpsRemoved: [Intermediary[]],
     lpsAdded: [Intermediary[]],

@@ -58,6 +58,10 @@ const indexes: Record<string, {key: string | string[], unique: boolean}> = {
     "type, initiator, state": {key: ["type", "initiator", "state"], unique: false}
 }
 
+/**
+ * Browser IndexedDB storage implementation
+ * @category Storage
+ */
 export class IndexedDBUnifiedStorage implements IUnifiedStorage<UnifiedSwapStorageIndexes, UnifiedStorageCompositeIndexes> {
 
     protected readonly logger: LoggerType;

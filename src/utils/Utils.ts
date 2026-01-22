@@ -8,6 +8,7 @@ import {BigIntBufferUtils} from "@atomiqlabs/base";
  *
  * @param promise Promise to check resolve value of
  * @param msg Optional message to pass to the thrown `Error`
+ * @category Utilities
  */
 export function throwIfUndefined<T>(promise: Promise<T | undefined>, msg?: string): Promise<T> {
     return promise.then(val => {
@@ -21,6 +22,7 @@ export function throwIfUndefined<T>(promise: Promise<T | undefined>, msg?: strin
  *  promises fail with an array of errors returned by the respective promises
  *
  * @param promises A list of promises
+ * @category Utilities
  */
 export function promiseAny<T>(promises: Promise<T>[]): Promise<T> {
     return new Promise<T>((resolve: ((val: T) => void) | null, reject) => {

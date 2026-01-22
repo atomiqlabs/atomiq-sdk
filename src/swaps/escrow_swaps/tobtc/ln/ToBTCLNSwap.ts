@@ -33,6 +33,10 @@ const SNOWFLAKE_LIST: Set<string> = new Set([
     "03a6ce61fcaacd38d31d4e3ce2d506602818e3856b4b44faff1dde9642ba705976"
 ]);
 
+/**
+ * Smart Chain to Lightning Network BTC swap
+ * @category Swaps
+ */
 export class ToBTCLNSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, ToBTCLNDefinition<T>> {
     private readonly usesClaimHashAsId: boolean;
 

@@ -45,6 +45,10 @@ type GetAllOptions<T extends readonly ChainInitializer<any, any, any>[]> =
         : unknown);
 
 //Exported types
+/**
+ * Configuration options for creating a typed Swapper instance
+ * @category Core
+ */
 export type TypedSwapperOptions<T extends readonly ChainInitializer<any, any, any>[]> = {
     chains: GetAllOptions<T>,
     chainStorageCtor?: <T extends StorageObject>(name: string) => IStorageManager<T>,
@@ -54,19 +58,35 @@ export type TypedSwapperOptions<T extends readonly ChainInitializer<any, any, an
     messenger?: Messenger,
 } & SwapperOptions;
 
+/**
+ * Token resolver for a specific chain
+ * @category Core
+ */
 export type TypedChainTokenResolver<T extends ChainInitializer<any, any, any>> = {
     getToken: (address: string) => SCToken<T["chainId"]>
 };
 
+/**
+ * Token resolvers for all chains
+ * @category Core
+ */
 export type TypedTokenResolvers<T extends readonly ChainInitializer<any, any, any>[]> =
     (T extends readonly [infer First extends ChainInitializer<any, any, any>, ...infer Rest extends ChainInitializer<any, any, any>[]]
         ? TokenResolverDict<First> & TypedTokenResolvers<Rest>
         : unknown);
 
+/**
+ * Token definitions for a specific chain
+ * @category Core
+ */
 export type TypedChainTokens<T extends ChainInitializer<any, any, any>> = {
     [val in keyof T["tokens"]]: SCToken<T["chainId"]>
 };
 
+/**
+ * All tokens including Bitcoin tokens
+ * @category Core
+ */
 export type TypedTokens<T extends readonly ChainInitializer<any, ChainType, any>[]> = GetAllTokens<T> & {
     BITCOIN: {
         BTC: BtcToken<false>,
@@ -74,8 +94,16 @@ export type TypedTokens<T extends readonly ChainInitializer<any, ChainType, any>
     }
 };
 
+/**
+ * Type alias for a Swapper instance with typed chain support
+ * @category Core
+ */
 export type TypedSwapper<T extends readonly ChainInitializer<any, ChainType, any>[]> = Swapper<ToMultichain<T>>;
 
+/**
+ * Type alias for a specific swap type on a chain
+ * @category Core
+ */
 export type TypedSwap<
     T extends ChainInitializer<any, ChainType, any>,
     S extends SwapType
@@ -120,6 +148,10 @@ const nostrUrls: string[] = [
     "wss://relay.damus.io", "wss://nostr.einundzwanzig.space", "wss://relay01.lnfi.network/", "wss://relay.puresignal.news/", "wss://relay.fountain.fm/", "wss://sendit.nosflare.com/"
 ];
 
+/**
+ * Factory class for creating and initializing Swapper instances with typed chain support
+ * @category Core
+ */
 export class SwapperFactory<T extends readonly ChainInitializer<any, ChainType, any>[]> {
 
     Tokens: TypedTokens<T> = {

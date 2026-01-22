@@ -28,6 +28,10 @@ import {BtcToken, SCToken, Token} from "../types/Token";
 import {LNURLWithdraw} from "../types/lnurl/LNURLWithdraw";
 import {LNURLPay} from "../types/lnurl/LNURLPay";
 
+/**
+ * Chain and signer-specific wrapper for automatic signer injection into swap methods
+ * @category Core
+ */
 export class SwapperWithSigner<T extends MultiChain, ChainIdentifier extends ChainIds<T>> {
 
     readonly chainIdentifier: ChainIdentifier;

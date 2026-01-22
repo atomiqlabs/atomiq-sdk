@@ -1,3 +1,7 @@
+/**
+ * Bitcoin token type (on-chain or lightning)
+ * @category Tokens
+ */
 export type BtcToken<L = boolean> = {
     chain: "BTC",
     lightning: L,
@@ -7,6 +11,10 @@ export type BtcToken<L = boolean> = {
     displayDecimals?: number
 };
 
+/**
+ * Type guard for BtcToken
+ * @category Tokens
+ */
 export function isBtcToken(obj: any): obj is BtcToken {
     return typeof (obj) === "object" &&
         obj.chain === "BTC" &&
@@ -16,6 +24,10 @@ export function isBtcToken(obj: any): obj is BtcToken {
         typeof (obj.name) === "string";
 }
 
+/**
+ * Predefined Bitcoin token constants
+ * @category Tokens
+ */
 export const BitcoinTokens: {
     BTC: BtcToken<false>,
     BTCLN: BtcToken<true>
@@ -35,6 +47,10 @@ export const BitcoinTokens: {
         name: "Bitcoin (lightning L2)"
     }
 };
+/**
+ * Smart Chain token type
+ * @category Tokens
+ */
 export type SCToken<ChainIdentifier extends string = string> = {
     chain: "SC",
     chainId: ChainIdentifier,
@@ -45,6 +61,10 @@ export type SCToken<ChainIdentifier extends string = string> = {
     name: string
 }
 
+/**
+ * Type guard for SCToken
+ * @category Tokens
+ */
 export function isSCToken(obj: any): obj is SCToken {
     return typeof (obj) === "object" &&
         obj.chain === "SC" &&
@@ -55,8 +75,16 @@ export function isSCToken(obj: any): obj is SCToken {
         typeof (obj.name) === "string";
 }
 
+/**
+ * Union type for all token types (BTC or smart chain)
+ * @category Tokens
+ */
 export type Token<ChainIdentifier extends string = string> = BtcToken | SCToken<ChainIdentifier>;
 
+/**
+ * Type guard for Token
+ * @category Tokens
+ */
 export function isToken(obj: any): obj is Token {
     return isBtcToken(obj) || isSCToken(obj);
 }

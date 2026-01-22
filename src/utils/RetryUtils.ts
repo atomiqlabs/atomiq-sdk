@@ -41,6 +41,7 @@ function checkError(e: any, errorAllowed: ((e: any) => boolean) | Constructor<Er
  * @param errorAllowed A callback for determining whether a given error is allowed, and we should therefore not retry
  * @param abortSignal
  * @returns Result of the action executing callback
+ * @category Utilities
  */
 export async function tryWithRetries<T>(func: (retryCount: number) => Promise<T>, retryPolicy?: {
     maxRetries?: number, delay?: number, exponential?: boolean

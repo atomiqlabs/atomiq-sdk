@@ -1,3 +1,7 @@
+/**
+ * Type guard to check if an object is an IAddressSwap
+ * @category Swaps
+ */
 export function isIAddressSwap(obj: any): obj is IAddressSwap {
     return obj!=null &&
         typeof(obj.getAddress) === "function" &&
@@ -6,6 +10,7 @@ export function isIAddressSwap(obj: any): obj is IAddressSwap {
 
 /**
  * Interface for swaps which require a user to send funds to a specific address
+ * @category Swaps
  */
 export interface IAddressSwap {
 

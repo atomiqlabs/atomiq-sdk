@@ -29,6 +29,10 @@ export function isToBTCSwapInit<T extends SwapData>(obj: any): obj is ToBTCSwapI
         isIToBTCSwapInit<T>(obj);
 }
 
+/**
+ * Smart Chain to on-chain BTC swap
+ * @category Swaps
+ */
 export class ToBTCSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, ToBTCDefinition<T>> {
     protected readonly outputToken: BtcToken<false> = BitcoinTokens.BTC;
     protected readonly TYPE = SwapType.TO_BTC;

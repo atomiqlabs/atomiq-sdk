@@ -9,6 +9,10 @@ import {BitcoinRpcWithAddressIndex} from "../BitcoinRpcWithAddressIndex";
 import {TransactionInputUpdate} from "@scure/btc-signer/psbt";
 import {getLogger} from "../../utils/Logger";
 
+/**
+ * UTXO data structure for Bitcoin wallets
+ * @category Bitcoin
+ */
 export type BitcoinWalletUtxo = {
     vout: number,
     txId: string,
@@ -23,6 +27,10 @@ export type BitcoinWalletUtxo = {
     confirmed: boolean
 };
 
+/**
+ * Identifies the address type of a Bitcoin address
+ * @category Bitcoin
+ */
 export function identifyAddressType(address: string, network: BTC_NETWORK): CoinselectAddressTypes {
     switch(Address(network).decode(address).type) {
         case "pkh":
@@ -42,6 +50,10 @@ export function identifyAddressType(address: string, network: BTC_NETWORK): Coin
 
 const logger = getLogger("BitcoinWallet: ");
 
+/**
+ * Abstract base class for Bitcoin wallet implementations
+ * @category Bitcoin
+ */
 export abstract class BitcoinWallet implements IBitcoinWallet {
 
     rpc: BitcoinRpcWithAddressIndex<any>;

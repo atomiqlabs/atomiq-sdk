@@ -3,6 +3,7 @@
  *
  * @param timeout how many milliseconds to wait for
  * @param abortSignal
+ * @category Utilities
  */
 export function timeoutPromise(timeout: number, abortSignal?: AbortSignal): Promise<void> {
     return new Promise<void>((resolve, reject) => {
@@ -33,6 +34,7 @@ export function timeoutPromise(timeout: number, abortSignal?: AbortSignal): Prom
  * @param timeout Milliseconds to wait
  * @param abortReason Abort with this abort reason
  * @param abortSignal Abort signal to extend
+ * @category Utilities
  */
 export function timeoutSignal(timeout: number, abortReason?: any, abortSignal?: AbortSignal): AbortSignal {
     if (timeout == null) throw new Error("Timeout seconds cannot be null!");

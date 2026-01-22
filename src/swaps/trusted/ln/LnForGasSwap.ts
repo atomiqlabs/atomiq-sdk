@@ -15,6 +15,10 @@ import {BitcoinTokens, BtcToken, SCToken} from "../../../types/Token";
 import {getLogger, LoggerType} from "../../../utils/Logger";
 import {timeoutPromise} from "../../../utils/TimeoutUtils";
 
+/**
+ * State enum for trusted Lightning gas swaps
+ * @category Swaps
+ */
 export enum LnForGasSwapState {
     EXPIRED = -2,
     FAILED = -1,
@@ -38,6 +42,10 @@ export function isLnForGasSwapInit(obj: any): obj is LnForGasSwapInit {
         isISwapInit(obj);
 }
 
+/**
+ * Trusted Lightning Network to gas token swap
+ * @category Swaps
+ */
 export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnForGasSwapTypeDefinition<T>, LnForGasSwapState> implements IAddressSwap {
     protected readonly currentVersion: number = 2;
     protected readonly TYPE: SwapType = SwapType.TRUSTED_FROM_BTCLN;

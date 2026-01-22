@@ -4,6 +4,10 @@ import {RequestError} from "../../errors/RequestError";
 import {fetchWithTimeout} from "../../http/HttpUtils";
 import {tryWithRetries} from "../../utils/RetryUtils";
 
+/**
+ * Bitcoin transaction confirmation status
+ * @category Bitcoin
+ */
 export type BitcoinTransactionStatus = {
     confirmed: boolean,
     block_height: number,
@@ -11,6 +15,10 @@ export type BitcoinTransactionStatus = {
     block_time: number
 };
 
+/**
+ * Bitcoin transaction output
+ * @category Bitcoin
+ */
 export type TxVout = {
     scriptpubkey: string,
     scriptpubkey_asm: string,
@@ -19,6 +27,10 @@ export type TxVout = {
     value: number
 };
 
+/**
+ * Bitcoin transaction input
+ * @category Bitcoin
+ */
 export type TxVin = {
     txid: string,
     vout: number,
@@ -31,6 +43,10 @@ export type TxVin = {
     inner_witnessscript_asm: string
 };
 
+/**
+ * Full Bitcoin transaction data
+ * @category Bitcoin
+ */
 export type BitcoinTransaction = {
     txid: string,
     version: number,
@@ -43,6 +59,10 @@ export type BitcoinTransaction = {
     status: BitcoinTransactionStatus
 };
 
+/**
+ * Bitcoin block data
+ * @category Bitcoin
+ */
 export type BlockData = {
     bits: number,
     difficulty: number,
@@ -60,6 +80,10 @@ export type BlockData = {
     weight: number
 }
 
+/**
+ * Bitcoin block header data
+ * @category Bitcoin
+ */
 export type BitcoinBlockHeader = {
     id: string,
     height: number,
@@ -170,6 +194,10 @@ export type TransactionOutspend = {
     status: BitcoinTransactionStatus
 };
 
+/**
+ * Mempool.space REST API client for Bitcoin blockchain data
+ * @category Bitcoin
+ */
 export class MempoolApi {
 
     backends: {

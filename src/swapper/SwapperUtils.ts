@@ -15,6 +15,10 @@ import {isLNURLWithdraw, LNURLWithdraw} from "../types/lnurl/LNURLWithdraw";
 import {isLNURLPay, LNURLPay} from "../types/lnurl/LNURLPay";
 import {toBitcoinWallet} from "../utils/BitcoinWalletUtils";
 
+/**
+ * Utility class providing helper methods for swap operations
+ * @category Core
+ */
 export class SwapperUtils<T extends MultiChain> {
 
     readonly bitcoinNetwork: BTC_NETWORK;

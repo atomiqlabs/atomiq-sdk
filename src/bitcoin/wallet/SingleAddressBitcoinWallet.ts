@@ -5,6 +5,10 @@ import {Buffer} from "buffer";
 import {identifyAddressType, BitcoinWallet} from "./BitcoinWallet";
 import {BitcoinRpcWithAddressIndex} from "../BitcoinRpcWithAddressIndex";
 
+/**
+ * Bitcoin wallet implementation for single-address scenarios
+ * @category Bitcoin
+ */
 export class SingleAddressBitcoinWallet extends BitcoinWallet {
 
     readonly privKey?: Uint8Array;

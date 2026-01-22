@@ -31,6 +31,10 @@ import {getLogger, LoggerType} from "../../../../utils/Logger";
 import {timeoutPromise} from "../../../../utils/TimeoutUtils";
 import {isLNURLWithdraw, LNURLWithdraw, LNURLWithdrawParamsWithUrl} from "../../../../types/lnurl/LNURLWithdraw";
 
+/**
+ * State enum for FromBTCLN swaps
+ * @category Swaps
+ */
 export enum FromBTCLNSwapState {
     FAILED = -4,
     QUOTE_EXPIRED = -3,

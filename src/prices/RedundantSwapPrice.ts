@@ -11,6 +11,10 @@ import {KrakenPriceProvider} from "./providers/KrakenPriceProvider";
 import {getLogger} from "../utils/Logger";
 import {tryWithRetries} from "../utils/RetryUtils";
 
+/**
+ * Asset configuration for redundant swap pricing
+ * @category Pricing and LPs
+ */
 export type RedundantSwapPriceAssets<T extends MultiChain> = {
     binancePair?: string,
     okxPair?: string,
@@ -45,6 +49,7 @@ const logger = getLogger("RedundantSwapPrice: ");
 /**
  * Swap price API using multiple price sources, handles errors on the APIs and automatically switches between them, such
  *  that there always is a functional API
+ * @category Pricing and LPs
  */
 export class RedundantSwapPrice<T extends MultiChain> extends ICachedSwapPrice<T> {
 

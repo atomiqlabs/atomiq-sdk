@@ -42,6 +42,10 @@ import {
     serializePriceInfoType
 } from "../../../../types/PriceInfoType";
 
+/**
+ * State enum for FromBTCLNAuto swaps
+ * @category Swaps
+ */
 export enum FromBTCLNAutoSwapState {
     FAILED = -4,
     QUOTE_EXPIRED = -3,

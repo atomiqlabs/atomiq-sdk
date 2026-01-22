@@ -49,6 +49,10 @@ function bitcoinTxToBtcTx(btcTx: Transaction): BtcTx {
     }
 }
 
+/**
+ * Bitcoin RPC implementation via Mempool.space API
+ * @category Bitcoin
+ */
 export class MempoolBitcoinRpc implements BitcoinRpcWithAddressIndex<MempoolBitcoinBlock>, LightningNetworkApi {
 
     api: MempoolApi;

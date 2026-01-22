@@ -11,11 +11,19 @@ import {SCToken} from "../types/Token";
 import {getLogger} from "../utils/Logger";
 import {PriceInfoType} from "../types/PriceInfoType";
 
+/**
+ * Options for swap wrapper configuration
+ * @category Swaps
+ */
 export type ISwapWrapperOptions = {
     getRequestTimeout?: number,
     postRequestTimeout?: number
 };
 
+/**
+ * Token configuration for wrapper constructors
+ * @category Swaps
+ */
 export type WrapperCtorTokens<T extends MultiChain = MultiChain> = {
     ticker: string,
     name: string,
@@ -26,11 +34,19 @@ export type WrapperCtorTokens<T extends MultiChain = MultiChain> = {
     }}
 }[];
 
+/**
+ * Type definition linking wrapper and swap types
+ * @category Swaps
+ */
 export type SwapTypeDefinition<T extends ChainType, W extends ISwapWrapper<T, any>, S extends ISwap<T>> = {
     Wrapper: W;
     Swap: S;
 };
 
+/**
+ * Base abstract class for swap wrapper implementations
+ * @category Swaps
+ */
 export abstract class ISwapWrapper<
     T extends ChainType,
     D extends SwapTypeDefinition<T, ISwapWrapper<T, D>, ISwap<T, D>>,

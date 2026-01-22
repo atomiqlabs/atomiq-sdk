@@ -4,6 +4,10 @@ import {IToBTCSwap} from "../swaps/escrow_swaps/tobtc/IToBTCSwap";
 import {IFromBTCSelfInitSwap} from "../swaps/escrow_swaps/frombtc/IFromBTCSelfInitSwap";
 import {FromBTCLNSwap} from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap";
 
+/**
+ * Proxy type that auto-injects signer into swap methods
+ * @category Swaps
+ */
 export type SwapWithSigner<T extends ISwap> = {
     [K in keyof T]:
         K extends "commit" ? (abortSignal?: AbortSignal, skipChecks?: boolean) => Promise<string> :
@@ -13,6 +17,10 @@ export type SwapWithSigner<T extends ISwap> = {
             T[K];
 };
 
+/**
+ * Wraps a swap with automatic signer injection for methods like commit, refund, and claim
+ * @category Swaps
+ */
 export function wrapSwapWithSigner<C extends ChainType, T extends ISwap<C>>(swap: T, signer: C["Signer"]): SwapWithSigner<T> {
     return new Proxy(swap, {
         get: (target, prop, receiver) => {

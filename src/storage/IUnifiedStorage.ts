@@ -1,13 +1,22 @@
 
+/**
+ * Query parameters for storage operations
+ * @category Storage
+ */
 export type QueryParams = {
     key: string,
     value: any | any[]
 };
 
+/**
+ * Base type for stored objects
+ * @category Storage
+ */
 export type UnifiedStoredObject = {id: string} & any;
 
 /**
  * Defines simple indexes (for queries that use a single key)
+ * @category Storage
  */
 export type UnifiedStorageIndexes = readonly {
     key: string,
@@ -18,12 +27,17 @@ export type UnifiedStorageIndexes = readonly {
 
 /**
  * Defines composite indexes (for queries that use multiple keys)
+ * @category Storage
  */
 export type UnifiedStorageCompositeIndexes = readonly {
     keys: readonly string[],
     unique: boolean
 }[];
 
+/**
+ * Interface for unified storage implementations
+ * @category Storage
+ */
 export interface IUnifiedStorage<I extends UnifiedStorageIndexes, C extends UnifiedStorageCompositeIndexes> {
 
     /**

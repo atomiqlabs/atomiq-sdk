@@ -14,6 +14,10 @@ const indexes = [
     {key: "state", type: "number", unique: false, nullable: false},
     {key: "paymentHash", type: "string", unique: false, nullable: true},
 ] as const;
+/**
+ * Index types for swap storage
+ * @category Storage
+ */
 export type UnifiedSwapStorageIndexes = typeof indexes;
 
 const compositeIndexes = [
@@ -22,8 +26,16 @@ const compositeIndexes = [
     {keys: ["type", "paymentHash"], unique: false},
     {keys: ["type", "initiator", "state"], unique: false}
 ] as const;
+/**
+ * Composite index types for swap storage
+ * @category Storage
+ */
 export type UnifiedSwapStorageCompositeIndexes = typeof compositeIndexes;
 
+/**
+ * Unified swap persistence layer with caching
+ * @category Storage
+ */
 export class UnifiedSwapStorage<T extends ChainType> {
 
     readonly storage: IUnifiedStorage<UnifiedSwapStorageIndexes, UnifiedSwapStorageCompositeIndexes>;

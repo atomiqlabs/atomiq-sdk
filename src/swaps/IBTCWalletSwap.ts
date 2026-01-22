@@ -7,6 +7,10 @@ import {
 import {TokenAmount} from "../types/TokenAmount";
 import {BtcToken} from "../types/Token";
 
+/**
+ * Type guard to check if an object is an IBTCWalletSwap
+ * @category Swaps
+ */
 export function isIBTCWalletSwap(obj: any): obj is IBTCWalletSwap {
     return obj!=null &&
         typeof(obj.getFundedPsbt) === "function" &&
@@ -17,6 +21,10 @@ export function isIBTCWalletSwap(obj: any): obj is IBTCWalletSwap {
         typeof(obj.getRequiredConfirmationsCount) === "function";
 }
 
+/**
+ * Interface for swaps requiring Bitcoin wallet interaction
+ * @category Swaps
+ */
 export interface IBTCWalletSwap {
 
     /**

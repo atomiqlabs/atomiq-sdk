@@ -12,6 +12,16 @@ exports.SmartChainAssets = {
         },
         name: "Wrapped BTC (WBTC)"
     },
+    _PBTC_DEV: {
+        pricing: {
+            binancePair: "$fixed-100000000",
+            okxPair: "$fixed-100000000",
+            coinGeckoCoinId: "$fixed-100000000",
+            coinPaprikaCoinId: "$fixed-100000000",
+            krakenPair: "$fixed-100000000"
+        },
+        name: "pegBTC (dev)"
+    },
     WBTC: {
         pricing: {
             binancePair: "WBTCBTC",

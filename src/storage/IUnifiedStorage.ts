@@ -56,12 +56,28 @@ export interface IUnifiedStorage<I extends UnifiedStorageIndexes, C extends Unif
      */
     query(params: Array<Array<QueryParams>>): Promise<Array<UnifiedStoredObject>>;
 
+    /**
+     * Saves an object to storage, updating indexes as needed
+     * @param value - Object to save (must have an id property)
+     */
     save(value: UnifiedStoredObject): Promise<void>;
 
+    /**
+     * Saves multiple objects to storage in a batch operation
+     * @param value - Array of objects to save
+     */
     saveAll(value: UnifiedStoredObject[]): Promise<void>;
 
+    /**
+     * Removes an object from storage
+     * @param value - Object to remove (must have an id property)
+     */
     remove(value: UnifiedStoredObject): Promise<void>;
 
+    /**
+     * Removes multiple objects from storage in a batch operation
+     * @param value - Array of objects to remove
+     */
     removeAll(value: UnifiedStoredObject[]): Promise<void>;
 
 }

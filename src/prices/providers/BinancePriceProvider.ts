@@ -8,6 +8,10 @@ export type BinanceResponse = {
     price: string;
 };
 
+/**
+ * Price provider using Binance exchange API
+ * @category Pricing and LPs
+ */
 export class BinancePriceProvider<T extends MultiChain> extends ExchangePriceProvider<T> {
 
     constructor(coinsMap: CtorCoinTypes<T>, url: string = "https://api.binance.com/api/v3", httpRequestTimeout?: number) {

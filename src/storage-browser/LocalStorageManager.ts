@@ -2,6 +2,7 @@ import {IStorageManager, StorageObject} from "@atomiqlabs/base";
 
 /**
  * StorageManager using browser's local storage API
+ * @category Storage
  */
 export class LocalStorageManager<T extends StorageObject> implements IStorageManager<T> {
 

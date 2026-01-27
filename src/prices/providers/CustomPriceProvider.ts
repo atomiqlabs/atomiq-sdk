@@ -2,6 +2,10 @@ import {CoinType, CtorCoinTypes, IPriceProvider} from "../abstract/IPriceProvide
 import {MultiChain} from "../../swapper/Swapper";
 import {CustomPriceFunction} from "../../types/CustomPriceFunction";
 
+/**
+ * Price provider using custom pricing function
+ * @category Pricing and LPs
+ */
 export class CustomPriceProvider<T extends MultiChain> extends IPriceProvider<T> {
 
     readonly getUsdPriceFn: CustomPriceFunction;

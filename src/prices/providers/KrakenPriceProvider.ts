@@ -20,6 +20,10 @@ export type KrakenResponse = {
     }
 };
 
+/**
+ * Price provider using Kraken exchange API
+ * @category Pricing and LPs
+ */
 export class KrakenPriceProvider<T extends MultiChain> extends ExchangePriceProvider<T> {
 
     constructor(coinsMap: CtorCoinTypes<T>, url: string = "https://api.kraken.com/0", httpRequestTimeout?: number) {

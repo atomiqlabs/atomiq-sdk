@@ -45,6 +45,10 @@ export type FromBTCLNWrapperOptions = ISwapWrapperOptions & {
 
 export type FromBTCLNDefinition<T extends ChainType> = IFromBTCLNDefinition<T, FromBTCLNWrapper<T>, FromBTCLNSwap<T>>;
 
+/**
+ * Factory wrapper for creating Lightning BTC to Smart Chain swaps
+ * @category Swaps
+ */
 export class FromBTCLNWrapper<
     T extends ChainType
 > extends IFromBTCLNWrapper<T, FromBTCLNDefinition<T>, FromBTCLNWrapperOptions> implements IClaimableSwapWrapper<FromBTCLNSwap<T>> {

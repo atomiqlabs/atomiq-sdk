@@ -11,6 +11,10 @@ export type CoinPaprikaResponse<Currency extends string> = {
     }
 };
 
+/**
+ * Price provider using CoinPaprika API
+ * @category Pricing and LPs
+ */
 export class CoinPaprikaPriceProvider<T extends MultiChain> extends HttpPriceProvider<T> {
 
     constructor(coinsMap: CtorCoinTypes<T>, url: string = "https://api.coinpaprika.com/v1", httpRequestTimeout?: number) {

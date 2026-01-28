@@ -23,9 +23,9 @@
   "author": "adambor",
   "license": "ISC",
   "dependencies": {
-    "@atomiqlabs/base": "github:atomiqlabs/atomiq-base#develop",
+    "@atomiqlabs/base": "^13.0.4",
     "@atomiqlabs/bolt11": "1.6.1",
-    "@atomiqlabs/messenger-nostr": "github:atomiqlabs/atomiq-messenger-nostr#develop",
+    "@atomiqlabs/messenger-nostr": "^2.0.0",
     "@noble/ciphers": "^1.2.1",
     "@noble/hashes": "^1.7.1",
     "@scure/base": "^1.2.4",

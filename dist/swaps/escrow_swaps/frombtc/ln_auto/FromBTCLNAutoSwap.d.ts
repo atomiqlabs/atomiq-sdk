@@ -16,6 +16,10 @@ import { BtcToken, SCToken } from "../../../../types/Token";
 import { LoggerType } from "../../../../utils/Logger";
 import { LNURLWithdraw } from "../../../../types/lnurl/LNURLWithdraw";
 import { PriceInfoType } from "../../../../types/PriceInfoType";
+/**
+ * State enum for FromBTCLNAuto swaps
+ * @category Swaps
+ */
 export declare enum FromBTCLNAutoSwapState {
     FAILED = -4,
     QUOTE_EXPIRED = -3,

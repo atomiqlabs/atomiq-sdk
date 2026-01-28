@@ -3,6 +3,10 @@ import { BTC_NETWORK } from "@scure/btc-signer/utils";
 import { Transaction } from "@scure/btc-signer";
 import { BitcoinWallet } from "./BitcoinWallet";
 import { BitcoinRpcWithAddressIndex } from "../BitcoinRpcWithAddressIndex";
+/**
+ * Bitcoin wallet implementation for single-address scenarios
+ * @category Bitcoin
+ */
 export declare class SingleAddressBitcoinWallet extends BitcoinWallet {
     readonly privKey?: Uint8Array;
     readonly pubkey: Uint8Array;

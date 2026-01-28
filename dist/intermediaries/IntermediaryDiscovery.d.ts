@@ -3,6 +3,10 @@ import { Intermediary } from "./Intermediary";
 import { SwapType } from "../enums/SwapType";
 import { SwapContract } from "@atomiqlabs/base";
 import { EventEmitter } from "events";
+/**
+ * Swap handler type enum for intermediary communication
+ * @category Pricing and LPs
+ */
 export declare enum SwapHandlerType {
     TO_BTC = "TO_BTC",
     FROM_BTC = "FROM_BTC",
@@ -13,6 +17,10 @@ export declare enum SwapHandlerType {
     FROM_BTC_SPV = "FROM_BTC_SPV",
     FROM_BTCLN_AUTO = "FROM_BTCLN_AUTO"
 }
+/**
+ * Swap handler information type
+ * @category Pricing and LPs
+ */
 export type SwapHandlerInfoType = {
     swapFeePPM: number;
     swapBaseFee: number;
@@ -24,21 +32,41 @@ export type SwapHandlerInfoType = {
     };
     data?: any;
 };
+/**
+ * Token bounds (min/max) for swaps
+ * @category Pricing and LPs
+ */
 export type TokenBounds = {
     [token: string]: {
         min: bigint;
         max: bigint;
     };
 };
+/**
+ * Multi-chain token bounds
+ * @category Pricing and LPs
+ */
 export type MultichainTokenBounds = {
     [chainId: string]: TokenBounds;
 };
+/**
+ * Swap bounds by type
+ * @category Pricing and LPs
+ */
 export type SwapBounds = {
     [key in SwapType]?: TokenBounds;
 };
+/**
+ * Multi-chain swap bounds
+ * @category Pricing and LPs
+ */
 export type MultichainSwapBounds = {
     [key in SwapType]?: MultichainTokenBounds;
 };
+/**
+ * Discovery service for available liquidity providers/intermediaries
+ * @category Pricing and LPs
+ */
 export declare class IntermediaryDiscovery extends EventEmitter {
     intermediaries: Intermediary[];
     swapContracts: {

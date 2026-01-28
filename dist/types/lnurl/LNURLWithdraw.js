@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.isLNURLWithdrawParams = exports.isLNURLWithdraw = void 0;
+/**
+ * Type guard for LNURL-withdraw
+ * @category Bitcoin
+ */
 function isLNURLWithdraw(value) {
     return (typeof value === "object" &&
         value != null &&
@@ -10,6 +14,10 @@ function isLNURLWithdraw(value) {
         isLNURLWithdrawParams(value.params));
 }
 exports.isLNURLWithdraw = isLNURLWithdraw;
+/**
+ * Type guard for LNURL-withdraw parameters
+ * @category Bitcoin
+ */
 function isLNURLWithdrawParams(obj) {
     return obj.tag === "withdrawRequest";
 }

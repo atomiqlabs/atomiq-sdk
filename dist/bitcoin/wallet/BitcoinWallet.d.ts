@@ -6,6 +6,10 @@ import { Transaction } from "@scure/btc-signer";
 import { IBitcoinWallet } from "./IBitcoinWallet";
 import { Buffer } from "buffer";
 import { BitcoinRpcWithAddressIndex } from "../BitcoinRpcWithAddressIndex";
+/**
+ * UTXO data structure for Bitcoin wallets
+ * @category Bitcoin
+ */
 export type BitcoinWalletUtxo = {
     vout: number;
     txId: string;
@@ -19,7 +23,15 @@ export type BitcoinWalletUtxo = {
     };
     confirmed: boolean;
 };
+/**
+ * Identifies the address type of a Bitcoin address
+ * @category Bitcoin
+ */
 export declare function identifyAddressType(address: string, network: BTC_NETWORK): CoinselectAddressTypes;
+/**
+ * Abstract base class for Bitcoin wallet implementations
+ * @category Bitcoin
+ */
 export declare abstract class BitcoinWallet implements IBitcoinWallet {
     rpc: BitcoinRpcWithAddressIndex<any>;
     network: BTC_NETWORK;

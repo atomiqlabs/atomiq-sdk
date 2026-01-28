@@ -4,6 +4,10 @@ exports.ISwapWrapper = void 0;
 const events_1 = require("events");
 const IntermediaryError_1 = require("../errors/IntermediaryError");
 const Logger_1 = require("../utils/Logger");
+/**
+ * Base abstract class for swap wrapper implementations
+ * @category Swaps
+ */
 class ISwapWrapper {
     /**
      * @param chainIdentifier

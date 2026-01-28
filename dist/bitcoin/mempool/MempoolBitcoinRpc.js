@@ -45,6 +45,10 @@ function bitcoinTxToBtcTx(btcTx) {
         })
     };
 }
+/**
+ * Bitcoin RPC implementation via Mempool.space API
+ * @category Bitcoin
+ */
 class MempoolBitcoinRpc {
     constructor(urlOrMempoolApi) {
         this.api = urlOrMempoolApi instanceof MempoolApi_1.MempoolApi ? urlOrMempoolApi : new MempoolApi_1.MempoolApi(urlOrMempoolApi);

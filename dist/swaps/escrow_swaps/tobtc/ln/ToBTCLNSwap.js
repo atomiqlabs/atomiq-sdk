@@ -24,6 +24,10 @@ const SNOWFLAKE_LIST = new Set([
     "038f8f113c580048d847d6949371726653e02b928196bad310e3eda39ff61723f6",
     "03a6ce61fcaacd38d31d4e3ce2d506602818e3856b4b44faff1dde9642ba705976"
 ]);
+/**
+ * Smart Chain to Lightning Network BTC swap
+ * @category Swaps
+ */
 class ToBTCLNSwap extends IToBTCSwap_1.IToBTCSwap {
     constructor(wrapper, initOrObj) {
         if (isToBTCLNSwapInit(initOrObj) && initOrObj.url != null)

@@ -6,6 +6,10 @@ const SwapPriceWithChain_1 = require("../prices/SwapPriceWithChain");
 const SwapperWithSigner_1 = require("./SwapperWithSigner");
 const UserError_1 = require("../errors/UserError");
 const Token_1 = require("../types/Token");
+/**
+ * Chain-specific wrapper around Swapper for a particular blockchain
+ * @category Core
+ */
 class SwapperWithChain {
     get intermediaryDiscovery() {
         return this.swapper.intermediaryDiscovery;

@@ -14,6 +14,10 @@ import { TokenAmount } from "../../types/TokenAmount";
 import { BtcToken, SCToken } from "../../types/Token";
 import { LoggerType } from "../../utils/Logger";
 import { PriceInfoType } from "../../types/PriceInfoType";
+/**
+ * State enum for SPV FromBTC swaps
+ * @category Swaps
+ */
 export declare enum SpvFromBTCSwapState {
     CLOSED = -5,
     FAILED = -4,

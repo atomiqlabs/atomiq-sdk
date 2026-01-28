@@ -10,6 +10,7 @@ const base_1 = require("@atomiqlabs/base");
  *
  * @param promise Promise to check resolve value of
  * @param msg Optional message to pass to the thrown `Error`
+ * @category Utilities
  */
 function throwIfUndefined(promise, msg) {
     return promise.then(val => {
@@ -24,6 +25,7 @@ exports.throwIfUndefined = throwIfUndefined;
  *  promises fail with an array of errors returned by the respective promises
  *
  * @param promises A list of promises
+ * @category Utilities
  */
 function promiseAny(promises) {
     return new Promise((resolve, reject) => {

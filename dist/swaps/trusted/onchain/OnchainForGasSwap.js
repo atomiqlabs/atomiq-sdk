@@ -18,6 +18,10 @@ const Token_1 = require("../../../types/Token");
 const Logger_1 = require("../../../utils/Logger");
 const TimeoutUtils_1 = require("../../../utils/TimeoutUtils");
 const BitcoinWalletUtils_1 = require("../../../utils/BitcoinWalletUtils");
+/**
+ * State enum for trusted on-chain gas swaps
+ * @category Swaps
+ */
 var OnchainForGasSwapState;
 (function (OnchainForGasSwapState) {
     OnchainForGasSwapState[OnchainForGasSwapState["EXPIRED"] = -3] = "EXPIRED";
@@ -39,6 +43,10 @@ function isOnchainForGasSwapInit(obj) {
         (0, ISwap_1.isISwapInit)(obj);
 }
 exports.isOnchainForGasSwapInit = isOnchainForGasSwapInit;
+/**
+ * Trusted on-chain BTC to gas token swap
+ * @category Swaps
+ */
 class OnchainForGasSwap extends ISwap_1.ISwap {
     constructor(wrapper, initOrObj) {
         if (isOnchainForGasSwapInit(initOrObj) && initOrObj.url != null)

@@ -33,6 +33,10 @@ const Logger_1 = require("../utils/Logger");
 const LNURLWithdraw_1 = require("../types/lnurl/LNURLWithdraw");
 const LNURLPay_1 = require("../types/lnurl/LNURLPay");
 const RetryUtils_1 = require("../utils/RetryUtils");
+/**
+ * Core orchestrator for all swap operations with multi-chain support
+ * @category Core
+ */
 class Swapper extends events_1.EventEmitter {
     constructor(bitcoinRpc, chainsData, pricing, tokens, messenger, options) {
         super();

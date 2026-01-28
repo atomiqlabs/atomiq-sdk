@@ -3,7 +3,15 @@ import { Transaction } from "@scure/btc-signer";
 import { MinimalBitcoinWalletInterface, MinimalBitcoinWalletInterfaceWithSigner } from "../bitcoin/wallet/MinimalBitcoinWalletInterface";
 import { TokenAmount } from "../types/TokenAmount";
 import { BtcToken } from "../types/Token";
+/**
+ * Type guard to check if an object is an IBTCWalletSwap
+ * @category Swaps
+ */
 export declare function isIBTCWalletSwap(obj: any): obj is IBTCWalletSwap;
+/**
+ * Interface for swaps requiring Bitcoin wallet interaction
+ * @category Swaps
+ */
 export interface IBTCWalletSwap {
     /**
      * Returns the PSBT that is already funded with wallet's UTXOs (runs a coin-selection algorithm to choose UTXOs to use),

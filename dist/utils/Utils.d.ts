@@ -6,6 +6,7 @@ import { Buffer } from "buffer";
  *
  * @param promise Promise to check resolve value of
  * @param msg Optional message to pass to the thrown `Error`
+ * @category Utilities
  */
 export declare function throwIfUndefined<T>(promise: Promise<T | undefined>, msg?: string): Promise<T>;
 /**
@@ -13,6 +14,7 @@ export declare function throwIfUndefined<T>(promise: Promise<T | undefined>, msg
  *  promises fail with an array of errors returned by the respective promises
  *
  * @param promises A list of promises
+ * @category Utilities
  */
 export declare function promiseAny<T>(promises: Promise<T>[]): Promise<T>;
 /**

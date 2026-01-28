@@ -8,6 +8,10 @@ import { TokenAmount } from "../types/TokenAmount";
 import { SCToken } from "../types/Token";
 import { LNURLWithdraw } from "../types/lnurl/LNURLWithdraw";
 import { LNURLPay } from "../types/lnurl/LNURLPay";
+/**
+ * Utility class providing helper methods for swap operations
+ * @category Core
+ */
 export declare class SwapperUtils<T extends MultiChain> {
     readonly bitcoinNetwork: BTC_NETWORK;
     private readonly root;

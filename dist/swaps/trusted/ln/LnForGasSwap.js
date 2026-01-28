@@ -13,6 +13,10 @@ const TokenAmount_1 = require("../../../types/TokenAmount");
 const Token_1 = require("../../../types/Token");
 const Logger_1 = require("../../../utils/Logger");
 const TimeoutUtils_1 = require("../../../utils/TimeoutUtils");
+/**
+ * State enum for trusted Lightning gas swaps
+ * @category Swaps
+ */
 var LnForGasSwapState;
 (function (LnForGasSwapState) {
     LnForGasSwapState[LnForGasSwapState["EXPIRED"] = -2] = "EXPIRED";
@@ -29,6 +33,10 @@ function isLnForGasSwapInit(obj) {
         (0, ISwap_1.isISwapInit)(obj);
 }
 exports.isLnForGasSwapInit = isLnForGasSwapInit;
+/**
+ * Trusted Lightning Network to gas token swap
+ * @category Swaps
+ */
 class LnForGasSwap extends ISwap_1.ISwap {
     constructor(wrapper, initOrObj) {
         if (isLnForGasSwapInit(initOrObj) && initOrObj.url != null)

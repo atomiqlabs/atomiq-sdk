@@ -7,6 +7,10 @@ export type QuerySetCondition = {
     key: string;
     values: Set<any>;
 };
+/**
+ * Browser IndexedDB storage implementation
+ * @category Storage
+ */
 export declare class IndexedDBUnifiedStorage implements IUnifiedStorage<UnifiedSwapStorageIndexes, UnifiedStorageCompositeIndexes> {
     protected readonly logger: LoggerType;
     storageKey: string;

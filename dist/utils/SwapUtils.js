@@ -2,6 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.isSwapType = void 0;
 const SwapType_1 = require("../enums/SwapType");
+/**
+ * Type guard to check if a swap is of a specific swap type
+ * @category Utilities
+ */
 function isSwapType(swap, swapType) {
     if (swap == null)
         return false;

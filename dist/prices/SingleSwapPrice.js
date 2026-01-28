@@ -4,6 +4,7 @@ exports.SingleSwapPrice = void 0;
 const ICachedSwapPrice_1 = require("./abstract/ICachedSwapPrice");
 /**
  * Swap price API using single price source
+ * @category Pricing and LPs
  */
 class SingleSwapPrice extends ICachedSwapPrice_1.ICachedSwapPrice {
     constructor(maxAllowedFeeDiffPPM, priceProvider, cacheTimeout) {

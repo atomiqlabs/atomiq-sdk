@@ -12,6 +12,10 @@ import { Token } from "../types/Token";
 import { SwapExecutionAction } from "../types/SwapExecutionAction";
 import { LoggerType } from "../utils/Logger";
 import { PriceInfoType } from "../types/PriceInfoType";
+/**
+ * Initialization data for creating a swap
+ * @category Swaps
+ */
 export type ISwapInit = {
     pricingInfo: PriceInfoType;
     url?: string;
@@ -20,7 +24,15 @@ export type ISwapInit = {
     swapFeeBtc: bigint;
     exactIn: boolean;
 };
+/**
+ * Type guard to check if an object is an ISwapInit
+ * @category Swaps
+ */
 export declare function isISwapInit(obj: any): obj is ISwapInit;
+/**
+ * Base abstract class for all swap types
+ * @category Swaps
+ */
 export declare abstract class ISwap<T extends ChainType = ChainType, D extends SwapTypeDefinition<T, ISwapWrapper<T, D>, ISwap<T, D, S>> = SwapTypeDefinition<T, ISwapWrapper<T, any>, ISwap<T, any, any>>, S extends number = number> {
     protected readonly abstract TYPE: SwapType;
     protected readonly abstract logger: LoggerType;

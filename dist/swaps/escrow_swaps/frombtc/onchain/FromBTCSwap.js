@@ -15,6 +15,10 @@ const TokenAmount_1 = require("../../../../types/TokenAmount");
 const Token_1 = require("../../../../types/Token");
 const Logger_1 = require("../../../../utils/Logger");
 const BitcoinWalletUtils_1 = require("../../../../utils/BitcoinWalletUtils");
+/**
+ * State enum for FromBTC swaps
+ * @category Swaps
+ */
 var FromBTCSwapState;
 (function (FromBTCSwapState) {
     FromBTCSwapState[FromBTCSwapState["FAILED"] = -4] = "FAILED";

@@ -41,6 +41,10 @@ import { BtcToken, SCToken, Token } from "../types/Token";
 import { LNURLWithdraw } from "../types/lnurl/LNURLWithdraw";
 import { LNURLPay } from "../types/lnurl/LNURLPay";
 import { NotNever } from "../utils/TypeUtils";
+/**
+ * Configuration options for the Swapper
+ * @category Core
+ */
 export type SwapperOptions = {
     intermediaryUrl?: string | string[];
     registryUrl?: string;
@@ -61,6 +65,10 @@ export type SwapperOptions = {
     saveUninitializedSwaps?: boolean;
     automaticClockDriftCorrection?: boolean;
 };
+/**
+ * Type representing multiple blockchain configurations
+ * @category Core
+ */
 export type MultiChain = {
     [chainIdentifier in string]: ChainType;
 };
@@ -91,8 +99,20 @@ type MultiChainData<T extends MultiChain> = {
 type CtorMultiChainData<T extends MultiChain> = {
     [chainIdentifier in keyof T]: ChainData<T[chainIdentifier]>;
 };
+/**
+ * Type extracting chain identifiers from a MultiChain type
+ * @category Core
+ */
 export type ChainIds<T extends MultiChain> = keyof T & string;
+/**
+ * Type helper to check if a chain supports a specific swap type
+ * @category Core
+ */
 export type SupportsSwapType<C extends ChainType, Type extends SwapType> = Type extends SwapType.SPV_VAULT_FROM_BTC ? NotNever<C["SpvVaultContract"]> : Type extends (SwapType.TRUSTED_FROM_BTCLN | SwapType.TRUSTED_FROM_BTC) ? true : Type extends SwapType.FROM_BTCLN_AUTO ? (C["Contract"]["supportsInitWithoutClaimer"] extends true ? true : false) : NotNever<C["Contract"]>;
+/**
+ * Core orchestrator for all swap operations with multi-chain support
+ * @category Core
+ */
 export declare class Swapper<T extends MultiChain> extends EventEmitter<{
     lpsRemoved: [Intermediary[]];
     lpsAdded: [Intermediary[]];

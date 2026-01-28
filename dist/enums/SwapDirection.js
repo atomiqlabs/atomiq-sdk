@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SwapDirection = void 0;
+/**
+ * Enum representing the direction of a swap (from or to Bitcoin)
+ * @category Core
+ */
 var SwapDirection;
 (function (SwapDirection) {
     SwapDirection[SwapDirection["FROM_BTC"] = 0] = "FROM_BTC";

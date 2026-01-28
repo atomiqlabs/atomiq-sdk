@@ -7,6 +7,10 @@ const buffer_1 = require("buffer");
 const Utils_1 = require("../../utils/Utils");
 const BitcoinUtils_1 = require("../../utils/BitcoinUtils");
 const Logger_1 = require("../../utils/Logger");
+/**
+ * Identifies the address type of a Bitcoin address
+ * @category Bitcoin
+ */
 function identifyAddressType(address, network) {
     switch ((0, btc_signer_1.Address)(network).decode(address).type) {
         case "pkh":
@@ -25,6 +29,10 @@ function identifyAddressType(address, network) {
 }
 exports.identifyAddressType = identifyAddressType;
 const logger = (0, Logger_1.getLogger)("BitcoinWallet: ");
+/**
+ * Abstract base class for Bitcoin wallet implementations
+ * @category Bitcoin
+ */
 class BitcoinWallet {
     constructor(mempoolApi, network, feeMultiplier = 1.25, feeOverride) {
         this.rpc = mempoolApi;

@@ -2,6 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CustomPriceProvider = void 0;
 const IPriceProvider_1 = require("../abstract/IPriceProvider");
+/**
+ * Price provider using custom pricing function
+ * @category Pricing and LPs
+ */
 class CustomPriceProvider extends IPriceProvider_1.IPriceProvider {
     constructor(coinsMap, getUsdPriceFn) {
         super(coinsMap);

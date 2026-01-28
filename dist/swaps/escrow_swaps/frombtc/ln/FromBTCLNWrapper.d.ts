@@ -28,6 +28,10 @@ export type FromBTCLNWrapperOptions = ISwapWrapperOptions & {
     bitcoinBlocktime: number;
 };
 export type FromBTCLNDefinition<T extends ChainType> = IFromBTCLNDefinition<T, FromBTCLNWrapper<T>, FromBTCLNSwap<T>>;
+/**
+ * Factory wrapper for creating Lightning BTC to Smart Chain swaps
+ * @category Swaps
+ */
 export declare class FromBTCLNWrapper<T extends ChainType> extends IFromBTCLNWrapper<T, FromBTCLNDefinition<T>, FromBTCLNWrapperOptions> implements IClaimableSwapWrapper<FromBTCLNSwap<T>> {
     readonly claimableSwapStates: FromBTCLNSwapState[];
     readonly TYPE = SwapType.FROM_BTCLN;

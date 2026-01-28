@@ -11,6 +11,7 @@ type Constructor<T = any> = new (...args: any[]) => T;
  * @param errorAllowed A callback for determining whether a given error is allowed, and we should therefore not retry
  * @param abortSignal
  * @returns Result of the action executing callback
+ * @category Utilities
  */
 export declare function tryWithRetries<T>(func: (retryCount: number) => Promise<T>, retryPolicy?: {
     maxRetries?: number;

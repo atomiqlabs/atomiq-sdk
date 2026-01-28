@@ -2,6 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.toTokenAmount = void 0;
 const Utils_1 = require("../utils/Utils");
+/**
+ * Factory function to create a TokenAmount
+ * @category Tokens
+ */
 function toTokenAmount(amount, token, prices, pricingInfo) {
     if (amount == null)
         return null; //Shouldn't happen

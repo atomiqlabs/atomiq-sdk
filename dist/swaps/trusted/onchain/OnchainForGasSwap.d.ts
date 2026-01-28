@@ -12,6 +12,10 @@ import { FeeType } from "../../../enums/FeeType";
 import { TokenAmount } from "../../../types/TokenAmount";
 import { BtcToken, SCToken } from "../../../types/Token";
 import { LoggerType } from "../../../utils/Logger";
+/**
+ * State enum for trusted on-chain gas swaps
+ * @category Swaps
+ */
 export declare enum OnchainForGasSwapState {
     EXPIRED = -3,
     FAILED = -2,
@@ -31,6 +35,10 @@ export type OnchainForGasSwapInit = ISwapInit & {
     refundAddress?: string;
 };
 export declare function isOnchainForGasSwapInit(obj: any): obj is OnchainForGasSwapInit;
+/**
+ * Trusted on-chain BTC to gas token swap
+ * @category Swaps
+ */
 export declare class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T, OnchainForGasSwapTypeDefinition<T>> implements IAddressSwap, IBTCWalletSwap {
     getSmartChainNetworkFee: null;
     protected readonly TYPE: SwapType;

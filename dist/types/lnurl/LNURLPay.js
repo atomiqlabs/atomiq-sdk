@@ -1,10 +1,18 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.isLNURLPay = exports.isLNURLPayParams = void 0;
+/**
+ * Type guard for LNURL-pay parameters
+ * @category Bitcoin
+ */
 function isLNURLPayParams(obj) {
     return obj.tag === "payRequest";
 }
 exports.isLNURLPayParams = isLNURLPayParams;
+/**
+ * Type guard for LNURL-pay
+ * @category Bitcoin
+ */
 function isLNURLPay(value) {
     return (typeof value === "object" &&
         value != null &&

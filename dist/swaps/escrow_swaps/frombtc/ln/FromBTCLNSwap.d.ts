@@ -13,6 +13,10 @@ import { TokenAmount } from "../../../../types/TokenAmount";
 import { BtcToken, SCToken } from "../../../../types/Token";
 import { LoggerType } from "../../../../utils/Logger";
 import { LNURLWithdraw } from "../../../../types/lnurl/LNURLWithdraw";
+/**
+ * State enum for FromBTCLN swaps
+ * @category Swaps
+ */
 export declare enum FromBTCLNSwapState {
     FAILED = -4,
     QUOTE_EXPIRED = -3,

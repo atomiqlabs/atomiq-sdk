@@ -1,12 +1,21 @@
+/**
+ * Query parameters for storage operations
+ * @category Storage
+ */
 export type QueryParams = {
     key: string;
     value: any | any[];
 };
+/**
+ * Base type for stored objects
+ * @category Storage
+ */
 export type UnifiedStoredObject = {
     id: string;
 } & any;
 /**
  * Defines simple indexes (for queries that use a single key)
+ * @category Storage
  */
 export type UnifiedStorageIndexes = readonly {
     key: string;
@@ -16,11 +25,16 @@ export type UnifiedStorageIndexes = readonly {
 }[];
 /**
  * Defines composite indexes (for queries that use multiple keys)
+ * @category Storage
  */
 export type UnifiedStorageCompositeIndexes = readonly {
     keys: readonly string[];
     unique: boolean;
 }[];
+/**
+ * Interface for unified storage implementations
+ * @category Storage
+ */
 export interface IUnifiedStorage<I extends UnifiedStorageIndexes, C extends UnifiedStorageCompositeIndexes> {
     /**
      * Initializes the storage with given indexes and composite indexes
@@ -36,8 +50,24 @@ export interface IUnifiedStorage<I extends UnifiedStorageIndexes, C extends Unif
      * @param params
      */
     query(params: Array<Array<QueryParams>>): Promise<Array<UnifiedStoredObject>>;
+    /**
+     * Saves an object to storage, updating indexes as needed
+     * @param value - Object to save (must have an id property)
+     */
     save(value: UnifiedStoredObject): Promise<void>;
+    /**
+     * Saves multiple objects to storage in a batch operation
+     * @param value - Array of objects to save
+     */
     saveAll(value: UnifiedStoredObject[]): Promise<void>;
+    /**
+     * Removes an object from storage
+     * @param value - Object to remove (must have an id property)
+     */
     remove(value: UnifiedStoredObject): Promise<void>;
+    /**
+     * Removes multiple objects from storage in a batch operation
+     * @param value - Array of objects to remove
+     */
     removeAll(value: UnifiedStoredObject[]): Promise<void>;
 }

@@ -13,6 +13,10 @@ const Token_1 = require("../types/Token");
 const LNURLWithdraw_1 = require("../types/lnurl/LNURLWithdraw");
 const LNURLPay_1 = require("../types/lnurl/LNURLPay");
 const BitcoinWalletUtils_1 = require("../utils/BitcoinWalletUtils");
+/**
+ * Utility class providing helper methods for swap operations
+ * @category Core
+ */
 class SwapperUtils {
     constructor(root) {
         this.bitcoinNetwork = root.bitcoinNetwork;

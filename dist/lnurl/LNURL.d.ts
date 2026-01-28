@@ -10,6 +10,10 @@ export type LNURLPaySuccessAction = {
     iv: string | null;
 };
 export declare function isLNURLPaySuccessAction(obj: any, domain?: string): obj is LNURLPaySuccessAction;
+/**
+ * LNURL encoding/decoding and callback handling
+ * @category Bitcoin
+ */
 export declare class LNURL {
     private static findBech32LNURL;
     private static isBech32LNURL;

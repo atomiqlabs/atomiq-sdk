@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.isToken = exports.isSCToken = exports.BitcoinTokens = exports.isBtcToken = void 0;
+/**
+ * Type guard for BtcToken
+ * @category Tokens
+ */
 function isBtcToken(obj) {
     return typeof (obj) === "object" &&
         obj.chain === "BTC" &&
@@ -10,6 +14,10 @@ function isBtcToken(obj) {
         typeof (obj.name) === "string";
 }
 exports.isBtcToken = isBtcToken;
+/**
+ * Predefined Bitcoin token constants
+ * @category Tokens
+ */
 exports.BitcoinTokens = {
     BTC: {
         chain: "BTC",
@@ -26,6 +34,10 @@ exports.BitcoinTokens = {
         name: "Bitcoin (lightning L2)"
     }
 };
+/**
+ * Type guard for SCToken
+ * @category Tokens
+ */
 function isSCToken(obj) {
     return typeof (obj) === "object" &&
         obj.chain === "SC" &&
@@ -36,6 +48,10 @@ function isSCToken(obj) {
         typeof (obj.name) === "string";
 }
 exports.isSCToken = isSCToken;
+/**
+ * Type guard for Token
+ * @category Tokens
+ */
 function isToken(obj) {
     return isBtcToken(obj) || isSCToken(obj);
 }

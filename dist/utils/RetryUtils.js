@@ -37,6 +37,7 @@ function checkError(e, errorAllowed) {
  * @param errorAllowed A callback for determining whether a given error is allowed, and we should therefore not retry
  * @param abortSignal
  * @returns Result of the action executing callback
+ * @category Utilities
  */
 async function tryWithRetries(func, retryPolicy, errorAllowed, abortSignal) {
     retryPolicy = retryPolicy || {};

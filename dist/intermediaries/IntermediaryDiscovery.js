@@ -10,6 +10,10 @@ const IntermediaryAPI_1 = require("./apis/IntermediaryAPI");
 const Logger_1 = require("../utils/Logger");
 const HttpUtils_1 = require("../http/HttpUtils");
 const RetryUtils_1 = require("../utils/RetryUtils");
+/**
+ * Swap handler type enum for intermediary communication
+ * @category Pricing and LPs
+ */
 var SwapHandlerType;
 (function (SwapHandlerType) {
     SwapHandlerType["TO_BTC"] = "TO_BTC";
@@ -81,6 +85,10 @@ const logger = (0, Logger_1.getLogger)("IntermediaryDiscovery: ");
 const REGISTRY_URL = "https://api.github.com/repos/adambor/SolLightning-registry/contents/registry.json?ref=main";
 //To allow for legacy responses from not-yet updated LPs
 const DEFAULT_CHAIN = "SOLANA";
+/**
+ * Discovery service for available liquidity providers/intermediaries
+ * @category Pricing and LPs
+ */
 class IntermediaryDiscovery extends events_1.EventEmitter {
     constructor(swapContracts, registryUrl = REGISTRY_URL, nodeUrls, httpRequestTimeout, maxWaitForOthersTimeout) {
         super();

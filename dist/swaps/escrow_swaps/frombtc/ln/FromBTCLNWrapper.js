@@ -13,6 +13,10 @@ const IntermediaryAPI_1 = require("../../../../intermediaries/apis/IntermediaryA
 const RequestError_1 = require("../../../../errors/RequestError");
 const IFromBTCLNWrapper_1 = require("../IFromBTCLNWrapper");
 const RetryUtils_1 = require("../../../../utils/RetryUtils");
+/**
+ * Factory wrapper for creating Lightning BTC to Smart Chain swaps
+ * @category Swaps
+ */
 class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
     /**
      * @param chainIdentifier

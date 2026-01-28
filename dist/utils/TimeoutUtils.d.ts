@@ -3,6 +3,7 @@
  *
  * @param timeout how many milliseconds to wait for
  * @param abortSignal
+ * @category Utilities
  */
 export declare function timeoutPromise(timeout: number, abortSignal?: AbortSignal): Promise<void>;
 /**
@@ -11,5 +12,6 @@ export declare function timeoutPromise(timeout: number, abortSignal?: AbortSigna
  * @param timeout Milliseconds to wait
  * @param abortReason Abort with this abort reason
  * @param abortSignal Abort signal to extend
+ * @category Utilities
  */
 export declare function timeoutSignal(timeout: number, abortReason?: any, abortSignal?: AbortSignal): AbortSignal;

@@ -8,6 +8,10 @@ import { FeeType } from "../../../enums/FeeType";
 import { TokenAmount } from "../../../types/TokenAmount";
 import { BtcToken, SCToken } from "../../../types/Token";
 import { LoggerType } from "../../../utils/Logger";
+/**
+ * State enum for trusted Lightning gas swaps
+ * @category Swaps
+ */
 export declare enum LnForGasSwapState {
     EXPIRED = -2,
     FAILED = -1,
@@ -22,6 +26,10 @@ export type LnForGasSwapInit = ISwapInit & {
     token: string;
 };
 export declare function isLnForGasSwapInit(obj: any): obj is LnForGasSwapInit;
+/**
+ * Trusted Lightning Network to gas token swap
+ * @category Swaps
+ */
 export declare class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnForGasSwapTypeDefinition<T>, LnForGasSwapState> implements IAddressSwap {
     protected readonly currentVersion: number;
     protected readonly TYPE: SwapType;

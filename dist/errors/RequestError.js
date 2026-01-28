@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.OutOfBoundsError = exports.RequestError = void 0;
 /**
  * An error returned by the intermediary in a http response
+ * @category Errors
  */
 class RequestError extends Error {
     constructor(msg, httpCode) {
@@ -32,6 +33,7 @@ class RequestError extends Error {
 exports.RequestError = RequestError;
 /**
  * An error indicating out of bounds (amount too high or too low) on swap initialization
+ * @category Errors
  */
 class OutOfBoundsError extends RequestError {
     constructor(msg, httpCode, min, max) {

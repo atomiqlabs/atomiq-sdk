@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PaymentAuthError = void 0;
 /**
  * An error when the payment authorization returned by the intermediary is invalid
+ * @category Errors
  */
 class PaymentAuthError extends Error {
     constructor(msg, code, data) {

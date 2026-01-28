@@ -19,6 +19,10 @@ function isToBTCSwapInit(obj) {
         (0, IToBTCSwap_1.isIToBTCSwapInit)(obj);
 }
 exports.isToBTCSwapInit = isToBTCSwapInit;
+/**
+ * Smart Chain to on-chain BTC swap
+ * @category Swaps
+ */
 class ToBTCSwap extends IToBTCSwap_1.IToBTCSwap {
     constructor(wrapper, initOrObject) {
         if (isToBTCSwapInit(initOrObject) && initOrObject.url != null)

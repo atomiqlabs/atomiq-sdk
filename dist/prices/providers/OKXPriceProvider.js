@@ -3,6 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.OKXPriceProvider = void 0;
 const ExchangePriceProvider_1 = require("./abstract/ExchangePriceProvider");
 const HttpUtils_1 = require("../../http/HttpUtils");
+/**
+ * Price provider using OKX exchange API
+ * @category Pricing and LPs
+ */
 class OKXPriceProvider extends ExchangePriceProvider_1.ExchangePriceProvider {
     constructor(coinsMap, url = "https://www.okx.com/api/v5", httpRequestTimeout) {
         super(coinsMap, url, httpRequestTimeout);

@@ -45,6 +45,10 @@ const indexes = {
     "type, paymentHash": { key: ["type", "paymentHash"], unique: false },
     "type, initiator, state": { key: ["type", "initiator", "state"], unique: false }
 };
+/**
+ * Browser IndexedDB storage implementation
+ * @category Storage
+ */
 class IndexedDBUnifiedStorage {
     constructor(storageKey) {
         this.storageKey = storageKey;

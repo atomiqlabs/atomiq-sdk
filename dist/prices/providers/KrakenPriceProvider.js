@@ -3,6 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.KrakenPriceProvider = void 0;
 const ExchangePriceProvider_1 = require("./abstract/ExchangePriceProvider");
 const HttpUtils_1 = require("../../http/HttpUtils");
+/**
+ * Price provider using Kraken exchange API
+ * @category Pricing and LPs
+ */
 class KrakenPriceProvider extends ExchangePriceProvider_1.ExchangePriceProvider {
     constructor(coinsMap, url = "https://api.kraken.com/0", httpRequestTimeout) {
         super(coinsMap, url, httpRequestTimeout);

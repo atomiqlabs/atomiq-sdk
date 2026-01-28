@@ -18,6 +18,10 @@ const Logger_1 = require("../../utils/Logger");
 const TimeoutUtils_1 = require("../../utils/TimeoutUtils");
 const PriceInfoType_1 = require("../../types/PriceInfoType");
 const BitcoinWalletUtils_1 = require("../../utils/BitcoinWalletUtils");
+/**
+ * State enum for SPV FromBTC swaps
+ * @category Swaps
+ */
 var SpvFromBTCSwapState;
 (function (SpvFromBTCSwapState) {
     SpvFromBTCSwapState[SpvFromBTCSwapState["CLOSED"] = -5] = "CLOSED";

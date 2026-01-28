@@ -6,6 +6,7 @@ exports.timeoutSignal = exports.timeoutPromise = void 0;
  *
  * @param timeout how many milliseconds to wait for
  * @param abortSignal
+ * @category Utilities
  */
 function timeoutPromise(timeout, abortSignal) {
     return new Promise((resolve, reject) => {
@@ -36,6 +37,7 @@ exports.timeoutPromise = timeoutPromise;
  * @param timeout Milliseconds to wait
  * @param abortReason Abort with this abort reason
  * @param abortSignal Abort signal to extend
+ * @category Utilities
  */
 function timeoutSignal(timeout, abortReason, abortSignal) {
     if (timeout == null)

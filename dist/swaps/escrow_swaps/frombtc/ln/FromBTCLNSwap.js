@@ -17,6 +17,10 @@ const Token_1 = require("../../../../types/Token");
 const Logger_1 = require("../../../../utils/Logger");
 const TimeoutUtils_1 = require("../../../../utils/TimeoutUtils");
 const LNURLWithdraw_1 = require("../../../../types/lnurl/LNURLWithdraw");
+/**
+ * State enum for FromBTCLN swaps
+ * @category Swaps
+ */
 var FromBTCLNSwapState;
 (function (FromBTCLNSwapState) {
     FromBTCLNSwapState[FromBTCLNSwapState["FAILED"] = -4] = "FAILED";

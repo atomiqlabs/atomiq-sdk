@@ -10,6 +10,10 @@ import { ToBTCLNSwap } from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNSwap";
 import { OnchainForGasSwap } from "../swaps/trusted/onchain/OnchainForGasSwap";
 import { LnForGasSwap } from "../swaps/trusted/ln/LnForGasSwap";
 import { ISwap } from "../swaps/ISwap";
+/**
+ * Type mapping from SwapType enum to specific swap class implementations
+ * @category Utilities
+ */
 export type SwapTypeMapping<T extends ChainType> = {
     [SwapType.FROM_BTC]: SupportsSwapType<T, SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCSwap<T> : FromBTCSwap<T>;
     [SwapType.FROM_BTCLN]: SupportsSwapType<T, SwapType.FROM_BTCLN_AUTO> extends true ? FromBTCLNAutoSwap<T> : FromBTCLNSwap<T>;
@@ -20,4 +24,8 @@ export type SwapTypeMapping<T extends ChainType> = {
     [SwapType.SPV_VAULT_FROM_BTC]: SpvFromBTCSwap<T>;
     [SwapType.FROM_BTCLN_AUTO]: FromBTCLNAutoSwap<T>;
 };
+/**
+ * Type guard to check if a swap is of a specific swap type
+ * @category Utilities
+ */
 export declare function isSwapType<T extends ChainType, S extends SwapType>(swap: ISwap<T>, swapType: S): swap is SwapTypeMapping<T>[S];

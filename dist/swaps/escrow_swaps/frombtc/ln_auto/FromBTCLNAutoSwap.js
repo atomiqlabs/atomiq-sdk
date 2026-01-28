@@ -19,6 +19,10 @@ const Logger_1 = require("../../../../utils/Logger");
 const TimeoutUtils_1 = require("../../../../utils/TimeoutUtils");
 const LNURLWithdraw_1 = require("../../../../types/lnurl/LNURLWithdraw");
 const PriceInfoType_1 = require("../../../../types/PriceInfoType");
+/**
+ * State enum for FromBTCLNAuto swaps
+ * @category Swaps
+ */
 var FromBTCLNAutoSwapState;
 (function (FromBTCLNAutoSwapState) {
     FromBTCLNAutoSwapState[FromBTCLNAutoSwapState["FAILED"] = -4] = "FAILED";

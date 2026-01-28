@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.IntermediaryError = void 0;
 /**
  * An error or inconsistency in the intermediary's returned data, this will blacklist the intermediary
+ * @category Errors
  */
 class IntermediaryError extends Error {
     constructor(msg, originalError, recoverable = false) {

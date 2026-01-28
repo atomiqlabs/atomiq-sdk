@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.IPriceProvider = void 0;
+/**
+ * Abstract base class for price provider implementations
+ * @category Pricing and LPs
+ */
 class IPriceProvider {
     constructor(coins) {
         this.coinsMap = {};

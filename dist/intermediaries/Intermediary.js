@@ -3,6 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Intermediary = void 0;
 const SwapType_1 = require("../enums/SwapType");
 const RetryUtils_1 = require("../utils/RetryUtils");
+/**
+ * Represents a liquidity provider/intermediary
+ * @category Pricing and LPs
+ */
 class Intermediary {
     constructor(url, addresses, services, reputation = {}) {
         this.reputation = {};

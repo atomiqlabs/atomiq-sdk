@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SwapType = void 0;
+/**
+ * Enum representing different types of swaps
+ * @category Core
+ */
 var SwapType;
 (function (SwapType) {
     SwapType[SwapType["FROM_BTC"] = 0] = "FROM_BTC";

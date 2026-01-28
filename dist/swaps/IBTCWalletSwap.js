@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.isIBTCWalletSwap = void 0;
+/**
+ * Type guard to check if an object is an IBTCWalletSwap
+ * @category Swaps
+ */
 function isIBTCWalletSwap(obj) {
     return obj != null &&
         typeof (obj.getFundedPsbt) === "function" &&

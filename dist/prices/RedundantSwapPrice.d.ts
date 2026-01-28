@@ -1,6 +1,10 @@
 import { IPriceProvider } from "./abstract/IPriceProvider";
 import { ICachedSwapPrice } from "./abstract/ICachedSwapPrice";
 import { ChainIds, MultiChain } from "../swapper/Swapper";
+/**
+ * Asset configuration for redundant swap pricing
+ * @category Pricing and LPs
+ */
 export type RedundantSwapPriceAssets<T extends MultiChain> = {
     binancePair?: string;
     okxPair?: string;
@@ -30,6 +34,7 @@ type CoinDecimals<T extends MultiChain> = {
 /**
  * Swap price API using multiple price sources, handles errors on the APIs and automatically switches between them, such
  *  that there always is a functional API
+ * @category Pricing and LPs
  */
 export declare class RedundantSwapPrice<T extends MultiChain> extends ICachedSwapPrice<T> {
     static createFromTokenMap<T extends MultiChain>(maxAllowedFeeDiffPPM: bigint, assets: RedundantSwapPriceAssets<T>, cacheTimeout?: number): RedundantSwapPrice<T>;

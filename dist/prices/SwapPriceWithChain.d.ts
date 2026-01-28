@@ -2,6 +2,10 @@ import { ISwapPrice } from "./abstract/ISwapPrice";
 import { ChainIds, MultiChain } from "../swapper/Swapper";
 import { Token } from "../types/Token";
 import { PriceInfoType } from "../types/PriceInfoType";
+/**
+ * Chain-specific wrapper for swap pricing
+ * @category Pricing and LPs
+ */
 export declare class SwapPriceWithChain<T extends MultiChain, ChainIdentifier extends ChainIds<T>> {
     swapPrice: ISwapPrice<T>;
     chainIdentifier: ChainIdentifier;

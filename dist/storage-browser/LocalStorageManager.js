@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.LocalStorageManager = void 0;
 /**
  * StorageManager using browser's local storage API
+ * @category Storage
  */
 class LocalStorageManager {
     constructor(storageKey) {

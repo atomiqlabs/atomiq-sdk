@@ -1,3 +1,7 @@
+/**
+ * Asset definitions for supported smart chain tokens with pricing information
+ * @category Tokens
+ */
 export declare const SmartChainAssets: {
     readonly _TESTNET_WBTC_VESU: {
         readonly pricing: {
@@ -150,4 +154,8 @@ export declare const SmartChainAssets: {
         readonly name: "pegBTC";
     };
 };
+/**
+ * Type representing valid smart chain asset ticker symbols
+ * @category Tokens
+ */
 export type SmartChainAssetTickers = keyof typeof SmartChainAssets;

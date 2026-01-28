@@ -2,6 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deserializePriceInfoType = exports.serializePriceInfoType = exports.isPriceInfoType = void 0;
 const Utils_1 = require("../utils/Utils");
+/**
+ * Type guard for PriceInfoType
+ * @category Pricing and LPs
+ */
 function isPriceInfoType(obj) {
     return obj != null &&
         typeof (obj.isValid) === "boolean" &&
@@ -13,6 +17,10 @@ function isPriceInfoType(obj) {
         typeof (obj.swapPriceUSatPerToken) === "bigint";
 }
 exports.isPriceInfoType = isPriceInfoType;
+/**
+ * Serializes PriceInfoType for storage
+ * @category Pricing and LPs
+ */
 function serializePriceInfoType(obj) {
     if (obj == null)
         return null;
@@ -27,6 +35,10 @@ function serializePriceInfoType(obj) {
     };
 }
 exports.serializePriceInfoType = serializePriceInfoType;
+/**
+ * Deserializes PriceInfoType from storage
+ * @category Pricing and LPs
+ */
 function deserializePriceInfoType(obj) {
     if (obj == null)
         return;

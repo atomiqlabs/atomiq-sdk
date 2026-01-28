@@ -3,6 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CoinPaprikaPriceProvider = void 0;
 const HttpPriceProvider_1 = require("./abstract/HttpPriceProvider");
 const HttpUtils_1 = require("../../http/HttpUtils");
+/**
+ * Price provider using CoinPaprika API
+ * @category Pricing and LPs
+ */
 class CoinPaprikaPriceProvider extends HttpPriceProvider_1.HttpPriceProvider {
     constructor(coinsMap, url = "https://api.coinpaprika.com/v1", httpRequestTimeout) {
         super(coinsMap, url, httpRequestTimeout);

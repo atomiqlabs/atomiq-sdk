@@ -29,6 +29,10 @@ import { TokenAmount } from "../types/TokenAmount";
 import { BtcToken, SCToken, Token } from "../types/Token";
 import { LNURLWithdraw } from "../types/lnurl/LNURLWithdraw";
 import { LNURLPay } from "../types/lnurl/LNURLPay";
+/**
+ * Chain-specific wrapper around Swapper for a particular blockchain
+ * @category Core
+ */
 export declare class SwapperWithChain<T extends MultiChain, ChainIdentifier extends ChainIds<T>> {
     readonly chainIdentifier: ChainIdentifier;
     readonly swapper: Swapper<T>;

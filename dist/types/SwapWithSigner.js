@@ -4,6 +4,10 @@ exports.wrapSwapWithSigner = void 0;
 const IToBTCSwap_1 = require("../swaps/escrow_swaps/tobtc/IToBTCSwap");
 const IFromBTCSelfInitSwap_1 = require("../swaps/escrow_swaps/frombtc/IFromBTCSelfInitSwap");
 const FromBTCLNSwap_1 = require("../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap");
+/**
+ * Wraps a swap with automatic signer injection for methods like commit, refund, and claim
+ * @category Swaps
+ */
 function wrapSwapWithSigner(swap, signer) {
     return new Proxy(swap, {
         get: (target, prop, receiver) => {

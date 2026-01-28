@@ -12,6 +12,10 @@ import { IAddressSwap } from "../../../IAddressSwap";
 import { TokenAmount } from "../../../../types/TokenAmount";
 import { BtcToken, SCToken } from "../../../../types/Token";
 import { LoggerType } from "../../../../utils/Logger";
+/**
+ * State enum for FromBTC swaps
+ * @category Swaps
+ */
 export declare enum FromBTCSwapState {
     FAILED = -4,
     EXPIRED = -3,

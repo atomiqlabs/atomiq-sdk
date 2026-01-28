@@ -1,6 +1,14 @@
 import { ISwap } from "../swaps/ISwap";
 import { ChainType } from "@atomiqlabs/base";
+/**
+ * Proxy type that auto-injects signer into swap methods
+ * @category Swaps
+ */
 export type SwapWithSigner<T extends ISwap> = {
     [K in keyof T]: K extends "commit" ? (abortSignal?: AbortSignal, skipChecks?: boolean) => Promise<string> : K extends "refund" ? (abortSignal?: AbortSignal) => Promise<string> : K extends "claim" ? (abortSignal?: AbortSignal) => Promise<string> : K extends "commitAndClaim" ? (abortSignal?: AbortSignal, skipChecks?: boolean) => Promise<string> : T[K];
 };
+/**
+ * Wraps a swap with automatic signer injection for methods like commit, refund, and claim
+ * @category Swaps
+ */
 export declare function wrapSwapWithSigner<C extends ChainType, T extends ISwap<C>>(swap: T, signer: C["Signer"]): SwapWithSigner<T>;

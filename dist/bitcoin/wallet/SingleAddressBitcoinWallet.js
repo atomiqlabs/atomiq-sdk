@@ -5,6 +5,10 @@ const utils_1 = require("@scure/btc-signer/utils");
 const btc_signer_1 = require("@scure/btc-signer");
 const buffer_1 = require("buffer");
 const BitcoinWallet_1 = require("./BitcoinWallet");
+/**
+ * Bitcoin wallet implementation for single-address scenarios
+ * @category Bitcoin
+ */
 class SingleAddressBitcoinWallet extends BitcoinWallet_1.BitcoinWallet {
     constructor(mempoolApi, network, addressDataOrWIF, feeMultiplier = 1.25, feeOverride) {
         super(mempoolApi, network, feeMultiplier, feeOverride);

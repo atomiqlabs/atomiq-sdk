@@ -8,6 +8,10 @@ const SwapDirection_1 = require("../enums/SwapDirection");
 const PercentagePPM_1 = require("../types/fees/PercentagePPM");
 const Token_1 = require("../types/Token");
 const PriceInfoType_1 = require("../types/PriceInfoType");
+/**
+ * Type guard to check if an object is an ISwapInit
+ * @category Swaps
+ */
 function isISwapInit(obj) {
     return typeof obj === 'object' &&
         obj != null &&
@@ -19,6 +23,10 @@ function isISwapInit(obj) {
         (typeof obj.exactIn === 'boolean');
 }
 exports.isISwapInit = isISwapInit;
+/**
+ * Base abstract class for all swap types
+ * @category Swaps
+ */
 class ISwap {
     constructor(wrapper, swapInitOrObj) {
         this.currentVersion = 1;

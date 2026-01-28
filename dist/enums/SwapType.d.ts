@@ -1,3 +1,7 @@
+/**
+ * Enum representing different types of swaps
+ * @category Core
+ */
 export declare enum SwapType {
     FROM_BTC = 0,
     FROM_BTCLN = 1,

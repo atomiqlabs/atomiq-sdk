@@ -1,5 +1,13 @@
 import { Transaction } from "@scure/btc-signer";
+/**
+ * Type guard to check if an object implements IBitcoinWallet
+ * @category Bitcoin
+ */
 export declare function isIBitcoinWallet(val: any): val is IBitcoinWallet;
+/**
+ * Interface for Bitcoin wallet operations
+ * @category Bitcoin
+ */
 export interface IBitcoinWallet {
     sendTransaction(address: string, amount: bigint, feeRate?: number): Promise<string>;
     fundPsbt(psbt: Transaction, feeRate?: number): Promise<Transaction>;

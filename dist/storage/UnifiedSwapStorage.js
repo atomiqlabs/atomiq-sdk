@@ -17,6 +17,10 @@ const compositeIndexes = [
     { keys: ["type", "paymentHash"], unique: false },
     { keys: ["type", "initiator", "state"], unique: false }
 ];
+/**
+ * Unified swap persistence layer with caching
+ * @category Storage
+ */
 class UnifiedSwapStorage {
     constructor(storage, noWeakRefMap) {
         this.weakRefCache = new Map();

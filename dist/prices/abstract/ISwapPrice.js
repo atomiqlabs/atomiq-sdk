@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ISwapPrice = void 0;
+/**
+ * Abstract base class for swap pricing implementations
+ * @category Pricing and LPs
+ */
 class ISwapPrice {
     constructor(maxAllowedFeeDifferencePPM) {
         this.maxAllowedFeeDifferencePPM = maxAllowedFeeDifferencePPM;

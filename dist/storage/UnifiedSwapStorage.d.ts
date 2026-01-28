@@ -32,6 +32,10 @@ declare const indexes: readonly [{
     readonly unique: false;
     readonly nullable: true;
 }];
+/**
+ * Index types for swap storage
+ * @category Storage
+ */
 export type UnifiedSwapStorageIndexes = typeof indexes;
 declare const compositeIndexes: readonly [{
     readonly keys: readonly ["initiator", "id"];
@@ -46,7 +50,15 @@ declare const compositeIndexes: readonly [{
     readonly keys: readonly ["type", "initiator", "state"];
     readonly unique: false;
 }];
+/**
+ * Composite index types for swap storage
+ * @category Storage
+ */
 export type UnifiedSwapStorageCompositeIndexes = typeof compositeIndexes;
+/**
+ * Unified swap persistence layer with caching
+ * @category Storage
+ */
 export declare class UnifiedSwapStorage<T extends ChainType> {
     readonly storage: IUnifiedStorage<UnifiedSwapStorageIndexes, UnifiedSwapStorageCompositeIndexes>;
     readonly weakRefCache: Map<string, WeakRef<ISwap<T>>>;

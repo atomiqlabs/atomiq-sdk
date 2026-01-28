@@ -17,6 +17,10 @@ export type ToBTCLNSwapInit<T extends SwapData> = IToBTCSwapInit<T> & {
     successAction?: LNURLPaySuccessAction;
 };
 export declare function isToBTCLNSwapInit<T extends SwapData>(obj: any): obj is ToBTCLNSwapInit<T>;
+/**
+ * Smart Chain to Lightning Network BTC swap
+ * @category Swaps
+ */
 export declare class ToBTCLNSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, ToBTCLNDefinition<T>> {
     private readonly usesClaimHashAsId;
     protected outputToken: BtcToken<true>;

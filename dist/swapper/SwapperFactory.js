@@ -46,6 +46,10 @@ const mempoolUrls = {
 const nostrUrls = [
     "wss://relay.damus.io", "wss://nostr.einundzwanzig.space", "wss://relay01.lnfi.network/", "wss://relay.puresignal.news/", "wss://relay.fountain.fm/", "wss://sendit.nosflare.com/"
 ];
+/**
+ * Factory class for creating and initializing Swapper instances with typed chain support
+ * @category Core
+ */
 class SwapperFactory {
     constructor(initializers) {
         this.initializers = initializers;

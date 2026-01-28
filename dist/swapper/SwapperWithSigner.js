@@ -2,6 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SwapperWithSigner = void 0;
 const SwapWithSigner_1 = require("../types/SwapWithSigner");
+/**
+ * Chain and signer-specific wrapper for automatic signer injection into swap methods
+ * @category Core
+ */
 class SwapperWithSigner {
     get prices() {
         return this.swapper.prices;

@@ -1,12 +1,20 @@
 /// <reference types="node" />
 /// <reference types="node" />
 import { Buffer } from "buffer";
+/**
+ * Bitcoin transaction confirmation status
+ * @category Bitcoin
+ */
 export type BitcoinTransactionStatus = {
     confirmed: boolean;
     block_height: number;
     block_hash: string;
     block_time: number;
 };
+/**
+ * Bitcoin transaction output
+ * @category Bitcoin
+ */
 export type TxVout = {
     scriptpubkey: string;
     scriptpubkey_asm: string;
@@ -14,6 +22,10 @@ export type TxVout = {
     scriptpubkey_address: string;
     value: number;
 };
+/**
+ * Bitcoin transaction input
+ * @category Bitcoin
+ */
 export type TxVin = {
     txid: string;
     vout: number;
@@ -25,6 +37,10 @@ export type TxVin = {
     sequence: number;
     inner_witnessscript_asm: string;
 };
+/**
+ * Full Bitcoin transaction data
+ * @category Bitcoin
+ */
 export type BitcoinTransaction = {
     txid: string;
     version: number;
@@ -36,6 +52,10 @@ export type BitcoinTransaction = {
     fee: number;
     status: BitcoinTransactionStatus;
 };
+/**
+ * Bitcoin block data
+ * @category Bitcoin
+ */
 export type BlockData = {
     bits: number;
     difficulty: number;
@@ -52,6 +72,10 @@ export type BlockData = {
     version: number;
     weight: number;
 };
+/**
+ * Bitcoin block header data
+ * @category Bitcoin
+ */
 export type BitcoinBlockHeader = {
     id: string;
     height: number;
@@ -159,6 +183,10 @@ export type TransactionOutspend = {
     vin: number;
     status: BitcoinTransactionStatus;
 };
+/**
+ * Mempool.space REST API client for Bitcoin blockchain data
+ * @category Bitcoin
+ */
 export declare class MempoolApi {
     backends: {
         url: string;

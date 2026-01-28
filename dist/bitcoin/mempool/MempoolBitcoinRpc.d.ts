@@ -6,6 +6,10 @@ import { MempoolApi } from "./MempoolApi";
 import { Buffer } from "buffer";
 import { BitcoinRpcWithAddressIndex, BtcTxWithBlockheight } from "../BitcoinRpcWithAddressIndex";
 import { LightningNetworkApi, LNNodeLiquidity } from "../LightningNetworkApi";
+/**
+ * Bitcoin RPC implementation via Mempool.space API
+ * @category Bitcoin
+ */
 export declare class MempoolBitcoinRpc implements BitcoinRpcWithAddressIndex<MempoolBitcoinBlock>, LightningNetworkApi {
     api: MempoolApi;
     constructor(urlOrMempoolApi: MempoolApi | string | string[]);

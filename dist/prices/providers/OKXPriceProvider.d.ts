@@ -17,6 +17,10 @@ export type OKXResponse = {
         }
     ];
 };
+/**
+ * Price provider using OKX exchange API
+ * @category Pricing and LPs
+ */
 export declare class OKXPriceProvider<T extends MultiChain> extends ExchangePriceProvider<T> {
     constructor(coinsMap: CtorCoinTypes<T>, url?: string, httpRequestTimeout?: number);
     fetchPair(pair: string, abortSignal?: AbortSignal): Promise<number>;

@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SwapPriceWithChain = void 0;
+/**
+ * Chain-specific wrapper for swap pricing
+ * @category Pricing and LPs
+ */
 class SwapPriceWithChain {
     constructor(swapPrice, chainIdentifier) {
         this.swapPrice = swapPrice;

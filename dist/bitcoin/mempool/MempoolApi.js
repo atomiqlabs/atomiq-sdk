@@ -6,6 +6,10 @@ const Utils_1 = require("../../utils/Utils");
 const RequestError_1 = require("../../errors/RequestError");
 const HttpUtils_1 = require("../../http/HttpUtils");
 const RetryUtils_1 = require("../../utils/RetryUtils");
+/**
+ * Mempool.space REST API client for Bitcoin blockchain data
+ * @category Bitcoin
+ */
 class MempoolApi {
     /**
      * Returns api url that should be operational
@@ -138,6 +142,7 @@ class MempoolApi {
      * @param pubkey
      */
     getLNNodeInfo(pubkey) {
+        //500, 200
         return this.request("v1/lightning/nodes/" + pubkey, "obj").catch((e) => {
             if (e.message === "This node does not exist, or our node is not seeing it yet")
                 return null;
@@ -150,6 +155,7 @@ class MempoolApi {
      * @param txId
      */
     getTransaction(txId) {
+        //404 ("Transaction not found"), 200
         return this.request("tx/" + txId, "obj").catch((e) => {
             if (e.message === "Transaction not found")
                 return null;
@@ -162,6 +168,7 @@ class MempoolApi {
      * @param txId
      */
     async getRawTransaction(txId) {
+        //404 ("Transaction not found"), 200
         const rawTransaction = await this.request("tx/" + txId + "/hex", "str").catch((e) => {
             if (e.message === "Transaction not found")
                 return null;
@@ -175,6 +182,7 @@ class MempoolApi {
      * @param address
      */
     async getAddressBalances(address) {
+        //400 ("Invalid Bitcoin address"), 200
         const jsonBody = await this.request("address/" + address, "obj");
         const confirmedInput = BigInt(jsonBody.chain_stats.funded_txo_sum);
         const confirmedOutput = BigInt(jsonBody.chain_stats.spent_txo_sum);
@@ -191,6 +199,7 @@ class MempoolApi {
      * @param txId
      */
     getCPFPData(txId) {
+        //200
         return this.request("v1/cpfp/" + txId, "obj");
     }
     /**
@@ -199,6 +208,7 @@ class MempoolApi {
      * @param address
      */
     async getAddressUTXOs(address) {
+        //400 ("Invalid Bitcoin address"), 200
         let jsonBody = await this.request("address/" + address + "/utxo", "obj");
         jsonBody.forEach(e => e.value = BigInt(e.value));
         return jsonBody;
@@ -207,6 +217,7 @@ class MempoolApi {
      * Returns current on-chain bitcoin fees
      */
     getFees() {
+        //200
         return this.request("v1/fees/recommended", "obj");
     }
     /**
@@ -215,18 +226,21 @@ class MempoolApi {
      * @param address
      */
     getAddressTransactions(address) {
+        //400 ("Invalid Bitcoin address"), 200
         return this.request("address/" + address + "/txs", "obj");
     }
     /**
      * Returns expected pending (mempool) blocks
      */
     getPendingBlocks() {
+        //200
         return this.request("v1/fees/mempool-blocks", "obj");
     }
     /**
      * Returns the blockheight of the current bitcoin blockchain's tip
      */
     async getTipBlockHeight() {
+        //200
         const response = await this.request("blocks/tip/height", "str");
         return parseInt(response);
     }
@@ -236,6 +250,7 @@ class MempoolApi {
      * @param blockhash
      */
     getBlockHeader(blockhash) {
+        //404 ("Block not found"), 200
         return this.request("block/" + blockhash, "obj");
     }
     /**
@@ -244,6 +259,7 @@ class MempoolApi {
      * @param blockhash
      */
     getBlockStatus(blockhash) {
+        //200
         return this.request("block/" + blockhash + "/status", "obj");
     }
     /**
@@ -252,6 +268,7 @@ class MempoolApi {
      * @param txId
      */
     getTransactionProof(txId) {
+        //404 ("Transaction not found or is unconfirmed"), 200
         return this.request("tx/" + txId + "/merkle-proof", "obj");
     }
     /**
@@ -260,6 +277,7 @@ class MempoolApi {
      * @param txId
      */
     getOutspends(txId) {
+        //404 ("Transaction not found"), 200
         return this.request("tx/" + txId + "/outspends", "obj");
     }
     /**
@@ -268,6 +286,7 @@ class MempoolApi {
      * @param height
      */
     getBlockHash(height) {
+        //404 ("Block not found"), 200
         return this.request("block-height/" + height, "str");
     }
     /**
@@ -276,6 +295,7 @@ class MempoolApi {
      * @param endHeight
      */
     getPast15BlockHeaders(endHeight) {
+        //200
         return this.request("v1/blocks/" + endHeight, "obj");
     }
     /**
@@ -284,6 +304,7 @@ class MempoolApi {
      * @param transactionHex
      */
     sendTransaction(transactionHex) {
+        //400??, 200
         return this.request("tx", "str", "POST", transactionHex);
     }
 }

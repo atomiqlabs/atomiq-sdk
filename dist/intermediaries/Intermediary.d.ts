@@ -2,9 +2,17 @@ import { SwapType } from "../enums/SwapType";
 import { SwapHandlerInfoType } from "./IntermediaryDiscovery";
 import { ChainSwapType, SwapContract } from "@atomiqlabs/base";
 import { LNNodeLiquidity } from "../bitcoin/LightningNetworkApi";
+/**
+ * Services offered by an intermediary
+ * @category Pricing and LPs
+ */
 export type ServicesType = {
     [key in SwapType]?: SwapHandlerInfoType;
 };
+/**
+ * Reputation data for an intermediary on a single chain
+ * @category Pricing and LPs
+ */
 export type SingleChainReputationType = {
     [token: string]: {
         [key in ChainSwapType]: {
@@ -17,9 +25,17 @@ export type SingleChainReputationType = {
         };
     };
 };
+/**
+ * Smart chain liquidity data
+ * @category Pricing and LPs
+ */
 export type SCLiquidity = {
     [token: string]: bigint;
 };
+/**
+ * Represents a liquidity provider/intermediary
+ * @category Pricing and LPs
+ */
 export declare class Intermediary {
     readonly url: string;
     readonly addresses: {

@@ -78,7 +78,7 @@ class ToBTCLNSwap extends IToBTCSwap_1.IToBTCSwap {
         return Token_1.BitcoinTokens.BTCLN;
     }
     getOutput() {
-        if (this.pr == null || !this.pr.startsWith("ln"))
+        if (this.pr == null || !this.pr.toLowerCase().startsWith("ln"))
             return null;
         const parsedPR = (0, bolt11_1.decode)(this.pr);
         if (parsedPR.millisatoshis == null)
@@ -114,7 +114,7 @@ class ToBTCLNSwap extends IToBTCSwap_1.IToBTCSwap {
      * Checks whether a swap is likely to fail, based on the confidence as reported by the LP
      */
     willLikelyFail() {
-        if (this.pr == null || !this.pr.startsWith("ln"))
+        if (this.pr == null || !this.pr.toLowerCase().startsWith("ln"))
             return false;
         const parsedRequest = (0, bolt11_1.decode)(this.pr);
         if (parsedRequest.tagsObject.routing_info != null) {
@@ -131,7 +131,7 @@ class ToBTCLNSwap extends IToBTCSwap_1.IToBTCSwap {
      *  for such a wallet to be online when attempting to make a swap
      */
     isPayingToNonCustodialWallet() {
-        if (this.pr == null || !this.pr.startsWith("ln"))
+        if (this.pr == null || !this.pr.toLowerCase().startsWith("ln"))
             return false;
         const parsedRequest = (0, bolt11_1.decode)(this.pr);
         if (parsedRequest.tagsObject.routing_info != null) {
@@ -150,7 +150,7 @@ class ToBTCLNSwap extends IToBTCSwap_1.IToBTCSwap {
     getPaymentHash() {
         if (this.pr == null)
             return null;
-        if (this.pr.startsWith("ln")) {
+        if (this.pr.toLowerCase().startsWith("ln")) {
             const parsed = (0, bolt11_1.decode)(this.pr);
             if (parsed.tagsObject.payment_hash == null)
                 throw new Error("Swap invoice has no payment hash field!");
@@ -161,7 +161,7 @@ class ToBTCLNSwap extends IToBTCSwap_1.IToBTCSwap {
     getLpIdentifier() {
         if (this.pr == null)
             return this.data.getEscrowHash();
-        if (this.pr.startsWith("ln")) {
+        if (this.pr.toLowerCase().startsWith("ln")) {
             const parsed = (0, bolt11_1.decode)(this.pr);
             if (parsed.tagsObject.payment_hash == null)
                 throw new Error("Swap invoice has no payment hash field!");

@@ -6,6 +6,7 @@ export * from "./bitcoin/wallet/IBitcoinWallet";
 export * from "./bitcoin/wallet/MinimalBitcoinWalletInterface";
 export * from "./bitcoin/wallet/MinimalLightningNetworkWalletInterface";
 export * from "./bitcoin/wallet/SingleAddressBitcoinWallet";
+export { CoinselectAddressTypes } from "./bitcoin/coinselect2";
 export * from "./enums/FeeType";
 export * from "./enums/SwapAmountType";
 export * from "./enums/SwapDirection";

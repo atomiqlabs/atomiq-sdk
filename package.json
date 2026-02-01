@@ -1,6 +1,6 @@
 {
   "name": "@atomiqlabs/sdk",
-  "version": "8.0.9",
+  "version": "8.0.10",
   "description": "atomiq labs SDK for cross-chain swaps between smart chains and bitcoin",
   "main": "./dist/index.js",
   "types:": "./dist/index.d.ts",

@@ -437,7 +437,12 @@ class Swapper extends events_1.EventEmitter {
                             return;
                         }
                         if (min != null && max != null) {
-                            reject(new RequestError_1.OutOfBoundsError("Out of bounds", 400, min, max));
+                            let msg = "Swap amount too high or too low! Try swapping a different amount.";
+                            if (min > amountData.amount)
+                                msg = "Swap amount too low! Try swapping a higher amount.";
+                            if (max < amountData.amount)
+                                msg = "Swap amount too high! Try swapping a lower amount.";
+                            reject(new RequestError_1.OutOfBoundsError(msg, 400, min, max));
                             return;
                         }
                         reject(error);

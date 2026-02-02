@@ -1,3 +1,7 @@
+/**
+ * Asset definitions for supported smart chain tokens with pricing information
+ * @category Tokens
+ */
 export declare const SmartChainAssets: {
     readonly _TESTNET_WBTC_VESU: {
         readonly pricing: {
@@ -31,11 +35,11 @@ export declare const SmartChainAssets: {
     };
     readonly TBTC: {
         readonly pricing: {
-            readonly binancePair: any;
-            readonly okxPair: any;
+            readonly binancePair: undefined;
+            readonly okxPair: undefined;
             readonly coinGeckoCoinId: "tbtc";
             readonly coinPaprikaCoinId: "tbtc-tbtc";
-            readonly krakenPair: any;
+            readonly krakenPair: undefined;
         };
         readonly name: "Threshold BTC (tBTC)";
     };
@@ -150,4 +154,8 @@ export declare const SmartChainAssets: {
         readonly name: "pegBTC";
     };
 };
+/**
+ * Type representing valid smart chain asset ticker symbols
+ * @category Tokens
+ */
 export type SmartChainAssetTickers = keyof typeof SmartChainAssets;

@@ -1,6 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SmartChainAssets = void 0;
+/**
+ * Asset definitions for supported smart chain tokens with pricing information
+ * @category Tokens
+ */
 exports.SmartChainAssets = {
     _TESTNET_WBTC_VESU: {
         pricing: {
@@ -34,11 +38,11 @@ exports.SmartChainAssets = {
     },
     TBTC: {
         pricing: {
-            binancePair: null,
-            okxPair: null,
+            binancePair: undefined,
+            okxPair: undefined,
             coinGeckoCoinId: "tbtc",
             coinPaprikaCoinId: "tbtc-tbtc",
-            krakenPair: null
+            krakenPair: undefined
         },
         name: "Threshold BTC (tBTC)"
     },

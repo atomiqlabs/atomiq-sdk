@@ -61,10 +61,14 @@ Create swapper factory, here we can pick and choose which chains we want to have
 import {SolanaInitializer, SolanaInitializerType} from "@atomiqlabs/chain-solana";
 import {StarknetInitializer, StarknetInitializerType} from "@atomiqlabs/chain-starknet";
 import {CitreaInitializer, CitreaInitializerType} from "@atomiqlabs/chain-evm";
-import {SwapperFactory} from "@atomiqlabs/sdk";
+import {SwapperFactory, TypedTokens} from "@atomiqlabs/sdk";
 
-const Factory = new SwapperFactory<[SolanaInitializerType, StarknetInitializerType, CitreaInitializerType]>([SolanaInitializer, StarknetInitializer, CitreaInitializer] as const);
-const Tokens = Factory.Tokens; //Get the supported tokens for all the specified chains.
+//Define chains that you want to support here
+const chains = [SolanaInitializer, StarknetInitializer, CitreaInitializer] as const;
+type SupportedChains = typeof chains; //It's helpful that we also get the type of the chains array
+
+const Factory = new SwapperFactory<SupportedChains>(chains); //Create swapper factory
+const Tokens: TypedTokens<SupportedChains> = Factory.Tokens; //Get the supported tokens for all the specified chains.
 ```
 
 #### Browser
@@ -72,21 +76,21 @@ const Tokens = Factory.Tokens; //Get the supported tokens for all the specified 
 This uses browser's Indexed DB by default
 
 ```typescript
-import {BitcoinNetwork} from "@atomiqlabs/sdk";
+import {BitcoinNetwork, TypedSwapper} from "@atomiqlabs/sdk";
 
-const swapper = Factory.newSwapper({
-    chains: {
-        SOLANA: {
-            rpcUrl: solanaRpc //You can also pass Connection object here
-        },
-        STARKNET: {
-            rpcUrl: starknetRpc //You can also pass Provider object here           
-        },
-        CITREA: {
-            rpcUrl: citreaRpc, //You can also pass JsonApiProvider object here
-        }
+const swapper: TypedSwapper<SupportedChains> = Factory.newSwapper({
+  chains: {
+    SOLANA: {
+      rpcUrl: solanaRpc //You can also pass Connection object here
     },
-    bitcoinNetwork: BitcoinNetwork.TESTNET //or BitcoinNetwork.MAINNET, BitcoinNetwork.TESTNET4 - this also sets the network to use for Solana (solana devnet for bitcoin testnet) & Starknet (sepolia for bitcoin testnet)
+    STARKNET: {
+      rpcUrl: starknetRpc //You can also pass Provider object here           
+    },
+    CITREA: {
+      rpcUrl: citreaRpc, //You can also pass JsonApiProvider object here
+    }
+  },
+  bitcoinNetwork: BitcoinNetwork.TESTNET //or BitcoinNetwork.MAINNET, BitcoinNetwork.TESTNET4 - this also sets the network to use for Solana (solana devnet for bitcoin testnet) & Starknet (sepolia for bitcoin testnet)
 });
 ```
 
@@ -104,9 +108,9 @@ Then use pass it in the newSwapper function
 
 ```typescript
 import {SqliteStorageManager, SqliteUnifiedStorage} from "@atomiqlabs/storage-sqlite";
-import {BitcoinNetwork} from "@atomiqlabs/sdk";
+import {BitcoinNetwork, TypedSwapper} from "@atomiqlabs/sdk";
 
-const swapper = Factory.newSwapper({
+const swapper: TypedSwapper<SupportedChains> = Factory.newSwapper({
     chains: {
         SOLANA: {
             rpcUrl: solanaRpc //You can also pass Connection object here
@@ -194,7 +198,7 @@ Getting swap quote
 
 ```typescript
 //Create the swap: swapping SOL to Bitcoin on-chain, receiving _amount of satoshis (smallest unit of bitcoin) to _address
-const swap = await swapper.swap(
+const swap: ToBTCSwap<SolanaChainType> = await swapper.swap(
     Tokens.SOLANA.SOL, //From specified source token
     Tokens.BITCOIN.BTC, //Swap to BTC
     "0.0001", //Amount can be either passed in base units as bigint or in decimal format as string
@@ -321,7 +325,7 @@ Getting swap quote
 
 ```typescript
 //Create the swap: swapping _amount of satoshis of Bitcoin on-chain to SOL
-const swap = await swapper.swap(
+const swap: FromBTCSwap<SolanaChainType> = await swapper.swap(
     Tokens.BITCOIN.BTC, //Swap from BTC
     Tokens.SOLANA.SOL, //Into specified destination token
     "0.0001", //Amount can be either passed in base units as bigint or in decimal format as string
@@ -494,7 +498,7 @@ Getting swap quote
 
 ```typescript
 //Create the swap: swapping _amount of satoshis of Bitcoin on-chain to SOL
-const swap = await swapper.swap(
+const swap: SpvFromBTCSwap<StarknetChainType> = await swapper.swap(
     Tokens.BITCOIN.BTC, //Swap from BTC
     Tokens.STARKNET.STRK, //Into specified destination token
     "0.0001", //Amount can be either passed in base units as bigint or in decimal format as string
@@ -660,7 +664,7 @@ Getting swap quote
 
 ```typescript
 //Create the swap: swapping SOL to Bitcoin lightning
-const swap = await swapper.swap(
+const swap: ToBTCLNSwap<SolanaChainType> = await swapper.swap(
     Tokens.SOLANA.SOL, //From specified source token
     Tokens.BITCOIN.BTCLN, //Swap to BTC-LN
     undefined, //Amount is specified in the lightning network invoice!
@@ -787,7 +791,7 @@ NOTE: Solana uses an old swap protocol for Bitcoin lightning network -> Solana s
 Getting swap quote
 
 ```typescript
-const swap = await swapper.swap(
+const swap: FromBTCLNSwap<SolanaChainType> = await swapper.swap(
     Tokens.BITCOIN.BTCLN, //Swap from BTC-LN
     Tokens.SOLANA.SOL, //Into specified destination token
     10000n, //Amount can be either passed in base units as bigint or in decimal format as string
@@ -911,7 +915,7 @@ await swap.execute(
 Getting swap quote
 
 ```typescript
-const swap = await swapper.swap(
+const swap: FromBTCLNAutoSwap<StarknetChainType> = await swapper.swap(
     Tokens.BITCOIN.BTCLN, //Swap from BTC-LN
     Tokens.STARKNET.STRK, //Into specified destination token
     10000n, //Amount can be either passed in base units as bigint or in decimal format as string
@@ -1069,7 +1073,7 @@ Getting swap quote
 
 ```typescript
 //Create the swap: swapping SOL to Bitcoin lightning
-const swap = await swapper.swap(
+const swap: ToBTCLNSwap<SolanaChainType> = await swapper.swap(
     Tokens.SOLANA.SOL, //From specified source token
     Tokens.BITCOIN.BTCLN, //Swap to BTC-LN
     10000n, //Now we can specify an amount for a lightning network payment!
@@ -1189,7 +1193,7 @@ NOTE: Solana uses an old swap protocol for Bitcoin lightning network -> Solana s
 Getting swap quote
 
 ```typescript
-const swap = await swapper.swap(
+const swap: FromBTCLNSwap<SolanaChainType> = await swapper.swap(
     Tokens.BITCOIN.BTCLN, //Swap from BTC-LN
     Tokens.SOLANA.SOL, //Into specified destination token
     10000n,
@@ -1276,7 +1280,7 @@ await swap.execute(
 Getting swap quote
 
 ```typescript
-const swap = await swapper.swap(
+const swap: FromBTCLNAutoSwap<StarknetChainType> = await swapper.swap(
     Tokens.BITCOIN.BTCLN, //Swap from BTC-LN
     Tokens.STARKNET.STRK, //Into specified destination token
     10000n,
@@ -1378,7 +1382,7 @@ Getting swap quote
 
 ```typescript
 //Create the swap: swapping SOL to Bitcoin lightning
-const swap = await swapper.swap(
+const swap: ToBTCLNSwap<SolanaChainType> = await swapper.swap(
     Tokens.SOLANA.SOL, //From specified source token
     Tokens.BITCOIN.BTCLN, //Swap to BTC-LN
     1_000_000_000n, //We can specify an amount for a lightning network payment!
@@ -1571,7 +1575,19 @@ const swapId = swap.getId();
 And then later retrieve it from the storage
 
 ```typescript
-const swap = await swapper.getSwapById(id);
+import {isSwapType} from "@atomiqlabs/sdk";
+
+//Use this to obtain a correctly typed swap, returns `undefined` if the type of the
+// underlying swap is not as requested, `swapType` uses the SwapType enum
+const typedSwap = await swapper.getTypedSwapById(swapId, chainId, swapType);
+
+//This returns just a base type `ISwap`, so you have to do typecasting yourself, useful
+// if you don't know which type of the swap to expect
+const swap = await swapper.getSwapById(swapId);
+//You can later narrow this down with the `isSwapType()` typeguard
+if(isSwapType(swap, swapType)) {
+    //You now have a properly narrowed down type of the swap here
+}
 ```
 
 #### Get refundable swaps

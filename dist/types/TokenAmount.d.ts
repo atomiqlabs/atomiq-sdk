@@ -54,8 +54,8 @@ export type TokenAmount<ChainIdentifier extends string = string, T extends Token
      */
     toString: () => string;
     /**
-     * Whether the token amount contains an unknown or undefined amount, in this case numeric values are `NaN` or `-1n`,
-     *  string representation is `""` and `toString()` returns `"??? {ticker}"`
+     * Whether the token amount contains an unknown or undefined amount, in this case numeric values are `NaN`,
+     *  raw amount is `undefined`, string representation is `""` and `toString()` returns `"??? {ticker}"`
      */
     isUnknown: Known extends true ? false : true;
 };

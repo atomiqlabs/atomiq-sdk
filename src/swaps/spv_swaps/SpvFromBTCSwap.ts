@@ -424,13 +424,13 @@ export class SpvFromBTCSwap<T extends ChainType>
         const watchtowerFee = this.getWatchtowerFee();
 
         const amountInSrcToken = toTokenAmount(
-          (swapFee.amountInSrcToken.rawAmount ?? 0n) + (watchtowerFee.amountInSrcToken.rawAmount ?? 0n),
+          swapFee.amountInSrcToken.rawAmount + watchtowerFee.amountInSrcToken.rawAmount,
             BitcoinTokens.BTC, this.wrapper.prices, this.pricingInfo
         );
         return {
             amountInSrcToken,
             amountInDstToken: toTokenAmount(
-              (swapFee.amountInDstToken.rawAmount ?? 0n) + (watchtowerFee.amountInDstToken.rawAmount ?? 0n),
+              swapFee.amountInDstToken.rawAmount + watchtowerFee.amountInDstToken.rawAmount,
                 this.wrapper.tokens[this.outputSwapToken], this.wrapper.prices, this.pricingInfo
             ),
             currentUsdValue: amountInSrcToken.currentUsdValue,

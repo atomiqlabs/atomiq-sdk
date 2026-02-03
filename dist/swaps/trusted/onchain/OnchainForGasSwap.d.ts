@@ -7,7 +7,7 @@ import { IBitcoinWallet } from "../../../bitcoin/wallet/IBitcoinWallet";
 import { IAddressSwap } from "../../IAddressSwap";
 import { IBTCWalletSwap } from "../../IBTCWalletSwap";
 import { Transaction } from "@scure/btc-signer";
-import { MinimalBitcoinWalletInterface, MinimalBitcoinWalletInterfaceWithSigner } from "../../../bitcoin/wallet/MinimalBitcoinWalletInterface";
+import { MinimalBitcoinWalletInterface, MinimalBitcoinWalletInterfaceWithSigner } from "../../../types/wallets/MinimalBitcoinWalletInterface";
 import { FeeType } from "../../../enums/FeeType";
 import { TokenAmount } from "../../../types/TokenAmount";
 import { BtcToken, SCToken } from "../../../types/Token";

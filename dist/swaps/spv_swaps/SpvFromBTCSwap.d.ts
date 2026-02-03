@@ -7,7 +7,7 @@ import { Fee } from "../../types/fees/Fee";
 import { IBitcoinWallet } from "../../bitcoin/wallet/IBitcoinWallet";
 import { IBTCWalletSwap } from "../IBTCWalletSwap";
 import { ISwapWithGasDrop } from "../ISwapWithGasDrop";
-import { MinimalBitcoinWalletInterface, MinimalBitcoinWalletInterfaceWithSigner } from "../../bitcoin/wallet/MinimalBitcoinWalletInterface";
+import { MinimalBitcoinWalletInterface, MinimalBitcoinWalletInterfaceWithSigner } from "../../types/wallets/MinimalBitcoinWalletInterface";
 import { IClaimableSwap } from "../IClaimableSwap";
 import { FeeType } from "../../enums/FeeType";
 import { TokenAmount } from "../../types/TokenAmount";

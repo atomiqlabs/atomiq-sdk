@@ -16,7 +16,7 @@ import {Buffer} from "buffer";
 import {
     MinimalBitcoinWalletInterface,
     MinimalBitcoinWalletInterfaceWithSigner
-} from "../../../bitcoin/wallet/MinimalBitcoinWalletInterface";
+} from "../../../types/wallets/MinimalBitcoinWalletInterface";
 import {FeeType} from "../../../enums/FeeType";
 import {ppmToPercentage} from "../../../types/fees/PercentagePPM";
 import {TokenAmount, toTokenAmount} from "../../../types/TokenAmount";

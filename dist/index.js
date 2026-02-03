@@ -21,8 +21,8 @@ Object.defineProperty(exports, "MempoolApi", { enumerable: true, get: function (
 __exportStar(require("./bitcoin/mempool/MempoolBitcoinRpc"), exports);
 __exportStar(require("./bitcoin/wallet/BitcoinWallet"), exports);
 __exportStar(require("./bitcoin/wallet/IBitcoinWallet"), exports);
-__exportStar(require("./bitcoin/wallet/MinimalBitcoinWalletInterface"), exports);
-__exportStar(require("./bitcoin/wallet/MinimalLightningNetworkWalletInterface"), exports);
+__exportStar(require("./types/wallets/MinimalBitcoinWalletInterface"), exports);
+__exportStar(require("./types/wallets/MinimalLightningNetworkWalletInterface"), exports);
 __exportStar(require("./bitcoin/wallet/SingleAddressBitcoinWallet"), exports);
 __exportStar(require("./enums/FeeType"), exports);
 __exportStar(require("./enums/SwapAmountType"), exports);

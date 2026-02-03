@@ -5,7 +5,7 @@ import { IFromBTCSelfInitSwap } from "../IFromBTCSelfInitSwap";
 import { SwapType } from "../../../../enums/SwapType";
 import { ChainType, SignatureData, SwapCommitState, SwapData } from "@atomiqlabs/base";
 import { Buffer } from "buffer";
-import { MinimalLightningNetworkWalletInterface } from "../../../../bitcoin/wallet/MinimalLightningNetworkWalletInterface";
+import { MinimalLightningNetworkWalletInterface } from "../../../../types/wallets/MinimalLightningNetworkWalletInterface";
 import { IClaimableSwap } from "../../../IClaimableSwap";
 import { IAddressSwap } from "../../../IAddressSwap";
 import { IEscrowSelfInitSwapInit } from "../../IEscrowSelfInitSwap";

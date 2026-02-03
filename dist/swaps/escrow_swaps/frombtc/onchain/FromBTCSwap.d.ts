@@ -5,7 +5,7 @@ import { ChainType, SwapCommitState, SwapData } from "@atomiqlabs/base";
 import { IBitcoinWallet } from "../../../../bitcoin/wallet/IBitcoinWallet";
 import { IBTCWalletSwap } from "../../../IBTCWalletSwap";
 import { Transaction } from "@scure/btc-signer";
-import { MinimalBitcoinWalletInterface, MinimalBitcoinWalletInterfaceWithSigner } from "../../../../bitcoin/wallet/MinimalBitcoinWalletInterface";
+import { MinimalBitcoinWalletInterface, MinimalBitcoinWalletInterfaceWithSigner } from "../../../../types/wallets/MinimalBitcoinWalletInterface";
 import { IClaimableSwap } from "../../../IClaimableSwap";
 import { IEscrowSelfInitSwapInit } from "../../IEscrowSelfInitSwap";
 import { IAddressSwap } from "../../../IAddressSwap";

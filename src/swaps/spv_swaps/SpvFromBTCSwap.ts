@@ -22,7 +22,7 @@ import {ISwapWithGasDrop} from "../ISwapWithGasDrop";
 import {
     MinimalBitcoinWalletInterface,
     MinimalBitcoinWalletInterfaceWithSigner
-} from "../../bitcoin/wallet/MinimalBitcoinWalletInterface";
+} from "../../types/wallets/MinimalBitcoinWalletInterface";
 import {IClaimableSwap} from "../IClaimableSwap";
 import {BtcTxWithBlockheight} from "../../bitcoin/BitcoinRpcWithAddressIndex";
 import {FeeType} from "../../enums/FeeType";

@@ -21,7 +21,7 @@ import {
 } from "../../../../intermediaries/apis/IntermediaryAPI";
 import {IntermediaryError} from "../../../../errors/IntermediaryError";
 import {extendAbortController} from "../../../../utils/Utils";
-import {MinimalLightningNetworkWalletInterface} from "../../../../bitcoin/wallet/MinimalLightningNetworkWalletInterface";
+import {MinimalLightningNetworkWalletInterface} from "../../../../types/wallets/MinimalLightningNetworkWalletInterface";
 import {IClaimableSwap} from "../../../IClaimableSwap";
 import {IAddressSwap} from "../../../IAddressSwap";
 import {IEscrowSelfInitSwapInit, isIEscrowSelfInitSwapInit} from "../../IEscrowSelfInitSwap";

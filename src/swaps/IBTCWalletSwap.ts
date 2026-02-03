@@ -3,7 +3,7 @@ import {Transaction} from "@scure/btc-signer";
 import {
     MinimalBitcoinWalletInterface,
     MinimalBitcoinWalletInterfaceWithSigner
-} from "../bitcoin/wallet/MinimalBitcoinWalletInterface";
+} from "../types/wallets/MinimalBitcoinWalletInterface";
 import {TokenAmount} from "../types/TokenAmount";
 import {BtcToken} from "../types/Token";
 

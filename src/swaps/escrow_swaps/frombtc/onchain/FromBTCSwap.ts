@@ -18,7 +18,7 @@ import {SingleAddressBitcoinWallet} from "../../../../bitcoin/wallet/SingleAddre
 import {
     MinimalBitcoinWalletInterface,
     MinimalBitcoinWalletInterfaceWithSigner
-} from "../../../../bitcoin/wallet/MinimalBitcoinWalletInterface";
+} from "../../../../types/wallets/MinimalBitcoinWalletInterface";
 import {IClaimableSwap} from "../../../IClaimableSwap";
 import {IEscrowSelfInitSwapInit, isIEscrowSelfInitSwapInit} from "../../IEscrowSelfInitSwap";
 import {IAddressSwap} from "../../../IAddressSwap";

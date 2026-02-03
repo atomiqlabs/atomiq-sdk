@@ -7,7 +7,7 @@ import { Fee } from "../../../../types/fees/Fee";
 import { IAddressSwap } from "../../../IAddressSwap";
 import { FromBTCLNAutoDefinition, FromBTCLNAutoWrapper } from "./FromBTCLNAutoWrapper";
 import { ISwapWithGasDrop } from "../../../ISwapWithGasDrop";
-import { MinimalLightningNetworkWalletInterface } from "../../../../bitcoin/wallet/MinimalLightningNetworkWalletInterface";
+import { MinimalLightningNetworkWalletInterface } from "../../../../types/wallets/MinimalLightningNetworkWalletInterface";
 import { IClaimableSwap } from "../../../IClaimableSwap";
 import { IEscrowSwap, IEscrowSwapInit } from "../../IEscrowSwap";
 import { FeeType } from "../../../../enums/FeeType";

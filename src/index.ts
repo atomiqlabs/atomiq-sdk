@@ -5,8 +5,8 @@ export * from "./bitcoin/mempool/MempoolBitcoinRpc";
 
 export * from "./bitcoin/wallet/BitcoinWallet";
 export * from "./bitcoin/wallet/IBitcoinWallet";
-export * from "./bitcoin/wallet/MinimalBitcoinWalletInterface";
-export * from "./bitcoin/wallet/MinimalLightningNetworkWalletInterface";
+export * from "./types/wallets/MinimalBitcoinWalletInterface";
+export * from "./types/wallets/MinimalLightningNetworkWalletInterface";
 export * from "./bitcoin/wallet/SingleAddressBitcoinWallet";
 
 export {CoinselectAddressTypes} from "./bitcoin/coinselect2";

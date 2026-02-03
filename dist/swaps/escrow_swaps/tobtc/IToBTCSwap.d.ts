@@ -77,23 +77,23 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
         }
     ];
     getInputToken(): SCToken<T["ChainId"]>;
-    getInput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>>;
-    getInputWithoutFee(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>>;
+    getInput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+    getInputWithoutFee(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
     /**
      * Checks if the intiator/sender has enough balance to go through with the swap
      */
     hasEnoughBalance(): Promise<{
         enoughBalance: boolean;
-        balance: TokenAmount;
-        required: TokenAmount;
+        balance: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+        required: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
     }>;
     /**
      * Check if the initiator/sender has enough balance to cover the transaction fee for processing the swap
      */
     hasEnoughForTxFees(): Promise<{
         enoughBalance: boolean;
-        balance: TokenAmount;
-        required: TokenAmount;
+        balance: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+        required: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
     }>;
     /**
      * Executes the swap with the provided smart chain wallet/signer

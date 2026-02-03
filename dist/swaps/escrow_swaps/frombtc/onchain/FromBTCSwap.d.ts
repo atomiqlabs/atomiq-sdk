@@ -81,7 +81,7 @@ export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromB
     /**
      * Returns claimer bounty, acting as a reward for watchtowers to claim the swap automatically
      */
-    getClaimerBounty(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>>;
+    getClaimerBounty(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
     getRequiredConfirmationsCount(): number;
     /**
      * Checks whether a bitcoin payment was already made, returns the payment or null when no payment has been made.
@@ -136,7 +136,7 @@ export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromB
      * @param _psbt A psbt - either a Transaction object or a hex or base64 encoded PSBT string
      */
     submitPsbt(_psbt: Transaction | string): Promise<string>;
-    estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<any, BtcToken<false>> | null>;
+    estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<any, BtcToken<false>, true> | null>;
     sendBitcoinTransaction(wallet: IBitcoinWallet | MinimalBitcoinWalletInterfaceWithSigner, feeRate?: number): Promise<string>;
     /**
      * Executes the swap with the provided bitcoin wallet,

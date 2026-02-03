@@ -225,7 +225,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
     /**
      * Returns claimer bounty, acting as a reward for watchtowers to claim the swap automatically
      */
-    getClaimerBounty(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>> {
+    getClaimerBounty(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
         return toTokenAmount(this.data.getClaimerBounty(), this.wrapper.tokens[this.data.getDepositToken()], this.wrapper.prices);
     }
 
@@ -445,7 +445,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
         return await this.wrapper.btcRpc.sendRawTransaction(Buffer.from(psbt.toBytes(true, true)).toString("hex"));
     }
 
-    async estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<any, BtcToken<false>> | null> {
+    async estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<any, BtcToken<false>, true> | null> {
         const bitcoinWallet: IBitcoinWallet = toBitcoinWallet(_bitcoinWallet, this.wrapper.btcRpc, this.wrapper.options.bitcoinNetwork);
         const txFee = await bitcoinWallet.getTransactionFee(this.address, this.amount, feeRate);
         if(txFee==null) return null;

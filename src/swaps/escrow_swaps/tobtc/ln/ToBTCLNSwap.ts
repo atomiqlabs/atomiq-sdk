@@ -104,8 +104,9 @@ export class ToBTCLNSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, 
         return BitcoinTokens.BTCLN;
     }
 
-    getOutput(): TokenAmount<T["ChainId"], BtcToken<true>> | null {
-        if(this.pr==null || !this.pr.toLowerCase().startsWith("ln")) return null;
+    getOutput(): TokenAmount<T["ChainId"], BtcToken<true>> {
+        if(this.pr==null || !this.pr.toLowerCase().startsWith("ln"))
+            return toTokenAmount(null, this.outputToken, this.wrapper.prices, this.pricingInfo);
         const parsedPR = bolt11Decode(this.pr);
         if(parsedPR.millisatoshis==null) throw new Error("Swap invoice has no msat amount field!");
         const amount = (BigInt(parsedPR.millisatoshis) + 999n) / 1000n;

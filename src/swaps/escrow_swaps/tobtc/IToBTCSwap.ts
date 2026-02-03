@@ -110,7 +110,7 @@ export abstract class IToBTCSwap<
      */
     protected tryRecomputeSwapPrice() {
         const output = this.getOutput();
-        if(output!=null) {
+        if(output.rawAmount!=null) {
             if(this.swapFeeBtc==null) {
                 this.swapFeeBtc = this.swapFee * output.rawAmount / this.getInputWithoutFee().rawAmount;
             }
@@ -195,7 +195,7 @@ export abstract class IToBTCSwap<
 
         const feeWithoutBaseFee = this.swapFeeBtc - this.pricingInfo.satsBaseFee;
         const output = this.getOutput();
-        const swapFeePPM = output?.rawAmount==null ? 0n : feeWithoutBaseFee * 1000000n / output.rawAmount;
+        const swapFeePPM = output.rawAmount==null ? 0n : feeWithoutBaseFee * 1000000n / output.rawAmount;
 
         const amountInDstToken = toTokenAmount(
             this.swapFeeBtc, this.outputToken, this.wrapper.prices, this.pricingInfo
@@ -268,14 +268,14 @@ export abstract class IToBTCSwap<
         return this.wrapper.tokens[this.data.getToken()];
     }
 
-    getInput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>> {
+    getInput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
         return toTokenAmount(
             this.data.getAmount(), this.wrapper.tokens[this.data.getToken()],
             this.wrapper.prices, this.pricingInfo
         );
     }
 
-    getInputWithoutFee(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>> {
+    getInputWithoutFee(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
         return toTokenAmount(
             this.data.getAmount() - (this.swapFee + this.networkFee),
             this.wrapper.tokens[this.data.getToken()], this.wrapper.prices, this.pricingInfo
@@ -285,7 +285,11 @@ export abstract class IToBTCSwap<
     /**
      * Checks if the intiator/sender has enough balance to go through with the swap
      */
-    async hasEnoughBalance(): Promise<{enoughBalance: boolean, balance: TokenAmount, required: TokenAmount}> {
+    async hasEnoughBalance(): Promise<{
+        enoughBalance: boolean,
+        balance: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>,
+        required: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>
+    }> {
         const [balance, commitFee] = await Promise.all([
             this.wrapper.contract.getBalance(this._getInitiator(), this.data.getToken(), false),
             this.data.getToken()===this.wrapper.chain.getNativeCurrencyAddress() ? this.getCommitFee() : Promise.resolve(null)
@@ -302,7 +306,11 @@ export abstract class IToBTCSwap<
     /**
      * Check if the initiator/sender has enough balance to cover the transaction fee for processing the swap
      */
-    async hasEnoughForTxFees(): Promise<{enoughBalance: boolean, balance: TokenAmount, required: TokenAmount}> {
+    async hasEnoughForTxFees(): Promise<{
+        enoughBalance: boolean,
+        balance: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>,
+        required: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>
+    }> {
         const [balance, commitFee] = await Promise.all([
             this.wrapper.contract.getBalance(this._getInitiator(), this.wrapper.chain.getNativeCurrencyAddress(), false),
             this.getCommitFee()

@@ -353,7 +353,7 @@ export class FromBTCLNWrapper<
                         quote.lnurlK1 = withdrawRequest.k1;
                         quote.lnurlCallback = withdrawRequest.callback;
 
-                        const amountIn = quote.getInput().rawAmount;
+                        const amountIn = quote.getInput().rawAmount!;
                         if(amountIn < min) throw new UserError("Amount less than LNURL-withdraw minimum");
                         if(amountIn > max) throw new UserError("Amount more than LNURL-withdraw maximum");
 

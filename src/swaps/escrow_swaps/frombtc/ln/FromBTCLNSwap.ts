@@ -276,11 +276,15 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
         return toTokenAmount(amount, this.inputToken, this.wrapper.prices, this.pricingInfo);
     }
 
-    async getSmartChainNetworkFee(): Promise<TokenAmount<T["ChainId"], SCToken<T["ChainId"]>>> {
+    async getSmartChainNetworkFee(): Promise<TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>> {
         return toTokenAmount(await this.getCommitAndClaimFee(), this.wrapper.getNativeToken(), this.wrapper.prices, this.pricingInfo);
     }
 
-    async hasEnoughForTxFees(): Promise<{enoughBalance: boolean, balance: TokenAmount, required: TokenAmount}> {
+    async hasEnoughForTxFees(): Promise<{
+        enoughBalance: boolean,
+        balance: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>,
+        required: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>
+    }> {
         const [balance, feeRate] = await Promise.all([
             this.wrapper.contract.getBalance(this._getInitiator(), this.wrapper.chain.getNativeCurrencyAddress(), false),
             this.feeRate!=null ? Promise.resolve<string>(this.feeRate) : this.wrapper.contract.getInitFeeRate(

@@ -299,10 +299,10 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
     getFee() {
         const swapFee = this.getSwapFee();
         const watchtowerFee = this.getWatchtowerFee();
-        const amountInSrcToken = (0, TokenAmount_1.toTokenAmount)(swapFee.amountInSrcToken.rawAmount + watchtowerFee.amountInSrcToken.rawAmount, Token_1.BitcoinTokens.BTCLN, this.wrapper.prices, this.pricingInfo);
+        const amountInSrcToken = (0, TokenAmount_1.toTokenAmount)((swapFee.amountInSrcToken.rawAmount ?? 0n) + (watchtowerFee.amountInSrcToken.rawAmount ?? 0n), Token_1.BitcoinTokens.BTCLN, this.wrapper.prices, this.pricingInfo);
         return {
             amountInSrcToken,
-            amountInDstToken: (0, TokenAmount_1.toTokenAmount)(swapFee.amountInDstToken.rawAmount + watchtowerFee.amountInDstToken.rawAmount, this.wrapper.tokens[this.getSwapData().getToken()], this.wrapper.prices, this.pricingInfo),
+            amountInDstToken: (0, TokenAmount_1.toTokenAmount)((swapFee.amountInDstToken.rawAmount ?? 0n) + (watchtowerFee.amountInDstToken.rawAmount ?? 0n), this.wrapper.tokens[this.getSwapData().getToken()], this.wrapper.prices, this.pricingInfo),
             currentUsdValue: amountInSrcToken.currentUsdValue,
             usdValue: amountInSrcToken.usdValue,
             pastUsdValue: amountInSrcToken.pastUsdValue

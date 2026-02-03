@@ -80,10 +80,10 @@ export declare class OnchainForGasSwap<T extends ChainType = ChainType> extends 
     verifyQuoteValid(): Promise<boolean>;
     protected getOutAmountWithoutFee(): bigint;
     getOutputToken(): SCToken<T["ChainId"]>;
-    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>>;
+    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
     getInputToken(): BtcToken<false>;
-    getInput(): TokenAmount<T["ChainId"], BtcToken<false>>;
-    getInputWithoutFee(): TokenAmount<T["ChainId"], BtcToken<false>>;
+    getInput(): TokenAmount<T["ChainId"], BtcToken<false>, true>;
+    getInputWithoutFee(): TokenAmount<T["ChainId"], BtcToken<false>, true>;
     protected getSwapFee(): Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>;
     getFee(): Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>;
     getFeeBreakdown(): [{
@@ -118,7 +118,7 @@ export declare class OnchainForGasSwap<T extends ChainType = ChainType> extends 
      * @param _psbt A psbt - either a Transaction object or a hex or base64 encoded PSBT string
      */
     submitPsbt(_psbt: Transaction | string): Promise<string>;
-    estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<any, BtcToken<false>> | null>;
+    estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<any, BtcToken<false>, true> | null>;
     sendBitcoinTransaction(wallet: IBitcoinWallet | MinimalBitcoinWalletInterfaceWithSigner, feeRate?: number): Promise<string>;
     txsExecute(options?: {
         bitcoinWallet?: MinimalBitcoinWalletInterface;

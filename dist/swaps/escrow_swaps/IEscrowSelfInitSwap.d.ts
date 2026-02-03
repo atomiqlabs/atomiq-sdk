@@ -30,14 +30,14 @@ export declare abstract class IEscrowSelfInitSwap<T extends ChainType = ChainTyp
     /**
      * Returns the transaction fee paid on the smart chain
      */
-    getSmartChainNetworkFee(): Promise<TokenAmount<T["ChainId"], SCToken<T["ChainId"]>>>;
+    getSmartChainNetworkFee(): Promise<TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>>;
     /**
      * Checks if the initiator/sender has enough balance to cover the transaction fee for processing the swap
      */
     abstract hasEnoughForTxFees(): Promise<{
         enoughBalance: boolean;
-        balance: TokenAmount;
-        required: TokenAmount;
+        balance: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+        required: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
     }>;
     abstract txsCommit(skipChecks?: boolean): Promise<T["TX"][]>;
     abstract commit(_signer: T["Signer"] | T["NativeSigner"], abortSignal?: AbortSignal, skipChecks?: boolean, onBeforeTxSent?: (txId: string) => void): Promise<string>;

@@ -111,10 +111,10 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
     protected getOutputAmountWithoutFee(): bigint;
     getInputToken(): BtcToken<true>;
     getInput(): TokenAmount<T["ChainId"], BtcToken<true>>;
-    getInputWithoutFee(): TokenAmount;
+    getInputWithoutFee(): TokenAmount<T["ChainId"], BtcToken<true>>;
     getOutputToken(): SCToken<T["ChainId"]>;
-    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>>;
-    getGasDropOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>>;
+    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+    getGasDropOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
     protected getSwapFee(): Fee<T["ChainId"], BtcToken<true>, SCToken<T["ChainId"]>>;
     protected getWatchtowerFee(): Fee<T["ChainId"], BtcToken<true>, SCToken<T["ChainId"]>>;
     getFee(): Fee<T["ChainId"], BtcToken<true>, SCToken<T["ChainId"]>>;

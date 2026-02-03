@@ -70,10 +70,10 @@ export declare class LnForGasSwap<T extends ChainType = ChainType> extends ISwap
     verifyQuoteValid(): Promise<boolean>;
     protected getOutAmountWithoutFee(): bigint;
     getOutputToken(): SCToken<T["ChainId"]>;
-    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>>;
+    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
     getInputToken(): BtcToken<true>;
-    getInput(): TokenAmount<T["ChainId"], BtcToken<true>>;
-    getInputWithoutFee(): TokenAmount<T["ChainId"], BtcToken<true>>;
+    getInput(): TokenAmount<T["ChainId"], BtcToken<true>, true>;
+    getInputWithoutFee(): TokenAmount<T["ChainId"], BtcToken<true>, true>;
     protected getSwapFee(): Fee<T["ChainId"], BtcToken<true>, SCToken<T["ChainId"]>>;
     getFee(): Fee<T["ChainId"], BtcToken<true>, SCToken<T["ChainId"]>>;
     getFeeBreakdown(): [{

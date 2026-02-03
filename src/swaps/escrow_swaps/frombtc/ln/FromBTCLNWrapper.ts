@@ -4,7 +4,7 @@ import {
     ChainSwapType,
     ChainType,
     ClaimEvent,
-    InitializeEvent,
+    InitializeEvent, LightningNetworkApi,
     RefundEvent
 } from "@atomiqlabs/base";
 import {Intermediary} from "../../../../intermediaries/Intermediary";
@@ -18,7 +18,6 @@ import {
 } from "../../../../utils/Utils";
 import {FromBTCLNResponseType, IntermediaryAPI} from "../../../../intermediaries/apis/IntermediaryAPI";
 import {RequestError} from "../../../../errors/RequestError";
-import {LightningNetworkApi} from "../../../../bitcoin/LightningNetworkApi";
 import {ISwapPrice} from "../../../../prices/abstract/ISwapPrice";
 import {EventEmitter} from "events";
 import {ISwapWrapperOptions, WrapperCtorTokens} from "../../../ISwapWrapper";

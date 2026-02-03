@@ -5,12 +5,12 @@ const base_1 = require("@atomiqlabs/base");
 const SmartChainAssets_1 = require("../SmartChainAssets");
 const messenger_nostr_1 = require("@atomiqlabs/messenger-nostr");
 const Swapper_1 = require("./Swapper");
-const MempoolBitcoinRpc_1 = require("../bitcoin/mempool/MempoolBitcoinRpc");
 const CustomPriceProvider_1 = require("../prices/providers/CustomPriceProvider");
 const Token_1 = require("../types/Token");
 const RedundantSwapPrice_1 = require("../prices/RedundantSwapPrice");
 const LocalStorageManager_1 = require("../storage-browser/LocalStorageManager");
 const SingleSwapPrice_1 = require("../prices/SingleSwapPrice");
+const btc_mempool_1 = require("@atomiqlabs/btc-mempool");
 const registries = {
     [base_1.BitcoinNetwork.MAINNET]: "https://api.github.com/repos/adambor/SolLightning-registry/contents/registry-mainnet.json?ref=main",
     [base_1.BitcoinNetwork.TESTNET]: "https://api.github.com/repos/adambor/SolLightning-registry/contents/registry.json?ref=main",
@@ -86,13 +86,13 @@ class SwapperFactory {
         options.registryUrl ??= registries[options.bitcoinNetwork];
         let bitcoinRpc;
         if (options.mempoolApi != null) {
-            bitcoinRpc = options.mempoolApi instanceof MempoolBitcoinRpc_1.MempoolBitcoinRpc ? options.mempoolApi : new MempoolBitcoinRpc_1.MempoolBitcoinRpc(options.mempoolApi);
+            bitcoinRpc = options.mempoolApi instanceof btc_mempool_1.MempoolBitcoinRpc ? options.mempoolApi : new btc_mempool_1.MempoolBitcoinRpc(options.mempoolApi);
         }
         else {
             const urls = mempoolUrls[options.bitcoinNetwork];
             if (urls == null)
                 throw new Error(`No pre-configured urls for ${base_1.BitcoinNetwork[options.bitcoinNetwork]} network were found, please explicitly pass mempoolApi parameter!`);
-            bitcoinRpc = new MempoolBitcoinRpc_1.MempoolBitcoinRpc(urls);
+            bitcoinRpc = new btc_mempool_1.MempoolBitcoinRpc(urls);
         }
         const pricingAssets = [];
         Object.keys(SmartChainAssets_1.SmartChainAssets).forEach((ticker) => {

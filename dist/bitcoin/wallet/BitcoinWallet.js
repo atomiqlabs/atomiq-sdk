@@ -68,7 +68,7 @@ class BitcoinWallet {
                 outputScript: outputScript,
                 address: sendingAddress,
                 cpfp: !utxo.confirmed ? await this.rpc.getCPFPData(utxo.txid).then((result) => {
-                    if (result.effectiveFeePerVsize == null)
+                    if (result == null)
                         return;
                     return {
                         txVsize: result.adjustedVsize,

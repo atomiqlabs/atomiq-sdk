@@ -1,9 +1,8 @@
 import {ISwapWrapper, ISwapWrapperOptions, SwapTypeDefinition, WrapperCtorTokens} from "../../ISwapWrapper";
 import {TrustedIntermediaryAPI} from "../../../intermediaries/apis/TrustedIntermediaryAPI";
 import {IntermediaryError} from "../../../errors/IntermediaryError";
-import {ChainType} from "@atomiqlabs/base";
+import {BitcoinRpcWithAddressIndex, ChainType} from "@atomiqlabs/base";
 import {OnchainForGasSwap, OnchainForGasSwapInit, OnchainForGasSwapState} from "./OnchainForGasSwap";
-import {BitcoinRpcWithAddressIndex} from "../../../bitcoin/BitcoinRpcWithAddressIndex";
 import {ISwapPrice} from "../../../prices/abstract/ISwapPrice";
 import {EventEmitter} from "events";
 import {Intermediary} from "../../../intermediaries/Intermediary";

@@ -8,8 +8,6 @@ import {
 import {SmartChainAssets, SmartChainAssetTickers} from "../SmartChainAssets";
 import {NostrMessenger} from "@atomiqlabs/messenger-nostr";
 import {Swapper, SwapperOptions} from "./Swapper";
-import {MempoolApi} from "../bitcoin/mempool/MempoolApi";
-import {MempoolBitcoinRpc} from "../bitcoin/mempool/MempoolBitcoinRpc";
 import {CustomPriceProvider} from "../prices/providers/CustomPriceProvider";
 import {BitcoinTokens, BtcToken, SCToken} from "../types/Token";
 import {SwapType} from "../enums/SwapType";
@@ -18,6 +16,7 @@ import {RedundantSwapPrice, RedundantSwapPriceAssets} from "../prices/RedundantS
 import {LocalStorageManager} from "../storage-browser/LocalStorageManager";
 import {SingleSwapPrice} from "../prices/SingleSwapPrice";
 import {CustomPriceFunction} from "../types/CustomPriceFunction";
+import {MempoolApi, MempoolBitcoinRpc} from "@atomiqlabs/btc-mempool";
 
 //Helper types
 type ChainTypeDict<T extends ChainInitializer<any, any, any>> = {[K in T["chainId"]]: T["chainType"]};

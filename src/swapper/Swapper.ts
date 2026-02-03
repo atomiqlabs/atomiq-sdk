@@ -55,10 +55,6 @@ import {SwapAmountType} from "../enums/SwapAmountType";
 import {IClaimableSwap} from "../swaps/IClaimableSwap";
 import {correctClock} from "../utils/AutomaticClockDriftCorrection";
 import {isSwapType, SwapTypeMapping} from "../utils/SwapUtils";
-import {MempoolBitcoinBlock} from "../bitcoin/mempool/MempoolBitcoinBlock";
-import {MempoolBitcoinRpc} from "../bitcoin/mempool/MempoolBitcoinRpc";
-import {MempoolApi} from "../bitcoin/mempool/MempoolApi";
-import {MempoolBtcRelaySynchronizer} from "../bitcoin/mempool/synchronizer/MempoolBtcRelaySynchronizer";
 import {IndexedDBUnifiedStorage} from "../storage-browser/IndexedDBUnifiedStorage";
 import {TokenAmount, toTokenAmount} from "../types/TokenAmount";
 import {BitcoinTokens, BtcToken, isBtcToken, isSCToken, SCToken, Token} from "../types/Token";
@@ -68,6 +64,7 @@ import {isLNURLWithdraw, LNURLWithdraw} from "../types/lnurl/LNURLWithdraw";
 import {isLNURLPay, LNURLPay} from "../types/lnurl/LNURLPay";
 import {tryWithRetries} from "../utils/RetryUtils";
 import {NotNever} from "../utils/TypeUtils";
+import {MempoolApi, MempoolBitcoinBlock, MempoolBitcoinRpc, MempoolBtcRelaySynchronizer} from "@atomiqlabs/btc-mempool";
 
 /**
  * Configuration options for the Swapper

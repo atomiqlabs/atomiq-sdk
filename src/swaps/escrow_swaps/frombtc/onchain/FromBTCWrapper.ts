@@ -8,11 +8,10 @@ import {
     RefundEvent,
     RelaySynchronizer,
     SwapData,
-    BtcRelay
+    BtcRelay, BitcoinRpcWithAddressIndex
 } from "@atomiqlabs/base";
 import {EventEmitter} from "events";
 import {Intermediary} from "../../../../intermediaries/Intermediary";
-import {BitcoinRpcWithAddressIndex} from "../../../../bitcoin/BitcoinRpcWithAddressIndex";
 import {ISwapPrice} from "../../../../prices/abstract/ISwapPrice";
 import {ISwapWrapperOptions, WrapperCtorTokens} from "../../../ISwapWrapper";
 import {Buffer} from "buffer";

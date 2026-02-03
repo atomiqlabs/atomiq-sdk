@@ -3,7 +3,7 @@ import {
     ChainSwapType,
     ChainType,
     ClaimEvent,
-    InitializeEvent, Messenger,
+    InitializeEvent, LightningNetworkApi, Messenger,
     RefundEvent
 } from "@atomiqlabs/base";
 import {Intermediary} from "../../../../intermediaries/Intermediary";
@@ -21,7 +21,6 @@ import {
     IntermediaryAPI
 } from "../../../../intermediaries/apis/IntermediaryAPI";
 import {RequestError} from "../../../../errors/RequestError";
-import {LightningNetworkApi} from "../../../../bitcoin/LightningNetworkApi";
 import {ISwapPrice} from "../../../../prices/abstract/ISwapPrice";
 import {EventEmitter} from "events";
 import {ISwapWrapperOptions, WrapperCtorTokens} from "../../../ISwapWrapper";

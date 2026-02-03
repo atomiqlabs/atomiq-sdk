@@ -1,11 +1,10 @@
 import { ChainType, StorageObject, IStorageManager, Messenger, ChainInitializer } from "@atomiqlabs/base";
 import { Swapper, SwapperOptions } from "./Swapper";
-import { MempoolApi } from "../bitcoin/mempool/MempoolApi";
-import { MempoolBitcoinRpc } from "../bitcoin/mempool/MempoolBitcoinRpc";
 import { BtcToken, SCToken } from "../types/Token";
 import { SwapType } from "../enums/SwapType";
 import { SwapTypeMapping } from "../utils/SwapUtils";
 import { CustomPriceFunction } from "../types/CustomPriceFunction";
+import { MempoolApi, MempoolBitcoinRpc } from "@atomiqlabs/btc-mempool";
 type ChainTypeDict<T extends ChainInitializer<any, any, any>> = {
     [K in T["chainId"]]: T["chainType"];
 };

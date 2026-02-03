@@ -1,10 +1,9 @@
 /// <reference types="node" />
 /// <reference types="node" />
 /// <reference types="node" />
-import { ChainType, SwapData } from "@atomiqlabs/base";
+import { ChainType, LightningNetworkApi, LNNodeLiquidity, SwapData } from "@atomiqlabs/base";
 import { IFromBTCDefinition, IFromBTCWrapper } from "./IFromBTCWrapper";
 import { ISwapWrapperOptions, WrapperCtorTokens } from "../../ISwapWrapper";
-import { LightningNetworkApi, LNNodeLiquidity } from "../../../bitcoin/LightningNetworkApi";
 import { UnifiedSwapStorage } from "../../../storage/UnifiedSwapStorage";
 import { UnifiedSwapEventListener } from "../../../events/UnifiedSwapEventListener";
 import { ISwapPrice } from "../../../prices/abstract/ISwapPrice";

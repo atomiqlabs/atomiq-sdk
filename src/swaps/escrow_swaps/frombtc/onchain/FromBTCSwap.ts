@@ -1,7 +1,14 @@
 import {IFromBTCSelfInitSwap} from "../IFromBTCSelfInitSwap";
 import {SwapType} from "../../../../enums/SwapType";
 import {FromBTCDefinition, FromBTCWrapper} from "./FromBTCWrapper";
-import {ChainType, isAbstractSigner, SwapCommitState, SwapCommitStateType, SwapData} from "@atomiqlabs/base";
+import {
+    BtcTxWithBlockheight,
+    ChainType,
+    isAbstractSigner,
+    SwapCommitState,
+    SwapCommitStateType,
+    SwapData
+} from "@atomiqlabs/base";
 import {Buffer} from "buffer";
 import {
     extendAbortController,
@@ -22,7 +29,6 @@ import {
 import {IClaimableSwap} from "../../../IClaimableSwap";
 import {IEscrowSelfInitSwapInit, isIEscrowSelfInitSwapInit} from "../../IEscrowSelfInitSwap";
 import {IAddressSwap} from "../../../IAddressSwap";
-import {BtcTxWithBlockheight} from "../../../../bitcoin/BitcoinRpcWithAddressIndex";
 import {TokenAmount, toTokenAmount} from "../../../../types/TokenAmount";
 import {BitcoinTokens, BtcToken, SCToken, Token} from "../../../../types/Token";
 import {getLogger, LoggerType} from "../../../../utils/Logger";

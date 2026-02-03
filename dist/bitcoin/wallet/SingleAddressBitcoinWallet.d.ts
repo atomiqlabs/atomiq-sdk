@@ -2,7 +2,7 @@ import { CoinselectAddressTypes } from "../coinselect2";
 import { BTC_NETWORK } from "@scure/btc-signer/utils";
 import { Transaction } from "@scure/btc-signer";
 import { BitcoinWallet } from "./BitcoinWallet";
-import { BitcoinRpcWithAddressIndex } from "../BitcoinRpcWithAddressIndex";
+import { BitcoinRpcWithAddressIndex } from "@atomiqlabs/base";
 /**
  * Bitcoin wallet implementation for single-address scenarios
  * @category Bitcoin

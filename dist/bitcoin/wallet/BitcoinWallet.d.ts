@@ -5,7 +5,7 @@ import { BTC_NETWORK } from "@scure/btc-signer/utils";
 import { Transaction } from "@scure/btc-signer";
 import { IBitcoinWallet } from "./IBitcoinWallet";
 import { Buffer } from "buffer";
-import { BitcoinRpcWithAddressIndex } from "../BitcoinRpcWithAddressIndex";
+import { BitcoinRpcWithAddressIndex } from "@atomiqlabs/base";
 /**
  * UTXO data structure for Bitcoin wallets
  * @category Bitcoin

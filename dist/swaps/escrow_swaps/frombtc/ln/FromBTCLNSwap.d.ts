@@ -5,7 +5,7 @@ import { IFromBTCSelfInitSwap } from "../IFromBTCSelfInitSwap";
 import { SwapType } from "../../../../enums/SwapType";
 import { ChainType, SignatureData, SwapCommitState, SwapData } from "@atomiqlabs/base";
 import { Buffer } from "buffer";
-import { MinimalLightningNetworkWalletInterface } from "../../../../bitcoin/wallet/MinimalLightningNetworkWalletInterface";
+import { MinimalLightningNetworkWalletInterface } from "../../../../types/wallets/MinimalLightningNetworkWalletInterface";
 import { IClaimableSwap } from "../../../IClaimableSwap";
 import { IAddressSwap } from "../../../IAddressSwap";
 import { IEscrowSelfInitSwapInit } from "../../IEscrowSelfInitSwap";
@@ -85,11 +85,11 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
     verifyQuoteValid(): Promise<boolean>;
     getInputToken(): BtcToken<true>;
     getInput(): TokenAmount<T["ChainId"], BtcToken<true>>;
-    getSmartChainNetworkFee(): Promise<TokenAmount<T["ChainId"], SCToken<T["ChainId"]>>>;
+    getSmartChainNetworkFee(): Promise<TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>>;
     hasEnoughForTxFees(): Promise<{
         enoughBalance: boolean;
-        balance: TokenAmount;
-        required: TokenAmount;
+        balance: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+        required: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
     }>;
     /**
      * Executes the swap with the provided bitcoin lightning network wallet or LNURL

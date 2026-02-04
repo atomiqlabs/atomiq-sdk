@@ -8,7 +8,17 @@ const Utils_1 = require("../utils/Utils");
  */
 function toTokenAmount(amount, token, prices, pricingInfo) {
     if (amount == null)
-        return null; //Shouldn't happen
+        return {
+            rawAmount: undefined,
+            amount: "",
+            _amount: NaN,
+            token,
+            currentUsdValue: () => Promise.resolve(NaN),
+            pastUsdValue: NaN,
+            usdValue: () => Promise.resolve(NaN),
+            toString: () => "??? " + token.ticker,
+            isUnknown: true
+        };
     const amountStr = (0, Utils_1.toDecimal)(amount, token.decimals, undefined, token.displayDecimals);
     const _amount = parseFloat(amountStr);
     let usdValue = undefined;
@@ -41,7 +51,8 @@ function toTokenAmount(amount, token, prices, pricingInfo) {
             }
             return usdValue;
         },
-        toString: () => amountStr + " " + token.ticker
+        toString: () => amountStr + " " + token.ticker,
+        isUnknown: false
     };
 }
 exports.toTokenAmount = toTokenAmount;

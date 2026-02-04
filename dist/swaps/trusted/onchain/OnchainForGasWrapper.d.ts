@@ -1,8 +1,7 @@
 /// <reference types="node" />
 import { ISwapWrapper, ISwapWrapperOptions, SwapTypeDefinition, WrapperCtorTokens } from "../../ISwapWrapper";
-import { ChainType } from "@atomiqlabs/base";
+import { BitcoinRpcWithAddressIndex, ChainType } from "@atomiqlabs/base";
 import { OnchainForGasSwap, OnchainForGasSwapState } from "./OnchainForGasSwap";
-import { BitcoinRpcWithAddressIndex } from "../../../bitcoin/BitcoinRpcWithAddressIndex";
 import { ISwapPrice } from "../../../prices/abstract/ISwapPrice";
 import { EventEmitter } from "events";
 import { Intermediary } from "../../../intermediaries/Intermediary";

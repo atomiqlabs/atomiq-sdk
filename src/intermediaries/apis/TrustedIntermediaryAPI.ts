@@ -104,6 +104,7 @@ export type TrustedFromBTCLNInit = {
 const TrustedFromBTCLNResponseSchema = {
     pr: FieldTypeEnum.String,
     swapFee: FieldTypeEnum.BigInt,
+    swapFeeSats: FieldTypeEnum.BigInt,
     total: FieldTypeEnum.BigInt
 } as const;
 

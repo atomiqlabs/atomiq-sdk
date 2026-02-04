@@ -25,7 +25,7 @@ import {Fee} from "../../../../types/fees/Fee";
 import {IAddressSwap} from "../../../IAddressSwap";
 import {FromBTCLNAutoDefinition, FromBTCLNAutoWrapper} from "./FromBTCLNAutoWrapper";
 import {ISwapWithGasDrop} from "../../../ISwapWithGasDrop";
-import {MinimalLightningNetworkWalletInterface} from "../../../../bitcoin/wallet/MinimalLightningNetworkWalletInterface";
+import {MinimalLightningNetworkWalletInterface} from "../../../../types/wallets/MinimalLightningNetworkWalletInterface";
 import {IClaimableSwap} from "../../../IClaimableSwap";
 import {IEscrowSwap, IEscrowSwapInit, isIEscrowSwapInit} from "../../IEscrowSwap";
 import {FeeType} from "../../../../enums/FeeType";
@@ -357,7 +357,7 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
         return toTokenAmount(this.getLightningInvoiceSats(), this.inputToken, this.wrapper.prices, this.pricingInfo);
     }
 
-    getInputWithoutFee(): TokenAmount {
+    getInputWithoutFee(): TokenAmount<T["ChainId"], BtcToken<true>> {
         return toTokenAmount(this.getInputAmountWithoutFee(), this.inputToken, this.wrapper.prices, this.pricingInfo);
     }
 
@@ -365,11 +365,11 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
         return this.wrapper.tokens[this.getSwapData().getToken()];
     }
 
-    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>> {
+    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
         return toTokenAmount(this.getSwapData().getAmount(), this.wrapper.tokens[this.getSwapData().getToken()], this.wrapper.prices, this.pricingInfo);
     }
 
-    getGasDropOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>> {
+    getGasDropOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
         return toTokenAmount(
             this.getSwapData().getSecurityDeposit() - this.getSwapData().getClaimerBounty(),
             this.wrapper.tokens[this.getSwapData().getDepositToken()], this.wrapper.prices, this.gasPricingInfo
@@ -428,13 +428,13 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
         const watchtowerFee = this.getWatchtowerFee();
 
         const amountInSrcToken = toTokenAmount(
-            swapFee.amountInSrcToken.rawAmount + watchtowerFee.amountInSrcToken.rawAmount,
+          swapFee.amountInSrcToken.rawAmount + watchtowerFee.amountInSrcToken.rawAmount,
             BitcoinTokens.BTCLN, this.wrapper.prices, this.pricingInfo
         );
         return {
             amountInSrcToken,
             amountInDstToken: toTokenAmount(
-                swapFee.amountInDstToken.rawAmount + watchtowerFee.amountInDstToken.rawAmount,
+              swapFee.amountInDstToken.rawAmount + watchtowerFee.amountInDstToken.rawAmount,
                 this.wrapper.tokens[this.getSwapData().getToken()], this.wrapper.prices, this.pricingInfo
             ),
             currentUsdValue: amountInSrcToken.currentUsdValue,

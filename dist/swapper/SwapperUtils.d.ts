@@ -3,7 +3,7 @@ import { BTC_NETWORK } from "@scure/btc-signer/utils";
 import { SwapType } from "../enums/SwapType";
 import { ChainIds, MultiChain, Swapper } from "./Swapper";
 import { IBitcoinWallet } from "../bitcoin/wallet/IBitcoinWallet";
-import { MinimalBitcoinWalletInterface } from "../bitcoin/wallet/MinimalBitcoinWalletInterface";
+import { MinimalBitcoinWalletInterface } from "../types/wallets/MinimalBitcoinWalletInterface";
 import { TokenAmount } from "../types/TokenAmount";
 import { SCToken } from "../types/Token";
 import { LNURLWithdraw } from "../types/lnurl/LNURLWithdraw";

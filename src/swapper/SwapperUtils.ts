@@ -8,7 +8,7 @@ import {IBitcoinWallet} from "../bitcoin/wallet/IBitcoinWallet";
 import {SingleAddressBitcoinWallet} from "../bitcoin/wallet/SingleAddressBitcoinWallet";
 import {BigIntBufferUtils, ChainSwapType, isAbstractSigner} from "@atomiqlabs/base";
 import {bigIntMax, fromDecimal, randomBytes} from "../utils/Utils";
-import {MinimalBitcoinWalletInterface} from "../bitcoin/wallet/MinimalBitcoinWalletInterface";
+import {MinimalBitcoinWalletInterface} from "../types/wallets/MinimalBitcoinWalletInterface";
 import {TokenAmount, toTokenAmount} from "../types/TokenAmount";
 import {BitcoinTokens, SCToken} from "../types/Token";
 import {isLNURLWithdraw, LNURLWithdraw} from "../types/lnurl/LNURLWithdraw";

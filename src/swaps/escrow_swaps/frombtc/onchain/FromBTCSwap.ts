@@ -1,7 +1,14 @@
 import {IFromBTCSelfInitSwap} from "../IFromBTCSelfInitSwap";
 import {SwapType} from "../../../../enums/SwapType";
 import {FromBTCDefinition, FromBTCWrapper} from "./FromBTCWrapper";
-import {ChainType, isAbstractSigner, SwapCommitState, SwapCommitStateType, SwapData} from "@atomiqlabs/base";
+import {
+    BtcTxWithBlockheight,
+    ChainType,
+    isAbstractSigner,
+    SwapCommitState,
+    SwapCommitStateType,
+    SwapData
+} from "@atomiqlabs/base";
 import {Buffer} from "buffer";
 import {
     extendAbortController,
@@ -18,11 +25,10 @@ import {SingleAddressBitcoinWallet} from "../../../../bitcoin/wallet/SingleAddre
 import {
     MinimalBitcoinWalletInterface,
     MinimalBitcoinWalletInterfaceWithSigner
-} from "../../../../bitcoin/wallet/MinimalBitcoinWalletInterface";
+} from "../../../../types/wallets/MinimalBitcoinWalletInterface";
 import {IClaimableSwap} from "../../../IClaimableSwap";
 import {IEscrowSelfInitSwapInit, isIEscrowSelfInitSwapInit} from "../../IEscrowSelfInitSwap";
 import {IAddressSwap} from "../../../IAddressSwap";
-import {BtcTxWithBlockheight} from "../../../../bitcoin/BitcoinRpcWithAddressIndex";
 import {TokenAmount, toTokenAmount} from "../../../../types/TokenAmount";
 import {BitcoinTokens, BtcToken, SCToken, Token} from "../../../../types/Token";
 import {getLogger, LoggerType} from "../../../../utils/Logger";
@@ -225,7 +231,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
     /**
      * Returns claimer bounty, acting as a reward for watchtowers to claim the swap automatically
      */
-    getClaimerBounty(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>> {
+    getClaimerBounty(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
         return toTokenAmount(this.data.getClaimerBounty(), this.wrapper.tokens[this.data.getDepositToken()], this.wrapper.prices);
     }
 
@@ -445,7 +451,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
         return await this.wrapper.btcRpc.sendRawTransaction(Buffer.from(psbt.toBytes(true, true)).toString("hex"));
     }
 
-    async estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<any, BtcToken<false>> | null> {
+    async estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<any, BtcToken<false>, true> | null> {
         const bitcoinWallet: IBitcoinWallet = toBitcoinWallet(_bitcoinWallet, this.wrapper.btcRpc, this.wrapper.options.bitcoinNetwork);
         const txFee = await bitcoinWallet.getTransactionFee(this.address, this.amount, feeRate);
         if(txFee==null) return null;

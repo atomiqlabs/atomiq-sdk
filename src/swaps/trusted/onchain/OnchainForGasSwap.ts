@@ -16,7 +16,7 @@ import {Buffer} from "buffer";
 import {
     MinimalBitcoinWalletInterface,
     MinimalBitcoinWalletInterfaceWithSigner
-} from "../../../bitcoin/wallet/MinimalBitcoinWalletInterface";
+} from "../../../types/wallets/MinimalBitcoinWalletInterface";
 import {FeeType} from "../../../enums/FeeType";
 import {ppmToPercentage} from "../../../types/fees/PercentagePPM";
 import {TokenAmount, toTokenAmount} from "../../../types/TokenAmount";
@@ -220,7 +220,7 @@ export class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T,
         return this.wrapper.tokens[this.wrapper.chain.getNativeCurrencyAddress()];
     }
 
-    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>> {
+    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
         return toTokenAmount(
             this.outputAmount, this.wrapper.tokens[this.wrapper.chain.getNativeCurrencyAddress()],
             this.wrapper.prices, this.pricingInfo
@@ -231,11 +231,11 @@ export class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T,
         return BitcoinTokens.BTC;
     }
 
-    getInput(): TokenAmount<T["ChainId"], BtcToken<false>> {
+    getInput(): TokenAmount<T["ChainId"], BtcToken<false>, true> {
         return toTokenAmount(this.inputAmount, BitcoinTokens.BTC, this.wrapper.prices, this.pricingInfo);
     }
 
-    getInputWithoutFee(): TokenAmount<T["ChainId"], BtcToken<false>> {
+    getInputWithoutFee(): TokenAmount<T["ChainId"], BtcToken<false>, true> {
         return toTokenAmount(
             this.inputAmount - (this.swapFeeBtc ?? 0n), BitcoinTokens.BTC,
             this.wrapper.prices, this.pricingInfo
@@ -366,7 +366,7 @@ export class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T,
         return await this.wrapper.btcRpc.sendRawTransaction(Buffer.from(psbt.toBytes(true, true)).toString("hex"));
     }
 
-    async estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<any, BtcToken<false>> | null> {
+    async estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<any, BtcToken<false>, true> | null> {
         const bitcoinWallet: IBitcoinWallet = toBitcoinWallet(_bitcoinWallet, this.wrapper.btcRpc, this.wrapper.options.bitcoinNetwork);
         const txFee = await bitcoinWallet.getTransactionFee(this.address, this.inputAmount, feeRate);
         if(txFee==null) return null;

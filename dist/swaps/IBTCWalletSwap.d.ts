@@ -1,6 +1,6 @@
 import { IBitcoinWallet } from "../bitcoin/wallet/IBitcoinWallet";
 import { Transaction } from "@scure/btc-signer";
-import { MinimalBitcoinWalletInterface, MinimalBitcoinWalletInterfaceWithSigner } from "../bitcoin/wallet/MinimalBitcoinWalletInterface";
+import { MinimalBitcoinWalletInterface, MinimalBitcoinWalletInterfaceWithSigner } from "../types/wallets/MinimalBitcoinWalletInterface";
 import { TokenAmount } from "../types/TokenAmount";
 import { BtcToken } from "../types/Token";
 /**

@@ -15,11 +15,11 @@ export type Fee<
     /**
      * Fee value equivalent in source token
      */
-    amountInSrcToken: TokenAmount<ChainIdentifier, TSrc>,
+    amountInSrcToken: TokenAmount<ChainIdentifier, TSrc, true>,
     /**
      * Fee value equivalent in destination token
      */
-    amountInDstToken: TokenAmount<ChainIdentifier, TDst>,
+    amountInDstToken: TokenAmount<ChainIdentifier, TDst, true>,
     /**
      * Fetches the current USD value of the fee
      *

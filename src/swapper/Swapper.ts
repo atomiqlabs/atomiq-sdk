@@ -55,10 +55,6 @@ import {SwapAmountType} from "../enums/SwapAmountType";
 import {IClaimableSwap} from "../swaps/IClaimableSwap";
 import {correctClock} from "../utils/AutomaticClockDriftCorrection";
 import {isSwapType, SwapTypeMapping} from "../utils/SwapUtils";
-import {MempoolBitcoinBlock} from "../bitcoin/mempool/MempoolBitcoinBlock";
-import {MempoolBitcoinRpc} from "../bitcoin/mempool/MempoolBitcoinRpc";
-import {MempoolApi} from "../bitcoin/mempool/MempoolApi";
-import {MempoolBtcRelaySynchronizer} from "../bitcoin/mempool/synchronizer/MempoolBtcRelaySynchronizer";
 import {IndexedDBUnifiedStorage} from "../storage-browser/IndexedDBUnifiedStorage";
 import {TokenAmount, toTokenAmount} from "../types/TokenAmount";
 import {BitcoinTokens, BtcToken, isBtcToken, isSCToken, SCToken, Token} from "../types/Token";
@@ -68,6 +64,7 @@ import {isLNURLWithdraw, LNURLWithdraw} from "../types/lnurl/LNURLWithdraw";
 import {isLNURLPay, LNURLPay} from "../types/lnurl/LNURLPay";
 import {tryWithRetries} from "../utils/RetryUtils";
 import {NotNever} from "../utils/TypeUtils";
+import {MempoolApi, MempoolBitcoinBlock, MempoolBitcoinRpc, MempoolBtcRelaySynchronizer} from "@atomiqlabs/btc-mempool";
 
 /**
  * Configuration options for the Swapper
@@ -610,7 +607,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         let swapLimitsChanged = false;
 
         if(candidates.length===0)  {
-            this.logger.warn("createSwap(): No valid intermediary found, reloading intermediary database...");
+            this.logger.warn("createSwap(): No valid intermediary found to execute the swap with, reloading intermediary database...");
             await this.intermediaryDiscovery.reloadIntermediaries();
             swapLimitsChanged = true;
 
@@ -624,15 +621,14 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                     const min = this.intermediaryDiscovery.getSwapMinimum(chainIdentifier, swapType, amountData.token);
                     const max = this.intermediaryDiscovery.getSwapMaximum(chainIdentifier, swapType, amountData.token);
                     if(min!=null && max!=null) {
-                        if(amountData.amount < BigInt(min)) throw new OutOfBoundsError("Amount too low!", 200, BigInt(min), BigInt(max));
-                        if(amountData.amount > BigInt(max)) throw new OutOfBoundsError("Amount too high!", 200, BigInt(min), BigInt(max));
+                        if(amountData.amount < BigInt(min)) throw new OutOfBoundsError("Swap amount too low! Try swapping a higher amount.", 200, BigInt(min), BigInt(max));
+                        if(amountData.amount > BigInt(max)) throw new OutOfBoundsError("Swap amount too high! Try swapping a lower amount.", 200, BigInt(min), BigInt(max));
                     }
                 }
             }
 
-            if(candidates.length===0) throw new Error("No intermediary found!");
+            if(candidates.length===0) throw new Error("No intermediary found for the requested pair and amount! You can try swapping different pair or higher/lower amount.");
         }
-
 
         const abortController = new AbortController();
         this.logger.debug("createSwap() Swap candidates: ", candidates.map(lp => lp.url).join());
@@ -723,10 +719,10 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
             quotes.sort((a, b) => {
                 if(amountData.exactIn) {
                     //Compare outputs
-                    return bigIntCompare(b.quote.getOutput()!.rawAmount, a.quote.getOutput()!.rawAmount);
+                    return bigIntCompare(b.quote.getOutput().rawAmount!, a.quote.getOutput().rawAmount!);
                 } else {
                     //Compare inputs
-                    return bigIntCompare(a.quote.getInput()!.rawAmount, b.quote.getInput()!.rawAmount);
+                    return bigIntCompare(a.quote.getInput().rawAmount!, b.quote.getInput().rawAmount!);
                 }
             });
 

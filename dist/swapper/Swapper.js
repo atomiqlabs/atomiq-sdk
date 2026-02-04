@@ -25,7 +25,6 @@ const FromBTCLNAutoWrapper_1 = require("../swaps/escrow_swaps/frombtc/ln_auto/Fr
 const UserError_1 = require("../errors/UserError");
 const AutomaticClockDriftCorrection_1 = require("../utils/AutomaticClockDriftCorrection");
 const SwapUtils_1 = require("../utils/SwapUtils");
-const MempoolBtcRelaySynchronizer_1 = require("../bitcoin/mempool/synchronizer/MempoolBtcRelaySynchronizer");
 const IndexedDBUnifiedStorage_1 = require("../storage-browser/IndexedDBUnifiedStorage");
 const TokenAmount_1 = require("../types/TokenAmount");
 const Token_1 = require("../types/Token");
@@ -33,6 +32,7 @@ const Logger_1 = require("../utils/Logger");
 const LNURLWithdraw_1 = require("../types/lnurl/LNURLWithdraw");
 const LNURLPay_1 = require("../types/lnurl/LNURLPay");
 const RetryUtils_1 = require("../utils/RetryUtils");
+const btc_mempool_1 = require("@atomiqlabs/btc-mempool");
 /**
  * Core orchestrator for all swap operations with multi-chain support
  * @category Core
@@ -125,7 +125,7 @@ class Swapper extends events_1.EventEmitter {
         };
         this.chains = (0, Utils_1.objectMap)(chainsData, (chainData, key) => {
             const { swapContract, chainEvents, btcRelay, chainInterface, spvVaultContract, spvVaultWithdrawalDataConstructor } = chainData;
-            const synchronizer = new MempoolBtcRelaySynchronizer_1.MempoolBtcRelaySynchronizer(btcRelay, bitcoinRpc);
+            const synchronizer = new btc_mempool_1.MempoolBtcRelaySynchronizer(btcRelay, bitcoinRpc);
             const storageHandler = swapStorage(storagePrefix + chainData.chainId);
             const unifiedSwapStorage = new UnifiedSwapStorage_1.UnifiedSwapStorage(storageHandler, this.options.noSwapCache);
             const unifiedChainEvents = new UnifiedSwapEventListener_1.UnifiedSwapEventListener(unifiedSwapStorage, chainEvents);
@@ -349,7 +349,7 @@ class Swapper extends events_1.EventEmitter {
         }
         let swapLimitsChanged = false;
         if (candidates.length === 0) {
-            this.logger.warn("createSwap(): No valid intermediary found, reloading intermediary database...");
+            this.logger.warn("createSwap(): No valid intermediary found to execute the swap with, reloading intermediary database...");
             await this.intermediaryDiscovery.reloadIntermediaries();
             swapLimitsChanged = true;
             if (!inBtc) {
@@ -363,14 +363,14 @@ class Swapper extends events_1.EventEmitter {
                     const max = this.intermediaryDiscovery.getSwapMaximum(chainIdentifier, swapType, amountData.token);
                     if (min != null && max != null) {
                         if (amountData.amount < BigInt(min))
-                            throw new RequestError_1.OutOfBoundsError("Amount too low!", 200, BigInt(min), BigInt(max));
+                            throw new RequestError_1.OutOfBoundsError("Swap amount too low! Try swapping a higher amount.", 200, BigInt(min), BigInt(max));
                         if (amountData.amount > BigInt(max))
-                            throw new RequestError_1.OutOfBoundsError("Amount too high!", 200, BigInt(min), BigInt(max));
+                            throw new RequestError_1.OutOfBoundsError("Swap amount too high! Try swapping a lower amount.", 200, BigInt(min), BigInt(max));
                     }
                 }
             }
             if (candidates.length === 0)
-                throw new Error("No intermediary found!");
+                throw new Error("No intermediary found for the requested pair and amount! You can try swapping different pair or higher/lower amount.");
         }
         const abortController = new AbortController();
         this.logger.debug("createSwap() Swap candidates: ", candidates.map(lp => lp.url).join());

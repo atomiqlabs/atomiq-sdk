@@ -5,9 +5,9 @@ import {IBitcoinWallet} from "./IBitcoinWallet";
 import {Buffer} from "buffer";
 import {randomBytes} from "../../utils/Utils";
 import {toCoinselectAddressType, toOutputScript} from "../../utils/BitcoinUtils";
-import {BitcoinRpcWithAddressIndex} from "../BitcoinRpcWithAddressIndex";
 import {TransactionInputUpdate} from "@scure/btc-signer/psbt";
 import {getLogger} from "../../utils/Logger";
+import {BitcoinRpcWithAddressIndex} from "@atomiqlabs/base";
 
 /**
  * UTXO data structure for Bitcoin wallets
@@ -106,7 +106,7 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
                 outputScript: outputScript,
                 address: sendingAddress,
                 cpfp: !utxo.confirmed ? await this.rpc.getCPFPData(utxo.txid).then((result) => {
-                    if(result.effectiveFeePerVsize==null) return;
+                    if(result==null) return;
                     return {
                         txVsize: result.adjustedVsize,
                         txEffectiveFeeRate: result.effectiveFeePerVsize

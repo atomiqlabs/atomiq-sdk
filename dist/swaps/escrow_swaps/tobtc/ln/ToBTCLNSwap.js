@@ -79,7 +79,7 @@ class ToBTCLNSwap extends IToBTCSwap_1.IToBTCSwap {
     }
     getOutput() {
         if (this.pr == null || !this.pr.toLowerCase().startsWith("ln"))
-            return null;
+            return (0, TokenAmount_1.toTokenAmount)(null, this.outputToken, this.wrapper.prices, this.pricingInfo);
         const parsedPR = (0, bolt11_1.decode)(this.pr);
         if (parsedPR.millisatoshis == null)
             throw new Error("Swap invoice has no msat amount field!");

@@ -3,7 +3,7 @@ import {BTC_NETWORK, pubECDSA, randomPrivateKeyBytes} from "@scure/btc-signer/ut
 import {getAddress, Transaction, WIF} from "@scure/btc-signer";
 import {Buffer} from "buffer";
 import {identifyAddressType, BitcoinWallet} from "./BitcoinWallet";
-import {BitcoinRpcWithAddressIndex} from "../BitcoinRpcWithAddressIndex";
+import {BitcoinRpcWithAddressIndex} from "@atomiqlabs/base";
 
 /**
  * Bitcoin wallet implementation for single-address scenarios

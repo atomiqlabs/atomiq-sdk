@@ -42,15 +42,15 @@ export declare abstract class IFromBTCSelfInitSwap<T extends ChainType = ChainTy
         fee: Fee<T["ChainId"], BtcToken, SCToken<T["ChainId"]>>;
     }];
     getOutputToken(): SCToken<T["ChainId"]>;
-    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>>;
+    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
     abstract getInput(): TokenAmount<T["ChainId"], BtcToken>;
     getInputWithoutFee(): TokenAmount<T["ChainId"], BtcToken>;
-    getSecurityDeposit(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>>;
-    getTotalDeposit(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>>;
+    getSecurityDeposit(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+    getTotalDeposit(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
     hasEnoughForTxFees(): Promise<{
         enoughBalance: boolean;
-        balance: TokenAmount;
-        required: TokenAmount;
+        balance: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+        required: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
     }>;
     /**
      * Returns the transactions required for committing the swap on-chain, locking the tokens from the intermediary

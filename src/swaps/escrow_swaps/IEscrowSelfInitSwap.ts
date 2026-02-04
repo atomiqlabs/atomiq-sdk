@@ -96,7 +96,7 @@ export abstract class IEscrowSelfInitSwap<
     /**
      * Returns the transaction fee paid on the smart chain
      */
-    async getSmartChainNetworkFee(): Promise<TokenAmount<T["ChainId"], SCToken<T["ChainId"]>>> {
+    async getSmartChainNetworkFee(): Promise<TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>> {
         const swapContract: T["Contract"] = this.wrapper.contract;
         return toTokenAmount(
             await (
@@ -112,7 +112,11 @@ export abstract class IEscrowSelfInitSwap<
     /**
      * Checks if the initiator/sender has enough balance to cover the transaction fee for processing the swap
      */
-    abstract hasEnoughForTxFees(): Promise<{enoughBalance: boolean, balance: TokenAmount, required: TokenAmount}>;
+    abstract hasEnoughForTxFees(): Promise<{
+        enoughBalance: boolean,
+        balance: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>,
+        required: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>
+    }>;
 
 
     //////////////////////////////

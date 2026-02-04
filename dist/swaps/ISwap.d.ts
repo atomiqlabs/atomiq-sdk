@@ -158,7 +158,7 @@ export declare abstract class ISwap<T extends ChainType = ChainType, D extends S
     /**
      * Returns output amount of the swap, user receives this much
      */
-    abstract getOutput(): TokenAmount | null;
+    abstract getOutput(): TokenAmount;
     /**
      * Returns the output token of the swap
      */
@@ -166,7 +166,7 @@ export declare abstract class ISwap<T extends ChainType = ChainType, D extends S
     /**
      * Returns input amount of the swap, user needs to pay this much
      */
-    abstract getInput(): TokenAmount | null;
+    abstract getInput(): TokenAmount;
     /**
      * Returns the input token of the swap
      */
@@ -174,7 +174,7 @@ export declare abstract class ISwap<T extends ChainType = ChainType, D extends S
     /**
      * Returns input amount if the swap without the fees (swap fee, network fee)
      */
-    abstract getInputWithoutFee(): TokenAmount | null;
+    abstract getInputWithoutFee(): TokenAmount;
     /**
      * Returns total fee for the swap, the fee is represented in source currency & destination currency, but is
      *  paid only once

@@ -33,14 +33,12 @@ import { FromBTCLNAutoSwap } from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTC
 import { SwapAmountType } from "../enums/SwapAmountType";
 import { IClaimableSwap } from "../swaps/IClaimableSwap";
 import { SwapTypeMapping } from "../utils/SwapUtils";
-import { MempoolBitcoinBlock } from "../bitcoin/mempool/MempoolBitcoinBlock";
-import { MempoolBitcoinRpc } from "../bitcoin/mempool/MempoolBitcoinRpc";
-import { MempoolApi } from "../bitcoin/mempool/MempoolApi";
 import { TokenAmount } from "../types/TokenAmount";
 import { BtcToken, SCToken, Token } from "../types/Token";
 import { LNURLWithdraw } from "../types/lnurl/LNURLWithdraw";
 import { LNURLPay } from "../types/lnurl/LNURLPay";
 import { NotNever } from "../utils/TypeUtils";
+import { MempoolApi, MempoolBitcoinBlock, MempoolBitcoinRpc } from "@atomiqlabs/btc-mempool";
 /**
  * Configuration options for the Swapper
  * @category Core

@@ -9,8 +9,6 @@ import {FromBTCSwap} from "../swaps/escrow_swaps/frombtc/onchain/FromBTCSwap";
 import {ToBTCLNSwap} from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNSwap";
 import {ToBTCSwap} from "../swaps/escrow_swaps/tobtc/onchain/ToBTCSwap";
 import {SwapPriceWithChain} from "../prices/SwapPriceWithChain";
-import {MempoolApi} from "../bitcoin/mempool/MempoolApi";
-import {MempoolBitcoinRpc} from "../bitcoin/mempool/MempoolBitcoinRpc";
 import {BTC_NETWORK} from "@scure/btc-signer/utils";
 import {ToBTCOptions} from "../swaps/escrow_swaps/tobtc/onchain/ToBTCWrapper";
 import {ToBTCLNOptions} from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNWrapper";
@@ -27,6 +25,7 @@ import {TokenAmount} from "../types/TokenAmount";
 import {BtcToken, SCToken, Token} from "../types/Token";
 import {LNURLWithdraw} from "../types/lnurl/LNURLWithdraw";
 import {LNURLPay} from "../types/lnurl/LNURLPay";
+import {MempoolApi, MempoolBitcoinRpc} from "@atomiqlabs/btc-mempool";
 
 /**
  * Chain and signer-specific wrapper for automatic signer injection into swap methods

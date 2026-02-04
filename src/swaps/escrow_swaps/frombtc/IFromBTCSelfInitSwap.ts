@@ -31,8 +31,9 @@ export abstract class IFromBTCSelfInitSwap<
      * @protected
      */
     protected tryRecomputeSwapPrice() {
-        if(this.swapFeeBtc==null) {
-            this.swapFeeBtc = this.swapFee * this.getInput().rawAmount / this.getOutAmountWithoutFee();
+        const input = this.getInput();
+        if(this.swapFeeBtc==null && input.rawAmount!=null) {
+            this.swapFeeBtc = this.swapFee * input.rawAmount / this.getOutAmountWithoutFee();
         }
         super.tryRecomputeSwapPrice();
     }
@@ -87,7 +88,8 @@ export abstract class IFromBTCSelfInitSwap<
         if(this.pricingInfo==null) throw new Error("No pricing info known, cannot estimate fee!");
 
         const feeWithoutBaseFee = this.swapFeeBtc - this.pricingInfo.satsBaseFee;
-        const swapFeePPM = feeWithoutBaseFee * 1000000n / this.getInputWithoutFee().rawAmount;
+        const inputWithoutFee = this.getInputWithoutFee();
+        const swapFeePPM = inputWithoutFee.rawAmount==null ? 0n : feeWithoutBaseFee * 1000000n / inputWithoutFee.rawAmount;
 
         const amountInSrcToken = toTokenAmount(this.swapFeeBtc, this.inputToken, this.wrapper.prices, this.pricingInfo);
         return {
@@ -118,25 +120,31 @@ export abstract class IFromBTCSelfInitSwap<
         return this.wrapper.tokens[this.getSwapData().getToken()];
     }
 
-    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>> {
+    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
         return toTokenAmount(this.getSwapData().getAmount(), this.wrapper.tokens[this.getSwapData().getToken()], this.wrapper.prices, this.pricingInfo);
     }
 
     abstract getInput(): TokenAmount<T["ChainId"], BtcToken>;
 
     getInputWithoutFee(): TokenAmount<T["ChainId"], BtcToken> {
-        return toTokenAmount(this.getInput().rawAmount - this.swapFeeBtc, this.inputToken, this.wrapper.prices, this.pricingInfo);
+        const input = this.getInput();
+        if(input.rawAmount==null) return toTokenAmount(null, this.inputToken, this.wrapper.prices, this.pricingInfo);
+        return toTokenAmount(input.rawAmount - this.swapFeeBtc, this.inputToken, this.wrapper.prices, this.pricingInfo);
     }
 
-    getSecurityDeposit(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>> {
+    getSecurityDeposit(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
         return toTokenAmount(this.getSwapData().getSecurityDeposit(), this.wrapper.getNativeToken(), this.wrapper.prices, this.pricingInfo);
     }
 
-    getTotalDeposit(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>> {
+    getTotalDeposit(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
         return toTokenAmount(this.getSwapData().getTotalDeposit(), this.wrapper.getNativeToken(), this.wrapper.prices, this.pricingInfo);
     }
 
-    async hasEnoughForTxFees(): Promise<{enoughBalance: boolean, balance: TokenAmount, required: TokenAmount}> {
+    async hasEnoughForTxFees(): Promise<{
+        enoughBalance: boolean,
+        balance: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>,
+        required: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>
+    }> {
         const [balance, commitFee] = await Promise.all([
             this.wrapper.contract.getBalance(this._getInitiator(), this.wrapper.chain.getNativeCurrencyAddress(), false),
             this.getCommitFee()

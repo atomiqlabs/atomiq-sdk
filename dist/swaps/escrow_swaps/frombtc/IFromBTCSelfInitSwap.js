@@ -15,8 +15,9 @@ class IFromBTCSelfInitSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
      * @protected
      */
     tryRecomputeSwapPrice() {
-        if (this.swapFeeBtc == null) {
-            this.swapFeeBtc = this.swapFee * this.getInput().rawAmount / this.getOutAmountWithoutFee();
+        const input = this.getInput();
+        if (this.swapFeeBtc == null && input.rawAmount != null) {
+            this.swapFeeBtc = this.swapFee * input.rawAmount / this.getOutAmountWithoutFee();
         }
         super.tryRecomputeSwapPrice();
     }
@@ -41,7 +42,8 @@ class IFromBTCSelfInitSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
         if (this.pricingInfo == null)
             throw new Error("No pricing info known, cannot estimate fee!");
         const feeWithoutBaseFee = this.swapFeeBtc - this.pricingInfo.satsBaseFee;
-        const swapFeePPM = feeWithoutBaseFee * 1000000n / this.getInputWithoutFee().rawAmount;
+        const inputWithoutFee = this.getInputWithoutFee();
+        const swapFeePPM = inputWithoutFee.rawAmount == null ? 0n : feeWithoutBaseFee * 1000000n / inputWithoutFee.rawAmount;
         const amountInSrcToken = (0, TokenAmount_1.toTokenAmount)(this.swapFeeBtc, this.inputToken, this.wrapper.prices, this.pricingInfo);
         return {
             amountInSrcToken,
@@ -71,7 +73,10 @@ class IFromBTCSelfInitSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
         return (0, TokenAmount_1.toTokenAmount)(this.getSwapData().getAmount(), this.wrapper.tokens[this.getSwapData().getToken()], this.wrapper.prices, this.pricingInfo);
     }
     getInputWithoutFee() {
-        return (0, TokenAmount_1.toTokenAmount)(this.getInput().rawAmount - this.swapFeeBtc, this.inputToken, this.wrapper.prices, this.pricingInfo);
+        const input = this.getInput();
+        if (input.rawAmount == null)
+            return (0, TokenAmount_1.toTokenAmount)(null, this.inputToken, this.wrapper.prices, this.pricingInfo);
+        return (0, TokenAmount_1.toTokenAmount)(input.rawAmount - this.swapFeeBtc, this.inputToken, this.wrapper.prices, this.pricingInfo);
     }
     getSecurityDeposit() {
         return (0, TokenAmount_1.toTokenAmount)(this.getSwapData().getSecurityDeposit(), this.wrapper.getNativeToken(), this.wrapper.prices, this.pricingInfo);

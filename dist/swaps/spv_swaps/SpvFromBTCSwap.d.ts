@@ -7,7 +7,7 @@ import { Fee } from "../../types/fees/Fee";
 import { IBitcoinWallet } from "../../bitcoin/wallet/IBitcoinWallet";
 import { IBTCWalletSwap } from "../IBTCWalletSwap";
 import { ISwapWithGasDrop } from "../ISwapWithGasDrop";
-import { MinimalBitcoinWalletInterface, MinimalBitcoinWalletInterfaceWithSigner } from "../../bitcoin/wallet/MinimalBitcoinWalletInterface";
+import { MinimalBitcoinWalletInterface, MinimalBitcoinWalletInterfaceWithSigner } from "../../types/wallets/MinimalBitcoinWalletInterface";
 import { IClaimableSwap } from "../IClaimableSwap";
 import { FeeType } from "../../enums/FeeType";
 import { TokenAmount } from "../../types/TokenAmount";
@@ -120,7 +120,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
     protected getInputSwapAmountWithoutFee(): bigint;
     protected getInputGasAmountWithoutFee(): bigint;
     protected getInputAmountWithoutFee(): bigint;
-    protected getOutputWithoutFee(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>>;
+    protected getOutputWithoutFee(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
     protected getSwapFee(): Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>;
     protected getWatchtowerFee(): Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>;
     getFee(): Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>;
@@ -135,11 +135,11 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
         }
     ];
     getOutputToken(): SCToken<T["ChainId"]>;
-    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>>;
-    getGasDropOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>>;
-    getInputWithoutFee(): TokenAmount<T["ChainId"], BtcToken<false>>;
+    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+    getGasDropOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+    getInputWithoutFee(): TokenAmount<T["ChainId"], BtcToken<false>, true>;
     getInputToken(): BtcToken<false>;
-    getInput(): TokenAmount<T["ChainId"], BtcToken<false>>;
+    getInput(): TokenAmount<T["ChainId"], BtcToken<false>, true>;
     getRequiredConfirmationsCount(): number;
     getTransactionDetails(): Promise<{
         in0txid: string;
@@ -191,7 +191,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
      * @param _psbt A psbt - either a Transaction object or a hex or base64 encoded PSBT string
      */
     submitPsbt(_psbt: Transaction | string): Promise<string>;
-    estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<any, BtcToken<false>> | null>;
+    estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<any, BtcToken<false>, true> | null>;
     sendBitcoinTransaction(wallet: IBitcoinWallet | MinimalBitcoinWalletInterfaceWithSigner, feeRate?: number): Promise<string>;
     /**
      * Executes the swap with the provided bitcoin wallet,

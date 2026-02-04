@@ -40,6 +40,7 @@ var InvoiceStatusResponseCodes;
 const TrustedFromBTCLNResponseSchema = {
     pr: SchemaVerifier_1.FieldTypeEnum.String,
     swapFee: SchemaVerifier_1.FieldTypeEnum.BigInt,
+    swapFeeSats: SchemaVerifier_1.FieldTypeEnum.BigInt,
     total: SchemaVerifier_1.FieldTypeEnum.BigInt
 };
 class TrustedIntermediaryAPI {

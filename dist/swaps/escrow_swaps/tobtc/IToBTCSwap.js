@@ -70,7 +70,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
      */
     tryRecomputeSwapPrice() {
         const output = this.getOutput();
-        if (output != null) {
+        if (output.rawAmount != null) {
             if (this.swapFeeBtc == null) {
                 this.swapFeeBtc = this.swapFee * output.rawAmount / this.getInputWithoutFee().rawAmount;
             }
@@ -129,7 +129,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
             throw new Error("No pricing info known, cannot estimate fee!");
         const feeWithoutBaseFee = this.swapFeeBtc - this.pricingInfo.satsBaseFee;
         const output = this.getOutput();
-        const swapFeePPM = output?.rawAmount == null ? 0n : feeWithoutBaseFee * 1000000n / output.rawAmount;
+        const swapFeePPM = output.rawAmount == null ? 0n : feeWithoutBaseFee * 1000000n / output.rawAmount;
         const amountInDstToken = (0, TokenAmount_1.toTokenAmount)(this.swapFeeBtc, this.outputToken, this.wrapper.prices, this.pricingInfo);
         return {
             amountInSrcToken: (0, TokenAmount_1.toTokenAmount)(this.swapFee, this.wrapper.tokens[this.data.getToken()], this.wrapper.prices, this.pricingInfo),

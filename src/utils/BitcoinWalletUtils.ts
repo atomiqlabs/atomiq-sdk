@@ -1,7 +1,7 @@
 import {IBitcoinWallet, isIBitcoinWallet} from "../bitcoin/wallet/IBitcoinWallet";
-import {BitcoinRpcWithAddressIndex} from "../bitcoin/BitcoinRpcWithAddressIndex";
 import {BTC_NETWORK} from "@scure/btc-signer/utils";
 import {SingleAddressBitcoinWallet} from "../bitcoin/wallet/SingleAddressBitcoinWallet";
+import {BitcoinRpcWithAddressIndex} from "@atomiqlabs/base";
 
 export function toBitcoinWallet(
     _bitcoinWallet: IBitcoinWallet | { address: string, publicKey: string },

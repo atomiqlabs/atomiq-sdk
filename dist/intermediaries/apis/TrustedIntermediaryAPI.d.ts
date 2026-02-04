@@ -91,6 +91,7 @@ export type TrustedFromBTCLNInit = {
 declare const TrustedFromBTCLNResponseSchema: {
     readonly pr: FieldTypeEnum.String;
     readonly swapFee: FieldTypeEnum.BigInt;
+    readonly swapFeeSats: FieldTypeEnum.BigInt;
     readonly total: FieldTypeEnum.BigInt;
 };
 export type TrustedFromBTCLNResponseType = RequestSchemaResult<typeof TrustedFromBTCLNResponseSchema>;

@@ -53,7 +53,7 @@ async function tryWithRetries(func, retryPolicy, errorAllowed, abortSignal) {
             if (errorAllowed != null && checkError(e, errorAllowed))
                 throw e;
             err = e;
-            logger.warn("tryWithRetries(): Error on try number: " + i, e);
+            logger.debug("tryWithRetries(): Error on try number: " + i, e);
         }
         if (abortSignal != null && abortSignal.aborted)
             throw (abortSignal.reason || new Error("Aborted"));

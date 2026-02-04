@@ -1,11 +1,10 @@
 /// <reference types="node" />
 /// <reference types="node" />
 /// <reference types="node" />
-import { ChainType, ClaimEvent, InitializeEvent, Messenger, RefundEvent } from "@atomiqlabs/base";
+import { ChainType, ClaimEvent, InitializeEvent, LightningNetworkApi, Messenger, RefundEvent } from "@atomiqlabs/base";
 import { Intermediary } from "../../../../intermediaries/Intermediary";
 import { Buffer } from "buffer";
 import { SwapType } from "../../../../enums/SwapType";
-import { LightningNetworkApi } from "../../../../bitcoin/LightningNetworkApi";
 import { ISwapPrice } from "../../../../prices/abstract/ISwapPrice";
 import { EventEmitter } from "events";
 import { ISwapWrapperOptions, WrapperCtorTokens } from "../../../ISwapWrapper";

@@ -1,7 +1,6 @@
 import { SwapType } from "../enums/SwapType";
 import { SwapHandlerInfoType } from "./IntermediaryDiscovery";
-import { ChainSwapType, SwapContract } from "@atomiqlabs/base";
-import { LNNodeLiquidity } from "../bitcoin/LightningNetworkApi";
+import { ChainSwapType, LNNodeLiquidity, SwapContract } from "@atomiqlabs/base";
 /**
  * Services offered by an intermediary
  * @category Pricing and LPs

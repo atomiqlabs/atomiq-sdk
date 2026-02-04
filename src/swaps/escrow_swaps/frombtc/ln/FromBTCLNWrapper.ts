@@ -4,7 +4,7 @@ import {
     ChainSwapType,
     ChainType,
     ClaimEvent,
-    InitializeEvent,
+    InitializeEvent, LightningNetworkApi,
     RefundEvent
 } from "@atomiqlabs/base";
 import {Intermediary} from "../../../../intermediaries/Intermediary";
@@ -18,7 +18,6 @@ import {
 } from "../../../../utils/Utils";
 import {FromBTCLNResponseType, IntermediaryAPI} from "../../../../intermediaries/apis/IntermediaryAPI";
 import {RequestError} from "../../../../errors/RequestError";
-import {LightningNetworkApi} from "../../../../bitcoin/LightningNetworkApi";
 import {ISwapPrice} from "../../../../prices/abstract/ISwapPrice";
 import {EventEmitter} from "events";
 import {ISwapWrapperOptions, WrapperCtorTokens} from "../../../ISwapWrapper";
@@ -353,7 +352,7 @@ export class FromBTCLNWrapper<
                         quote.lnurlK1 = withdrawRequest.k1;
                         quote.lnurlCallback = withdrawRequest.callback;
 
-                        const amountIn = quote.getInput().rawAmount;
+                        const amountIn = quote.getInput().rawAmount!;
                         if(amountIn < min) throw new UserError("Amount less than LNURL-withdraw minimum");
                         if(amountIn > max) throw new UserError("Amount more than LNURL-withdraw maximum");
 

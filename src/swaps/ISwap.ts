@@ -176,24 +176,24 @@ export abstract class ISwap<
             const priceUsdPerBtc = this.pricingInfo.realPriceUsdPerBitcoin;
             const input = this.getInput();
             const output = this.getOutput();
-            if(input==null || output==null) return;
+            if(input.isUnknown || output.isUnknown) return;
             if(isSCToken(input.token) && this.getDirection()===SwapDirection.TO_BTC) {
                 this.pricingInfo = this.wrapper.prices.recomputePriceInfoSend(
                     this.chainIdentifier,
-                    output.rawAmount,
+                    output.rawAmount!,
                     this.pricingInfo.satsBaseFee,
                     this.pricingInfo.feePPM,
-                    input.rawAmount,
+                    input.rawAmount!,
                     input.token.address
                 );
                 this.pricingInfo.realPriceUsdPerBitcoin = priceUsdPerBtc;
             } else if(isSCToken(output.token) && this.getDirection()===SwapDirection.FROM_BTC) {
                 this.pricingInfo = this.wrapper.prices.recomputePriceInfoReceive(
                     this.chainIdentifier,
-                    input.rawAmount,
+                    input.rawAmount!,
                     this.pricingInfo.satsBaseFee,
                     this.pricingInfo.feePPM,
-                    output.rawAmount,
+                    output.rawAmount!,
                     output.token.address
                 );
                 this.pricingInfo.realPriceUsdPerBitcoin = priceUsdPerBtc;
@@ -209,25 +209,25 @@ export abstract class ISwap<
         const priceUsdPerBtc = this.pricingInfo.realPriceUsdPerBitcoin;
         const input = this.getInput();
         const output = this.getOutput();
-        if(input==null || output==null) return;
+        if(input.isUnknown || output.isUnknown) return;
 
         if(isSCToken(input.token) && this.getDirection()===SwapDirection.TO_BTC) {
             this.pricingInfo = await this.wrapper.prices.isValidAmountSend(
                 this.chainIdentifier,
-                output.rawAmount,
+                output.rawAmount!,
                 this.pricingInfo.satsBaseFee,
                 this.pricingInfo.feePPM,
-                input.rawAmount,
+                input.rawAmount!,
                 input.token.address
             );
             this.pricingInfo.realPriceUsdPerBitcoin = priceUsdPerBtc;
         } else if(isSCToken(output.token) && this.getDirection()===SwapDirection.FROM_BTC) {
             this.pricingInfo = await this.wrapper.prices.isValidAmountReceive(
                 this.chainIdentifier,
-                input.rawAmount,
+                input.rawAmount!,
                 this.pricingInfo.satsBaseFee,
                 this.pricingInfo.feePPM,
-                output.rawAmount,
+                output.rawAmount!,
                 output.token.address
             );
             this.pricingInfo.realPriceUsdPerBitcoin = priceUsdPerBtc;
@@ -377,7 +377,7 @@ export abstract class ISwap<
     /**
      * Returns output amount of the swap, user receives this much
      */
-    abstract getOutput(): TokenAmount | null;
+    abstract getOutput(): TokenAmount;
 
     /**
      * Returns the output token of the swap
@@ -387,7 +387,7 @@ export abstract class ISwap<
     /**
      * Returns input amount of the swap, user needs to pay this much
      */
-    abstract getInput(): TokenAmount | null;
+    abstract getInput(): TokenAmount;
 
     /**
      * Returns the input token of the swap
@@ -397,7 +397,7 @@ export abstract class ISwap<
     /**
      * Returns input amount if the swap without the fees (swap fee, network fee)
      */
-    abstract getInputWithoutFee(): TokenAmount | null;
+    abstract getInputWithoutFee(): TokenAmount;
 
     /**
      * Returns total fee for the swap, the fee is represented in source currency & destination currency, but is

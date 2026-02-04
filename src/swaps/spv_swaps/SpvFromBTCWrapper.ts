@@ -1,5 +1,6 @@
 import {ISwapWrapper, ISwapWrapperOptions, SwapTypeDefinition, WrapperCtorTokens} from "../ISwapWrapper";
 import {
+    BitcoinRpcWithAddressIndex,
     BtcRelay,
     ChainEvent,
     ChainType,
@@ -13,7 +14,6 @@ import {
 import {SpvFromBTCSwap, SpvFromBTCSwapInit, SpvFromBTCSwapState} from "./SpvFromBTCSwap";
 import {BTC_NETWORK, TEST_NETWORK} from "@scure/btc-signer/utils";
 import {SwapType} from "../../enums/SwapType";
-import {BitcoinRpcWithAddressIndex} from "../../bitcoin/BitcoinRpcWithAddressIndex";
 import {UnifiedSwapStorage} from "../../storage/UnifiedSwapStorage";
 import {UnifiedSwapEventListener} from "../../events/UnifiedSwapEventListener";
 import {ISwapPrice} from "../../prices/abstract/ISwapPrice";

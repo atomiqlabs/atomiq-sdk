@@ -59,7 +59,7 @@ export async function tryWithRetries<T>(func: (retryCount: number) => Promise<T>
         } catch (e) {
             if (errorAllowed != null && checkError(e, errorAllowed)) throw e;
             err = e;
-            logger.warn("tryWithRetries(): Error on try number: " + i, e);
+            logger.debug("tryWithRetries(): Error on try number: " + i, e);
         }
         if (abortSignal != null && abortSignal.aborted) throw (abortSignal.reason || new Error("Aborted"));
         if (i !== retryPolicy.maxRetries - 1) {

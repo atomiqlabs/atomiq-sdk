@@ -262,6 +262,7 @@ class IndexedDBUnifiedStorage {
         }), false);
     }
     async save(object) {
+        console.log("IndexedDBUnifiedStorage: save(): Saving object: ", object);
         await this.executeTransaction(store => store.put(object), false);
     }
     async saveAll(arr) {

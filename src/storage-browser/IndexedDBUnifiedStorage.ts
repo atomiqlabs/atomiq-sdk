@@ -315,6 +315,7 @@ export class IndexedDBUnifiedStorage implements IUnifiedStorage<UnifiedSwapStora
     }
 
     async save(object: UnifiedStoredObject): Promise<void> {
+        console.log("IndexedDBUnifiedStorage: save(): Saving object: ", object);
         await this.executeTransaction<IDBValidKey>(store => store.put(object), false);
     }
 

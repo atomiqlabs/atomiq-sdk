@@ -47,9 +47,8 @@ export class LnForGasWrapper<T extends ChainType> extends ISwapWrapper<T, LnForG
             false, amountIn,
             amount, token, {}
         );
-        this.logger.debug("create(): Returned pricing info: ", pricingInfo);
 
-        const quote = new LnForGasSwap(this, {
+        const quoteInit: LnForGasSwapInit = {
             pr: resp.pr,
             outputAmount: resp.total,
             recipient: signer,
@@ -57,9 +56,11 @@ export class LnForGasWrapper<T extends ChainType> extends ISwapWrapper<T, LnForG
             url: lpUrl,
             expiry: decodedPr.timeExpireDate*1000,
             swapFee: resp.swapFee,
+            swapFeeBtc: resp.swapFeeSats,
             token,
             exactIn: false
-        } as LnForGasSwapInit);
+        };
+        const quote = new LnForGasSwap(this, quoteInit);
         await quote._save();
         return quote;
     }

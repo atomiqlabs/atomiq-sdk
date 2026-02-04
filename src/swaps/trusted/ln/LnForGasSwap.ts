@@ -66,7 +66,6 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
         wrapper: LnForGasWrapper<T>,
         initOrObj: LnForGasSwapInit | any
     ) {
-        console.log("LnForGasSwap(): ctor(): Passed init object: ", initOrObj);
         if(isLnForGasSwapInit(initOrObj) && initOrObj.url!=null) initOrObj.url += "/lnforgas";
         super(wrapper, initOrObj);
         if(isLnForGasSwapInit(initOrObj)) {
@@ -88,7 +87,6 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
             if(decoded.timeExpireDate!=null) this.expiry = decoded.timeExpireDate*1000;
         }
         this.logger = getLogger("LnForGas("+this.getId()+"): ");
-        console.log("LnForGasSwap(): ctor(): Set pricing info: ", this.pricingInfo);
     }
 
     protected upgradeVersion() {

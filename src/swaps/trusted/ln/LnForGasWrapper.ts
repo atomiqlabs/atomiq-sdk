@@ -47,6 +47,7 @@ export class LnForGasWrapper<T extends ChainType> extends ISwapWrapper<T, LnForG
             false, amountIn,
             amount, token, {}
         );
+        this.logger.debug("create(): Returned pricing info: ", pricingInfo);
 
         const quote = new LnForGasSwap(this, {
             pr: resp.pr,

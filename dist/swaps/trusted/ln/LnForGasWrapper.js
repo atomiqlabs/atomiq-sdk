@@ -44,6 +44,7 @@ class LnForGasWrapper extends ISwapWrapper_1.ISwapWrapper {
         const pricingInfo = await this.verifyReturnedPrice(typeof (lpOrUrl) === "string" || lpOrUrl.services[SwapType_1.SwapType.TRUSTED_FROM_BTCLN] == null ?
             { swapFeePPM: 10000, swapBaseFee: 10 } :
             lpOrUrl.services[SwapType_1.SwapType.TRUSTED_FROM_BTCLN], false, amountIn, amount, token, {});
+        this.logger.debug("create(): Returned pricing info: ", pricingInfo);
         const quote = new LnForGasSwap_1.LnForGasSwap(this, {
             pr: resp.pr,
             outputAmount: resp.total,

@@ -1724,7 +1724,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         return recoveredSwaps;
     }
 
-    getToken(tickerOrAddress: string): Token {
+    getToken(tickerOrAddress: string): Token<ChainIds<T>> {
         //Btc tokens - BTC, BTCLN, BTC-LN
         if(tickerOrAddress==="BTC") return BitcoinTokens.BTC;
         if(tickerOrAddress==="BTCLN" || tickerOrAddress==="BTC-LN") return BitcoinTokens.BTCLN;

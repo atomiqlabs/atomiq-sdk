@@ -30,6 +30,7 @@ import {BitcoinTokens, BtcToken, SCToken} from "../../../../types/Token";
 import {getLogger, LoggerType} from "../../../../utils/Logger";
 import {timeoutPromise} from "../../../../utils/TimeoutUtils";
 import {isLNURLWithdraw, LNURLWithdraw, LNURLWithdrawParamsWithUrl} from "../../../../types/lnurl/LNURLWithdraw";
+import {sha256} from "@noble/hashes/sha2";
 
 /**
  * State enum for FromBTCLN swaps
@@ -47,8 +48,8 @@ export enum FromBTCLNSwapState {
 }
 
 export type FromBTCLNSwapInit<T extends SwapData> = IEscrowSelfInitSwapInit<T> & {
-    pr: string,
-    secret: string,
+    pr?: string,
+    secret?: string,
     initialSwapData: T,
     lnurl?: string,
     lnurlK1?: string,
@@ -56,8 +57,8 @@ export type FromBTCLNSwapInit<T extends SwapData> = IEscrowSelfInitSwapInit<T> &
 };
 
 export function isFromBTCLNSwapInit<T extends SwapData>(obj: any): obj is FromBTCLNSwapInit<T> {
-    return typeof obj.pr==="string" &&
-        typeof obj.secret==="string" &&
+    return (obj.pr==null || typeof obj.pr==="string") &&
+        (obj.secret==null || typeof obj.secret==="string") &&
         (obj.lnurl==null || typeof(obj.lnurl)==="string") &&
         (obj.lnurlK1==null || typeof(obj.lnurlK1)==="string") &&
         (obj.lnurlCallback==null || typeof(obj.lnurlCallback)==="string") &&
@@ -68,14 +69,16 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
     extends IFromBTCSelfInitSwap<T, FromBTCLNDefinition<T>, FromBTCLNSwapState>
     implements IAddressSwap, IClaimableSwap<T, FromBTCLNDefinition<T>, FromBTCLNSwapState> {
 
+    private readonly usesClaimHashAsId: boolean;
+
     protected readonly logger: LoggerType;
     protected readonly inputToken: BtcToken<true> = BitcoinTokens.BTCLN;
     protected readonly TYPE = SwapType.FROM_BTCLN;
 
     protected readonly lnurlFailSignal: AbortController = new AbortController();
 
-    protected readonly pr: string;
-    protected readonly secret: string;
+    protected pr?: string;
+    protected secret?: string;
     protected initialSwapData: T["Data"];
 
     lnurl?: string;
@@ -103,6 +106,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
             this.lnurl = initOrObject.lnurl;
             this.lnurlK1 = initOrObject.lnurlK1;
             this.lnurlCallback = initOrObject.lnurlCallback;
+            this.usesClaimHashAsId = true;
         } else {
             this.pr = initOrObject.pr;
             this.secret = initOrObject.secret;
@@ -122,6 +126,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
                 this.initialSwapData = this.data;
                 delete this.data;
             }
+            this.usesClaimHashAsId = initOrObject.usesClaimHashAsId ?? false;
         }
         this.tryRecomputeSwapPrice();
         this.logger = getLogger("FromBTCLN("+this.getIdentifierHashString()+"): ");
@@ -157,15 +162,21 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
     //// Getters & utils
 
     protected getIdentifierHash(): Buffer {
-        const paymentHashBuffer = this.getPaymentHash();
-        if(this.randomNonce==null) return paymentHashBuffer;
-        return Buffer.concat([paymentHashBuffer, Buffer.from(this.randomNonce, "hex")]);
+        const idBuffer: Buffer = this.usesClaimHashAsId
+            ? Buffer.from(this.getClaimHash(), "hex")
+            : this.getPaymentHash()!;
+        if(this.randomNonce==null) return idBuffer;
+        return Buffer.concat([idBuffer, Buffer.from(this.randomNonce, "hex")]);
     }
 
-    protected getPaymentHash(): Buffer {
-        const decodedPR = bolt11Decode(this.pr);
-        if(decodedPR.tagsObject.payment_hash==null) throw new Error("Swap invoice doesn't contain payment hash field!");
-        return Buffer.from(decodedPR.tagsObject.payment_hash, "hex");
+    protected getPaymentHash(): Buffer | null {
+        if(this.pr==null) return null;
+        if(this.pr.toLowerCase().startsWith("ln")) {
+            const parsed = bolt11Decode(this.pr);
+            if(parsed.tagsObject.payment_hash==null) throw new Error("Swap invoice has no payment hash field!");
+            return Buffer.from(parsed.tagsObject.payment_hash, "hex");
+        }
+        return Buffer.from(this.pr, "hex");
     }
 
     protected canCommit(): boolean {
@@ -173,22 +184,24 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
     }
 
     getInputAddress(): string | null {
-        return this.lnurl ?? this.pr;
+        return this.lnurl ?? this.pr ?? null;
     }
 
-    getInputTxId(): string {
-        return this.getPaymentHash().toString("hex");
+    getInputTxId(): string | null {
+        const paymentHash = this.getPaymentHash();
+        if(paymentHash==null) return null;
+        return paymentHash.toString("hex");
     }
 
     /**
      * Returns the lightning network BOLT11 invoice that needs to be paid as an input to the swap
      */
     getAddress(): string {
-        return this.pr;
+        return this.pr ?? "";
     }
 
     getHyperlink(): string {
-        return "lightning:"+this.pr.toUpperCase();
+        return this.pr==null ? "" : "lightning:"+this.pr.toUpperCase();
     }
 
     /**
@@ -196,6 +209,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
      *  if the LP doesn't make it expired sooner
      */
     getDefinitiveExpiryTime(): number {
+        if(this.pr==null || !this.pr.toLowerCase().startsWith("ln")) return 0;
         const decoded = bolt11Decode(this.pr);
         if(decoded.timeExpireDate==null) throw new Error("Swap invoice doesn't contain expiry date field!");
         const finalCltvExpiryDelta = decoded.tagsObject.min_final_cltv_expiry ?? 144;
@@ -207,6 +221,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
      * Returns timeout time (in UNIX milliseconds) when the LN invoice will expire
      */
     getTimeoutTime(): number {
+        if(this.pr==null || !this.pr.toLowerCase().startsWith("ln")) return 0;
         const decoded = bolt11Decode(this.pr);
         if(decoded.timeExpireDate==null) throw new Error("Swap invoice doesn't contain expiry date field!");
         return (decoded.timeExpireDate*1000);
@@ -270,6 +285,9 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
     }
 
     getInput(): TokenAmount<T["ChainId"], BtcToken<true>> {
+        if(this.pr==null || !this.pr.toLowerCase().startsWith("ln"))
+            return toTokenAmount(null, this.inputToken, this.wrapper.prices, this.pricingInfo);
+
         const parsed = bolt11Decode(this.pr);
         if(parsed.millisatoshis==null) throw new Error("Swap invoice doesn't contain msat amount field!");
         const amount = (BigInt(parsed.millisatoshis) + 999n) / 1000n;
@@ -304,6 +322,12 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
         };
     }
 
+    private isValidSecretPreimage(secret: string) {
+        const paymentHash = Buffer.from(sha256(Buffer.from(secret, "hex")));
+        const claimHash = this.wrapper.contract.getHashForHtlc(paymentHash).toString("hex");
+        return this.getSwapData().getClaimHash()===claimHash;
+    }
+
 
     //////////////////////////////
     //// Execution
@@ -318,6 +342,8 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
      *  link, wallet is not required and the LN invoice can be paid externally as well (just pass null or undefined here)
      * @param callbacks Callbacks to track the progress of the swap
      * @param options Optional options for the swap like feeRate, AbortSignal, and timeouts/intervals
+     * @param secret A swap secret to use for the claim transaction, generally only needed if the swap
+     *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      */
     async execute(
         dstSigner: T["Signer"] | T["NativeSigner"],
@@ -332,7 +358,8 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
             abortSignal?: AbortSignal,
             lightningTxCheckIntervalSeconds?: number,
             delayBetweenCommitAndClaimSeconds?: number
-        }
+        },
+        secret?: string
     ): Promise<void> {
         if(this.state===FromBTCLNSwapState.FAILED) throw new Error("Swap failed!");
         if(this.state===FromBTCLNSwapState.EXPIRED) throw new Error("Swap HTLC expired!");
@@ -343,6 +370,9 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
 
         if(this.state===FromBTCLNSwapState.PR_CREATED) {
             if(walletOrLnurlWithdraw!=null && this.lnurl==null) {
+                if(this.pr==null || !this.pr.toLowerCase().startsWith("ln"))
+                    throw new Error("Input lightning network invoice not available, the swap was probably recovered!");
+
                 if(typeof(walletOrLnurlWithdraw)==="string" || isLNURLWithdraw(walletOrLnurlWithdraw)) {
                     await this.settleWithLNURLWithdraw(walletOrLnurlWithdraw);
                 } else {
@@ -360,14 +390,14 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
 
         if(this.state===FromBTCLNSwapState.PR_PAID || this.state===FromBTCLNSwapState.CLAIM_COMMITED) {
             if(this.canCommitAndClaimInOneShot()) {
-                await this.commitAndClaim(dstSigner, options?.abortSignal, undefined, callbacks?.onDestinationCommitSent, callbacks?.onDestinationClaimSent);
+                await this.commitAndClaim(dstSigner, options?.abortSignal, undefined, callbacks?.onDestinationCommitSent, callbacks?.onDestinationClaimSent, secret);
             } else {
                 if(this.state===FromBTCLNSwapState.PR_PAID) {
                     await this.commit(dstSigner, options?.abortSignal, undefined, callbacks?.onDestinationCommitSent);
                     if(options?.delayBetweenCommitAndClaimSeconds!=null) await timeoutPromise(options.delayBetweenCommitAndClaimSeconds * 1000, options?.abortSignal);
                 }
                 if(this.state===FromBTCLNSwapState.CLAIM_COMMITED) {
-                    await this.claim(dstSigner, options?.abortSignal, callbacks?.onDestinationClaimSent);
+                    await this.claim(dstSigner, options?.abortSignal, callbacks?.onDestinationClaimSent, secret);
                 }
             }
         }
@@ -378,9 +408,14 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
         }
     }
 
-    async txsExecute(options?: {
-        skipChecks?: boolean
-    }) {
+    /**
+     * Returns currently required execution step to execute the swap
+     *
+     * @param options Optional options for the swap
+     * @param secret A swap secret to use for the claim transaction, generally only needed if the swap
+     *  was recovered from on-chain data, or the pre-image was generated outside the SDK
+     */
+    async txsExecute(options?: { skipChecks?: boolean }, secret?: string) {
         if(this.state===FromBTCLNSwapState.PR_CREATED) {
             if(!await this.verifyQuoteValid()) throw new Error("Quote already expired or close to expiry!");
             return [
@@ -401,7 +436,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
         if(this.state===FromBTCLNSwapState.PR_PAID) {
             if(!await this.verifyQuoteValid()) throw new Error("Quote already expired or close to expiry!");
             const txsCommit = await this.txsCommit(options?.skipChecks);
-            const txsClaim = await this._txsClaim(undefined);
+            const txsClaim = await this._txsClaim(undefined, secret);
             return [
                 {
                     name: "Commit" as const,
@@ -419,7 +454,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
         }
 
         if(this.state===FromBTCLNSwapState.CLAIM_COMMITED) {
-            const txsClaim = await this.txsClaim();
+            const txsClaim = await this.txsClaim(undefined, secret);
             return [
                 {
                     name: "Claim" as const,
@@ -447,11 +482,17 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
             this.state===FromBTCLNSwapState.PR_PAID ||
             this.state===FromBTCLNSwapState.CLAIM_COMMITED ||
             this.state===FromBTCLNSwapState.CLAIM_CLAIMED ||
-            this.state===FromBTCLNSwapState.FAILED
+            this.state===FromBTCLNSwapState.FAILED ||
+            this.state===FromBTCLNSwapState.EXPIRED
         ) return true;
         if(this.state===FromBTCLNSwapState.QUOTE_EXPIRED || (this.state===FromBTCLNSwapState.QUOTE_SOFT_EXPIRED && this.signatureData!=null)) return false;
         if(this.url==null) return false;
-        const resp = await IntermediaryAPI.getPaymentAuthorization(this.url, this.getPaymentHash().toString("hex"));
+
+        const paymentHash = this.getPaymentHash();
+        if(paymentHash==null)
+            throw new Error("Failed to check LP payment received, payment hash not known (probably recovered swap?)");
+
+        const resp = await IntermediaryAPI.getPaymentAuthorization(this.url, paymentHash.toString("hex"));
         switch(resp.code) {
             case PaymentAuthorizationResponseCodes.AUTH_DATA:
                 const data = new this.wrapper.swapDataDeserializer(resp.data.data);
@@ -539,6 +580,9 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
         let save = false;
 
         if(this.lnurl!=null && this.lnurlK1!=null && this.lnurlCallback!=null && !this.prPosted) {
+            if(this.pr==null || !this.pr.toLowerCase().startsWith("ln"))
+                throw new Error("Input lightning network invoice not available, the swap was probably recovered!");
+
             LNURL.postInvoiceToLNURLWithdraw({k1: this.lnurlK1, callback: this.lnurlCallback}, this.pr).catch(e => {
                 this.lnurlFailSignal.abort(e);
             });
@@ -557,9 +601,13 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
         this.lnurlFailSignal.signal.addEventListener("abort", lnurlFailListener);
         this.lnurlFailSignal.signal.throwIfAborted();
 
+        const paymentHash = this.getPaymentHash();
+        if(paymentHash==null)
+            throw new Error("Swap payment hash not available, the swap was probably recovered!");
+
         let resp: PaymentAuthorizationResponse = {code: PaymentAuthorizationResponseCodes.PENDING, msg: ""};
         while(!abortController.signal.aborted && resp.code===PaymentAuthorizationResponseCodes.PENDING) {
-            resp = await IntermediaryAPI.getPaymentAuthorization(this.url, this.getPaymentHash().toString("hex"));
+            resp = await IntermediaryAPI.getPaymentAuthorization(this.url, paymentHash.toString("hex"));
             if(resp.code===PaymentAuthorizationResponseCodes.PENDING)
                 await timeoutPromise(checkIntervalSeconds*1000, abortController.signal);
         }
@@ -574,7 +622,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
                 swapData,
                 sigData
             );
-            if(onPaymentReceived!=null) onPaymentReceived(this.getInputTxId());
+            if(onPaymentReceived!=null) onPaymentReceived(this.getInputTxId()!);
             if(this.state===FromBTCLNSwapState.PR_CREATED || this.state===FromBTCLNSwapState.QUOTE_SOFT_EXPIRED) {
                 this.data = swapData;
                 this.signatureData = {
@@ -672,15 +720,23 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
      * Unsafe txs claim getter without state checking!
      *
      * @param _signer
+     * @param secret A swap secret to use for the claim transaction, generally only needed if the swap
+     *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      * @private
      */
-    private async _txsClaim(_signer?: T["Signer"] | T["NativeSigner"]): Promise<T["TX"][]> {
+    private async _txsClaim(_signer?: T["Signer"] | T["NativeSigner"], secret?: string): Promise<T["TX"][]> {
         if(this.data==null) throw new Error("Unknown data, wrong state?");
+        const useSecret = secret ?? this.secret;
+        if(useSecret==null)
+            throw new Error("Swap secret pre-image not known and not provided, please provide the swap secret pre-image as an argument");
+        if(!this.isValidSecretPreimage(useSecret))
+            throw new Error("Invalid swap secret pre-image provided!");
+
         return this.wrapper.contract.txsClaimWithSecret(
             _signer==null ?
                 this._getInitiator() :
                 (isAbstractSigner(_signer) ? _signer : await this.wrapper.chain.wrapSigner(_signer)),
-            this.data, this.secret, true, true
+            this.data, useSecret, true, true
         );
     }
 
@@ -689,11 +745,14 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
      *  (hash preimage)
      *
      * @param _signer Optional signer address to use for claiming the swap, can also be different from the initializer
+     * @param secret A swap secret to use for the claim transaction, generally only needed if the swap
+     *  was recovered from on-chain data, or the pre-image was generated outside the SDK
+     *
      * @throws {Error} If in invalid state (must be CLAIM_COMMITED)
      */
-    async txsClaim(_signer?: T["Signer"] | T["NativeSigner"]): Promise<T["TX"][]> {
+    async txsClaim(_signer?: T["Signer"] | T["NativeSigner"], secret?: string): Promise<T["TX"][]> {
         if(this.state!==FromBTCLNSwapState.CLAIM_COMMITED) throw new Error("Must be in CLAIM_COMMITED state!");
-        return this._txsClaim(_signer);
+        return this._txsClaim(_signer, secret);
     }
 
     /**
@@ -701,13 +760,16 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
      *
      * @param _signer Signer to sign the transactions with, can also be different to the initializer
      * @param abortSignal Abort signal to stop waiting for transaction confirmation
+     * @param secret A swap secret to use for the claim transaction, generally only needed if the swap
+     *  was recovered from on-chain data, or the pre-image was generated outside the SDK
+     *
      * @param onBeforeTxSent
      */
-    async claim(_signer: T["Signer"] | T["NativeSigner"], abortSignal?: AbortSignal, onBeforeTxSent?: (txId: string) => void): Promise<string> {
+    async claim(_signer: T["Signer"] | T["NativeSigner"], abortSignal?: AbortSignal, onBeforeTxSent?: (txId: string) => void, secret?: string): Promise<string> {
         const signer = isAbstractSigner(_signer) ? _signer : await this.wrapper.chain.wrapSigner(_signer);
         let txCount = 0;
         const result = await this.wrapper.chain.sendAndConfirm(
-            signer, await this.txsClaim(), true, abortSignal, undefined, (txId: string) => {
+            signer, await this.txsClaim(_signer, secret), true, abortSignal, undefined, (txId: string) => {
                 txCount++;
                 if(onBeforeTxSent!=null && txCount===1) onBeforeTxSent(txId);
                 return Promise.resolve();
@@ -828,20 +890,28 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
      *
      * @param skipChecks Skip checks like making sure init signature is still valid and swap wasn't commited yet
      *  (this is handled when swap is created (quoted), if you commit right after quoting, you can use skipChecks=true)
+     * @param secret A swap secret to use for the claim transaction, generally only needed if the swap
+     *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      *
      * @throws {Error} If in invalid state (must be PR_PAID or CLAIM_COMMITED)
      */
-    async txsCommitAndClaim(skipChecks?: boolean): Promise<T["TX"][]> {
-        if(this.state===FromBTCLNSwapState.CLAIM_COMMITED) return await this.txsClaim();
+    async txsCommitAndClaim(skipChecks?: boolean, secret?: string): Promise<T["TX"][]> {
+        if(this.state===FromBTCLNSwapState.CLAIM_COMMITED) return await this.txsClaim(undefined, secret);
         if(
             this.state!==FromBTCLNSwapState.PR_PAID &&
             (this.state!==FromBTCLNSwapState.QUOTE_SOFT_EXPIRED || this.signatureData==null)
         ) throw new Error("Must be in PR_PAID state!");
         if(this.data==null) throw new Error("Unknown data, wrong state?");
 
+        const useSecret = secret ?? this.secret;
+        if(useSecret==null)
+            throw new Error("Swap secret pre-image not known and not provided, please provide the swap secret pre-image as second argument");
+        if(!this.isValidSecretPreimage(useSecret))
+            throw new Error("Invalid swap secret pre-image provided!");
+
         const initTxs = await this.txsCommit(skipChecks);
         const claimTxs = await this.wrapper.contract.txsClaimWithSecret(
-            this._getInitiator(), this.data, this.secret,
+            this._getInitiator(), this.data, useSecret,
             true, true, undefined,
             true
         );
@@ -859,20 +929,24 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
      *  (this is handled when swap is created (quoted), if you commit right after quoting, you can use skipChecks=true)
      * @param onBeforeCommitTxSent
      * @param onBeforeClaimTxSent
+     * @param secret A swap secret to use for the claim transaction, generally only needed if the swap
+     *  was recovered from on-chain data, or the pre-image was generated outside the SDK
+     *
      * @throws {Error} If in invalid state (must be PR_PAID or CLAIM_COMMITED)
      * @throws {Error} If invalid signer is provided that doesn't match the swap data
      */
     async commitAndClaim(
         _signer: T["Signer"] | T["NativeSigner"], abortSignal?: AbortSignal, skipChecks?: boolean,
-        onBeforeCommitTxSent?: (txId: string) => void, onBeforeClaimTxSent?: (txId: string) => void
+        onBeforeCommitTxSent?: (txId: string) => void, onBeforeClaimTxSent?: (txId: string) => void,
+        secret?: string
     ): Promise<string[]> {
         const signer = isAbstractSigner(_signer) ? _signer : await this.wrapper.chain.wrapSigner(_signer);
         if(!this.canCommitAndClaimInOneShot()) throw new Error("Cannot commitAndClaim in single action, please run commit and claim separately!");
         this.checkSigner(signer);
-        if(this.state===FromBTCLNSwapState.CLAIM_COMMITED) return [await this.claim(signer, abortSignal, onBeforeClaimTxSent)];
+        if(this.state===FromBTCLNSwapState.CLAIM_COMMITED) return [await this.claim(signer, abortSignal, onBeforeClaimTxSent, secret)];
 
         let txCount = 0;
-        const txs = await this.txsCommitAndClaim(skipChecks);
+        const txs = await this.txsCommitAndClaim(skipChecks, secret);
         const result = await this.wrapper.chain.sendAndConfirm(
             signer, txs, true, abortSignal, undefined, (txId: string) => {
                 txCount++;
@@ -913,6 +987,11 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
      * Pay the generated lightning network invoice with LNURL-withdraw
      */
     async settleWithLNURLWithdraw(lnurl: string | LNURLWithdraw): Promise<void> {
+        if(
+            this.state!==FromBTCLNSwapState.PR_CREATED &&
+            (this.state!==FromBTCLNSwapState.QUOTE_SOFT_EXPIRED || this.signatureData!=null)
+        ) throw new Error("Must be in PR_CREATED state!");
+
         if(this.lnurl!=null) throw new Error("Cannot settle LNURL-withdraw swap with different LNURL");
         let lnurlParams: LNURLWithdrawParamsWithUrl;
         if(typeof(lnurl)==="string") {
@@ -923,6 +1002,10 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
         } else {
             lnurlParams = lnurl.params;
         }
+
+        if(this.pr==null || !this.pr.toLowerCase().startsWith("ln"))
+            throw new Error("Input lightning network invoice not available, the swap was probably recovered!");
+
         LNURL.useLNURLWithdraw(lnurlParams, this.pr).catch(e => this.lnurlFailSignal.abort(e));
         this.lnurl = lnurlParams.url;
         this.lnurlCallback = lnurlParams.callback;
@@ -944,7 +1027,8 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
             lnurlK1: this.lnurlK1,
             lnurlCallback: this.lnurlCallback,
             prPosted: this.prPosted,
-            initialSwapData: this.initialSwapData.serialize()
+            initialSwapData: this.initialSwapData.serialize(),
+            usesClaimHashAsId: this.usesClaimHashAsId
         };
     }
 
@@ -970,6 +1054,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
             commitStatus ??= await this.wrapper.contract.getCommitStatus(this._getInitiator(), this.data!);
             if(commitStatus?.type===SwapCommitStateType.PAID) {
                 if(this.claimTxId==null) this.claimTxId = await commitStatus.getClaimTxId();
+                if(this.secret==null || this.pr==null) this._setSwapSecret(await commitStatus.getClaimResult());
                 this.state = FromBTCLNSwapState.CLAIM_CLAIMED;
                 return true;
             }
@@ -1049,6 +1134,14 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
 
         if(await this.syncStateFromChain(quoteDefinitelyExpired, commitStatus)) changed = true;
 
+        if(this.state===FromBTCLNSwapState.CLAIM_COMMITED) {
+            const expired = await this.wrapper.contract.isExpired(this._getInitiator(), this.data!);
+            if(expired) {
+                this.state = FromBTCLNSwapState.EXPIRED;
+                changed = true;
+            }
+        }
+
         if(save && changed) await this._saveAndEmit();
 
         return changed;
@@ -1081,6 +1174,13 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
         }
 
         return false;
+    }
+
+    _setSwapSecret(secret: string) {
+        this.secret = secret;
+        if(this.pr==null) {
+            this.pr = Buffer.from(sha256(Buffer.from(secret, "hex"))).toString("hex");
+        }
     }
 
 }

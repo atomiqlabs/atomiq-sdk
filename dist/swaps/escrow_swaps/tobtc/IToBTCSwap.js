@@ -631,7 +631,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
                 case base_1.SwapCommitStateType.EXPIRED:
                     if (this.refundTxId == null && commitStatus.getRefundTxId)
                         this.refundTxId = await commitStatus.getRefundTxId();
-                    this.state = ToBTCSwapState.QUOTE_EXPIRED;
+                    this.state = this.refundTxId == null ? ToBTCSwapState.QUOTE_EXPIRED : ToBTCSwapState.REFUNDED;
                     return true;
                 case base_1.SwapCommitStateType.NOT_COMMITED:
                     if (this.refundTxId == null && commitStatus.getRefundTxId)

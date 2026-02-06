@@ -28,10 +28,9 @@ export declare enum FromBTCSwapState {
 }
 export type FromBTCSwapInit<T extends SwapData> = IEscrowSelfInitSwapInit<T> & {
     data: T;
-    feeRate: string;
-    address: string;
-    amount: bigint;
-    requiredConfirmations: number;
+    address?: string;
+    amount?: bigint;
+    requiredConfirmations?: number;
 };
 export declare function isFromBTCSwapInit<T extends SwapData>(obj: any): obj is FromBTCSwapInit<T>;
 export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromBTCSelfInitSwap<T, FromBTCDefinition<T>, FromBTCSwapState> implements IBTCWalletSwap, IClaimableSwap<T, FromBTCDefinition<T>, FromBTCSwapState>, IAddressSwap {
@@ -40,9 +39,9 @@ export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromB
     protected readonly TYPE = SwapType.FROM_BTC;
     readonly data: T["Data"];
     readonly feeRate: string;
-    address: string;
-    amount: bigint;
-    readonly requiredConfirmations: number;
+    address?: string;
+    amount?: bigint;
+    requiredConfirmations?: number;
     senderAddress?: string;
     txId?: string;
     vout?: number;
@@ -82,6 +81,15 @@ export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromB
      * Returns claimer bounty, acting as a reward for watchtowers to claim the swap automatically
      */
     getClaimerBounty(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+    /**
+     * If the required number of confirmations is not known, this function tries to infer it by looping through
+     *  possible confirmation targets and comparing the claim hashes
+     *
+     * @param btcTx
+     * @param vout
+     * @private
+     */
+    private inferRequiredConfirmationsCount;
     getRequiredConfirmationsCount(): number;
     /**
      * Checks whether a bitcoin payment was already made, returns the payment or null when no payment has been made.
@@ -178,7 +186,7 @@ export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromB
         description: string;
         chain: string;
         txs: ({
-            address: string;
+            address: string | undefined;
             amount: number;
             hyperlink: string;
             type: string;

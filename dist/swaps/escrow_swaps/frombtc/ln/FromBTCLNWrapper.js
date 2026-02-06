@@ -13,6 +13,7 @@ const IntermediaryAPI_1 = require("../../../../intermediaries/apis/IntermediaryA
 const RequestError_1 = require("../../../../errors/RequestError");
 const IFromBTCLNWrapper_1 = require("../IFromBTCLNWrapper");
 const RetryUtils_1 = require("../../../../utils/RetryUtils");
+const sha2_1 = require("@noble/hashes/sha2");
 /**
  * Factory wrapper for creating Lightning BTC to Smart Chain swaps
  * @category Swaps
@@ -63,6 +64,7 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
     processEventClaim(swap, event) {
         if (swap.state !== FromBTCLNSwap_1.FromBTCLNSwapState.FAILED && swap.state !== FromBTCLNSwap_1.FromBTCLNSwapState.CLAIM_CLAIMED) {
             swap.state = FromBTCLNSwap_1.FromBTCLNSwapState.CLAIM_CLAIMED;
+            swap._setSwapSecret(event.result);
             return Promise.resolve(true);
         }
         return Promise.resolve(false);
@@ -302,6 +304,68 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
             changedSwaps,
             removeSwaps
         };
+    }
+    async recoverFromSwapDataAndState(init, state, lp) {
+        const data = init.data;
+        let paymentHash = data.getHTLCHashHint();
+        let secret;
+        if (state.type === base_1.SwapCommitStateType.PAID) {
+            secret = await state.getClaimResult();
+            paymentHash = buffer_1.Buffer.from((0, sha2_1.sha256)(buffer_1.Buffer.from(secret, "hex"))).toString("hex");
+        }
+        const swapInit = {
+            pricingInfo: {
+                isValid: true,
+                satsBaseFee: 0n,
+                swapPriceUSatPerToken: 100000000000000n,
+                realPriceUSatPerToken: 100000000000000n,
+                differencePPM: 0n,
+                feePPM: 0n,
+            },
+            url: lp?.url,
+            expiry: 0,
+            swapFee: 0n,
+            swapFeeBtc: 0n,
+            feeRate: "",
+            signatureData: undefined,
+            initialSwapData: data,
+            data,
+            pr: paymentHash ?? undefined,
+            secret,
+            exactIn: false
+        };
+        const swap = new FromBTCLNSwap_1.FromBTCLNSwap(this, swapInit);
+        swap.commitTxId = await init.getInitTxId();
+        const blockData = await init.getTxBlock();
+        swap.createdAt = blockData.blockTime * 1000;
+        swap._setInitiated();
+        swap.state = FromBTCLNSwap_1.FromBTCLNSwapState.CLAIM_COMMITED;
+        await swap._sync(false, false, state);
+        await swap._save();
+        return swap;
+        // switch(state.type) {
+        //     case SwapCommitStateType.PAID:
+        //         secret ??= await state.getClaimResult();
+        //         swap._setSwapSecret(secret);
+        //         swap.claimTxId = await state.getClaimTxId();
+        //         swap.state = FromBTCLNSwapState.CLAIM_CLAIMED;
+        //         break;
+        //     case SwapCommitStateType.NOT_COMMITED:
+        //     case SwapCommitStateType.EXPIRED:
+        //         if(state.getRefundTxId==null) return null;
+        //         swap.refundTxId = await state.getRefundTxId();
+        //         swap.state = FromBTCLNSwapState.FAILED;
+        //         break;
+        //     case SwapCommitStateType.COMMITED:
+        //     case SwapCommitStateType.REFUNDABLE:
+        //         const expired = await this.contract.isExpired(swap._getInitiator(), data);
+        //         if(expired) {
+        //             swap.state = FromBTCLNSwapState.EXPIRED;
+        //         } else {
+        //             swap.state = FromBTCLNSwapState.CLAIM_COMMITED;
+        //         }
+        //         break;
+        // }
     }
 }
 exports.FromBTCLNWrapper = FromBTCLNWrapper;

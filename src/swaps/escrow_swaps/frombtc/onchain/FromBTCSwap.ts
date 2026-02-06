@@ -51,17 +51,16 @@ export enum FromBTCSwapState {
 
 export type FromBTCSwapInit<T extends SwapData> = IEscrowSelfInitSwapInit<T> & {
     data: T;
-    feeRate: string;
-    address: string;
-    amount: bigint;
-    requiredConfirmations: number;
+    address?: string;
+    amount?: bigint;
+    requiredConfirmations?: number;
 };
 
 export function isFromBTCSwapInit<T extends SwapData>(obj: any): obj is FromBTCSwapInit<T> {
-    return typeof(obj.address) === "string" &&
-        typeof(obj.amount) === "bigint" &&
-        typeof(obj.data) === "object" &&
-        typeof(obj.requiredConfirmations) === "number" &&
+    return typeof(obj.data) === "object" &&
+        (obj.address==null || typeof(obj.address) === "string") &&
+        (obj.amount==null || typeof(obj.amount) === "bigint") &&
+        (obj.requiredConfirmations==null || typeof(obj.requiredConfirmations) === "number") &&
         isIEscrowSelfInitSwapInit<T>(obj);
 }
 
@@ -76,9 +75,9 @@ export class FromBTCSwap<T extends ChainType = ChainType>
     readonly data!: T["Data"];
     readonly feeRate!: string;
 
-    address: string;
-    amount: bigint;
-    readonly requiredConfirmations: number;
+    address?: string;
+    amount?: bigint;
+    requiredConfirmations?: number;
 
     senderAddress?: string;
     txId?: string;
@@ -146,8 +145,8 @@ export class FromBTCSwap<T extends ChainType = ChainType>
      * Returns bitcoin address where the on-chain BTC should be sent to
      */
     getAddress(): string {
-        if(this.state===FromBTCSwapState.PR_CREATED) throw new Error("Cannot get bitcoin address of non-committed swap");
-        return this.address;
+        if(this.state===FromBTCSwapState.PR_CREATED) throw new Error("Cannot get bitcoin address of non-initiated swaps! Initiate swap first with commit() or txsCommit().");
+        return this.address ?? "";
     }
 
     /**
@@ -156,7 +155,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
      * @private
      */
     private _getHyperlink(): string {
-        return "bitcoin:"+this.address+"?amount="+encodeURIComponent((Number(this.amount) / 100000000).toString(10));
+        return this.address==null || this.amount==null ? "" : "bitcoin:"+this.address+"?amount="+encodeURIComponent((Number(this.amount) / 100000000).toString(10));
     }
 
     getHyperlink(): string {
@@ -177,7 +176,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
      *  to that address anymore
      */
     getTimeoutTime(): number {
-        return Number(this.wrapper.getOnchainSendTimeout(this.data, this.requiredConfirmations)) * 1000;
+        return Number(this.wrapper.getOnchainSendTimeout(this.data, this.requiredConfirmations ?? 6)) * 1000;
     }
 
     requiresAction(): boolean {
@@ -210,6 +209,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
 
     protected canCommit(): boolean {
         if(this.state!==FromBTCSwapState.PR_CREATED) return false;
+        if(this.requiredConfirmations==null) return false;
         const expiry = this.wrapper.getOnchainSendTimeout(this.data, this.requiredConfirmations);
         const currentTimestamp = BigInt(Math.floor(Date.now()/1000));
 
@@ -225,7 +225,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
     }
 
     getInput(): TokenAmount<T["ChainId"], BtcToken<false>> {
-        return toTokenAmount(this.amount, this.inputToken, this.wrapper.prices);
+        return toTokenAmount(this.amount ?? null, this.inputToken, this.wrapper.prices);
     }
 
     /**
@@ -239,8 +239,30 @@ export class FromBTCSwap<T extends ChainType = ChainType>
     //////////////////////////////
     //// Bitcoin tx
 
+    /**
+     * If the required number of confirmations is not known, this function tries to infer it by looping through
+     *  possible confirmation targets and comparing the claim hashes
+     *
+     * @param btcTx
+     * @param vout
+     * @private
+     */
+    private inferRequiredConfirmationsCount(btcTx: Omit<BtcTxWithBlockheight, "hex" | "raw">, vout: number): number | undefined {
+        const txOut = btcTx.outs[vout];
+        for(let i=1;i<=20;i++) {
+            const computedClaimHash = this.wrapper.contract.getHashForOnchain(
+                Buffer.from(txOut.scriptPubKey.hex, "hex"),
+                BigInt(txOut.value),
+                i
+            );
+            if(computedClaimHash.toString("hex")===this.data.getClaimHash()) {
+                return i;
+            }
+        }
+    }
+
     getRequiredConfirmationsCount(): number {
-        return this.requiredConfirmations;
+        return this.requiredConfirmations ?? NaN;
     }
 
     /**
@@ -254,17 +276,22 @@ export class FromBTCSwap<T extends ChainType = ChainType>
         inputAddresses?: string[]
     } | null> {
         const txoHashHint = this.data.getTxoHashHint();
-        if(txoHashHint==null) throw new Error("Swap data don't include the txo hash hint! Cannot check btc transaction!");
+        if(txoHashHint==null) throw new Error("Swap data doesn't include the txo hash hint! Cannot check bitcoin transaction!");
+        if(this.address==null) throw new Error("Cannot check bitcoin payment, because the address is not known! This can happen after a swap is recovered.");
 
         const result = await this.wrapper.btcRpc.checkAddressTxos(this.address, Buffer.from(txoHashHint, "hex"));
         if(result==null) return null;
+
+        if(this.requiredConfirmations==null) {
+            this.requiredConfirmations = this.inferRequiredConfirmationsCount(result.tx, result.vout);
+        }
 
         return {
             inputAddresses: result.tx.inputAddresses,
             txId: result.tx.txid,
             vout: result.vout,
             confirmations: result.tx.confirmations ?? 0,
-            targetConfirmations: this.requiredConfirmations
+            targetConfirmations: this.getRequiredConfirmationsCount()
         }
     }
 
@@ -288,11 +315,13 @@ export class FromBTCSwap<T extends ChainType = ChainType>
                     // this can happen if the swap is recovered from on-chain data and
                     // hence doesn't contain the address and amount data
                     if(this.amount==null) this.amount = BigInt(btcTx.outs[vout].value);
-                    if(this.address==null) try {
-                        const addressData = OutScript.decode(Buffer.from(btcTx.outs[vout].scriptPubKey.hex, "hex"));
-                        this.address = Address(this.wrapper.options.bitcoinNetwork).encode(addressData);
+                    if(this.address==null && this.wrapper.btcRpc.outputScriptToAddress!=null) try {
+                        this.address = await this.wrapper.btcRpc.outputScriptToAddress(btcTx.outs[vout].scriptPubKey.hex);
                     } catch (e: any) {
                         this.logger.warn("_setBitcoinTxId(): Failed to parse address from output script: ", e);
+                    }
+                    if(this.requiredConfirmations==null) {
+                        this.requiredConfirmations = this.inferRequiredConfirmationsCount(btcTx, vout);
                     }
                 }
             }
@@ -320,26 +349,54 @@ export class FromBTCSwap<T extends ChainType = ChainType>
     ): Promise<string> {
         if(this.state!==FromBTCSwapState.CLAIM_COMMITED && this.state!==FromBTCSwapState.EXPIRED) throw new Error("Must be in COMMITED state!");
         const txoHashHint = this.data.getTxoHashHint();
-        if(txoHashHint==null) throw new Error("Swap data don't include the txo hash hint! Cannot check btc transaction!");
+        if(txoHashHint==null) throw new Error("Swap data doesn't include the txo hash hint! Cannot check bitcoin transaction!");
+        if(this.address==null) throw new Error("Cannot check bitcoin payment, because the address is not known! This can happen after a swap is recovered.");
+
+        let abortedDueToEnoughConfirmationsResult: {
+            tx: Omit<BtcTxWithBlockheight, "hex" | "raw">, vout: number
+        } | undefined;
+        const abortController = extendAbortController(abortSignal);
 
         const result = await this.wrapper.btcRpc.waitForAddressTxo(
             this.address,
             Buffer.from(txoHashHint, "hex"),
-            this.requiredConfirmations,
+            this.requiredConfirmations ?? 6, //In case confirmation count is not known, we use a conservative estimate
             (btcTx?: Omit<BtcTxWithBlockheight, "hex" | "raw">, vout?: number, txEtaMs?: number) => {
-                if(updateCallback!=null) updateCallback(btcTx?.txid, btcTx==null ? undefined : (btcTx?.confirmations ?? 0), this.requiredConfirmations, txEtaMs);
-                if(btcTx!=null && btcTx.txid!==this.txId) {
+                let requiredConfirmations = this.requiredConfirmations;
+
+                if(btcTx!=null && vout!=null && requiredConfirmations==null) {
+                    requiredConfirmations = this.inferRequiredConfirmationsCount(btcTx, vout);
+                }
+                //Abort the loop as soon as the transaction gets enough confirmations, this is required in case
+                // we pass a default 6 confirmations to the fn, but then are able to infer the actual confirmation
+                // target from the prior block
+                if(btcTx?.confirmations!=null && requiredConfirmations!=null && requiredConfirmations<=btcTx.confirmations && vout!=null) {
+                    abortedDueToEnoughConfirmationsResult = {
+                        tx: btcTx,
+                        vout
+                    };
+                    abortController.abort();
+                    return;
+                }
+
+                if(updateCallback!=null) updateCallback(btcTx?.txid, btcTx==null ? undefined : (btcTx?.confirmations ?? 0), requiredConfirmations ?? NaN, txEtaMs);
+                if(btcTx!=null && (btcTx.txid!==this.txId || (this.requiredConfirmations==null && requiredConfirmations!=null))) {
                     this.txId = btcTx.txid;
                     this.vout = vout;
+                    this.requiredConfirmations = requiredConfirmations;
                     if(btcTx.inputAddresses!=null) this.senderAddress = btcTx.inputAddresses[0];
                     this._saveAndEmit().catch(e => {
                         this.logger.error("waitForBitcoinTransaction(): Failed to save swap from within waitForAddressTxo callback:", e)
                     });
                 }
             },
-            abortSignal,
+            abortController.signal,
             checkIntervalSeconds
-        );
+        ).catch(e => {
+            //We catch the case when the loop was aborted due to the transaction getting enough confirmations
+            if(abortedDueToEnoughConfirmationsResult!=null) return abortedDueToEnoughConfirmationsResult;
+            throw e;
+        });
 
         if(abortSignal!=null) abortSignal.throwIfAborted();
 
@@ -383,6 +440,8 @@ export class FromBTCSwap<T extends ChainType = ChainType>
         feeRate?: number,
         additionalOutputs?: ({amount: bigint, outputScript: Uint8Array} | {amount: bigint, address: string})[]
     ): Promise<{psbt: Transaction, psbtHex: string, psbtBase64: string, signInputs: number[]}> {
+        if(this.address==null) throw new Error("Cannot create funded PSBT, because the address is not known! This can happen after a swap is recovered.");
+
         let bitcoinWallet: IBitcoinWallet;
         if(isIBitcoinWallet(_bitcoinWallet)) {
             bitcoinWallet = _bitcoinWallet;
@@ -440,11 +499,13 @@ export class FromBTCSwap<T extends ChainType = ChainType>
         }
 
         const output0 = psbt.getOutput(0);
-        if(output0.amount!==this.amount)
+        if(this.amount!=null && output0.amount!==this.amount)
             throw new Error("PSBT output amount invalid, expected: "+this.amount+" got: "+output0.amount);
-        const expectedOutputScript = toOutputScript(this.wrapper.options.bitcoinNetwork, this.address);
-        if(output0.script==null || !expectedOutputScript.equals(output0.script))
-            throw new Error("PSBT output script invalid!");
+        if(this.address!=null) {
+            const expectedOutputScript = toOutputScript(this.wrapper.options.bitcoinNetwork, this.address);
+            if(output0.script==null || !expectedOutputScript.equals(output0.script))
+                throw new Error("PSBT output script invalid!");
+        }
 
         if(!psbt.isFinal) psbt.finalize();
 
@@ -452,6 +513,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
     }
 
     async estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<any, BtcToken<false>, true> | null> {
+        if(this.address==null || this.amount==null) return null;
         const bitcoinWallet: IBitcoinWallet = toBitcoinWallet(_bitcoinWallet, this.wrapper.btcRpc, this.wrapper.options.bitcoinNetwork);
         const txFee = await bitcoinWallet.getTransactionFee(this.address, this.amount, feeRate);
         if(txFee==null) return null;
@@ -459,6 +521,8 @@ export class FromBTCSwap<T extends ChainType = ChainType>
     }
 
     async sendBitcoinTransaction(wallet: IBitcoinWallet | MinimalBitcoinWalletInterfaceWithSigner, feeRate?: number): Promise<string> {
+        if(this.address==null || this.amount==null) throw new Error("Cannot send bitcoin transaction, because the address is not known! This can happen after a swap is recovered.");
+
         if(this.state!==FromBTCSwapState.CLAIM_COMMITED)
             throw new Error("Swap not committed yet, please initiate the swap first with commit() call!");
 
@@ -694,6 +758,11 @@ export class FromBTCSwap<T extends ChainType = ChainType>
 
         const tx = await this.wrapper.btcRpc.getTransaction(this.txId);
         if(tx==null) throw new Error("Bitcoin transaction not found on the network!");
+
+        this.requiredConfirmations ??= this.inferRequiredConfirmationsCount(tx, this.vout);
+        if(this.requiredConfirmations==null)
+            throw new Error("Cannot create claim transaction, because required confirmations are not known and cannot be infered! This can happen after a swap is recovered.");
+
         if(tx.blockhash==null || tx.confirmations==null || tx.blockheight==null || tx.confirmations<this.requiredConfirmations)
             throw new Error("Bitcoin transaction not confirmed yet!");
 
@@ -832,7 +901,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
         return {
             ...super.serialize(),
             address: this.address,
-            amount: this.amount.toString(10),
+            amount: this.amount==null ? null: this.amount.toString(10),
             requiredConfirmations: this.requiredConfirmations,
             senderAddress: this.senderAddress,
             txId: this.txId,
@@ -902,7 +971,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
                             this.vout = res.vout;
                             save = true;
                         }
-                        if(res.confirmations>=this.requiredConfirmations) {
+                        if(this.requiredConfirmations!=null && res.confirmations>=this.requiredConfirmations) {
                             this.state = FromBTCSwapState.BTC_TX_CONFIRMED;
                             save = true;
                         }
@@ -949,7 +1018,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
             case FromBTCSwapState.EXPIRED:
                 //Check if bitcoin payment was received every 2 minutes
                 if(Math.floor(Date.now()/1000)%120===0) {
-                    try {
+                    if(this.address!=null) try {
                         const res = await this.getBitcoinPayment();
                         if(res!=null) {
                             let shouldSave: boolean = false;
@@ -959,7 +1028,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
                                 if(res.inputAddresses!=null) this.senderAddress = res.inputAddresses[0];
                                 shouldSave = true;
                             }
-                            if(res.confirmations>=this.requiredConfirmations) {
+                            if(this.requiredConfirmations!=null && res.confirmations>=this.requiredConfirmations) {
                                 this.state = FromBTCSwapState.BTC_TX_CONFIRMED;
                                 if(save) await this._saveAndEmit();
                                 shouldSave = true;

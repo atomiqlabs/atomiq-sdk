@@ -777,7 +777,7 @@ export abstract class IToBTCSwap<
                     return true;
                 case SwapCommitStateType.EXPIRED:
                     if(this.refundTxId==null && commitStatus.getRefundTxId) this.refundTxId = await commitStatus.getRefundTxId();
-                    this.state = ToBTCSwapState.QUOTE_EXPIRED;
+                    this.state = this.refundTxId==null ? ToBTCSwapState.QUOTE_EXPIRED : ToBTCSwapState.REFUNDED;
                     return true;
                 case SwapCommitStateType.NOT_COMMITED:
                     if(this.refundTxId==null && commitStatus.getRefundTxId) this.refundTxId = await commitStatus.getRefundTxId();

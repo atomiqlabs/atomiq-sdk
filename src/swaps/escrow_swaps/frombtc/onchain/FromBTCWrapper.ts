@@ -8,7 +8,7 @@ import {
     RefundEvent,
     RelaySynchronizer,
     SwapData,
-    BtcRelay, BitcoinRpcWithAddressIndex
+    BtcRelay, BitcoinRpcWithAddressIndex, SwapCommitState, SwapCommitStateType
 } from "@atomiqlabs/base";
 import {EventEmitter} from "events";
 import {Intermediary} from "../../../../intermediaries/Intermediary";
@@ -34,6 +34,8 @@ import {IFromBTCSelfInitDefinition} from "../IFromBTCSelfInitSwap";
 import {AmountData} from "../../../../types/AmountData";
 import {tryWithRetries} from "../../../../utils/RetryUtils";
 import {AllOptional, AllRequired} from "../../../../utils/TypeUtils";
+import {FromBTCLNSwap, FromBTCLNSwapInit, FromBTCLNSwapState} from "../ln/FromBTCLNSwap";
+import {sha256} from "@noble/hashes/sha2";
 
 export type FromBTCOptions = {
     feeSafetyFactor?: bigint,
@@ -437,6 +439,66 @@ export class FromBTCWrapper<
                 })()
             }
         });
+    }
+
+    async recoverFromSwapDataAndState(
+        init: {data: T["Data"], getInitTxId: () => Promise<string>, getTxBlock: () => Promise<{blockTime: number, blockHeight: number}>},
+        state: SwapCommitState,
+        lp?: Intermediary
+    ): Promise<FromBTCSwap<T> | null> {
+        const data = init.data;
+
+        const swapInit: FromBTCSwapInit<T["Data"]> = {
+            pricingInfo: {
+                isValid: true,
+                satsBaseFee: 0n,
+                swapPriceUSatPerToken: 100_000_000_000_000n,
+                realPriceUSatPerToken: 100_000_000_000_000n,
+                differencePPM: 0n,
+                feePPM: 0n,
+            },
+            url: lp?.url,
+            expiry: 0,
+            swapFee: 0n,
+            swapFeeBtc: 0n,
+            feeRate: "",
+            signatureData: undefined,
+            data,
+            exactIn: false
+        }
+        const swap = new FromBTCSwap(this, swapInit);
+        swap.commitTxId = await init.getInitTxId();
+        const blockData = await init.getTxBlock();
+        swap.createdAt = blockData.blockTime * 1000;
+        swap._setInitiated();
+        swap.state = FromBTCSwapState.CLAIM_COMMITED;
+        await swap._sync(false, false, state);
+        await swap._save();
+        return swap;
+
+        // switch(state.type) {
+        //     case SwapCommitStateType.PAID:
+        //         secret ??= await state.getClaimResult();
+        //         swap._setSwapSecret(secret);
+        //         swap.claimTxId = await state.getClaimTxId();
+        //         swap.state = FromBTCLNSwapState.CLAIM_CLAIMED;
+        //         break;
+        //     case SwapCommitStateType.NOT_COMMITED:
+        //     case SwapCommitStateType.EXPIRED:
+        //         if(state.getRefundTxId==null) return null;
+        //         swap.refundTxId = await state.getRefundTxId();
+        //         swap.state = FromBTCLNSwapState.FAILED;
+        //         break;
+        //     case SwapCommitStateType.COMMITED:
+        //     case SwapCommitStateType.REFUNDABLE:
+        //         const expired = await this.contract.isExpired(swap._getInitiator(), data);
+        //         if(expired) {
+        //             swap.state = FromBTCLNSwapState.EXPIRED;
+        //         } else {
+        //             swap.state = FromBTCLNSwapState.CLAIM_COMMITED;
+        //         }
+        //         break;
+        // }
     }
 
 }

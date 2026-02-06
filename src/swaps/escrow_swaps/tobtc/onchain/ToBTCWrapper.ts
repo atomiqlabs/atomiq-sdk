@@ -1,6 +1,13 @@
 import {ToBTCSwap, ToBTCSwapInit} from "./ToBTCSwap";
 import {IToBTCDefinition, IToBTCWrapper} from "../IToBTCWrapper";
-import {BigIntBufferUtils, BitcoinRpc, ChainSwapType, ChainType} from "@atomiqlabs/base";
+import {
+    BigIntBufferUtils,
+    BitcoinRpc,
+    ChainSwapType,
+    ChainType,
+    SwapCommitState,
+    SwapCommitStateType
+} from "@atomiqlabs/base";
 import {Intermediary, SingleChainReputationType} from "../../../../intermediaries/Intermediary";
 import {ISwapPrice} from "../../../../prices/abstract/ISwapPrice";
 import {EventEmitter} from "events";
@@ -20,6 +27,9 @@ import {ISwap} from "../../../ISwap";
 import {AmountData} from "../../../../types/AmountData";
 import {tryWithRetries} from "../../../../utils/RetryUtils";
 import {AllOptional, AllRequired} from "../../../../utils/TypeUtils";
+import {ToBTCLNSwap} from "../ln/ToBTCLNSwap";
+import {sha256} from "@noble/hashes/sha2";
+import {IToBTCSwapInit, ToBTCSwapState} from "../IToBTCSwap";
 
 export type ToBTCOptions = {
     confirmationTarget?: number,
@@ -296,4 +306,73 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
             }
         });
     }
+
+
+    async recoverFromSwapDataAndState(
+        init: {data: T["Data"], getInitTxId: () => Promise<string>, getTxBlock: () => Promise<{blockTime: number, blockHeight: number}>},
+        state: SwapCommitState,
+        lp?: Intermediary
+    ): Promise<ToBTCSwap<T> | null> {
+        const data = init.data;
+
+        const swapInit: ToBTCSwapInit<T["Data"]> = {
+            pricingInfo: {
+                isValid: true,
+                satsBaseFee: 0n,
+                swapPriceUSatPerToken: 100_000_000_000_000n,
+                realPriceUSatPerToken: 100_000_000_000_000n,
+                differencePPM: 0n,
+                feePPM: 0n,
+            },
+            url: lp?.url,
+            expiry: 0,
+            swapFee: 0n,
+            swapFeeBtc: 0n,
+            confirmationTarget: 1,
+            satsPerVByte: 0,
+            feeRate: "",
+            signatureData: undefined,
+            nonce: data.getNonceHint() ?? undefined,
+            requiredConfirmations: data.getConfirmationsHint() ?? undefined,
+            data,
+            networkFee: 0n,
+            networkFeeBtc: 0n,
+            exactIn: true
+        };
+        const swap = new ToBTCSwap(this, swapInit);
+        swap.commitTxId = await init.getInitTxId();
+        const blockData = await init.getTxBlock();
+        swap.createdAt = blockData.blockTime * 1000;
+        swap._setInitiated();
+        swap.state = ToBTCSwapState.COMMITED;
+        await swap._sync(false, false, state);
+        await swap._save();
+        return swap;
+
+        // switch(state.type) {
+        //     case SwapCommitStateType.PAID:
+        //         secret ??= await state.getClaimResult();
+        //         await swap._setPaymentResult({secret}, false);
+        //         swap.claimTxId = await state.getClaimTxId();
+        //         swap.state = ToBTCSwapState.CLAIMED;
+        //         break;
+        //     case SwapCommitStateType.NOT_COMMITED:
+        //     case SwapCommitStateType.EXPIRED:
+        //         if(state.getRefundTxId==null) return null;
+        //         swap.refundTxId = await state.getRefundTxId();
+        //         swap.state = ToBTCSwapState.REFUNDED;
+        //         break;
+        //     case SwapCommitStateType.COMMITED:
+        //         swap.state = ToBTCSwapState.COMMITED;
+        //         //Try to fetch refund signature
+        //         if(lp!=null) await swap._sync(false, false, state);
+        //         break;
+        //     case SwapCommitStateType.REFUNDABLE:
+        //         swap.state = ToBTCSwapState.REFUNDABLE;
+        //         break;
+        // }
+        // await swap._save();
+        // return swap;
+    }
+
 }

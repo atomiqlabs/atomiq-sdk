@@ -290,5 +290,58 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
             };
         });
     }
+    async recoverFromSwapDataAndState(init, state, lp) {
+        const data = init.data;
+        const swapInit = {
+            pricingInfo: {
+                isValid: true,
+                satsBaseFee: 0n,
+                swapPriceUSatPerToken: 100000000000000n,
+                realPriceUSatPerToken: 100000000000000n,
+                differencePPM: 0n,
+                feePPM: 0n,
+            },
+            url: lp?.url,
+            expiry: 0,
+            swapFee: 0n,
+            swapFeeBtc: 0n,
+            feeRate: "",
+            signatureData: undefined,
+            data,
+            exactIn: false
+        };
+        const swap = new FromBTCSwap_1.FromBTCSwap(this, swapInit);
+        swap.commitTxId = await init.getInitTxId();
+        const blockData = await init.getTxBlock();
+        swap.createdAt = blockData.blockTime * 1000;
+        swap._setInitiated();
+        swap.state = FromBTCSwap_1.FromBTCSwapState.CLAIM_COMMITED;
+        await swap._sync(false, false, state);
+        await swap._save();
+        return swap;
+        // switch(state.type) {
+        //     case SwapCommitStateType.PAID:
+        //         secret ??= await state.getClaimResult();
+        //         swap._setSwapSecret(secret);
+        //         swap.claimTxId = await state.getClaimTxId();
+        //         swap.state = FromBTCLNSwapState.CLAIM_CLAIMED;
+        //         break;
+        //     case SwapCommitStateType.NOT_COMMITED:
+        //     case SwapCommitStateType.EXPIRED:
+        //         if(state.getRefundTxId==null) return null;
+        //         swap.refundTxId = await state.getRefundTxId();
+        //         swap.state = FromBTCLNSwapState.FAILED;
+        //         break;
+        //     case SwapCommitStateType.COMMITED:
+        //     case SwapCommitStateType.REFUNDABLE:
+        //         const expired = await this.contract.isExpired(swap._getInitiator(), data);
+        //         if(expired) {
+        //             swap.state = FromBTCLNSwapState.EXPIRED;
+        //         } else {
+        //             swap.state = FromBTCLNSwapState.CLAIM_COMMITED;
+        //         }
+        //         break;
+        // }
+    }
 }
 exports.FromBTCWrapper = FromBTCWrapper;

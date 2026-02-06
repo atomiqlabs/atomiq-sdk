@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { IFromBTCWrapper } from "../IFromBTCWrapper";
 import { FromBTCSwap, FromBTCSwapState } from "./FromBTCSwap";
-import { ChainType, ClaimEvent, InitializeEvent, RefundEvent, RelaySynchronizer, SwapData, BtcRelay, BitcoinRpcWithAddressIndex } from "@atomiqlabs/base";
+import { ChainType, ClaimEvent, InitializeEvent, RefundEvent, RelaySynchronizer, SwapData, BtcRelay, BitcoinRpcWithAddressIndex, SwapCommitState } from "@atomiqlabs/base";
 import { EventEmitter } from "events";
 import { Intermediary } from "../../../../intermediaries/Intermediary";
 import { ISwapPrice } from "../../../../prices/abstract/ISwapPrice";
@@ -116,4 +116,12 @@ export declare class FromBTCWrapper<T extends ChainType> extends IFromBTCWrapper
         quote: Promise<FromBTCSwap<T>>;
         intermediary: Intermediary;
     }[];
+    recoverFromSwapDataAndState(init: {
+        data: T["Data"];
+        getInitTxId: () => Promise<string>;
+        getTxBlock: () => Promise<{
+            blockTime: number;
+            blockHeight: number;
+        }>;
+    }, state: SwapCommitState, lp?: Intermediary): Promise<FromBTCSwap<T> | null>;
 }

@@ -28,8 +28,8 @@ export declare enum FromBTCLNSwapState {
     CLAIM_CLAIMED = 3
 }
 export type FromBTCLNSwapInit<T extends SwapData> = IEscrowSelfInitSwapInit<T> & {
-    pr: string;
-    secret: string;
+    pr?: string;
+    secret?: string;
     initialSwapData: T;
     lnurl?: string;
     lnurlK1?: string;
@@ -37,12 +37,13 @@ export type FromBTCLNSwapInit<T extends SwapData> = IEscrowSelfInitSwapInit<T> &
 };
 export declare function isFromBTCLNSwapInit<T extends SwapData>(obj: any): obj is FromBTCLNSwapInit<T>;
 export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFromBTCSelfInitSwap<T, FromBTCLNDefinition<T>, FromBTCLNSwapState> implements IAddressSwap, IClaimableSwap<T, FromBTCLNDefinition<T>, FromBTCLNSwapState> {
+    private readonly usesClaimHashAsId;
     protected readonly logger: LoggerType;
     protected readonly inputToken: BtcToken<true>;
     protected readonly TYPE = SwapType.FROM_BTCLN;
     protected readonly lnurlFailSignal: AbortController;
-    protected readonly pr: string;
-    protected readonly secret: string;
+    protected pr?: string;
+    protected secret?: string;
     protected initialSwapData: T["Data"];
     lnurl?: string;
     lnurlK1?: string;
@@ -53,10 +54,10 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
     constructor(wrapper: FromBTCLNWrapper<T>, obj: any);
     protected upgradeVersion(): void;
     protected getIdentifierHash(): Buffer;
-    protected getPaymentHash(): Buffer;
+    protected getPaymentHash(): Buffer | null;
     protected canCommit(): boolean;
     getInputAddress(): string | null;
-    getInputTxId(): string;
+    getInputTxId(): string | null;
     /**
      * Returns the lightning network BOLT11 invoice that needs to be paid as an input to the swap
      */
@@ -91,6 +92,7 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
         balance: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
         required: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
     }>;
+    private isValidSecretPreimage;
     /**
      * Executes the swap with the provided bitcoin lightning network wallet or LNURL
      *
@@ -101,6 +103,8 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
      *  link, wallet is not required and the LN invoice can be paid externally as well (just pass null or undefined here)
      * @param callbacks Callbacks to track the progress of the swap
      * @param options Optional options for the swap like feeRate, AbortSignal, and timeouts/intervals
+     * @param secret A swap secret to use for the claim transaction, generally only needed if the swap
+     *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      */
     execute(dstSigner: T["Signer"] | T["NativeSigner"], walletOrLnurlWithdraw?: MinimalLightningNetworkWalletInterface | LNURLWithdraw | string | null | undefined, callbacks?: {
         onSourceTransactionReceived?: (sourceTxId: string) => void;
@@ -111,15 +115,22 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
         abortSignal?: AbortSignal;
         lightningTxCheckIntervalSeconds?: number;
         delayBetweenCommitAndClaimSeconds?: number;
-    }): Promise<void>;
+    }, secret?: string): Promise<void>;
+    /**
+     * Returns currently required execution step to execute the swap
+     *
+     * @param options Optional options for the swap
+     * @param secret A swap secret to use for the claim transaction, generally only needed if the swap
+     *  was recovered from on-chain data, or the pre-image was generated outside the SDK
+     */
     txsExecute(options?: {
         skipChecks?: boolean;
-    }): Promise<{
+    }, secret?: string): Promise<{
         name: "Payment";
         description: string;
         chain: string;
         txs: {
-            address: string;
+            address: string | undefined;
             hyperlink: string;
         }[];
     }[] | ({
@@ -175,6 +186,8 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
      * Unsafe txs claim getter without state checking!
      *
      * @param _signer
+     * @param secret A swap secret to use for the claim transaction, generally only needed if the swap
+     *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      * @private
      */
     private _txsClaim;
@@ -183,17 +196,23 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
      *  (hash preimage)
      *
      * @param _signer Optional signer address to use for claiming the swap, can also be different from the initializer
+     * @param secret A swap secret to use for the claim transaction, generally only needed if the swap
+     *  was recovered from on-chain data, or the pre-image was generated outside the SDK
+     *
      * @throws {Error} If in invalid state (must be CLAIM_COMMITED)
      */
-    txsClaim(_signer?: T["Signer"] | T["NativeSigner"]): Promise<T["TX"][]>;
+    txsClaim(_signer?: T["Signer"] | T["NativeSigner"], secret?: string): Promise<T["TX"][]>;
     /**
      * Claims and finishes the swap
      *
      * @param _signer Signer to sign the transactions with, can also be different to the initializer
      * @param abortSignal Abort signal to stop waiting for transaction confirmation
+     * @param secret A swap secret to use for the claim transaction, generally only needed if the swap
+     *  was recovered from on-chain data, or the pre-image was generated outside the SDK
+     *
      * @param onBeforeTxSent
      */
-    claim(_signer: T["Signer"] | T["NativeSigner"], abortSignal?: AbortSignal, onBeforeTxSent?: (txId: string) => void): Promise<string>;
+    claim(_signer: T["Signer"] | T["NativeSigner"], abortSignal?: AbortSignal, onBeforeTxSent?: (txId: string) => void, secret?: string): Promise<string>;
     /**
      * Waits till the swap is successfully claimed
      *
@@ -217,10 +236,12 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
      *
      * @param skipChecks Skip checks like making sure init signature is still valid and swap wasn't commited yet
      *  (this is handled when swap is created (quoted), if you commit right after quoting, you can use skipChecks=true)
+     * @param secret A swap secret to use for the claim transaction, generally only needed if the swap
+     *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      *
      * @throws {Error} If in invalid state (must be PR_PAID or CLAIM_COMMITED)
      */
-    txsCommitAndClaim(skipChecks?: boolean): Promise<T["TX"][]>;
+    txsCommitAndClaim(skipChecks?: boolean, secret?: string): Promise<T["TX"][]>;
     /**
      * Commits and claims the swap, in a way that the transactions can be signed together by the underlying provider and
      *  then sent sequentially
@@ -231,10 +252,13 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
      *  (this is handled when swap is created (quoted), if you commit right after quoting, you can use skipChecks=true)
      * @param onBeforeCommitTxSent
      * @param onBeforeClaimTxSent
+     * @param secret A swap secret to use for the claim transaction, generally only needed if the swap
+     *  was recovered from on-chain data, or the pre-image was generated outside the SDK
+     *
      * @throws {Error} If in invalid state (must be PR_PAID or CLAIM_COMMITED)
      * @throws {Error} If invalid signer is provided that doesn't match the swap data
      */
-    commitAndClaim(_signer: T["Signer"] | T["NativeSigner"], abortSignal?: AbortSignal, skipChecks?: boolean, onBeforeCommitTxSent?: (txId: string) => void, onBeforeClaimTxSent?: (txId: string) => void): Promise<string[]>;
+    commitAndClaim(_signer: T["Signer"] | T["NativeSigner"], abortSignal?: AbortSignal, skipChecks?: boolean, onBeforeCommitTxSent?: (txId: string) => void, onBeforeClaimTxSent?: (txId: string) => void, secret?: string): Promise<string[]>;
     /**
      * Is this an LNURL-withdraw swap?
      */
@@ -260,4 +284,5 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
     _shouldCheckIntermediary(): boolean;
     _sync(save?: boolean, quoteDefinitelyExpired?: boolean, commitStatus?: SwapCommitState, skipLpCheck?: boolean): Promise<boolean>;
     _tick(save?: boolean): Promise<boolean>;
+    _setSwapSecret(secret: string): void;
 }

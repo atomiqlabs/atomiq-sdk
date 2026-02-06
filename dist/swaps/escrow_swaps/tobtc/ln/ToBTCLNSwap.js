@@ -61,13 +61,17 @@ class ToBTCLNSwap extends IToBTCSwap_1.IToBTCSwap {
             return Promise.resolve(false);
         if (result.secret == null)
             throw new IntermediaryError_1.IntermediaryError("No payment secret returned!");
+        const secretBuffer = buffer_1.Buffer.from(result.secret, "hex");
+        const hash = buffer_1.Buffer.from((0, sha2_1.sha256)(secretBuffer));
         if (check) {
-            const secretBuffer = buffer_1.Buffer.from(result.secret, "hex");
-            const hash = buffer_1.Buffer.from((0, sha2_1.sha256)(secretBuffer));
             const claimHash = this.wrapper.contract.getHashForHtlc(hash);
             const expectedClaimHash = buffer_1.Buffer.from(this.getClaimHash(), "hex");
             if (!claimHash.equals(expectedClaimHash))
                 throw new IntermediaryError_1.IntermediaryError("Invalid payment secret returned");
+        }
+        if (this.paymentHash == null || this.pr == null) {
+            this.pr = hash.toString("hex");
+            this.paymentHash = hash.toString("hex");
         }
         this.secret = result.secret;
         return Promise.resolve(true);
@@ -89,7 +93,10 @@ class ToBTCLNSwap extends IToBTCSwap_1.IToBTCSwap {
     //////////////////////////////
     //// Getters & utils
     getOutputTxId() {
-        return this.getLpIdentifier();
+        const paymentHash = this.getPaymentHash();
+        if (paymentHash == null)
+            return null;
+        return paymentHash.toString("hex");
     }
     /**
      * Returns the lightning BOLT11 invoice where the BTC will be sent to

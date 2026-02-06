@@ -463,7 +463,7 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
             secret = await state.getClaimResult();
             paymentHash = Buffer.from((0, sha2_1.sha256)(Buffer.from(secret, "hex"))).toString("hex");
         }
-        const swap = new ToBTCLNSwap_1.ToBTCLNSwap(this, {
+        const swapInit = {
             pricingInfo: {
                 isValid: true,
                 satsBaseFee: 0n,
@@ -482,39 +482,40 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
             networkFee: 0n,
             networkFeeBtc: 0n,
             confidence: 0,
-            pr: paymentHash,
+            pr: paymentHash ?? undefined,
             exactIn: false
-        });
+        };
+        const swap = new ToBTCLNSwap_1.ToBTCLNSwap(this, swapInit);
         swap.commitTxId = await init.getInitTxId();
         const blockData = await init.getTxBlock();
         swap.createdAt = blockData.blockTime * 1000;
         swap._setInitiated();
-        switch (state.type) {
-            case base_1.SwapCommitStateType.PAID:
-                secret ??= await state.getClaimResult();
-                await swap._setPaymentResult({ secret }, false);
-                swap.claimTxId = await state.getClaimTxId();
-                swap.state = IToBTCSwap_1.ToBTCSwapState.CLAIMED;
-                break;
-            case base_1.SwapCommitStateType.NOT_COMMITED:
-            case base_1.SwapCommitStateType.EXPIRED:
-                if (state.getRefundTxId == null)
-                    return null;
-                swap.refundTxId = await state.getRefundTxId();
-                swap.state = IToBTCSwap_1.ToBTCSwapState.REFUNDED;
-                break;
-            case base_1.SwapCommitStateType.COMMITED:
-                swap.state = IToBTCSwap_1.ToBTCSwapState.COMMITED;
-                //Try to fetch refund signature
-                if (lp != null)
-                    await swap._sync(false, false, state);
-                break;
-            case base_1.SwapCommitStateType.REFUNDABLE:
-                swap.state = IToBTCSwap_1.ToBTCSwapState.REFUNDABLE;
-                break;
-        }
+        swap.state = IToBTCSwap_1.ToBTCSwapState.COMMITED;
+        await swap._sync(false, false, state);
         await swap._save();
         return swap;
+        // switch(state.type) {
+        //     case SwapCommitStateType.PAID:
+        //         secret ??= await state.getClaimResult();
+        //         await swap._setPaymentResult({secret}, false);
+        //         swap.claimTxId = await state.getClaimTxId();
+        //         swap.state = ToBTCSwapState.CLAIMED;
+        //         break;
+        //     case SwapCommitStateType.NOT_COMMITED:
+        //     case SwapCommitStateType.EXPIRED:
+        //         if(state.getRefundTxId==null) return null;
+        //         swap.refundTxId = await state.getRefundTxId();
+        //         swap.state = ToBTCSwapState.REFUNDED;
+        //         break;
+        //     case SwapCommitStateType.COMMITED:
+        //         swap.state = ToBTCSwapState.COMMITED;
+        //         //Try to fetch refund signature
+        //         if(lp!=null) await swap._sync(false, false, state);
+        //         break;
+        //     case SwapCommitStateType.REFUNDABLE:
+        //         swap.state = ToBTCSwapState.REFUNDABLE;
+        //         break;
+        // }
     }
 }
 exports.ToBTCLNWrapper = ToBTCLNWrapper;

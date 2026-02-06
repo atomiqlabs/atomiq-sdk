@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { ToBTCSwap } from "./ToBTCSwap";
 import { IToBTCDefinition, IToBTCWrapper } from "../IToBTCWrapper";
-import { BitcoinRpc, ChainType } from "@atomiqlabs/base";
+import { BitcoinRpc, ChainType, SwapCommitState } from "@atomiqlabs/base";
 import { Intermediary } from "../../../../intermediaries/Intermediary";
 import { ISwapPrice } from "../../../../prices/abstract/ISwapPrice";
 import { EventEmitter } from "events";
@@ -90,4 +90,12 @@ export declare class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, 
         quote: Promise<ToBTCSwap<T>>;
         intermediary: Intermediary;
     }[];
+    recoverFromSwapDataAndState(init: {
+        data: T["Data"];
+        getInitTxId: () => Promise<string>;
+        getTxBlock: () => Promise<{
+            blockTime: number;
+            blockHeight: number;
+        }>;
+    }, state: SwapCommitState, lp?: Intermediary): Promise<ToBTCSwap<T> | null>;
 }

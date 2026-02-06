@@ -12,7 +12,7 @@ import {
 import {Buffer} from "buffer";
 import {
     extendAbortController,
-    getTxoHash
+    getTxoHash, toBigInt
 } from "../../../../utils/Utils";
 import {
     parsePsbtTransaction,
@@ -97,7 +97,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
             this.requiredConfirmations = initOrObject.requiredConfirmations;
         } else {
             this.address = initOrObject.address;
-            this.amount = BigInt(initOrObject.amount);
+            this.amount = toBigInt(initOrObject.amount);
             this.senderAddress = initOrObject.senderAddress;
             this.txId = initOrObject.txId;
             this.vout = initOrObject.vout;

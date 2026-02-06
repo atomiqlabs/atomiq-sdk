@@ -55,7 +55,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
         }
         else {
             this.address = initOrObject.address;
-            this.amount = BigInt(initOrObject.amount);
+            this.amount = (0, Utils_1.toBigInt)(initOrObject.amount);
             this.senderAddress = initOrObject.senderAddress;
             this.txId = initOrObject.txId;
             this.vout = initOrObject.vout;

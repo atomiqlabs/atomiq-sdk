@@ -65,7 +65,7 @@ export class ToBTCSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, To
             this.nonce = initOrObject.nonce;
         } else {
             this.address = initOrObject.address;
-            this.amount = BigInt(initOrObject.amount);
+            this.amount = toBigInt(initOrObject.amount);
             this.confirmationTarget = initOrObject.confirmationTarget;
             this.satsPerVByte = initOrObject.satsPerVByte;
             this.txId = initOrObject.txId;

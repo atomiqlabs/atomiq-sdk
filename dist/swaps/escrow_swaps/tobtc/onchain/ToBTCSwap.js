@@ -40,7 +40,7 @@ class ToBTCSwap extends IToBTCSwap_1.IToBTCSwap {
         }
         else {
             this.address = initOrObject.address;
-            this.amount = BigInt(initOrObject.amount);
+            this.amount = (0, Utils_1.toBigInt)(initOrObject.amount);
             this.confirmationTarget = initOrObject.confirmationTarget;
             this.satsPerVByte = initOrObject.satsPerVByte;
             this.txId = initOrObject.txId;

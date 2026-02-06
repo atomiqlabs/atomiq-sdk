@@ -30,23 +30,14 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
      * @param events Instance to use for emitting events
      */
     constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, spvWithdrawalDataDeserializer, btcRelay, synchronizer, btcRpc, options, events) {
-        if (options == null)
-            options = {};
-        options.bitcoinNetwork ??= utils_1.TEST_NETWORK;
-        options.maxConfirmations ??= 6;
-        options.bitcoinBlocktime ??= 10 * 60;
-        options.maxTransactionsDelta ??= 3;
-        options.maxRawAmountAdjustmentDifferencePPM ??= 100;
-        options.maxBtcFeeOffset ??= 5;
-        options.maxBtcFeeMultiplier ??= 1.5;
         super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, {
-            bitcoinNetwork: options.bitcoinNetwork ?? utils_1.TEST_NETWORK,
-            maxConfirmations: options.maxConfirmations ?? 6,
-            bitcoinBlocktime: options.bitcoinBlocktime ?? 10 * 60,
-            maxTransactionsDelta: options.maxTransactionsDelta ?? 3,
-            maxRawAmountAdjustmentDifferencePPM: options.maxRawAmountAdjustmentDifferencePPM ?? 100,
-            maxBtcFeeOffset: options.maxBtcFeeOffset ?? 5,
-            maxBtcFeeMultiplier: options.maxBtcFeeMultiplier ?? 1.5
+            bitcoinNetwork: options?.bitcoinNetwork ?? utils_1.TEST_NETWORK,
+            maxConfirmations: options?.maxConfirmations ?? 6,
+            bitcoinBlocktime: options?.bitcoinBlocktime ?? 10 * 60,
+            maxTransactionsDelta: options?.maxTransactionsDelta ?? 3,
+            maxRawAmountAdjustmentDifferencePPM: options?.maxRawAmountAdjustmentDifferencePPM ?? 100,
+            maxBtcFeeOffset: options?.maxBtcFeeOffset ?? 10,
+            maxBtcFeeMultiplier: options?.maxBtcFeeMultiplier ?? 1.5
         }, events);
         this.claimableSwapStates = [SpvFromBTCSwap_1.SpvFromBTCSwapState.BTC_TX_CONFIRMED];
         this.TYPE = SwapType_1.SwapType.SPV_VAULT_FROM_BTC;
@@ -225,7 +216,7 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
         const btcFeeRate = await (0, Utils_1.throwIfUndefined)(bitcoinFeeRatePromise, "Bitcoin fee rate promise failed!");
         abortSignal.throwIfAborted();
         if (btcFeeRate != null && resp.btcFeeRate > btcFeeRate)
-            throw new IntermediaryError_1.IntermediaryError("Bitcoin fee rate returned too high!");
+            throw new IntermediaryError_1.IntermediaryError(`Required bitcoin fee rate returned from the LP is too high! Maximum accepted: ${btcFeeRate} sats/vB, required by LP: ${resp.btcFeeRate} sats/vB`);
         //Vault related
         let vaultScript;
         let vaultAddressType;

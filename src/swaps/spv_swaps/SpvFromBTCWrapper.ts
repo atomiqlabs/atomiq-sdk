@@ -96,24 +96,16 @@ export class SpvFromBTCWrapper<
         options?: AllOptional<SpvFromBTCWrapperOptions>,
         events?: EventEmitter<{swapState: [ISwap]}>
     ) {
-        if(options==null) options = {};
-        options.bitcoinNetwork ??= TEST_NETWORK;
-        options.maxConfirmations ??= 6;
-        options.bitcoinBlocktime ??= 10*60;
-        options.maxTransactionsDelta ??= 3;
-        options.maxRawAmountAdjustmentDifferencePPM ??= 100;
-        options.maxBtcFeeOffset ??= 5;
-        options.maxBtcFeeMultiplier ??= 1.5;
         super(
             chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens,
             {
-                bitcoinNetwork: options.bitcoinNetwork ?? TEST_NETWORK,
-                maxConfirmations: options.maxConfirmations ?? 6,
-                bitcoinBlocktime: options.bitcoinBlocktime ?? 10*60,
-                maxTransactionsDelta: options.maxTransactionsDelta ?? 3,
-                maxRawAmountAdjustmentDifferencePPM: options.maxRawAmountAdjustmentDifferencePPM ?? 100,
-                maxBtcFeeOffset: options.maxBtcFeeOffset ?? 5,
-                maxBtcFeeMultiplier: options.maxBtcFeeMultiplier ?? 1.5
+                bitcoinNetwork: options?.bitcoinNetwork ?? TEST_NETWORK,
+                maxConfirmations: options?.maxConfirmations ?? 6,
+                bitcoinBlocktime: options?.bitcoinBlocktime ?? 10*60,
+                maxTransactionsDelta: options?.maxTransactionsDelta ?? 3,
+                maxRawAmountAdjustmentDifferencePPM: options?.maxRawAmountAdjustmentDifferencePPM ?? 100,
+                maxBtcFeeOffset: options?.maxBtcFeeOffset ?? 10,
+                maxBtcFeeMultiplier: options?.maxBtcFeeMultiplier ?? 1.5
             },
             events
         );
@@ -330,7 +322,7 @@ export class SpvFromBTCWrapper<
     }> {
         const btcFeeRate = await throwIfUndefined(bitcoinFeeRatePromise, "Bitcoin fee rate promise failed!");
         abortSignal.throwIfAborted();
-        if(btcFeeRate!=null && resp.btcFeeRate > btcFeeRate) throw new IntermediaryError("Bitcoin fee rate returned too high!");
+        if(btcFeeRate!=null && resp.btcFeeRate > btcFeeRate) throw new IntermediaryError(`Required bitcoin fee rate returned from the LP is too high! Maximum accepted: ${btcFeeRate} sats/vB, required by LP: ${resp.btcFeeRate} sats/vB`);
 
         //Vault related
         let vaultScript: Uint8Array;

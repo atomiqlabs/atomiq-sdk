@@ -85,7 +85,7 @@ export class ToBTCSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, To
             if(btcTx==null) return false;
 
             //Extract nonce from tx
-            const nonce = (BigInt(btcTx.ins[0].sequence) & 0x00FFFFFFn) | (BigInt(btcTx.locktime) << 24n);
+            const nonce = this.nonce ?? (BigInt(btcTx.ins[0].sequence) & 0x00FFFFFFn) | (BigInt(btcTx.locktime - 500_000_000) << 24n);
             let requiredConfirmations = this.requiredConfirmations;
 
             const foundVout = btcTx.outs.find(vout => {
@@ -97,7 +97,7 @@ export class ToBTCSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, To
                         nonce
                     ).toString("hex");
                 } else {
-                    for(let i=1;i<=10;i++) {
+                    for(let i=1;i<=20;i++) {
                         if(
                             this.data.getClaimHash()===this.wrapper.contract.getHashForOnchain(
                                 Buffer.from(vout.scriptPubKey.hex, "hex"),
@@ -112,6 +112,8 @@ export class ToBTCSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, To
                     }
                 }
             });
+
+            if(requiredConfirmations==null) this.logger.warn(`_setPaymentResult(): Tried to recover data from bitcoin transaction ${result.txId} data, but wasn't able to!`);
 
             if(foundVout!=null) {
                 this.nonce = nonce;

@@ -60,14 +60,14 @@ class ToBTCSwap extends IToBTCSwap_1.IToBTCSwap {
             if (btcTx == null)
                 return false;
             //Extract nonce from tx
-            const nonce = (BigInt(btcTx.ins[0].sequence) & 0x00ffffffn) | (BigInt(btcTx.locktime) << 24n);
+            const nonce = this.nonce ?? (BigInt(btcTx.ins[0].sequence) & 0x00ffffffn) | (BigInt(btcTx.locktime - 500000000) << 24n);
             let requiredConfirmations = this.requiredConfirmations;
             const foundVout = btcTx.outs.find(vout => {
                 if (requiredConfirmations != null) {
                     return this.data.getClaimHash() === this.wrapper.contract.getHashForOnchain(buffer_1.Buffer.from(vout.scriptPubKey.hex, "hex"), BigInt(vout.value), requiredConfirmations, nonce).toString("hex");
                 }
                 else {
-                    for (let i = 1; i <= 10; i++) {
+                    for (let i = 1; i <= 20; i++) {
                         if (this.data.getClaimHash() === this.wrapper.contract.getHashForOnchain(buffer_1.Buffer.from(vout.scriptPubKey.hex, "hex"), BigInt(vout.value), i, nonce).toString("hex")) {
                             requiredConfirmations = i;
                             return true;
@@ -75,6 +75,8 @@ class ToBTCSwap extends IToBTCSwap_1.IToBTCSwap {
                     }
                 }
             });
+            if (requiredConfirmations == null)
+                this.logger.warn("_setPaymentResult(): Tried to recover required confirmations from bitcoin transaction data, but wasn't able to!");
             if (foundVout != null) {
                 this.nonce = nonce;
                 if (this.wrapper.btcRpc.outputScriptToAddress != null)

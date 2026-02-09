@@ -573,7 +573,7 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
         }
         quote._setInitiated();
         if (btcTx.inputAddresses != null)
-            quote.senderAddress = btcTx.inputAddresses[0];
+            quote.senderAddress = btcTx.inputAddresses[1];
         if (state.type === base_1.SpvWithdrawalStateType.FRONTED) {
             quote.frontTxId = state.txId;
             quote.state = SpvFromBTCSwap_1.SpvFromBTCSwapState.FRONTED;

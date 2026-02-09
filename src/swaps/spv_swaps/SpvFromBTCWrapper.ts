@@ -723,7 +723,7 @@ export class SpvFromBTCWrapper<
             quote.createdAt = blockHeader==null ? Date.now() : blockHeader.getTimestamp()*1000;
         }
         quote._setInitiated();
-        if(btcTx.inputAddresses!=null) quote.senderAddress = btcTx.inputAddresses[0];
+        if(btcTx.inputAddresses!=null) quote.senderAddress = btcTx.inputAddresses[1];
         if(state.type===SpvWithdrawalStateType.FRONTED) {
             quote.frontTxId = state.txId;
             quote.state = SpvFromBTCSwapState.FRONTED;

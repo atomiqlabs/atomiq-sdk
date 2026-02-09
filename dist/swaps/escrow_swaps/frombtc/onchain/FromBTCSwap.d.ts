@@ -249,5 +249,6 @@ export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromB
     _shouldFetchCommitStatus(): boolean;
     _shouldFetchExpiryStatus(): boolean;
     _sync(save?: boolean, quoteDefinitelyExpired?: boolean, commitStatus?: SwapCommitState): Promise<boolean>;
+    _forciblySetOnchainState(status: SwapCommitState): Promise<boolean>;
     _tick(save?: boolean): Promise<boolean>;
 }

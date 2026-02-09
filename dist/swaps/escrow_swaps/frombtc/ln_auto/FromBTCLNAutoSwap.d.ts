@@ -242,6 +242,7 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
     _shouldFetchExpiryStatus(): boolean;
     _shouldCheckIntermediary(): boolean;
     _sync(save?: boolean, quoteDefinitelyExpired?: boolean, commitStatus?: SwapCommitState, skipLpCheck?: boolean): Promise<boolean>;
+    _forciblySetOnchainState(commitStatus: SwapCommitState): Promise<boolean>;
     private broadcastTickCounter;
     _broadcastSecret(noCheckExpiry?: boolean, secret?: string): Promise<void>;
     _tick(save?: boolean): Promise<boolean>;

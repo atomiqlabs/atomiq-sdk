@@ -65,6 +65,7 @@ import {isLNURLPay, LNURLPay} from "../types/lnurl/LNURLPay";
 import {tryWithRetries} from "../utils/RetryUtils";
 import {NotNever} from "../utils/TypeUtils";
 import {MempoolApi, MempoolBitcoinBlock, MempoolBitcoinRpc, MempoolBtcRelaySynchronizer} from "@atomiqlabs/btc-mempool";
+import {IEscrowSwap} from "../swaps/escrow_swaps/IEscrowSwap";
 
 /**
  * Configuration options for the Swapper
@@ -1668,17 +1669,23 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         for(let escrowHash in swaps) {
             const {init, state} = swaps[escrowHash];
             const knownSwap = knownSwaps[escrowHash];
-            if(init==null) {
-                if(knownSwap==null) this.logger.warn(`recoverSwaps(): Fetched ${escrowHash} swap state, but swap not found locally!`);
-                //TODO: Update the existing swaps here
+
+            if(knownSwap==null) {
+                if(init==null) {
+                    this.logger.warn(`recoverSwaps(): Fetched ${escrowHash} swap state, but swap not found locally!`);
+                    continue;
+                }
+            } else if(knownSwap instanceof IEscrowSwap) {
+                this.logger.debug(`recoverSwaps(): Forcibly updating ${escrowHash} swap: swap already known and in local storage!`);
+                if(await knownSwap._forciblySetOnchainState(state)) {
+                    await knownSwap._save();
+                }
+                continue;
+            } else {
                 this.logger.debug(`recoverSwaps(): Skipping ${escrowHash} swap: swap already known and in local storage!`);
                 continue;
             }
-            if(knownSwap!=null) {
-                //TODO: Update the existing swaps here
-                this.logger.debug(`recoverSwaps(): Skipping ${escrowHash} swap: swap already known and in local storage!`);
-                continue;
-            }
+
             const data = init.data;
 
             //Classify swap

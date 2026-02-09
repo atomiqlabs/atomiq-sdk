@@ -66,5 +66,6 @@ export declare abstract class IEscrowSwap<T extends ChainType = ChainType, D ext
     abstract _shouldFetchCommitStatus(): boolean;
     abstract _shouldFetchExpiryStatus(): boolean;
     abstract _sync(save?: boolean, quoteDefinitelyExpired?: boolean, commitStatus?: SwapCommitState): Promise<boolean>;
+    _forciblySetOnchainState(commitStatus: SwapCommitState): Promise<boolean>;
     serialize(): any;
 }

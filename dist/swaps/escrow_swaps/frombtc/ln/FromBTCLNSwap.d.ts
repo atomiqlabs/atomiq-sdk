@@ -283,6 +283,7 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
     _shouldFetchCommitStatus(): boolean;
     _shouldCheckIntermediary(): boolean;
     _sync(save?: boolean, quoteDefinitelyExpired?: boolean, commitStatus?: SwapCommitState, skipLpCheck?: boolean): Promise<boolean>;
+    _forciblySetOnchainState(commitStatus: SwapCommitState): Promise<boolean>;
     _tick(save?: boolean): Promise<boolean>;
     _setSwapSecret(secret: string): void;
 }

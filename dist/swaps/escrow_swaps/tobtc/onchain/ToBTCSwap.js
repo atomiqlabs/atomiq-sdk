@@ -76,7 +76,7 @@ class ToBTCSwap extends IToBTCSwap_1.IToBTCSwap {
                 }
             });
             if (requiredConfirmations == null)
-                this.logger.warn("_setPaymentResult(): Tried to recover required confirmations from bitcoin transaction data, but wasn't able to!");
+                this.logger.warn(`_setPaymentResult(): Tried to recover data from bitcoin transaction ${result.txId} data, but wasn't able to!`);
             if (foundVout != null) {
                 this.nonce = nonce;
                 if (this.wrapper.btcRpc.outputScriptToAddress != null)

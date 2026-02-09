@@ -33,6 +33,7 @@ const LNURLWithdraw_1 = require("../types/lnurl/LNURLWithdraw");
 const LNURLPay_1 = require("../types/lnurl/LNURLPay");
 const RetryUtils_1 = require("../utils/RetryUtils");
 const btc_mempool_1 = require("@atomiqlabs/btc-mempool");
+const IEscrowSwap_1 = require("../swaps/escrow_swaps/IEscrowSwap");
 /**
  * Core orchestrator for all swap operations with multi-chain support
  * @category Core
@@ -1176,15 +1177,20 @@ class Swapper extends events_1.EventEmitter {
         for (let escrowHash in swaps) {
             const { init, state } = swaps[escrowHash];
             const knownSwap = knownSwaps[escrowHash];
-            if (init == null) {
-                if (knownSwap == null)
+            if (knownSwap == null) {
+                if (init == null) {
                     this.logger.warn(`recoverSwaps(): Fetched ${escrowHash} swap state, but swap not found locally!`);
-                //TODO: Update the existing swaps here
-                this.logger.debug(`recoverSwaps(): Skipping ${escrowHash} swap: swap already known and in local storage!`);
+                    continue;
+                }
+            }
+            else if (knownSwap instanceof IEscrowSwap_1.IEscrowSwap) {
+                this.logger.debug(`recoverSwaps(): Forcibly updating ${escrowHash} swap: swap already known and in local storage!`);
+                if (await knownSwap._forciblySetOnchainState(state)) {
+                    await knownSwap._save();
+                }
                 continue;
             }
-            if (knownSwap != null) {
-                //TODO: Update the existing swaps here
+            else {
                 this.logger.debug(`recoverSwaps(): Skipping ${escrowHash} swap: swap already known and in local storage!`);
                 continue;
             }

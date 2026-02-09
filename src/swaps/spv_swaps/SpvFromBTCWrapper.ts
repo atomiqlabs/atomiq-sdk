@@ -638,7 +638,8 @@ export class SpvFromBTCWrapper<
         //Get the vault
         vault ??= await this.contract.getVaultData(state.owner, state.vaultId);
         if(vault==null) return null;
-        const btcTx = await this.btcRpc.getTransaction(state.txId);
+        if(state.btcTxId==null) return null;
+        const btcTx = await this.btcRpc.getTransaction(state.btcTxId);
         if(btcTx==null) return null;
         const withdrawalData = await this.contract.getWithdrawalData(btcTx)
             .catch(e => {
@@ -712,14 +713,23 @@ export class SpvFromBTCWrapper<
             genesisSmartChainBlockHeight: 0
         };
         const quote = new SpvFromBTCSwap<T>(this, swapInit);
-        if(btcTx.blockhash==null) {
+        if(state.getTxBlock!=null) {
+            quote.createdAt = (await state.getTxBlock()).blockTime*1000;
+        } else if(btcTx.blockhash==null) {
             quote.createdAt = Date.now();
         } else {
             const blockHeader = await this.btcRpc.getBlockHeader(btcTx.blockhash);
             quote.createdAt = blockHeader==null ? Date.now() : blockHeader.getTimestamp()*1000;
         }
         quote._setInitiated();
-        quote.state = state.type===SpvWithdrawalStateType.FRONTED ? SpvFromBTCSwapState.FRONTED : SpvFromBTCSwapState.CLAIMED;
+        if(btcTx.inputAddresses!=null) quote.senderAddress = btcTx.inputAddresses[0];
+        if(state.type===SpvWithdrawalStateType.FRONTED) {
+            quote.frontTxId = state.txId;
+            quote.state = SpvFromBTCSwapState.FRONTED;
+        } else {
+            quote.claimTxId = state.txId;
+            quote.state = SpvFromBTCSwapState.CLAIMED;
+        }
         await quote._save();
         return quote;
     }

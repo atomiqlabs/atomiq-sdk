@@ -1647,13 +1647,18 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
      * @param startBlockheight
      */
     async recoverSwaps<C extends ChainIds<T>>(chainId: C, signer: string, startBlockheight?: number): Promise<ISwap<T[C]>[]> {
-        const {swapContract, unifiedSwapStorage, reviver, wrappers} = this.chains[chainId];
+        const {spvVaultContract, swapContract, unifiedSwapStorage, reviver, wrappers} = this.chains[chainId];
 
-        if(swapContract.getHistoricalSwaps==null) throw new Error(`Historical swap recovery is not supported for ${chainId}`);
+        if(
+            swapContract.getHistoricalSwaps==null ||
+            (spvVaultContract!=null && spvVaultContract.getHistoricalWithdrawalStates==null)
+        ) throw new Error(`Historical swap recovery is not supported for ${chainId}`);
 
-        const {swaps} = await swapContract.getHistoricalSwaps(signer);
+        const {swaps} = await swapContract.getHistoricalSwaps(signer, startBlockheight);
+        const spvVaultData = await spvVaultContract?.getHistoricalWithdrawalStates!(signer, startBlockheight);
 
         const escrowHashes = Object.keys(swaps);
+        if(spvVaultData!=null) Object.keys(spvVaultData.withdrawals).forEach(btcTxId => escrowHashes.push(btcTxId));
         this.logger.debug(`recoverSwaps(): Loaded on-chain data for ${escrowHashes.length} swaps`);
         this.logger.debug(`recoverSwaps(): Fetching if swap escrowHashes are known: ${escrowHashes.join(", ")}`);
         const knownSwapsArray = await unifiedSwapStorage.query([[{key: "escrowHash", value: escrowHashes}]], reviver);
@@ -1672,17 +1677,17 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
 
             if(knownSwap==null) {
                 if(init==null) {
-                    this.logger.warn(`recoverSwaps(): Fetched ${escrowHash} swap state, but swap not found locally!`);
+                    this.logger.warn(`recoverSwaps(escrow): Fetched ${escrowHash} swap state, but swap not found locally!`);
                     continue;
                 }
             } else if(knownSwap instanceof IEscrowSwap) {
-                this.logger.debug(`recoverSwaps(): Forcibly updating ${escrowHash} swap: swap already known and in local storage!`);
+                this.logger.debug(`recoverSwaps(escrow): Forcibly updating ${escrowHash} swap: swap already known and in local storage!`);
                 if(await knownSwap._forciblySetOnchainState(state)) {
                     await knownSwap._save();
                 }
                 continue;
             } else {
-                this.logger.debug(`recoverSwaps(): Skipping ${escrowHash} swap: swap already known and in local storage!`);
+                this.logger.debug(`recoverSwaps(escrow): Skipping ${escrowHash} swap: swap already known and in local storage!`);
                 continue;
             }
 
@@ -1722,11 +1727,54 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
             if(swap!=null) {
                 recoveredSwaps.push(swap);
             } else {
-                if(typeIdentified) this.logger.debug(`recoverSwaps(): Swap data type correctly identified but swap returned is null for swap ${escrowHash}`);
+                if(typeIdentified) this.logger.debug(`recoverSwaps(escrow): Swap data type correctly identified but swap returned is null for swap ${escrowHash}`);
             }
         }
 
-        this.logger.debug(`recoverSwaps(): Successfully recovered ${recoveredSwaps.length} swaps!`);
+        if(spvVaultContract!=null && spvVaultData!=null) {
+            const vaultsData = await spvVaultContract.getMultipleVaultData(
+                Object.keys(spvVaultData.withdrawals)
+                    .map(btcTxId => ({
+                        owner: spvVaultData.withdrawals[btcTxId].owner,
+                        vaultId: spvVaultData.withdrawals[btcTxId].vaultId
+                    }))
+            );
+
+            for(let btcTxId in spvVaultData.withdrawals) {
+                const state = spvVaultData.withdrawals[btcTxId];
+                const knownSwap = knownSwaps[btcTxId];
+
+                if(knownSwap!=null) {
+                    if(knownSwap instanceof SpvFromBTCSwap) {
+                        this.logger.debug(`recoverSwaps(spv_vault): Forcibly updating ${btcTxId} swap: swap already known and in local storage!`);
+                        //TODO: Forcibly set on-chain state to the swap
+                        // if(await knownSwap._forciblySetOnchainState(state)) {
+                        //     await knownSwap._save();
+                        // }
+                        continue;
+                    } else {
+                        this.logger.debug(`recoverSwaps(spv_vault): Skipping ${btcTxId} swap: swap already known and in local storage!`);
+                        continue;
+                    }
+                }
+
+                const lp = this.intermediaryDiscovery.intermediaries.find(
+                    val => val.supportsChain(chainId) && state.owner.toLowerCase()===val.getAddress(chainId).toLowerCase()
+                );
+                const swap = await wrappers[SwapType.SPV_VAULT_FROM_BTC].recoverFromState(
+                    state,
+                    vaultsData[state.owner]?.[state.vaultId.toString(10)],
+                    lp
+                );
+                if(swap!=null) {
+                    recoveredSwaps.push(swap);
+                } else {
+                    this.logger.debug(`recoverSwaps(spv_vault): Swap data type correctly identified but swap returned is null for swap ${btcTxId}`);
+                }
+            }
+        }
+
+        this.logger.debug(`recoverSwaps(): Successfully recovered ${recoveredSwaps.length} escrow swaps!`);
 
         return recoveredSwaps;
     }

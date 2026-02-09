@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import { ISwapWrapper, ISwapWrapperOptions, SwapTypeDefinition, WrapperCtorTokens } from "../ISwapWrapper";
-import { BitcoinRpcWithAddressIndex, BtcRelay, ChainEvent, ChainType, RelaySynchronizer, SpvVaultClaimEvent, SpvVaultCloseEvent, SpvVaultFrontEvent } from "@atomiqlabs/base";
+import { BitcoinRpcWithAddressIndex, BtcRelay, ChainEvent, ChainType, RelaySynchronizer, SpvVaultClaimEvent, SpvVaultCloseEvent, SpvVaultData, SpvVaultFrontEvent, SpvWithdrawalClaimedState, SpvWithdrawalFrontedState } from "@atomiqlabs/base";
 import { SpvFromBTCSwap, SpvFromBTCSwapState } from "./SpvFromBTCSwap";
 import { BTC_NETWORK } from "@scure/btc-signer/utils";
 import { SwapType } from "../../enums/SwapType";
@@ -110,6 +110,7 @@ export declare class SpvFromBTCWrapper<T extends ChainType> extends ISwapWrapper
         quote: Promise<SpvFromBTCSwap<T>>;
         intermediary: Intermediary;
     }[];
+    recoverFromState(state: SpvWithdrawalClaimedState | SpvWithdrawalFrontedState, vault?: SpvVaultData | null, lp?: Intermediary): Promise<SpvFromBTCSwap<T> | null>;
     /**
      * Returns a random dummy PSBT that can be used for fee estimation, the last output (the LP output) is omitted
      *  to allow for coinselection algorithm to determine maximum sendable amount there

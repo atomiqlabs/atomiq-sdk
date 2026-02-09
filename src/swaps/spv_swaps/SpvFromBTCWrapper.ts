@@ -6,9 +6,11 @@ import {
     ChainType,
     RelaySynchronizer,
     SpvVaultClaimEvent,
-    SpvVaultCloseEvent,
+    SpvVaultCloseEvent, SpvVaultData,
     SpvVaultFrontEvent,
     SpvVaultTokenBalance,
+    SpvWithdrawalClaimedState,
+    SpvWithdrawalFrontedState,
     SpvWithdrawalStateType
 } from "@atomiqlabs/base";
 import {SpvFromBTCSwap, SpvFromBTCSwapInit, SpvFromBTCSwapState} from "./SpvFromBTCSwap";
@@ -630,6 +632,89 @@ export class SpvFromBTCWrapper<
                 }, undefined, err => !(err instanceof IntermediaryError && err.recoverable), _abortController.signal)
             }
         });
+    }
+
+    async recoverFromState(state: SpvWithdrawalClaimedState | SpvWithdrawalFrontedState, vault?: SpvVaultData | null, lp?: Intermediary): Promise<SpvFromBTCSwap<T> | null> {
+        //Get the vault
+        vault ??= await this.contract.getVaultData(state.owner, state.vaultId);
+        if(vault==null) return null;
+        const btcTx = await this.btcRpc.getTransaction(state.txId);
+        if(btcTx==null) return null;
+        const withdrawalData = await this.contract.getWithdrawalData(btcTx)
+            .catch(e => {
+                this.logger.warn(`Error parsing withdrawal data for tx ${btcTx.txid}: `, e);
+                return null;
+            });
+        if(withdrawalData==null) return null;
+
+        const vaultTokens = vault.getTokenData();
+        const withdrawalDataOutputs = withdrawalData.getTotalOutput();
+
+        const swapInit: SpvFromBTCSwapInit = {
+            pricingInfo: {
+                isValid: true,
+                satsBaseFee: 0n,
+                swapPriceUSatPerToken: 100_000_000_000_000n,
+                realPriceUSatPerToken: 100_000_000_000_000n,
+                differencePPM: 0n,
+                feePPM: 0n,
+            },
+            url: lp?.url,
+            expiry: 0,
+            swapFee: 0n,
+            swapFeeBtc: 0n,
+            exactIn: true,
+
+            //Use bitcoin tx id as quote id, even though this is not strictly correct as this
+            // is an off-chain identifier presented by the LP that cannot be recovered from on-chain
+            // data
+            quoteId: btcTx.txid,
+
+            recipient: state.recipient,
+
+            vaultOwner: state.owner,
+            vaultId: state.vaultId,
+            vaultRequiredConfirmations: vault.getConfirmations(),
+            vaultTokenMultipliers: vault.getTokenData().map(val => val.multiplier),
+            vaultBtcAddress: this.btcRpc.outputScriptToAddress==null
+                ? ""
+                : await this.btcRpc.outputScriptToAddress(withdrawalData.getNewVaultScript().toString("hex")),
+            vaultUtxo: withdrawalData.getSpentVaultUtxo(),
+            vaultUtxoValue: BigInt(withdrawalData.getNewVaultBtcAmount()),
+
+            btcDestinationAddress: this.btcRpc.outputScriptToAddress==null
+                ? ""
+                : await this.btcRpc.outputScriptToAddress(btcTx.outs[2].scriptPubKey.hex),
+            btcAmount: BigInt(btcTx.outs[2].value),
+            btcAmountSwap: BigInt(btcTx.outs[2].value),
+            btcAmountGas: 0n,
+            minimumBtcFeeRate: 0,
+
+            outputTotalSwap: withdrawalDataOutputs[0] * vaultTokens[0].multiplier,
+            outputSwapToken: vaultTokens[0].token,
+            outputTotalGas: withdrawalDataOutputs[1] * vaultTokens[1].multiplier,
+            outputGasToken: vaultTokens[1].token,
+            gasSwapFeeBtc: 0n,
+            gasSwapFee: 0n,
+            gasPricingInfo: {
+                isValid: true,
+                satsBaseFee: 0n,
+                swapPriceUSatPerToken: 100_000_000_000_000n,
+                realPriceUSatPerToken: 100_000_000_000_000n,
+                differencePPM: 0n,
+                feePPM: 0n,
+            },
+
+            callerFeeShare: withdrawalData.callerFeeRate,
+            frontingFeeShare: withdrawalData.frontingFeeRate,
+            executionFeeShare: withdrawalData.executionFeeRate,
+
+            genesisSmartChainBlockHeight: 0
+        };
+        const quote = new SpvFromBTCSwap<T>(this, swapInit);
+        quote.state = state.type===SpvWithdrawalStateType.FRONTED ? SpvFromBTCSwapState.FRONTED : SpvFromBTCSwapState.CLAIMED;
+        await quote._save();
+        return quote;
     }
 
     /**

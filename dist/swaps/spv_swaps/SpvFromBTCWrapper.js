@@ -560,6 +560,7 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
             genesisSmartChainBlockHeight: 0
         };
         const quote = new SpvFromBTCSwap_1.SpvFromBTCSwap(this, swapInit);
+        quote.data = withdrawalData;
         if (state.getTxBlock != null) {
             quote.createdAt = (await state.getTxBlock()).blockTime * 1000;
         }

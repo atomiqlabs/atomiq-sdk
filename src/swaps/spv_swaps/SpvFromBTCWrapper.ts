@@ -713,6 +713,7 @@ export class SpvFromBTCWrapper<
             genesisSmartChainBlockHeight: 0
         };
         const quote = new SpvFromBTCSwap<T>(this, swapInit);
+        quote.data = withdrawalData;
         if(state.getTxBlock!=null) {
             quote.createdAt = (await state.getTxBlock()).blockTime*1000;
         } else if(btcTx.blockhash==null) {

@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import { ISwapWrapper, ISwapWrapperOptions, SwapTypeDefinition, WrapperCtorTokens } from "../ISwapWrapper";
-import { BitcoinRpcWithAddressIndex, BtcRelay, ChainEvent, ChainType, RelaySynchronizer, SpvVaultClaimEvent, SpvVaultCloseEvent, SpvVaultData, SpvVaultFrontEvent, SpvWithdrawalClaimedState, SpvWithdrawalFrontedState } from "@atomiqlabs/base";
+import { BitcoinRpcWithAddressIndex, BtcBlock, BtcRelay, ChainEvent, ChainType, RelaySynchronizer, SpvVaultClaimEvent, SpvVaultCloseEvent, SpvVaultData, SpvVaultFrontEvent, SpvWithdrawalClaimedState, SpvWithdrawalFrontedState } from "@atomiqlabs/base";
 import { SpvFromBTCSwap, SpvFromBTCSwapState } from "./SpvFromBTCSwap";
 import { BTC_NETWORK } from "@scure/btc-signer/utils";
 import { SwapType } from "../../enums/SwapType";
@@ -37,7 +37,7 @@ export declare class SpvFromBTCWrapper<T extends ChainType> extends ISwapWrapper
     readonly synchronizer: RelaySynchronizer<any, T["TX"], any>;
     readonly contract: T["SpvVaultContract"];
     readonly btcRelay: T["BtcRelay"];
-    readonly btcRpc: BitcoinRpcWithAddressIndex<any>;
+    readonly btcRpc: BitcoinRpcWithAddressIndex<BtcBlock>;
     readonly spvWithdrawalDataDeserializer: new (data: any) => T["SpvVaultWithdrawalData"];
     /**
      * @param chainIdentifier

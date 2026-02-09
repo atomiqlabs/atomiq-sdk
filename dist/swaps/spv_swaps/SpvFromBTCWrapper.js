@@ -558,6 +558,14 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
             genesisSmartChainBlockHeight: 0
         };
         const quote = new SpvFromBTCSwap_1.SpvFromBTCSwap(this, swapInit);
+        if (btcTx.blockhash == null) {
+            quote.createdAt = Date.now();
+        }
+        else {
+            const blockHeader = await this.btcRpc.getBlockHeader(btcTx.blockhash);
+            quote.createdAt = blockHeader == null ? Date.now() : blockHeader.getTimestamp() * 1000;
+        }
+        quote._setInitiated();
         quote.state = state.type === base_1.SpvWithdrawalStateType.FRONTED ? SpvFromBTCSwap_1.SpvFromBTCSwapState.FRONTED : SpvFromBTCSwap_1.SpvFromBTCSwapState.CLAIMED;
         await quote._save();
         return quote;

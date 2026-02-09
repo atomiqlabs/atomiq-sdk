@@ -1,6 +1,6 @@
 import {ISwapWrapper, ISwapWrapperOptions, SwapTypeDefinition, WrapperCtorTokens} from "../ISwapWrapper";
 import {
-    BitcoinRpcWithAddressIndex,
+    BitcoinRpcWithAddressIndex, BtcBlock,
     BtcRelay,
     ChainEvent,
     ChainType,
@@ -64,7 +64,7 @@ export class SpvFromBTCWrapper<
     readonly synchronizer: RelaySynchronizer<any, T["TX"], any>;
     readonly contract: T["SpvVaultContract"];
     readonly btcRelay: T["BtcRelay"];
-    readonly btcRpc: BitcoinRpcWithAddressIndex<any>;
+    readonly btcRpc: BitcoinRpcWithAddressIndex<BtcBlock>;
 
     readonly spvWithdrawalDataDeserializer: new (data: any) => T["SpvVaultWithdrawalData"];
 
@@ -712,6 +712,13 @@ export class SpvFromBTCWrapper<
             genesisSmartChainBlockHeight: 0
         };
         const quote = new SpvFromBTCSwap<T>(this, swapInit);
+        if(btcTx.blockhash==null) {
+            quote.createdAt = Date.now();
+        } else {
+            const blockHeader = await this.btcRpc.getBlockHeader(btcTx.blockhash);
+            quote.createdAt = blockHeader==null ? Date.now() : blockHeader.getTimestamp()*1000;
+        }
+        quote._setInitiated();
         quote.state = state.type===SpvWithdrawalStateType.FRONTED ? SpvFromBTCSwapState.FRONTED : SpvFromBTCSwapState.CLAIMED;
         await quote._save();
         return quote;

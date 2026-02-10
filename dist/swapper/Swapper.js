@@ -1275,7 +1275,7 @@ class Swapper extends events_1.EventEmitter {
                 }
             }
         }
-        this.logger.debug(`recoverSwaps(): Successfully recovered ${recoveredSwaps.length} escrow swaps!`);
+        this.logger.debug(`recoverSwaps(): Successfully recovered ${recoveredSwaps.length} swaps!`);
         return recoveredSwaps;
     }
     getToken(tickerOrAddress) {

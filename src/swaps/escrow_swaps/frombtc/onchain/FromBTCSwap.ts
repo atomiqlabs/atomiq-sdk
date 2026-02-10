@@ -159,7 +159,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
     }
 
     getHyperlink(): string {
-        if(this.state===FromBTCSwapState.PR_CREATED) throw new Error("Cannot get bitcoin address of non-committed swap");
+        if(this.state===FromBTCSwapState.PR_CREATED) throw new Error("Cannot get bitcoin address of non-initiated swaps! Initiate swap first with commit() or txsCommit().");
         return this._getHyperlink();
     }
 
@@ -367,6 +367,17 @@ export class FromBTCSwap<T extends ChainType = ChainType>
                 if(btcTx!=null && vout!=null && requiredConfirmations==null) {
                     requiredConfirmations = this.inferRequiredConfirmationsCount(btcTx, vout);
                 }
+
+                if(btcTx!=null && (btcTx.txid!==this.txId || (this.requiredConfirmations==null && requiredConfirmations!=null))) {
+                    this.txId = btcTx.txid;
+                    this.vout = vout;
+                    this.requiredConfirmations = requiredConfirmations;
+                    if(btcTx.inputAddresses!=null) this.senderAddress = btcTx.inputAddresses[0];
+                    this._saveAndEmit().catch(e => {
+                        this.logger.error("waitForBitcoinTransaction(): Failed to save swap from within waitForAddressTxo callback:", e)
+                    });
+                }
+
                 //Abort the loop as soon as the transaction gets enough confirmations, this is required in case
                 // we pass a default 6 confirmations to the fn, but then are able to infer the actual confirmation
                 // target from the prior block
@@ -380,15 +391,6 @@ export class FromBTCSwap<T extends ChainType = ChainType>
                 }
 
                 if(updateCallback!=null) updateCallback(btcTx?.txid, btcTx==null ? undefined : (btcTx?.confirmations ?? 0), requiredConfirmations ?? NaN, txEtaMs);
-                if(btcTx!=null && (btcTx.txid!==this.txId || (this.requiredConfirmations==null && requiredConfirmations!=null))) {
-                    this.txId = btcTx.txid;
-                    this.vout = vout;
-                    this.requiredConfirmations = requiredConfirmations;
-                    if(btcTx.inputAddresses!=null) this.senderAddress = btcTx.inputAddresses[0];
-                    this._saveAndEmit().catch(e => {
-                        this.logger.error("waitForBitcoinTransaction(): Failed to save swap from within waitForAddressTxo callback:", e)
-                    });
-                }
             },
             abortController.signal,
             checkIntervalSeconds

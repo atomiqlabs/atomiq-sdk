@@ -86,13 +86,13 @@ class SwapperFactory {
         options.registryUrl ??= registries[options.bitcoinNetwork];
         let bitcoinRpc;
         if (options.mempoolApi != null) {
-            bitcoinRpc = options.mempoolApi instanceof btc_mempool_1.MempoolBitcoinRpc ? options.mempoolApi : new btc_mempool_1.MempoolBitcoinRpc(options.mempoolApi);
+            bitcoinRpc = options.mempoolApi instanceof btc_mempool_1.MempoolBitcoinRpc ? options.mempoolApi : new btc_mempool_1.MempoolBitcoinRpc(options.mempoolApi, options.bitcoinNetwork);
         }
         else {
             const urls = mempoolUrls[options.bitcoinNetwork];
             if (urls == null)
                 throw new Error(`No pre-configured urls for ${base_1.BitcoinNetwork[options.bitcoinNetwork]} network were found, please explicitly pass mempoolApi parameter!`);
-            bitcoinRpc = new btc_mempool_1.MempoolBitcoinRpc(urls);
+            bitcoinRpc = new btc_mempool_1.MempoolBitcoinRpc(urls, options.bitcoinNetwork);
         }
         const pricingAssets = [];
         Object.keys(SmartChainAssets_1.SmartChainAssets).forEach((ticker) => {

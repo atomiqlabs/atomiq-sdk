@@ -95,10 +95,8 @@ export class ToBTCLNSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, 
             if(!claimHash.equals(expectedClaimHash)) throw new IntermediaryError("Invalid payment secret returned");
         }
 
-        if(this.paymentHash==null || this.pr==null) {
-            this.pr = hash.toString("hex");
-            this.paymentHash = hash.toString("hex");
-        }
+        this.pr ??= hash.toString("hex");
+        this.paymentHash ??= hash.toString("hex");
 
         this.secret = result.secret;
         return Promise.resolve(true);

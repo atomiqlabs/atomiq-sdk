@@ -505,6 +505,7 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
             return null;
         const vaultTokens = vault.getTokenData();
         const withdrawalDataOutputs = withdrawalData.getTotalOutput();
+        const txBlock = await state.getTxBlock?.();
         const swapInit = {
             pricingInfo: {
                 isValid: true,
@@ -557,12 +558,12 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
             callerFeeShare: withdrawalData.callerFeeRate,
             frontingFeeShare: withdrawalData.frontingFeeRate,
             executionFeeShare: withdrawalData.executionFeeRate,
-            genesisSmartChainBlockHeight: 0
+            genesisSmartChainBlockHeight: txBlock?.blockHeight ?? 0
         };
         const quote = new SpvFromBTCSwap_1.SpvFromBTCSwap(this, swapInit);
         quote.data = withdrawalData;
-        if (state.getTxBlock != null) {
-            quote.createdAt = (await state.getTxBlock()).blockTime * 1000;
+        if (txBlock != null) {
+            quote.createdAt = txBlock.blockTime * 1000;
         }
         else if (btcTx.blockhash == null) {
             quote.createdAt = Date.now();

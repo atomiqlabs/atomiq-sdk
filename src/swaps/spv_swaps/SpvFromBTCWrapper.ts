@@ -651,6 +651,8 @@ export class SpvFromBTCWrapper<
         const vaultTokens = vault.getTokenData();
         const withdrawalDataOutputs = withdrawalData.getTotalOutput();
 
+        const txBlock = await state.getTxBlock?.();
+
         const swapInit: SpvFromBTCSwapInit = {
             pricingInfo: {
                 isValid: true,
@@ -710,12 +712,12 @@ export class SpvFromBTCWrapper<
             frontingFeeShare: withdrawalData.frontingFeeRate,
             executionFeeShare: withdrawalData.executionFeeRate,
 
-            genesisSmartChainBlockHeight: 0
+            genesisSmartChainBlockHeight: txBlock?.blockHeight ?? 0
         };
         const quote = new SpvFromBTCSwap<T>(this, swapInit);
         quote.data = withdrawalData;
-        if(state.getTxBlock!=null) {
-            quote.createdAt = (await state.getTxBlock()).blockTime*1000;
+        if(txBlock!=null) {
+            quote.createdAt = txBlock.blockTime*1000;
         } else if(btcTx.blockhash==null) {
             quote.createdAt = Date.now();
         } else {

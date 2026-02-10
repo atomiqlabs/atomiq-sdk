@@ -193,11 +193,11 @@ export class SwapperFactory<T extends readonly ChainInitializer<any, ChainType, 
 
         let bitcoinRpc: MempoolBitcoinRpc;
         if(options.mempoolApi!=null) {
-            bitcoinRpc = options.mempoolApi instanceof MempoolBitcoinRpc ? options.mempoolApi : new MempoolBitcoinRpc(options.mempoolApi);
+            bitcoinRpc = options.mempoolApi instanceof MempoolBitcoinRpc ? options.mempoolApi : new MempoolBitcoinRpc(options.mempoolApi, options.bitcoinNetwork);
         } else {
             const urls = mempoolUrls[options.bitcoinNetwork];
             if(urls==null) throw new Error(`No pre-configured urls for ${BitcoinNetwork[options.bitcoinNetwork]} network were found, please explicitly pass mempoolApi parameter!`);
-            bitcoinRpc = new MempoolBitcoinRpc(urls);
+            bitcoinRpc = new MempoolBitcoinRpc(urls, options.bitcoinNetwork);
         }
 
         const pricingAssets: (RedundantSwapPriceAssets<ToMultichain<T>>[number] & {ticker: string, name: string})[] = [];

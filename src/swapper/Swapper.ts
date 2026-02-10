@@ -1774,7 +1774,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
             }
         }
 
-        this.logger.debug(`recoverSwaps(): Successfully recovered ${recoveredSwaps.length} escrow swaps!`);
+        this.logger.debug(`recoverSwaps(): Successfully recovered ${recoveredSwaps.length} swaps!`);
 
         return recoveredSwaps;
     }

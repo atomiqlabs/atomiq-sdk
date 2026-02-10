@@ -24,7 +24,6 @@ export function isIEscrowSwapInit<T extends SwapData>(obj: any): obj is IEscrowS
 
 export abstract class IEscrowSwap<
     T extends ChainType = ChainType,
-
     D extends IEscrowSwapDefinition<T, IEscrowSwapWrapper<T, D>, IEscrowSwap<T, D, S>> = IEscrowSwapDefinition<T, IEscrowSwapWrapper<T, any>, IEscrowSwap<T, any, any>>,
     S extends number = number
 > extends ISwap<T, D, S> {

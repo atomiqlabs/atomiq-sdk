@@ -1,6 +1,5 @@
 import {SwapType} from "../../../enums/SwapType";
 import {ChainType} from "@atomiqlabs/base";
-import {PaymentAuthError} from "../../../errors/PaymentAuthError";
 import {toBigInt} from "../../../utils/Utils";
 import {parsePsbtTransaction, toOutputScript} from "../../../utils/BitcoinUtils";
 import {isISwapInit, ISwap, ISwapInit} from "../../ISwap";
@@ -516,8 +515,7 @@ export class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T,
      * @param abortSignal Abort signal
      * @param checkIntervalSeconds How often to poll the intermediary for answer
      * @param updateCallback Callback called when txId is found, and also called with subsequent confirmations
-     * @throws {PaymentAuthError} If swap expired or failed
-     * @throws {Error} When in invalid state (not PR_CREATED)
+     * @throws {Error} When in invalid state (not PR_CREATED) or if swap expired or failed
      */
     async waitForBitcoinTransaction(
         updateCallback?: (txId?: string, confirmations?: number, targetConfirmations?: number, txEtaMs?: number) => void,
@@ -555,8 +553,8 @@ export class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T,
             (this.state as OnchainForGasSwapState)===OnchainForGasSwapState.REFUNDABLE ||
             (this.state as OnchainForGasSwapState)===OnchainForGasSwapState.REFUNDED
         ) return this.txId!;
-        if(this.isQuoteExpired()) throw new PaymentAuthError("Swap expired");
-        if(this.isFailed()) throw new PaymentAuthError("Swap failed");
+        if(this.isQuoteExpired()) throw new Error("Swap expired");
+        if(this.isFailed()) throw new Error("Swap failed");
         return this.txId!;
     }
 
@@ -576,8 +574,8 @@ export class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T,
             if(this.state===OnchainForGasSwapState.REFUNDABLE)
                 await timeoutPromise(checkIntervalSeconds*1000, abortSignal);
         }
-        if(this.isQuoteExpired()) throw new PaymentAuthError("Swap expired");
-        if(this.isFailed()) throw new PaymentAuthError("Swap failed");
+        if(this.isQuoteExpired()) throw new Error("Swap expired");
+        if(this.isFailed()) throw new Error("Swap failed");
     }
 
     async requestRefund(refundAddress?: string, abortSignal?: AbortSignal): Promise<void> {

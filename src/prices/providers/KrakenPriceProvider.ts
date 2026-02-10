@@ -30,6 +30,9 @@ export class KrakenPriceProvider<T extends MultiChain> extends ExchangePriceProv
         super(coinsMap, url, httpRequestTimeout);
     }
 
+    /**
+     * @inheritDoc
+     */
     protected async fetchPair(pair: string, abortSignal?: AbortSignal) {
         const response = await httpGet<KrakenResponse>(
             this.url+"/public/Ticker?pair="+pair,
@@ -40,6 +43,9 @@ export class KrakenPriceProvider<T extends MultiChain> extends ExchangePriceProv
         return parseFloat(response.result[pair].c[0]);
     }
 
+    /**
+     * @inheritDoc
+     */
     protected async fetchUsdPrice(abortSignal?: AbortSignal): Promise<number> {
         const response = await httpGet<KrakenResponse>(
             this.url+"/public/Ticker?pair=XBTUSDC",
@@ -50,6 +56,9 @@ export class KrakenPriceProvider<T extends MultiChain> extends ExchangePriceProv
         return parseFloat(response.result["XBTUSDC"].c[0])/100000000;
     }
 
+    /**
+     * @inheritDoc
+     */
     protected async fetchPrice(token: CoinType, abortSignal?: AbortSignal): Promise<bigint> {
         const pairs: string[] = token.coinId.split(";");
 

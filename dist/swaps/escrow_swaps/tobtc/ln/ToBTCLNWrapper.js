@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ToBTCLNWrapper = exports.isInvoiceCreateService = void 0;
+exports.ToBTCLNWrapper = void 0;
 const bolt11_1 = require("@atomiqlabs/bolt11");
 const ToBTCLNSwap_1 = require("./ToBTCLNSwap");
 const IToBTCWrapper_1 = require("../IToBTCWrapper");
@@ -15,13 +15,6 @@ const LNURL_1 = require("../../../../lnurl/LNURL");
 const IToBTCSwap_1 = require("../IToBTCSwap");
 const sha2_1 = require("@noble/hashes/sha2");
 const RetryUtils_1 = require("../../../../utils/RetryUtils");
-function isInvoiceCreateService(obj) {
-    return typeof (obj) === "object" &&
-        typeof (obj.getInvoice) === "function" &&
-        (obj.minMsats == null || typeof (obj.minMsats) === "bigint") &&
-        (obj.maxMSats == null || typeof (obj.maxMSats) === "bigint");
-}
-exports.isInvoiceCreateService = isInvoiceCreateService;
 class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
     constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, options, events) {
         super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, {

@@ -12,6 +12,12 @@ export type CoinGeckoResponse<Currency extends string> = {
  */
 export declare class CoinGeckoPriceProvider<T extends MultiChain> extends HttpPriceProvider<T> {
     constructor(coinsMap: CtorCoinTypes<T>, url?: string, httpRequestTimeout?: number);
+    /**
+     * @inheritDoc
+     */
     protected fetchPrice(token: CoinType, abortSignal?: AbortSignal): Promise<bigint>;
+    /**
+     * @inheritDoc
+     */
     protected fetchUsdPrice(abortSignal?: AbortSignal): Promise<number>;
 }

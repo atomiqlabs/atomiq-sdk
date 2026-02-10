@@ -4,11 +4,12 @@ import { Transaction } from "@scure/btc-signer";
 import { BitcoinWallet } from "./BitcoinWallet";
 import { BitcoinRpcWithAddressIndex } from "@atomiqlabs/base";
 /**
- * Bitcoin wallet implementation for single-address scenarios
+ * Bitcoin wallet implementation deriving a single address from a WIF encoded private key
+ *
  * @category Bitcoin
  */
 export declare class SingleAddressBitcoinWallet extends BitcoinWallet {
-    readonly privKey?: Uint8Array;
+    protected readonly privKey?: Uint8Array;
     readonly pubkey: Uint8Array;
     readonly address: string;
     readonly addressType: CoinselectAddressTypes;
@@ -16,25 +17,59 @@ export declare class SingleAddressBitcoinWallet extends BitcoinWallet {
         address: string;
         publicKey: string;
     }, feeMultiplier?: number, feeOverride?: number);
-    protected toBitcoinWalletAccounts(): {
+    /**
+     * Returns all the wallet addresses controlled by the wallet
+     *
+     * @protected
+     */
+    protected toBitcoinWalletAccounts(): [{
         pubkey: string;
         address: string;
         addressType: CoinselectAddressTypes;
-    }[];
+    }];
+    /**
+     * @inheritDoc
+     */
     sendTransaction(address: string, amount: bigint, feeRate?: number): Promise<string>;
+    /**
+     * @inheritDoc
+     */
     fundPsbt(inputPsbt: Transaction, feeRate?: number): Promise<Transaction>;
+    /**
+     * @inheritDoc
+     */
     signPsbt(psbt: Transaction, signInputs: number[]): Promise<Transaction>;
+    /**
+     * @inheritDoc
+     */
     getTransactionFee(address: string, amount: bigint, feeRate?: number): Promise<number>;
+    /**
+     * @inheritDoc
+     */
     getFundedPsbtFee(basePsbt: Transaction, feeRate?: number): Promise<number>;
+    /**
+     * @inheritDoc
+     */
     getReceiveAddress(): string;
+    /**
+     * @inheritDoc
+     */
     getBalance(): Promise<{
         confirmedBalance: bigint;
         unconfirmedBalance: bigint;
     }>;
+    /**
+     * @inheritDoc
+     */
     getSpendableBalance(psbt?: Transaction, feeRate?: number): Promise<{
         balance: bigint;
         feeRate: number;
         totalFee: number;
     }>;
+    /**
+     * Generates a new random private key WIF that can be used to instantiate the bitcoin wallet instance
+     *
+     * @returns A WIF encoded bitcoin private key
+     */
     static generateRandomPrivateKey(network?: BTC_NETWORK): string;
 }

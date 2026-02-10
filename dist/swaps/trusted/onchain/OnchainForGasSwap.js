@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OnchainForGasSwap = exports.isOnchainForGasSwapInit = exports.OnchainForGasSwapState = void 0;
 const SwapType_1 = require("../../../enums/SwapType");
-const PaymentAuthError_1 = require("../../../errors/PaymentAuthError");
 const Utils_1 = require("../../../utils/Utils");
 const BitcoinUtils_1 = require("../../../utils/BitcoinUtils");
 const ISwap_1 = require("../../ISwap");
@@ -418,8 +417,7 @@ class OnchainForGasSwap extends ISwap_1.ISwap {
      * @param abortSignal Abort signal
      * @param checkIntervalSeconds How often to poll the intermediary for answer
      * @param updateCallback Callback called when txId is found, and also called with subsequent confirmations
-     * @throws {PaymentAuthError} If swap expired or failed
-     * @throws {Error} When in invalid state (not PR_CREATED)
+     * @throws {Error} When in invalid state (not PR_CREATED) or if swap expired or failed
      */
     async waitForBitcoinTransaction(updateCallback, checkIntervalSeconds = 5, abortSignal) {
         if (this.state !== OnchainForGasSwapState.PR_CREATED)
@@ -451,9 +449,9 @@ class OnchainForGasSwap extends ISwap_1.ISwap {
             this.state === OnchainForGasSwapState.REFUNDED)
             return this.txId;
         if (this.isQuoteExpired())
-            throw new PaymentAuthError_1.PaymentAuthError("Swap expired");
+            throw new Error("Swap expired");
         if (this.isFailed())
-            throw new PaymentAuthError_1.PaymentAuthError("Swap failed");
+            throw new Error("Swap failed");
         return this.txId;
     }
     async waitTillRefunded(checkIntervalSeconds, abortSignal) {
@@ -469,9 +467,9 @@ class OnchainForGasSwap extends ISwap_1.ISwap {
                 await (0, TimeoutUtils_1.timeoutPromise)(checkIntervalSeconds * 1000, abortSignal);
         }
         if (this.isQuoteExpired())
-            throw new PaymentAuthError_1.PaymentAuthError("Swap expired");
+            throw new Error("Swap expired");
         if (this.isFailed())
-            throw new PaymentAuthError_1.PaymentAuthError("Swap failed");
+            throw new Error("Swap failed");
     }
     async requestRefund(refundAddress, abortSignal) {
         if (refundAddress != null)

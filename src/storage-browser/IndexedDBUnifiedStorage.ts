@@ -60,13 +60,14 @@ const indexes: Record<string, {key: string | string[], unique: boolean}> = {
 
 /**
  * Browser IndexedDB storage implementation
+ *
  * @category Storage
  */
 export class IndexedDBUnifiedStorage implements IUnifiedStorage<UnifiedSwapStorageIndexes, UnifiedStorageCompositeIndexes> {
 
     protected readonly logger: LoggerType;
 
-    storageKey: string;
+    readonly storageKey: string;
     db?: IDBDatabase;
 
     constructor(storageKey: string) {
@@ -166,7 +167,15 @@ export class IndexedDBUnifiedStorage implements IUnifiedStorage<UnifiedSwapStora
         }
     }
 
-    //NOTE: Reviver also needs to update the swap to the latest version
+    /**
+     * Attempts to migrate the swap database from old implementations (either using prior version of IndexedDB or
+     *  Local Storage)
+     *
+     * NOTE: Reviver also needs to update the swap to the latest version
+     *
+     * @param storageKeys An array of tuples of storage keys used for the corresponding swap types
+     * @param reviver Swap data deserializer
+     */
     public async tryMigrate(storageKeys: [string, SwapType][], reviver: (obj: any) => ISwap): Promise<boolean> {
         let someMigrated = false;
         for(let storageKey of storageKeys) {
@@ -231,6 +240,9 @@ export class IndexedDBUnifiedStorage implements IUnifiedStorage<UnifiedSwapStora
         return result.flat();
     }
 
+    /**
+     * @inheritDoc
+     */
     async init(): Promise<void> {
         if(this.db==null) {
             this.db = await new Promise<IDBDatabase>((resolve, reject) => {
@@ -251,11 +263,7 @@ export class IndexedDBUnifiedStorage implements IUnifiedStorage<UnifiedSwapStora
     }
 
     /**
-     * Params are specified in the following way:
-     *  - [[condition1, condition2]] - returns all rows where condition1 AND condition2 is met
-     *  - [[condition1], [condition2]] - returns all rows where condition1 OR condition2 is met
-     *  - [[condition1, condition2], [condition3]] - returns all rows where (condition1 AND condition2) OR condition3 is met
-     * @param params
+     * @inheritDoc
      */
     async query(params: Array<Array<QueryParams>>): Promise<Array<UnifiedStoredObject>> {
         if(params.length===0) return await this.querySingle([]);
@@ -264,7 +272,10 @@ export class IndexedDBUnifiedStorage implements IUnifiedStorage<UnifiedSwapStora
         return Array.from(resultSet);
     }
 
-    async querySingle(params: Array<QueryParams>): Promise<Array<UnifiedStoredObject>> {
+    /**
+     * @internal
+     */
+    protected async querySingle(params: Array<QueryParams>): Promise<Array<UnifiedStoredObject>> {
         if(params.length===0) {
             return await this.executeTransaction((objectStore) => objectStore.getAll(), true);
         }
@@ -302,11 +313,17 @@ export class IndexedDBUnifiedStorage implements IUnifiedStorage<UnifiedSwapStora
         }
     }
 
+    /**
+     * @inheritDoc
+     */
     async remove(object: UnifiedStoredObject): Promise<void> {
         await this.executeTransaction<undefined>(store => store.delete(object.id), false)
             .catch(() => null);
     }
 
+    /**
+     * @inheritDoc
+     */
     async removeAll(arr: UnifiedStoredObject[]): Promise<void> {
         if(arr.length===0) return;
         await this.executeTransactionArr<undefined>(store => arr.map(object => {
@@ -314,10 +331,16 @@ export class IndexedDBUnifiedStorage implements IUnifiedStorage<UnifiedSwapStora
         }), false);
     }
 
+    /**
+     * @inheritDoc
+     */
     async save(object: UnifiedStoredObject): Promise<void> {
         await this.executeTransaction<IDBValidKey>(store => store.put(object), false);
     }
 
+    /**
+     * @inheritDoc
+     */
     async saveAll(arr: UnifiedStoredObject[]): Promise<void> {
         if(arr.length===0) return;
         await this.executeTransactionArr<IDBValidKey>(store => arr.map(object => {

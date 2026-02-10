@@ -15,9 +15,19 @@ const logger = (0, Logger_1.getLogger)("RedundantSwapPrice: ");
 /**
  * Swap price API using multiple price sources, handles errors on the APIs and automatically switches between them, such
  *  that there always is a functional API
+ *
  * @category Pricing and LPs
  */
 class RedundantSwapPrice extends ICachedSwapPrice_1.ICachedSwapPrice {
+    /**
+     * Creates a new {@link RedundantSwapPrice} instance from an asset list and other data, using all
+     *  the available price providers: {@link BinancePriceProvider}, {@link OKXPriceProvider},
+     *  {@link CoinGeckoPriceProvider}, {@link CoinPaprikaPriceProvider}, {@link KrakenPriceProvider}
+     *
+     * @param maxAllowedFeeDiffPPM Maximum allowed price difference between returned swap prices & market prices
+     * @param assets Specifications of the assets
+     * @param cacheTimeout Timeout of the internal cache holding prices
+     */
     static createFromTokenMap(maxAllowedFeeDiffPPM, assets, cacheTimeout) {
         const priceApis = [
             new BinancePriceProvider_1.BinancePriceProvider(assets.map(coinData => {
@@ -130,7 +140,7 @@ class RedundantSwapPrice extends ICachedSwapPrice_1.ICachedSwapPrice {
      * @param chainIdentifier
      * @param token
      * @param abortSignal
-     * @private
+     * @protected
      */
     fetchPrice(chainIdentifier, token, abortSignal) {
         return (0, RetryUtils_1.tryWithRetries)(async () => {
@@ -149,6 +159,9 @@ class RedundantSwapPrice extends ICachedSwapPrice_1.ICachedSwapPrice {
             return await this.fetchPriceFromMaybeOperationalPriceApis(chainIdentifier, token, abortSignal);
         }, undefined, RequestError_1.RequestError, abortSignal);
     }
+    /**
+     * @inheritDoc
+     */
     getDecimals(chainIdentifier, token) {
         if (this.coinsDecimals[chainIdentifier] == null)
             return null;
@@ -184,6 +197,13 @@ class RedundantSwapPrice extends ICachedSwapPrice_1.ICachedSwapPrice {
             throw e.find(err => !(err instanceof RequestError_1.RequestError)) || e[0];
         }
     }
+    /**
+     * Fetches the USD prices, first tries to use the operational price API (if any) and if that fails it falls back
+     *  to using maybe operational price APIs
+     *
+     * @param abortSignal
+     * @protected
+     */
     fetchUsdPrice(abortSignal) {
         return (0, RetryUtils_1.tryWithRetries)(() => {
             const operationalPriceApi = this.getOperationalPriceApi();

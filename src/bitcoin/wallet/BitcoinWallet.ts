@@ -11,6 +11,7 @@ import {BitcoinRpcWithAddressIndex} from "@atomiqlabs/base";
 
 /**
  * UTXO data structure for Bitcoin wallets
+ *
  * @category Bitcoin
  */
 export type BitcoinWalletUtxo = {
@@ -29,6 +30,7 @@ export type BitcoinWalletUtxo = {
 
 /**
  * Identifies the address type of a Bitcoin address
+ *
  * @category Bitcoin
  */
 export function identifyAddressType(address: string, network: BTC_NETWORK): CoinselectAddressTypes {
@@ -51,7 +53,9 @@ export function identifyAddressType(address: string, network: BTC_NETWORK): Coin
 const logger = getLogger("BitcoinWallet: ");
 
 /**
- * Abstract base class for Bitcoin wallet implementations
+ * Abstract base class for Bitcoin wallet implementations, using bitcoin rpc with address index
+ *  as a backend for fetching balances, UTXOs, etc.
+ *
  * @category Bitcoin
  */
 export abstract class BitcoinWallet implements IBitcoinWallet {
@@ -68,6 +72,9 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
         this.feeOverride = feeOverride;
     }
 
+    /**
+     * @inheritDoc
+     */
     async getFeeRate(): Promise<number> {
         if(this.feeOverride!=null) {
             return this.feeOverride;
@@ -75,14 +82,35 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
         return Math.floor((await this.rpc.getFeeRate())*this.feeMultiplier);
     }
 
+    /**
+     * Internal helper function for sending a raw transaction through the underlying RPC
+     *
+     * @param rawHex Serialized bitcoin transaction in hexadecimal format
+     * @returns txId Transaction ID of the submitted bitcoin transaction
+     *
+     * @protected
+     */
     protected _sendTransaction(rawHex: string): Promise<string> {
         return this.rpc.sendRawTransaction(rawHex);
     }
 
+    /**
+     * Internal helper function for fetching the balance of the wallet given a specific bitcoin wallet address
+     *
+     * @param address
+     * @protected
+     */
     protected _getBalance(address: string): Promise<{ confirmedBalance: bigint; unconfirmedBalance: bigint }> {
         return this.rpc.getAddressBalances(address);
     }
 
+    /**
+     * Internal helper function for fetching the UTXO set of a given wallet address
+     *
+     * @param sendingAddress
+     * @param sendingAddressType
+     * @protected
+     */
     protected async _getUtxoPool(
         sendingAddress: string,
         sendingAddressType: CoinselectAddressTypes
@@ -121,6 +149,14 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
         return utxoPool;
     }
 
+    /**
+     *
+     * @param sendingAccounts
+     * @param recipient
+     * @param amount
+     * @param feeRate
+     * @protected
+     */
     protected async _getPsbt(
         sendingAccounts: {
             pubkey: string,

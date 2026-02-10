@@ -31,8 +31,6 @@ export {
 
 export * from "./bitcoin/wallet/BitcoinWallet";
 export * from "./bitcoin/wallet/IBitcoinWallet";
-export * from "./types/wallets/MinimalBitcoinWalletInterface";
-export * from "./types/wallets/MinimalLightningNetworkWalletInterface";
 export * from "./bitcoin/wallet/SingleAddressBitcoinWallet";
 
 export {CoinselectAddressTypes} from "./bitcoin/coinselect2";
@@ -43,7 +41,6 @@ export * from "./enums/SwapDirection";
 export * from "./enums/SwapType";
 
 export * from "./errors/IntermediaryError";
-export * from "./errors/PaymentAuthError";
 export * from "./errors/RequestError";
 export * from "./errors/UserError";
 
@@ -118,6 +115,10 @@ export * from "./types/fees/PercentagePPM";
 
 export * from "./types/lnurl/LNURLPay";
 export * from "./types/lnurl/LNURLWithdraw";
+
+export * from "./types/wallets/MinimalBitcoinWalletInterface";
+export * from "./types/wallets/MinimalLightningNetworkWalletInterface";
+export * from "./types/wallets/LightningInvoiceCreateService";
 
 export * from "./types/AmountData";
 export * from "./types/CustomPriceFunction";

@@ -10,6 +10,7 @@ const Token_1 = require("../types/Token");
 const PriceInfoType_1 = require("../types/PriceInfoType");
 /**
  * Type guard to check if an object is an ISwapInit
+ *
  * @category Swaps
  */
 function isISwapInit(obj) {
@@ -25,15 +26,30 @@ function isISwapInit(obj) {
 exports.isISwapInit = isISwapInit;
 /**
  * Base abstract class for all swap types
+ *
  * @category Swaps
  */
 class ISwap {
     constructor(wrapper, swapInitOrObj) {
+        /**
+         * Current newest defined version of the swap
+         * @protected
+         */
         this.currentVersion = 1;
+        /**
+         * Whether a swap was initialized, a swap is considered initialize on first interaction with it, i.e.
+         *  calling commit() on a Smart chain -> Bitcoin swaps, calling waitForPayment() or similar on the other
+         *  direction. Not initiated swaps are not saved to the persistent storage by default (see
+         *  {@link SwapperOptions.saveUninitializedSwaps})
+         * @protected
+         */
         this.initiated = false;
+        /**
+         * Swap state
+         */
         this.state = 0;
         /**
-         * Event emitter emitting "swapState" event when swap's state changes
+         * Event emitter emitting `"swapState"` event when swap's state changes
          */
         this.events = new events_1.EventEmitter();
         this.chainIdentifier = wrapper.chainIdentifier;
@@ -84,7 +100,7 @@ class ISwap {
      *
      * @param targetState The state to wait for
      * @param type Whether to wait for the state exactly or also to a state with a higher number
-     * @param abortSignal
+     * @param abortSignal Abort signal
      * @protected
      */
     waitTillState(targetState, type = "eq", abortSignal) {
@@ -106,6 +122,11 @@ class ISwap {
     }
     //////////////////////////////
     //// Pricing
+    /**
+     * This attempts to populate missing fields in the pricing info based on the swap amounts
+     *
+     * @internal
+     */
     tryRecomputeSwapPrice() {
         if (this.pricingInfo == null)
             return;
@@ -126,7 +147,7 @@ class ISwap {
         }
     }
     /**
-     * Re-fetches & revalidates the price data
+     * Re-fetches & revalidates the price data based on the current market prices
      */
     async refreshPriceData() {
         if (this.pricingInfo == null)
@@ -174,6 +195,8 @@ class ISwap {
         };
     }
     /**
+     * Asserts a given signer is the initiator of this swap
+     *
      * @param signer Signer to check with this swap's initiator
      * @throws {Error} When signer's address doesn't match with the swap's initiator one
      */
@@ -181,9 +204,17 @@ class ISwap {
         if ((typeof (signer) === "string" ? signer : signer.getAddress()) !== this._getInitiator())
             throw new Error("Invalid signer provided!");
     }
+    /**
+     * Returns whether a swap was considered initiated (i.e. not just a quote)
+     */
     isInitiated() {
         return this.initiated;
     }
+    /**
+     * Sets this swap as initiated
+     *
+     * @internal
+     */
     _setInitiated() {
         this.initiated = true;
     }
@@ -213,6 +244,9 @@ class ISwap {
     }
     //////////////////////////////
     //// Storage
+    /**
+     * Serializes the swap to a JSON stringifiable representation (i.e. no bigints, buffers etc.)
+     */
     serialize() {
         if (this.pricingInfo == null)
             return {};
@@ -240,14 +274,26 @@ class ISwap {
             randomNonce: this.randomNonce
         };
     }
+    /**
+     * Saves the swap data to the underlying storage, or removes it if it is in a quote expired state
+     *
+     * @internal
+     */
     _save() {
         if (this.isQuoteExpired()) {
-            return this.wrapper.removeSwapData(this);
+            return this.wrapper._removeSwapData(this);
         }
         else {
-            return this.wrapper.saveSwapData(this);
+            return this.wrapper._saveSwapData(this);
         }
     }
+    /**
+     * Saves the swap data and also emits a swap state change
+     *
+     * @param state Optional state to set before the swap is saved an event emitted
+     *
+     * @internal
+     */
     async _saveAndEmit(state) {
         if (state != null)
             this.state = state;
@@ -256,6 +302,11 @@ class ISwap {
     }
     //////////////////////////////
     //// Events
+    /**
+     * Emits a `swapState` event with the current swap
+     *
+     * @internal
+     */
     _emitEvent() {
         this.wrapper.events.emit("swapState", this);
         this.events.emit("swapState", this);

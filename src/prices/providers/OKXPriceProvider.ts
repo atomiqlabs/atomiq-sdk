@@ -30,6 +30,9 @@ export class OKXPriceProvider<T extends MultiChain> extends ExchangePriceProvide
         super(coinsMap, url, httpRequestTimeout);
     }
 
+    /**
+     * @inheritDoc
+     */
     async fetchPair(pair: string, abortSignal?: AbortSignal) {
         const response = await httpGet<OKXResponse>(
             this.url+"/market/index-tickers?instId="+pair,
@@ -40,6 +43,9 @@ export class OKXPriceProvider<T extends MultiChain> extends ExchangePriceProvide
         return parseFloat(response.data[0].idxPx);
     }
 
+    /**
+     * @inheritDoc
+     */
     protected async fetchUsdPrice(abortSignal?: AbortSignal): Promise<number> {
         const response = await httpGet<OKXResponse>(
             this.url+"/market/index-tickers?instId=BTC-USD",

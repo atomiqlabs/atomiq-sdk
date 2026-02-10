@@ -3,6 +3,7 @@ import { ICachedSwapPrice } from "./abstract/ICachedSwapPrice";
 import { ChainIds, MultiChain } from "../swapper/Swapper";
 /**
  * Asset configuration for redundant swap pricing
+ *
  * @category Pricing and LPs
  */
 export type RedundantSwapPriceAssets<T extends MultiChain> = {
@@ -34,12 +35,22 @@ type CoinDecimals<T extends MultiChain> = {
 /**
  * Swap price API using multiple price sources, handles errors on the APIs and automatically switches between them, such
  *  that there always is a functional API
+ *
  * @category Pricing and LPs
  */
 export declare class RedundantSwapPrice<T extends MultiChain> extends ICachedSwapPrice<T> {
+    /**
+     * Creates a new {@link RedundantSwapPrice} instance from an asset list and other data, using all
+     *  the available price providers: {@link BinancePriceProvider}, {@link OKXPriceProvider},
+     *  {@link CoinGeckoPriceProvider}, {@link CoinPaprikaPriceProvider}, {@link KrakenPriceProvider}
+     *
+     * @param maxAllowedFeeDiffPPM Maximum allowed price difference between returned swap prices & market prices
+     * @param assets Specifications of the assets
+     * @param cacheTimeout Timeout of the internal cache holding prices
+     */
     static createFromTokenMap<T extends MultiChain>(maxAllowedFeeDiffPPM: bigint, assets: RedundantSwapPriceAssets<T>, cacheTimeout?: number): RedundantSwapPrice<T>;
-    coinsDecimals: CoinDecimals<T>;
-    priceApis: {
+    protected coinsDecimals: CoinDecimals<T>;
+    protected priceApis: {
         priceApi: IPriceProvider<T>;
         operational?: boolean;
     }[];
@@ -73,9 +84,12 @@ export declare class RedundantSwapPrice<T extends MultiChain> extends ICachedSwa
      * @param chainIdentifier
      * @param token
      * @param abortSignal
-     * @private
+     * @protected
      */
     protected fetchPrice<C extends ChainIds<T>>(chainIdentifier: C, token: string, abortSignal?: AbortSignal): Promise<bigint>;
+    /**
+     * @inheritDoc
+     */
     protected getDecimals<C extends ChainIds<T>>(chainIdentifier: C, token: string): number | null;
     /**
      * Fetches BTC price in USD in parallel from multiple maybe operational price APIs
@@ -84,6 +98,13 @@ export declare class RedundantSwapPrice<T extends MultiChain> extends ICachedSwa
      * @private
      */
     private fetchUsdPriceFromMaybeOperationalPriceApis;
+    /**
+     * Fetches the USD prices, first tries to use the operational price API (if any) and if that fails it falls back
+     *  to using maybe operational price APIs
+     *
+     * @param abortSignal
+     * @protected
+     */
     protected fetchUsdPrice(abortSignal?: AbortSignal): Promise<number>;
 }
 export {};

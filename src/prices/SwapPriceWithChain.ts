@@ -6,6 +6,7 @@ import {PriceInfoType} from "../types/PriceInfoType";
 
 /**
  * Chain-specific wrapper for swap pricing
+ *
  * @category Pricing and LPs
  */
 export class SwapPriceWithChain<T extends MultiChain, ChainIdentifier extends ChainIds<T>> {
@@ -27,21 +28,21 @@ export class SwapPriceWithChain<T extends MultiChain, ChainIdentifier extends Ch
      * @param satsBaseFee Base fee in sats (BTC) as reported by the intermediary
      * @param feePPM PPM fee rate as reported by the intermediary
      * @param paidToken Amount of token to be paid to the swap
-     * @param token
+     * @param tokenAddress Token address to be paid
      * @param abortSignal
-     * @param preFetchedPrice Already pre-fetched price
+     * @param preFetchedPrice An optional price pre-fetched with {@link preFetchPrice}
      */
     public async isValidAmountSend(
         amountSats: bigint,
         satsBaseFee: bigint,
         feePPM: bigint,
         paidToken: bigint,
-        token: string,
+        tokenAddress: string,
         abortSignal?: AbortSignal,
         preFetchedPrice?: bigint
     ): Promise<PriceInfoType> {
         return this.swapPrice.isValidAmountSend<ChainIdentifier>(
-            this.chainIdentifier, amountSats, satsBaseFee, feePPM, paidToken, token, abortSignal, preFetchedPrice
+            this.chainIdentifier, amountSats, satsBaseFee, feePPM, paidToken, tokenAddress, abortSignal, preFetchedPrice
         );
     }
 
@@ -52,39 +53,53 @@ export class SwapPriceWithChain<T extends MultiChain, ChainIdentifier extends Ch
      * @param satsBaseFee Base fee in sats (BTC) as reported by the intermediary
      * @param feePPM PPM fee rate as reported by the intermediary
      * @param receiveToken Amount of token to be received from the swap
-     * @param token
+     * @param tokenAddress Token address to be received
      * @param abortSignal
-     * @param preFetchedPrice Already pre-fetched price
+     * @param preFetchedPrice An optional price pre-fetched with {@link preFetchPrice}
      */
     public async isValidAmountReceive(
         amountSats: bigint,
         satsBaseFee: bigint,
         feePPM: bigint,
         receiveToken: bigint,
-        token: string,
+        tokenAddress: string,
         abortSignal?: AbortSignal,
         preFetchedPrice?: bigint
     ): Promise<PriceInfoType> {
         return this.swapPrice.isValidAmountReceive<ChainIdentifier>(
-            this.chainIdentifier, amountSats, satsBaseFee, feePPM, receiveToken, token, abortSignal, preFetchedPrice
+            this.chainIdentifier, amountSats, satsBaseFee, feePPM, receiveToken, tokenAddress, abortSignal, preFetchedPrice
         );
     }
 
+    /**
+     * Pre-fetches the pricing data for a given token, such that further calls to {@link isValidAmountReceive} or
+     *  {@link isValidAmountSend} are quicker and don't need to wait for the price fetch
+     *
+     * @param chainIdentifier Chain identifier of the smart chain
+     * @param tokenAddress Token address
+     * @param abortSignal
+     */
     public preFetchPrice(token: string, abortSignal?: AbortSignal): Promise<bigint> {
         return this.swapPrice.preFetchPrice<ChainIdentifier>(this.chainIdentifier, token, abortSignal);
     }
 
+    /**
+     * Pre-fetches the Bitcoin USD price data, such that further calls to {@link getBtcUsdValue},
+     *  {@link getTokenUsdValue} or {@link getUsdValue} are quicker and don't need to wait for the price fetch
+     *
+     * @param abortSignal
+     */
     public preFetchUsdPrice(abortSignal?: AbortSignal): Promise<number> {
         return this.swapPrice.preFetchUsdPrice(abortSignal);
     }
 
     /**
-     * Returns amount of {toToken} that are equivalent to {fromAmount} satoshis
+     * Returns amount of `toToken` that is equivalent to `fromAmount` satoshis
      *
-     * @param fromAmount        Amount of satoshis
-     * @param toToken           Token
+     * @param fromAmount Amount of satoshis
+     * @param toToken Token address
      * @param abortSignal
-     * @param preFetchedPrice
+     * @param preFetchedPrice An optional price pre-fetched with {@link preFetchPrice}
      * @throws {Error} when token is not found
      */
     public async getFromBtcSwapAmount(
@@ -99,12 +114,12 @@ export class SwapPriceWithChain<T extends MultiChain, ChainIdentifier extends Ch
     }
 
     /**
-     * Returns amount of satoshis that are equivalent to {fromAmount} of {fromToken}
+     * Returns amount of satoshis that are equivalent to `fromAmount` of `fromToken`
      *
      * @param fromAmount Amount of the token
-     * @param fromToken Token
+     * @param fromToken Token address
      * @param abortSignal
-     * @param preFetchedPrice Pre-fetched swap price if available
+     * @param preFetchedPrice An optional price pre-fetched with {@link preFetchPrice}
      * @throws {Error} when token is not found
      */
     public async getToBtcSwapAmount(
@@ -121,30 +136,53 @@ export class SwapPriceWithChain<T extends MultiChain, ChainIdentifier extends Ch
     /**
      * Returns whether the token should be ignored and pricing for it not calculated
      *
-     * @param tokenAddress
+     * @param tokenAddress Token address
      * @throws {Error} if token is not found
      */
     public shouldIgnore(tokenAddress: string): boolean {
         return this.swapPrice.shouldIgnore<ChainIdentifier>(this.chainIdentifier, tokenAddress);
     }
 
+    /**
+     * Returns the USD value of the bitcoin amount
+     *
+     * @param btcSats Bitcoin amount in satoshis
+     * @param abortSignal
+     * @param preFetchedUsdPrice An optional price pre-fetched with {@link preFetchUsdPrice}
+     */
     public async getBtcUsdValue(
         btcSats: bigint,
         abortSignal?: AbortSignal,
-        preFetchedPrice?: number
+        preFetchedUsdPrice?: number
     ): Promise<number> {
-        return this.swapPrice.getBtcUsdValue(btcSats, abortSignal, preFetchedPrice);
+        return this.swapPrice.getBtcUsdValue(btcSats, abortSignal, preFetchedUsdPrice);
     }
 
+    /**
+     * Returns the USD value of the smart chain token amount
+     *
+     * @param tokenAmount Amount of the token in base units
+     * @param tokenAddress Token address
+     * @param abortSignal
+     * @param preFetchedUsdPrice An optional price pre-fetched with {@link preFetchUsdPrice}
+     */
     public async getTokenUsdValue(
         tokenAmount: bigint,
-        token: string,
+        tokenAddress: string,
         abortSignal?: AbortSignal,
-        preFetchedPrice?: number
+        preFetchedUsdPrice?: number
     ): Promise<number> {
-        return this.swapPrice.getTokenUsdValue(this.chainIdentifier, tokenAmount, token, abortSignal, preFetchedPrice);
+        return this.swapPrice.getTokenUsdValue(this.chainIdentifier, tokenAmount, tokenAddress, abortSignal, preFetchedUsdPrice);
     }
 
+    /**
+     * Returns the USD value of the token amount
+     *
+     * @param amount Amount in base units of the token
+     * @param token Token to fetch the usd price for
+     * @param abortSignal
+     * @param preFetchedUsdPrice An optional price pre-fetched with {@link preFetchUsdPrice}
+     */
     public getUsdValue(
         amount: bigint,
         token: Token<ChainIdentifier>,

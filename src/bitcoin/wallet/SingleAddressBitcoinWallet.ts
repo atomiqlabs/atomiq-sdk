@@ -6,12 +6,13 @@ import {identifyAddressType, BitcoinWallet} from "./BitcoinWallet";
 import {BitcoinRpcWithAddressIndex} from "@atomiqlabs/base";
 
 /**
- * Bitcoin wallet implementation for single-address scenarios
+ * Bitcoin wallet implementation deriving a single address from a WIF encoded private key
+ *
  * @category Bitcoin
  */
 export class SingleAddressBitcoinWallet extends BitcoinWallet {
 
-    readonly privKey?: Uint8Array;
+    protected readonly privKey?: Uint8Array;
     readonly pubkey: Uint8Array;
     readonly address: string;
     readonly addressType: CoinselectAddressTypes;
@@ -41,12 +42,20 @@ export class SingleAddressBitcoinWallet extends BitcoinWallet {
         this.addressType = identifyAddressType(this.address, network);
     }
 
-    protected toBitcoinWalletAccounts(): {pubkey: string, address: string, addressType: CoinselectAddressTypes}[] {
+    /**
+     * Returns all the wallet addresses controlled by the wallet
+     *
+     * @protected
+     */
+    protected toBitcoinWalletAccounts(): [{pubkey: string, address: string, addressType: CoinselectAddressTypes}] {
         return [{
             pubkey: Buffer.from(this.pubkey).toString("hex"), address: this.address, addressType: this.addressType
         }];
     }
 
+    /**
+     * @inheritDoc
+     */
     async sendTransaction(address: string, amount: bigint, feeRate?: number): Promise<string> {
         if(!this.privKey) throw new Error("Not supported.");
         const {psbt, fee} = await super._getPsbt(this.toBitcoinWalletAccounts(), address, Number(amount), feeRate);
@@ -57,6 +66,9 @@ export class SingleAddressBitcoinWallet extends BitcoinWallet {
         return await super._sendTransaction(txHex);
     }
 
+    /**
+     * @inheritDoc
+     */
     async fundPsbt(inputPsbt: Transaction, feeRate?: number): Promise<Transaction> {
         const {psbt} = await super._fundPsbt(this.toBitcoinWalletAccounts(), inputPsbt, feeRate);
         if(psbt==null) {
@@ -65,6 +77,9 @@ export class SingleAddressBitcoinWallet extends BitcoinWallet {
         return psbt;
     }
 
+    /**
+     * @inheritDoc
+     */
     async signPsbt(psbt: Transaction, signInputs: number[]): Promise<Transaction> {
         if(!this.privKey) throw new Error("Not supported.");
         for(let signInput of signInputs) {
@@ -73,19 +88,32 @@ export class SingleAddressBitcoinWallet extends BitcoinWallet {
         return psbt;
     }
 
+    /**
+     * @inheritDoc
+     */
     async getTransactionFee(address: string, amount: bigint, feeRate?: number): Promise<number> {
         const {fee} = await super._getPsbt(this.toBitcoinWalletAccounts(), address, Number(amount), feeRate);
         return fee;
     }
 
+    /**
+     * @inheritDoc
+     */
     async getFundedPsbtFee(basePsbt: Transaction, feeRate?: number): Promise<number> {
         const {fee} = await super._fundPsbt(this.toBitcoinWalletAccounts(), basePsbt, feeRate);
         return fee;
     }
 
+    /**
+     * @inheritDoc
+     */
     getReceiveAddress(): string {
         return this.address;
     }
+
+    /**
+     * @inheritDoc
+     */
     getBalance(): Promise<{
         confirmedBalance: bigint,
         unconfirmedBalance: bigint
@@ -93,6 +121,9 @@ export class SingleAddressBitcoinWallet extends BitcoinWallet {
         return this._getBalance(this.address);
     }
 
+    /**
+     * @inheritDoc
+     */
     getSpendableBalance(psbt?: Transaction, feeRate?: number): Promise<{
         balance: bigint,
         feeRate: number,
@@ -101,6 +132,11 @@ export class SingleAddressBitcoinWallet extends BitcoinWallet {
         return this._getSpendableBalance([{address: this.address, addressType: this.addressType}], psbt, feeRate);
     }
 
+    /**
+     * Generates a new random private key WIF that can be used to instantiate the bitcoin wallet instance
+     *
+     * @returns A WIF encoded bitcoin private key
+     */
     static generateRandomPrivateKey(network?: BTC_NETWORK): string {
          return WIF(network).encode(randomPrivateKeyBytes());
     }

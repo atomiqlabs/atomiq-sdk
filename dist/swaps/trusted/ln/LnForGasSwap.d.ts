@@ -28,6 +28,7 @@ export type LnForGasSwapInit = ISwapInit & {
 export declare function isLnForGasSwapInit(obj: any): obj is LnForGasSwapInit;
 /**
  * Trusted Lightning Network to gas token swap
+ *
  * @category Swaps
  */
 export declare class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnForGasSwapTypeDefinition<T>, LnForGasSwapState> implements IAddressSwap {
@@ -96,7 +97,6 @@ export declare class LnForGasSwap<T extends ChainType = ChainType> extends ISwap
      *
      * @param checkIntervalSeconds How often to poll the intermediary for answer (default 5 seconds)
      * @param abortSignal Abort signal
-     * @throws {PaymentAuthError} If swap expired or failed
      * @throws {Error} When in invalid state (not PR_CREATED)
      */
     waitForPayment(checkIntervalSeconds?: number, abortSignal?: AbortSignal): Promise<boolean>;

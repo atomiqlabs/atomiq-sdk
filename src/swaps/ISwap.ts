@@ -15,6 +15,7 @@ import {isPriceInfoType, PriceInfoType} from "../types/PriceInfoType";
 
 /**
  * Initialization data for creating a swap
+ *
  * @category Swaps
  */
 export type ISwapInit = {
@@ -28,6 +29,7 @@ export type ISwapInit = {
 
 /**
  * Type guard to check if an object is an ISwapInit
+ *
  * @category Swaps
  */
 export function isISwapInit(obj: any): obj is ISwapInit {
@@ -43,6 +45,7 @@ export function isISwapInit(obj: any): obj is ISwapInit {
 
 /**
  * Base abstract class for all swap types
+ *
  * @category Swaps
  */
 export abstract class ISwap<
@@ -50,26 +53,78 @@ export abstract class ISwap<
     D extends SwapTypeDefinition<T, ISwapWrapper<T, D>, ISwap<T, D, S>> = SwapTypeDefinition<T, ISwapWrapper<T, any>, ISwap<T, any, any>>,
     S extends number = number
 > {
+    /**
+     * Swap type
+     * @protected
+     */
     protected readonly abstract TYPE: SwapType;
     protected readonly abstract logger: LoggerType;
 
+    /**
+     * Current newest defined version of the swap
+     * @protected
+     */
     protected readonly currentVersion: number = 1;
+    /**
+     * Wrapper instance holding this swap
+     * @protected
+     */
     protected readonly wrapper: D["Wrapper"];
 
+    /**
+     * URL of the intermediary (LP) used for this swap, already has the swap service specific path appended
+     */
     readonly url?: string;
 
+    /**
+     * Smart chain identifier string corresponding to this swap
+     */
     readonly chainIdentifier: T["ChainId"];
+    /**
+     * Whether a swap is an exact input swap
+     */
     readonly exactIn: boolean;
+    /**
+     * A UNIX milliseconds timestamps of when this swap was created
+     */
     createdAt: number;
 
+    /**
+     * The current version of the swap
+     * @protected
+     */
     protected version: number;
+    /**
+     * Whether a swap was initialized, a swap is considered initialize on first interaction with it, i.e.
+     *  calling commit() on a Smart chain -> Bitcoin swaps, calling waitForPayment() or similar on the other
+     *  direction. Not initiated swaps are not saved to the persistent storage by default (see
+     *  {@link SwapperOptions.saveUninitializedSwaps})
+     * @protected
+     */
     protected initiated: boolean = false;
 
+    /**
+     * Swap state
+     */
     state: S = 0 as S;
+    /**
+     * Expiration of the swap quote
+     */
     expiry: number;
+    /**
+     * Pricing information of the swap
+     */
     pricingInfo?: PriceInfoType;
 
+    /**
+     * Swap fee in the non-bitcoin token
+     * @protected
+     */
     protected swapFee: bigint;
+    /**
+     * Swap fee in bitcoin satoshis
+     * @protected
+     */
     protected swapFeeBtc: bigint;
 
     /**
@@ -79,7 +134,7 @@ export abstract class ISwap<
     randomNonce: string;
 
     /**
-     * Event emitter emitting "swapState" event when swap's state changes
+     * Event emitter emitting `"swapState"` event when swap's state changes
      */
     events: EventEmitter<{swapState: [D["Swap"]]}> = new EventEmitter();
 
@@ -138,6 +193,11 @@ export abstract class ISwap<
         if(this.initiated==null) this.initiated = true;
     }
 
+    /**
+     * Called when swap is deserialized to potentially update the version of the data for the swap
+     *
+     * @internal
+     */
     protected abstract upgradeVersion(): void;
 
     /**
@@ -145,7 +205,7 @@ export abstract class ISwap<
      *
      * @param targetState The state to wait for
      * @param type Whether to wait for the state exactly or also to a state with a higher number
-     * @param abortSignal
+     * @param abortSignal Abort signal
      * @protected
      */
     protected waitTillState(targetState: S, type: "eq" | "gte" | "neq" = "eq", abortSignal?: AbortSignal): Promise<void> {
@@ -165,11 +225,21 @@ export abstract class ISwap<
         });
     }
 
+    /**
+     * Returns a list of steps or transactions required to finish and settle the swap
+     *
+     * @param options Additional options for executing the swap
+     */
     abstract txsExecute(options?: any): Promise<SwapExecutionAction<T>[]>;
 
     //////////////////////////////
     //// Pricing
 
+    /**
+     * This attempts to populate missing fields in the pricing info based on the swap amounts
+     *
+     * @internal
+     */
     protected tryRecomputeSwapPrice(): void {
         if(this.pricingInfo==null) return;
         if(this.pricingInfo.swapPriceUSatPerToken==null) {
@@ -202,7 +272,7 @@ export abstract class ISwap<
     }
 
     /**
-     * Re-fetches & revalidates the price data
+     * Re-fetches & revalidates the price data based on the current market prices
      */
     async refreshPriceData(): Promise<void> {
         if(this.pricingInfo==null) return;
@@ -273,9 +343,16 @@ export abstract class ISwap<
     //////////////////////////////
     //// Getters & utils
 
+    /**
+     * Returns an escrow hash of the swap
+     *
+     * @internal
+     */
     abstract _getEscrowHash(): string | null;
 
     /**
+     * Asserts a given signer is the initiator of this swap
+     *
      * @param signer Signer to check with this swap's initiator
      * @throws {Error} When signer's address doesn't match with the swap's initiator one
      */
@@ -288,14 +365,28 @@ export abstract class ISwap<
      */
     abstract verifyQuoteValid(): Promise<boolean>;
 
+    /**
+     * Returns source address of the swap
+     */
     abstract getInputAddress(): string | null;
+
+    /**
+     * Returns destination address of the swap
+     */
     abstract getOutputAddress(): string | null;
 
+    /**
+     * Returns swap input transaction ID on the source chain
+     */
     abstract getInputTxId(): string | null;
+
+    /**
+     * Returns swap output transaction ID on the destination chain
+     */
     abstract getOutputTxId(): string | null;
 
     /**
-     * Returns the ID of the swap, as used in the storage and getSwapById function
+     * Returns the ID of the swap, as used in the storage
      */
     abstract getId(): string;
 
@@ -335,10 +426,18 @@ export abstract class ISwap<
      */
     abstract _getInitiator(): string;
 
+    /**
+     * Returns whether a swap was considered initiated (i.e. not just a quote)
+     */
     isInitiated(): boolean {
         return this.initiated;
     }
 
+    /**
+     * Sets this swap as initiated
+     *
+     * @internal
+     */
     _setInitiated(): void {
         this.initiated = true;
     }
@@ -414,6 +513,9 @@ export abstract class ISwap<
     //////////////////////////////
     //// Storage
 
+    /**
+     * Serializes the swap to a JSON stringifiable representation (i.e. no bigints, buffers etc.)
+     */
     serialize(): any {
         if(this.pricingInfo==null) return {};
         return {
@@ -442,14 +544,26 @@ export abstract class ISwap<
         }
     }
 
+    /**
+     * Saves the swap data to the underlying storage, or removes it if it is in a quote expired state
+     *
+     * @internal
+     */
     _save(): Promise<void> {
         if(this.isQuoteExpired()) {
-            return this.wrapper.removeSwapData(this);
+            return this.wrapper._removeSwapData(this);
         } else {
-            return this.wrapper.saveSwapData(this);
+            return this.wrapper._saveSwapData(this);
         }
     }
 
+    /**
+     * Saves the swap data and also emits a swap state change
+     *
+     * @param state Optional state to set before the swap is saved an event emitted
+     *
+     * @internal
+     */
     async _saveAndEmit(state?: S): Promise<void> {
         if(state!=null) this.state = state;
         await this._save();
@@ -460,6 +574,11 @@ export abstract class ISwap<
     //////////////////////////////
     //// Events
 
+    /**
+     * Emits a `swapState` event with the current swap
+     *
+     * @internal
+     */
     _emitEvent() {
         this.wrapper.events.emit("swapState", this);
         this.events.emit("swapState", this);
@@ -475,6 +594,8 @@ export abstract class ISwap<
      * @param save whether to save the new swap state or not
      *
      * @returns {boolean} true if the swap changed, false if the swap hasn't changed
+     *
+     * @internal
      */
     abstract _sync(save?: boolean): Promise<boolean>;
 
@@ -484,6 +605,8 @@ export abstract class ISwap<
      * @param save whether to save the new swap state or not
      *
      * @returns {boolean} true if the swap changed, false if the swap hasn't changed
+     *
+     * @internal
      */
     abstract _tick(save?: boolean): Promise<boolean>;
 

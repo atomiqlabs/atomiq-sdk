@@ -1,7 +1,9 @@
 import {IStorageManager, StorageObject} from "@atomiqlabs/base";
 
 /**
- * StorageManager using browser's local storage API
+ * {@link IStorageManager} implementation using browser's local storage API, this is used as general purpose
+ *  key-value storage, not used for storing swaps! See {@link IUnifiedStorage} for swap storage interface.
+ *
  * @category Storage
  */
 export class LocalStorageManager<T extends StorageObject> implements IStorageManager<T> {
@@ -15,10 +17,17 @@ export class LocalStorageManager<T extends StorageObject> implements IStorageMan
         [hash: string]: T
     } = {};
 
+    /**
+     * @param storageKey The key-value store is stored as JSON serialized parameter of the Local Storage under
+     *  the specified `storageKey`
+     */
     constructor(storageKey: string) {
         this.storageKey = storageKey;
     }
 
+    /**
+     * @inheritDoc
+     */
     init(): Promise<void> {
         const completedTxt = window.localStorage.getItem(this.storageKey);
         if(completedTxt!=null) {
@@ -30,6 +39,9 @@ export class LocalStorageManager<T extends StorageObject> implements IStorageMan
         return Promise.resolve();
     }
 
+    /**
+     * @inheritDoc
+     */
     saveData(hash: string, object: T): Promise<void> {
         this.data[hash] = object;
         this.rawData[hash] = object.serialize();
@@ -37,6 +49,9 @@ export class LocalStorageManager<T extends StorageObject> implements IStorageMan
         return this.save();
     }
 
+    /**
+     * @inheritDoc
+     */
     saveDataArr(arr: {id: string, object: T}[]): Promise<void> {
         arr.forEach(e => {
             this.data[e.id] = e.object;
@@ -46,6 +61,9 @@ export class LocalStorageManager<T extends StorageObject> implements IStorageMan
         return this.save();
     }
 
+    /**
+     * @inheritDoc
+     */
     removeData(hash: string): Promise<void> {
         if(this.rawData[hash]!=null) {
             if(this.data[hash]!=null) delete this.data[hash];
@@ -55,6 +73,9 @@ export class LocalStorageManager<T extends StorageObject> implements IStorageMan
         return Promise.resolve();
     }
 
+    /**
+     * @inheritDoc
+     */
     removeDataArr(hashArr: string[]): Promise<void> {
         hashArr.forEach(hash => {
             if(this.rawData[hash]!=null) {
@@ -65,6 +86,9 @@ export class LocalStorageManager<T extends StorageObject> implements IStorageMan
         return this.save();
     }
 
+    /**
+     * @inheritDoc
+     */
     loadData(type: new (data: any) => T): Promise<T[]> {
         return Promise.resolve(
             Object.keys(this.rawData).map(e => {

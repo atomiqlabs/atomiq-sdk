@@ -13,13 +13,7 @@ import { ISwap } from "../../../ISwap";
 import { AmountData } from "../../../../types/AmountData";
 import { LNURLPayParamsWithUrl } from "../../../../types/lnurl/LNURLPay";
 import { AllOptional } from "../../../../utils/TypeUtils";
-export type LightningWalletCallback = (valueSats: number, abortSignal?: AbortSignal) => Promise<string>;
-export type InvoiceCreateService = {
-    getInvoice: LightningWalletCallback;
-    minMsats?: bigint;
-    maxMSats?: bigint;
-};
-export declare function isInvoiceCreateService(obj: any): obj is InvoiceCreateService;
+import { LightningInvoiceCreateService } from "../../../../types/wallets/LightningInvoiceCreateService";
 export type ToBTCLNOptions = {
     expirySeconds?: number;
     maxFee?: bigint | Promise<bigint>;
@@ -138,7 +132,7 @@ export declare class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T
      * @param additionalParams      Additional parameters sent to the intermediary when creating the swap
      * @param abortSignal           Abort signal for aborting the process
      */
-    createViaInvoiceCreateService(signer: string, invoiceCreateServicePromise: Promise<InvoiceCreateService>, amountData: AmountData, lps: Intermediary[], options?: ToBTCLNOptions, additionalParams?: Record<string, any>, abortSignal?: AbortSignal): Promise<{
+    createViaInvoiceCreateService(signer: string, invoiceCreateServicePromise: Promise<LightningInvoiceCreateService>, amountData: AmountData, lps: Intermediary[], options?: ToBTCLNOptions, additionalParams?: Record<string, any>, abortSignal?: AbortSignal): Promise<{
         quote: Promise<ToBTCLNSwap<T>>;
         intermediary: Intermediary;
     }[]>;

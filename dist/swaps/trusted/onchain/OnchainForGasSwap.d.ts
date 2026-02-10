@@ -151,8 +151,7 @@ export declare class OnchainForGasSwap<T extends ChainType = ChainType> extends 
      * @param abortSignal Abort signal
      * @param checkIntervalSeconds How often to poll the intermediary for answer
      * @param updateCallback Callback called when txId is found, and also called with subsequent confirmations
-     * @throws {PaymentAuthError} If swap expired or failed
-     * @throws {Error} When in invalid state (not PR_CREATED)
+     * @throws {Error} When in invalid state (not PR_CREATED) or if swap expired or failed
      */
     waitForBitcoinTransaction(updateCallback?: (txId?: string, confirmations?: number, targetConfirmations?: number, txEtaMs?: number) => void, checkIntervalSeconds?: number, abortSignal?: AbortSignal): Promise<string>;
     waitTillRefunded(checkIntervalSeconds?: number, abortSignal?: AbortSignal): Promise<void>;

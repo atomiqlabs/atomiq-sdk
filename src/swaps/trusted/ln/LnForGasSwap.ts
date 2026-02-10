@@ -2,7 +2,6 @@ import {decode as bolt11Decode} from "@atomiqlabs/bolt11";
 import {SwapType} from "../../../enums/SwapType";
 import {ChainType} from "@atomiqlabs/base";
 import {LnForGasSwapTypeDefinition, LnForGasWrapper} from "./LnForGasWrapper";
-import {PaymentAuthError} from "../../../errors/PaymentAuthError";
 import {toBigInt} from "../../../utils/Utils";
 import {isISwapInit, ISwap, ISwapInit} from "../../ISwap";
 import {InvoiceStatusResponseCodes, TrustedIntermediaryAPI} from "../../../intermediaries/apis/TrustedIntermediaryAPI";
@@ -44,6 +43,7 @@ export function isLnForGasSwapInit(obj: any): obj is LnForGasSwapInit {
 
 /**
  * Trusted Lightning Network to gas token swap
+ *
  * @category Swaps
  */
 export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnForGasSwapTypeDefinition<T>, LnForGasSwapState> implements IAddressSwap {
@@ -339,7 +339,6 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
      *
      * @param checkIntervalSeconds How often to poll the intermediary for answer (default 5 seconds)
      * @param abortSignal Abort signal
-     * @throws {PaymentAuthError} If swap expired or failed
      * @throws {Error} When in invalid state (not PR_CREATED)
      */
     async waitForPayment(checkIntervalSeconds?: number, abortSignal?: AbortSignal): Promise<boolean> {
@@ -355,7 +354,7 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
             if(this.state===LnForGasSwapState.PR_CREATED || this.state===LnForGasSwapState.PR_PAID) await timeoutPromise((checkIntervalSeconds ?? 5)*1000, abortSignal);
         }
 
-        if(this.isFailed()) throw new PaymentAuthError("Swap failed");
+        if(this.isFailed()) throw new Error("Swap failed");
         return !this.isQuoteExpired();
 
     }

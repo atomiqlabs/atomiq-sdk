@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.LnForGasSwap = exports.isLnForGasSwapInit = exports.LnForGasSwapState = void 0;
 const bolt11_1 = require("@atomiqlabs/bolt11");
 const SwapType_1 = require("../../../enums/SwapType");
-const PaymentAuthError_1 = require("../../../errors/PaymentAuthError");
 const Utils_1 = require("../../../utils/Utils");
 const ISwap_1 = require("../../ISwap");
 const TrustedIntermediaryAPI_1 = require("../../../intermediaries/apis/TrustedIntermediaryAPI");
@@ -35,6 +34,7 @@ function isLnForGasSwapInit(obj) {
 exports.isLnForGasSwapInit = isLnForGasSwapInit;
 /**
  * Trusted Lightning Network to gas token swap
+ *
  * @category Swaps
  */
 class LnForGasSwap extends ISwap_1.ISwap {
@@ -288,7 +288,6 @@ class LnForGasSwap extends ISwap_1.ISwap {
      *
      * @param checkIntervalSeconds How often to poll the intermediary for answer (default 5 seconds)
      * @param abortSignal Abort signal
-     * @throws {PaymentAuthError} If swap expired or failed
      * @throws {Error} When in invalid state (not PR_CREATED)
      */
     async waitForPayment(checkIntervalSeconds, abortSignal) {
@@ -304,7 +303,7 @@ class LnForGasSwap extends ISwap_1.ISwap {
                 await (0, TimeoutUtils_1.timeoutPromise)((checkIntervalSeconds ?? 5) * 1000, abortSignal);
         }
         if (this.isFailed())
-            throw new PaymentAuthError_1.PaymentAuthError("Swap failed");
+            throw new Error("Swap failed");
         return !this.isQuoteExpired();
     }
     //////////////////////////////

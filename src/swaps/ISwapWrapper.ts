@@ -13,6 +13,7 @@ import {PriceInfoType} from "../types/PriceInfoType";
 
 /**
  * Options for swap wrapper configuration
+ *
  * @category Swaps
  */
 export type ISwapWrapperOptions = {
@@ -22,6 +23,7 @@ export type ISwapWrapperOptions = {
 
 /**
  * Token configuration for wrapper constructors
+ *
  * @category Swaps
  */
 export type WrapperCtorTokens<T extends MultiChain = MultiChain> = {
@@ -36,6 +38,7 @@ export type WrapperCtorTokens<T extends MultiChain = MultiChain> = {
 
 /**
  * Type definition linking wrapper and swap types
+ *
  * @category Swaps
  */
 export type SwapTypeDefinition<T extends ChainType, W extends ISwapWrapper<T, any>, S extends ISwap<T>> = {
@@ -44,7 +47,8 @@ export type SwapTypeDefinition<T extends ChainType, W extends ISwapWrapper<T, an
 };
 
 /**
- * Base abstract class for swap wrapper implementations
+ * Base abstract class for swap handler implementations
+ *
  * @category Swaps
  */
 export abstract class ISwapWrapper<
@@ -52,37 +56,67 @@ export abstract class ISwapWrapper<
     D extends SwapTypeDefinition<T, ISwapWrapper<T, D>, ISwap<T, D>>,
     O extends ISwapWrapperOptions = ISwapWrapperOptions
 > {
+    /**
+     * Swap type
+     */
     abstract readonly TYPE: SwapType;
     protected readonly logger = getLogger(this.constructor.name+": ");
 
+    /**
+     * Function for deserializing swaps
+     */
     public readonly abstract swapDeserializer: new (wrapper: D["Wrapper"], data: any) => D["Swap"];
 
+    /**
+     * Persistent storage backend for the swaps
+     */
     readonly unifiedStorage: UnifiedSwapStorage<T>;
+    /**
+     * Smart chain events listener for listening to and parsing of on-chain events
+     */
     readonly unifiedChainEvents: UnifiedSwapEventListener<T>;
 
+    /**
+     * Chain identifier string of this wrapper
+     */
     readonly chainIdentifier: T["ChainId"];
+    /**
+     * Chain interface of the underlying smart chain
+     */
     readonly chain: T["ChainInterface"];
+    /**
+     * Pricing API
+     */
     readonly prices: ISwapPrice;
+    /**
+     * Event emitter emitting `"swapState"` event when swap's state changes
+     */
     readonly events: EventEmitter<{swapState: [D["Swap"]]}>;
+    /**
+     * Wrapper options
+     */
     readonly options: O;
+    /**
+     * Tokens indexed by their token address
+     */
     readonly tokens: {
         [tokenAddress: string]: SCToken<T["ChainId"]>
     };
+    /**
+     * In-memory mapping of pending (not initiated) swaps, utilizing weak references to automatically
+     *  free memory when swaps are dereferenced in not initiated state
+     */
     readonly pendingSwaps: Map<string, WeakRef<D["Swap"]>> = new Map();
 
+    /**
+     * Whether this wrapper is initialized (have to call {@link init} to initialize a wrapper)
+     */
     isInitialized: boolean = false;
+    /**
+     * An interval for calling tick functions on the underlying swaps
+     */
     tickInterval?: NodeJS.Timeout;
 
-    /**
-     * @param chainIdentifier
-     * @param unifiedStorage
-     * @param unifiedChainEvents
-     * @param chain
-     * @param prices Swap pricing handler
-     * @param tokens Chain specific token data
-     * @param options
-     * @param events Instance to use for emitting events
-     */
     constructor(
         chainIdentifier: T["ChainId"],
         unifiedStorage: UnifiedSwapStorage<T>,
@@ -120,8 +154,8 @@ export abstract class ISwapWrapper<
     /**
      * Pre-fetches swap price for a given swap
      *
-     * @param amountData
-     * @param abortSignal
+     * @param amountData Amount data
+     * @param abortSignal Abort signal
      * @protected
      * @returns Price of the token in uSats (micro sats)
      */
@@ -135,7 +169,7 @@ export abstract class ISwapWrapper<
     /**
      * Pre-fetches bitcoin's USD price
      *
-     * @param abortSignal
+     * @param abortSignal Abort signal
      * @protected
      */
     protected preFetchUsdPrice(abortSignal?: AbortSignal): Promise<number | undefined> {
@@ -146,17 +180,17 @@ export abstract class ISwapWrapper<
     }
 
     /**
-     * Verifies returned  price for swaps
+     * Verifies returned price for swaps
      *
      * @param lpServiceData Service data for the service in question (TO_BTCLN, TO_BTC, etc.) of the given intermediary
-     * @param send Whether this is a send (SOL -> SC) or receive (BTC -> SC) swap
+     * @param send Whether this is a send (Smart chain -> Bitcoin) or receive (Bitcoin -> Smart chain) swap
      * @param amountSats Amount in BTC
      * @param amountToken Amount in token
      * @param token Token used in the swap
      * @param feeData Fee data as returned by the intermediary
-     * @param pricePrefetchPromise Price pre-fetch promise
-     * @param usdPricePrefetchPromise
-     * @param abortSignal
+     * @param pricePrefetchPromise Optional price pre-fetch promise
+     * @param usdPricePrefetchPromise Optiona USD price pre-fetch promise
+     * @param abortSignal Abort signal
      * @protected
      * @returns Price info object
      * @throws {IntermediaryError} if the calculated fee is too high
@@ -193,19 +227,31 @@ export abstract class ISwapWrapper<
         return isValidAmount;
     }
 
+    /**
+     * States of the swaps in pending (non-final state), these are checked automatically on initial swap synchronization
+     */
     public abstract readonly pendingSwapStates: Array<D["Swap"]["state"]>;
+    /**
+     * States of the swaps where {@link ISwap._tick} should be called every second
+     */
     public abstract readonly tickSwapState?: Array<D["Swap"]["state"]>;
 
     /**
-     * Processes a single SC on-chain event
+     * Processes a single smart chain on-chain event
+     *
+     * @param event Smart chain event to process
+     * @param swap A swap related to the event
      * @private
-     * @param event
-     * @param swap
      */
     protected abstract processEvent?(event: ChainEvent<T["Data"]>, swap: D["Swap"]): Promise<void>;
 
     /**
      * Initializes the swap wrapper, needs to be called before any other action can be taken
+     *
+     * @param noTimers Whether to skip scheduling a tick timer for the swaps, if the tick timer is not initiated
+     *  the swap states depending on e.g. expiry can be out of sync with the actual expiration of the swap
+     * @param noCheckPastSwaps Whether to skip checking past swaps on initialization (by default all pending swaps
+     *  are re-checked on init, and their state is synchronized from the on-chain data)
      */
     public async init(noTimers: boolean = false, noCheckPastSwaps: boolean = false): Promise<void> {
         if(this.isInitialized) return;
@@ -245,6 +291,10 @@ export abstract class ISwapWrapper<
         this.isInitialized = true;
     }
 
+    /**
+     * Starts the interval calling the {@link ISwap._tick} on all the known swaps in tick-enabled states
+     * @protected
+     */
     protected startTickInterval(): void {
         if(this.tickSwapState==null || this.tickSwapState.length===0) return;
         this.tickInterval = setInterval(() => {
@@ -252,6 +302,12 @@ export abstract class ISwapWrapper<
         }, 1000);
     }
 
+    /**
+     * Runs checks on passed swaps, syncing their state from on-chain data
+     *
+     * @param pastSwaps Swaps to check
+     * @protected
+     */
     protected async _checkPastSwaps(pastSwaps: D["Swap"][]): Promise<{changedSwaps: D["Swap"][], removeSwaps: D["Swap"][]}> {
         const changedSwaps: D["Swap"][] = [];
         const removeSwaps: D["Swap"][] = [];
@@ -270,6 +326,13 @@ export abstract class ISwapWrapper<
         return {changedSwaps, removeSwaps};
     }
 
+    /**
+     * Runs checks on all the known pending swaps, syncing their state from on-chain data
+     *
+     * @param pastSwaps Optional array of past swaps to check, otherwise all relevant swaps will be fetched
+     *  from the persistent storage
+     * @param noSave Whether to skip saving the swap changes in the persistent storage
+     */
     async checkPastSwaps(pastSwaps?: D["Swap"][], noSave?: boolean): Promise<{ removeSwaps: D["Swap"][], changedSwaps: D["Swap"][] }> {
         if (pastSwaps == null) pastSwaps = await this.unifiedStorage.query<D["Swap"]>(
             [[{key: "type", value: this.TYPE}, {key: "state", value: this.pendingSwapStates}]],
@@ -291,6 +354,12 @@ export abstract class ISwapWrapper<
         }
     }
 
+    /**
+     * Invokes {@link ISwap._tick} on all the known swaps
+     *
+     * @param swaps Optional array of swaps to invoke `_tick()` on, otherwise all relevant swaps will be fetched
+     *  from the persistent storage
+     */
     async tick(swaps?: D["Swap"][]): Promise<void> {
         if(swaps==null) swaps = await this.unifiedStorage.query<D["Swap"]>(
             [[{key: "type", value: this.TYPE}, {key: "state", value: this.tickSwapState}]],
@@ -307,7 +376,14 @@ export abstract class ISwapWrapper<
         });
     }
 
-    saveSwapData(swap: D["Swap"]): Promise<void> {
+    /**
+     * Saves the swap, if it is not initiated it is only saved to pending swaps
+     *
+     * @param swap Swap to save
+     *
+     * @internal
+     */
+    _saveSwapData(swap: D["Swap"]): Promise<void> {
         if(!swap.isInitiated()) {
             this.logger.debug("saveSwapData(): Swap "+swap.getId()+" not initiated, saving to pending swaps");
             this.pendingSwaps.set(swap.getId(), new WeakRef<D["Swap"]>(swap));
@@ -318,14 +394,21 @@ export abstract class ISwapWrapper<
         return this.unifiedStorage.save(swap);
     }
 
-    removeSwapData(swap: D["Swap"]): Promise<void> {
+    /**
+     * Removes the swap from the persistent storage and pending swaps
+     *
+     * @param swap Swap to remove
+     *
+     * @internal
+     */
+    _removeSwapData(swap: D["Swap"]): Promise<void> {
         this.pendingSwaps.delete(swap.getId());
         if(!swap.isInitiated()) return Promise.resolve();
         return this.unifiedStorage.remove(swap);
     }
 
     /**
-     * Un-subscribes from event listeners on Solana
+     * Un-subscribes from event listeners on the smart chain, terminates the tick interval and stops this wrapper
      */
     public async stop() {
         this.isInitialized = false;

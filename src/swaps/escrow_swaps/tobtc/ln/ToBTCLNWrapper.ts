@@ -22,20 +22,7 @@ import {AmountData} from "../../../../types/AmountData";
 import {LNURLPayParamsWithUrl} from "../../../../types/lnurl/LNURLPay";
 import {tryWithRetries} from "../../../../utils/RetryUtils";
 import {AllOptional, AllRequired} from "../../../../utils/TypeUtils";
-
-export type LightningWalletCallback = (valueSats: number, abortSignal?: AbortSignal) => Promise<string>;
-export type InvoiceCreateService = {
-    getInvoice: LightningWalletCallback,
-    minMsats?: bigint,
-    maxMSats?: bigint
-};
-
-export function isInvoiceCreateService(obj: any): obj is InvoiceCreateService {
-    return typeof(obj)==="object" &&
-        typeof(obj.getInvoice)==="function" &&
-        (obj.minMsats==null || typeof(obj.minMsats)==="bigint") &&
-        (obj.maxMSats==null || typeof(obj.maxMSats)==="bigint");
-}
+import {LightningInvoiceCreateService} from "../../../../types/wallets/LightningInvoiceCreateService";
 
 export type ToBTCLNOptions = {
     expirySeconds?: number,
@@ -386,7 +373,7 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
     private async getIntermediaryQuoteExactIn(
         signer: string,
         amountData: AmountData,
-        invoiceCreateService: InvoiceCreateService,
+        invoiceCreateService: LightningInvoiceCreateService,
         lp: Intermediary,
         dummyPr: string,
         options: AllRequired<ToBTCLNOptions> & {comment?: string},
@@ -505,7 +492,7 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
      */
     async createViaInvoiceCreateService(
         signer: string,
-        invoiceCreateServicePromise: Promise<InvoiceCreateService>,
+        invoiceCreateServicePromise: Promise<LightningInvoiceCreateService>,
         amountData: AmountData,
         lps: Intermediary[],
         options?: ToBTCLNOptions,

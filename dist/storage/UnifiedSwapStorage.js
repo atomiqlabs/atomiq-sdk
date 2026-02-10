@@ -18,15 +18,26 @@ const compositeIndexes = [
     { keys: ["type", "initiator", "state"], unique: false }
 ];
 /**
- * Unified swap persistence layer with caching
+ * Unified swap persistence layer for the SDK utilizing an underlying {@link IUnifiedStorage} instance
+ *  with optional in-memory caching via weak refs {@link WeakRef}
+ *
  * @category Storage
  */
 class UnifiedSwapStorage {
+    /**
+     * @param storage Underlying storage persistence layer
+     * @param noWeakRefMap Whether to disable caching of the swap objects in the weak ref map, this
+     *  should be set when you need multiple different clients accessing the same swap database (such
+     *  as when running the SDK in a serverless environment like AWS or Azure)
+     */
     constructor(storage, noWeakRefMap) {
         this.weakRefCache = new Map();
         this.storage = storage;
         this.noWeakRefMap = noWeakRefMap;
     }
+    /**
+     * Initializes the underlying storage
+     */
     init() {
         return this.storage.init(indexes, compositeIndexes);
     }
@@ -59,21 +70,38 @@ class UnifiedSwapStorage {
         });
         return result;
     }
+    /**
+     * Saves the swap to storage, updating indexes as needed
+     *
+     * @param value Swap to save
+     */
     save(value) {
         if (!this.noWeakRefMap)
             this.weakRefCache.set(value.getId(), new WeakRef(value));
         return this.storage.save(value.serialize());
     }
+    /**
+     * Saves multiple swaps to storage in a batch operation
+     * @param values Array of swaps to save
+     */
     saveAll(values) {
         if (!this.noWeakRefMap)
             values.forEach(value => this.weakRefCache.set(value.getId(), new WeakRef(value)));
         return this.storage.saveAll(values.map(obj => obj.serialize()));
     }
+    /**
+     * Removes a swap from storage
+     * @param value Swap to remove
+     */
     remove(value) {
         if (!this.noWeakRefMap)
             this.weakRefCache.delete(value.getId());
         return this.storage.remove(value.serialize());
     }
+    /**
+     * Removes multiple swaps from storage in a batch operation
+     * @param values Array of swaps to remove
+     */
     removeAll(values) {
         if (!this.noWeakRefMap)
             values.forEach(value => this.weakRefCache.delete(value.getId()));

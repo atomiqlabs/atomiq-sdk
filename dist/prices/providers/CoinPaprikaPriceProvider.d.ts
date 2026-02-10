@@ -14,6 +14,12 @@ export type CoinPaprikaResponse<Currency extends string> = {
  */
 export declare class CoinPaprikaPriceProvider<T extends MultiChain> extends HttpPriceProvider<T> {
     constructor(coinsMap: CtorCoinTypes<T>, url?: string, httpRequestTimeout?: number);
+    /**
+     * @inheritDoc
+     */
     fetchPrice(token: CoinType, abortSignal?: AbortSignal): Promise<bigint>;
+    /**
+     * @inheritDoc
+     */
     protected fetchUsdPrice(abortSignal?: AbortSignal): Promise<number>;
 }

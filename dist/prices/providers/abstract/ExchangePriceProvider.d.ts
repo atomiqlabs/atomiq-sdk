@@ -10,5 +10,8 @@ export declare abstract class ExchangePriceProvider<T extends MultiChain> extend
      * @protected
      */
     protected abstract fetchPair(pair: string, abortSignal?: AbortSignal): Promise<number>;
+    /**
+     * @inheritDoc
+     */
     protected fetchPrice(token: CoinType, abortSignal?: AbortSignal): Promise<bigint>;
 }

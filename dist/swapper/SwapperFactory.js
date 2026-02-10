@@ -48,14 +48,21 @@ const nostrUrls = [
 ];
 /**
  * Factory class for creating and initializing Swapper instances with typed chain support
+ *
  * @category Core
  */
 class SwapperFactory {
     constructor(initializers) {
         this.initializers = initializers;
+        /**
+         * All available tokens for the atomiq SDK
+         */
         this.Tokens = {
             BITCOIN: Token_1.BitcoinTokens
         };
+        /**
+         * Token resolvers for various smart chains supported by the SDK, allow fetching tokens based on their addresses
+         */
         this.TokenResolver = {};
         this.initializers = initializers;
         initializers.forEach(initializer => {
@@ -78,6 +85,14 @@ class SwapperFactory {
             };
         });
     }
+    /**
+     * Returns a new swapper instance with the passed options.
+     *
+     * The swapper returned here is not yet initialized, be sure to call {@link Swapper.init}, before
+     *  calling any other functions in the swapper instance.
+     *
+     * @param options Options for customizing the swapper instance
+     */
     newSwapper(options) {
         options.bitcoinNetwork ??= base_1.BitcoinNetwork.MAINNET;
         options.storagePrefix ??= "atomiqsdk-" + options.bitcoinNetwork + "-";
@@ -127,6 +142,12 @@ class SwapperFactory {
             RedundantSwapPrice_1.RedundantSwapPrice.createFromTokenMap(options.pricingFeeDifferencePPM ?? 10000n, pricingAssets);
         return new Swapper_1.Swapper(bitcoinRpc, chains, swapPricing, pricingAssets, options.messenger, options);
     }
+    /**
+     * Returns a new and already initialized swapper instance with the passed options. There is no need
+     *  to call {@link Swapper.init} anymore.
+     *
+     * @param options Options for customizing the swapper instance
+     */
     async newSwapperInitialized(options) {
         const swapper = this.newSwapper(options);
         await swapper.init();

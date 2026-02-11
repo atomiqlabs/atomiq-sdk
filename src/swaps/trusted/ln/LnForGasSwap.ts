@@ -16,13 +16,29 @@ import {timeoutPromise} from "../../../utils/TimeoutUtils";
 
 /**
  * State enum for trusted Lightning gas swaps
+ *
  * @category Swaps
  */
 export enum LnForGasSwapState {
+    /**
+     * The swap quote expired without user sending in the lightning network payment
+     */
     EXPIRED = -2,
+    /**
+     * The swap has failed after the intermediary already received a lightning network payment on the source
+     */
     FAILED = -1,
+    /**
+     * Swap was created
+     */
     PR_CREATED = 0,
+    /**
+     * User paid the lightning network invoice on the source
+     */
     PR_PAID = 1,
+    /**
+     * The swap is finished after the intermediary sent funds on the destination chain
+     */
     FINISHED = 2
 }
 
@@ -42,13 +58,14 @@ export function isLnForGasSwapInit(obj: any): obj is LnForGasSwapInit {
 }
 
 /**
- * Trusted Lightning Network to gas token swap
+ * Trusted swap for Bitcoin Lightning -> Smart chains, to be used for minor amounts to get gas tokens on
+ *  the destination chain, which is only needed for Solana, which still uses legacy swaps
  *
  * @category Swaps
  */
 export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnForGasSwapTypeDefinition<T>, LnForGasSwapState> implements IAddressSwap {
     protected readonly currentVersion: number = 2;
-    protected readonly TYPE: SwapType = SwapType.TRUSTED_FROM_BTCLN;
+    protected readonly TYPE: SwapType.TRUSTED_FROM_BTCLN = SwapType.TRUSTED_FROM_BTCLN;
     protected readonly logger: LoggerType;
 
     //State: PR_CREATED
@@ -58,6 +75,9 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
     private readonly token: string;
 
     //State: FINISHED
+    /**
+     * Destination transaction ID on the smart chain side
+     */
     scTxId?: string;
 
     constructor(wrapper: LnForGasWrapper<T>, init: LnForGasSwapInit);
@@ -89,6 +109,9 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
         this.logger = getLogger("LnForGas("+this.getId()+"): ");
     }
 
+    /**
+     * @inheritDoc
+     */
     protected upgradeVersion() {
         if(this.version == 1) {
             if(this.state===1) this.state = LnForGasSwapState.FINISHED;
@@ -101,8 +124,7 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
     }
 
     /**
-     * In case swapFee in BTC is not supplied it recalculates it based on swap price
-     * @protected
+     * @inheritDoc
      */
     protected tryRecomputeSwapPrice() {
         if(this.swapFeeBtc==null && this.swapFee!=null) {
@@ -115,26 +137,44 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
     //////////////////////////////
     //// Getters & utils
 
+    /**
+     * @inheritDoc
+     */
     _getEscrowHash(): string {
         return this.getId();
     }
 
+    /**
+     * @inheritDoc
+     */
     getOutputAddress(): string | null {
         return this.recipient;
     }
 
+    /**
+     * @inheritDoc
+     */
     getInputAddress(): string | null {
         return this.pr;
     }
 
+    /**
+     * @inheritDoc
+     */
     getInputTxId(): string | null {
         return this.getId();
     }
 
+    /**
+     * @inheritDoc
+     */
     getOutputTxId(): string | null {
         return this.scTxId ?? null;
     }
 
+    /**
+     * @inheritDoc
+     */
     getId(): string {
         if(this.pr==null) throw new Error("No payment request assigned to this swap!");
         const decodedPR = bolt11Decode(this.pr);
@@ -156,30 +196,51 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
         return "lightning:"+this.pr.toUpperCase();
     }
 
+    /**
+     * @inheritDoc
+     */
     requiresAction(): boolean {
         return false;
     }
 
+    /**
+     * @inheritDoc
+     */
     isFinished(): boolean {
         return this.state===LnForGasSwapState.FINISHED || this.state===LnForGasSwapState.FAILED || this.state===LnForGasSwapState.EXPIRED;
     }
 
+    /**
+     * @inheritDoc
+     */
     isQuoteExpired(): boolean {
         return this.state===LnForGasSwapState.EXPIRED;
     }
 
+    /**
+     * @inheritDoc
+     */
     isQuoteSoftExpired(): boolean {
         return this.expiry<Date.now();
     }
 
+    /**
+     * @inheritDoc
+     */
     isFailed(): boolean {
         return this.state===LnForGasSwapState.FAILED;
     }
 
+    /**
+     * @inheritDoc
+     */
     isSuccessful(): boolean {
         return this.state===LnForGasSwapState.FINISHED;
     }
 
+    /**
+     * @inheritDoc
+     */
     verifyQuoteValid(): Promise<boolean> {
         return Promise.resolve(this.expiry>Date.now());
     }
@@ -187,14 +248,26 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
     //////////////////////////////
     //// Amounts & fees
 
+    /**
+     * Returns an output amount in base units without a swap fee included, hence this value
+     *  is larger than the actual output amount
+     *
+     * @protected
+     */
     protected getOutAmountWithoutFee(): bigint {
         return this.outputAmount + (this.swapFee ?? 0n);
     }
 
+    /**
+     * @inheritDoc
+     */
     getOutputToken(): SCToken<T["ChainId"]> {
         return this.wrapper.tokens[this.wrapper.chain.getNativeCurrencyAddress()];
     }
 
+    /**
+     * @inheritDoc
+     */
     getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
         return toTokenAmount(
             this.outputAmount, this.wrapper.tokens[this.wrapper.chain.getNativeCurrencyAddress()],
@@ -202,10 +275,16 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
         );
     }
 
+    /**
+     * @inheritDoc
+     */
     getInputToken(): BtcToken<true> {
         return BitcoinTokens.BTCLN;
     }
 
+    /**
+     * @inheritDoc
+     */
     getInput(): TokenAmount<T["ChainId"], BtcToken<true>, true> {
         const parsed = bolt11Decode(this.pr);
         const msats = parsed.millisatoshis;
@@ -214,6 +293,9 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
         return toTokenAmount(amount, BitcoinTokens.BTCLN, this.wrapper.prices, this.pricingInfo);
     }
 
+    /**
+     * @inheritDoc
+     */
     getInputWithoutFee(): TokenAmount<T["ChainId"], BtcToken<true>, true> {
         const parsed = bolt11Decode(this.pr);
         const msats = parsed.millisatoshis;
@@ -225,6 +307,11 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
         );
     }
 
+    /**
+     * Returns the swap fee charged by the intermediary (LP) on this swap
+     *
+     * @protected
+     */
     protected getSwapFee(): Fee<T["ChainId"], BtcToken<true>, SCToken<T["ChainId"]>> {
         if(this.pricingInfo==null) throw new Error("No pricing info known, cannot estimate swap fee!");
         const feeWithoutBaseFee = this.swapFeeBtc==null ? 0n : this.swapFeeBtc - this.pricingInfo.satsBaseFee;
@@ -244,10 +331,16 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
         };
     }
 
+    /**
+     * @inheritDoc
+     */
     getFee(): Fee<T["ChainId"], BtcToken<true>, SCToken<T["ChainId"]>> {
         return this.getSwapFee();
     }
 
+    /**
+     * @inheritDoc
+     */
     getFeeBreakdown(): [{type: FeeType.SWAP, fee: Fee<T["ChainId"], BtcToken<true>, SCToken<T["ChainId"]>>}] {
         return [{
             type: FeeType.SWAP,
@@ -259,6 +352,9 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
     //////////////////////////////
     //// Payment
 
+    /**
+     * @inheritDoc
+     */
     async txsExecute() {
         if(this.state===LnForGasSwapState.PR_CREATED) {
             if (!await this.verifyQuoteValid()) throw new Error("Quote already expired or close to expiry!");
@@ -280,6 +376,14 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
         throw new Error("Invalid swap state to obtain execution txns, required PR_CREATED");
     }
 
+    /**
+     * Queries the intermediary (LP) node for the state of the swap
+     *
+     * @param save Whether the save the result or not
+     *
+     * @returns Whether the swap was successful as `boolean` or `null` if the swap is still pending
+     * @protected
+     */
     protected async checkInvoicePaid(save: boolean = true): Promise<boolean | null> {
         if(this.state===LnForGasSwapState.FAILED || this.state===LnForGasSwapState.EXPIRED) return false;
         if(this.state===LnForGasSwapState.FINISHED) return true;
@@ -334,8 +438,8 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
     }
 
     /**
-     * A blocking promise resolving when payment was received by the intermediary and client can continue
-     * rejecting in case of failure
+     * A blocking promise resolving when payment was received by the intermediary and client can continue,
+     *  rejecting in case of failure. The swap must be in {@link LnForGasSwapState.PR_CREATED} state!
      *
      * @param checkIntervalSeconds How often to poll the intermediary for answer (default 5 seconds)
      * @param abortSignal Abort signal
@@ -363,6 +467,9 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
     //////////////////////////////
     //// Storage
 
+    /**
+     * @inheritDoc
+     */
     serialize(): any{
         return {
             ...super.serialize(),
@@ -374,6 +481,9 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
         };
     }
 
+    /**
+     * @inheritDoc
+     */
     _getInitiator(): string {
         return this.recipient;
     }
@@ -382,6 +492,9 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
     //////////////////////////////
     //// Swap ticks & sync
 
+    /**
+     * @inheritDoc
+     */
     async _sync(save?: boolean): Promise<boolean> {
         if(this.state===LnForGasSwapState.PR_CREATED) {
             //Check if it's maybe already paid
@@ -394,6 +507,9 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
         return false;
     }
 
+    /**
+     * @inheritDoc
+     */
     _tick(save?: boolean): Promise<boolean> {
         return Promise.resolve(false);
     }

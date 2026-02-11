@@ -40,6 +40,49 @@ import { LNURLPay } from "../types/lnurl/LNURLPay";
 import { NotNever } from "../utils/TypeUtils";
 import { MempoolApi, MempoolBitcoinBlock, MempoolBitcoinRpc } from "@atomiqlabs/btc-mempool";
 import { LightningInvoiceCreateService } from "../types/wallets/LightningInvoiceCreateService";
+declare const SwapTypeInfo: {
+    readonly 2: {
+        readonly requiresInputWallet: true;
+        readonly requiresOutputWallet: false;
+        readonly supportsGasDrop: false;
+    };
+    readonly 3: {
+        readonly requiresInputWallet: true;
+        readonly requiresOutputWallet: false;
+        readonly supportsGasDrop: false;
+    };
+    readonly 0: {
+        readonly requiresInputWallet: false;
+        readonly requiresOutputWallet: true;
+        readonly supportsGasDrop: false;
+    };
+    readonly 1: {
+        readonly requiresInputWallet: false;
+        readonly requiresOutputWallet: true;
+        readonly supportsGasDrop: false;
+    };
+    readonly 6: {
+        readonly requiresInputWallet: true;
+        readonly requiresOutputWallet: false;
+        readonly supportsGasDrop: true;
+    };
+    readonly 7: {
+        readonly requiresInputWallet: false;
+        readonly requiresOutputWallet: false;
+        readonly supportsGasDrop: true;
+    };
+    readonly 4: {
+        readonly requiresInputWallet: false;
+        readonly requiresOutputWallet: false;
+        readonly supportsGasDrop: false;
+    };
+    readonly 5: {
+        readonly requiresInputWallet: false;
+        readonly requiresOutputWallet: false;
+        readonly supportsGasDrop: false;
+    };
+};
+type SwapTypeInfoType = typeof SwapTypeInfo;
 /**
  * Configuration options for the Swapper
  * @category Core
@@ -480,48 +523,7 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
      * - `supportsGasDrop`: Whether a swap supports the "gas drop" feature, allowing to user to receive a small
      *  amount of native token as part of the swap when swapping to smart chains
      */
-    readonly SwapTypeInfo: {
-        readonly 2: {
-            readonly requiresInputWallet: true;
-            readonly requiresOutputWallet: false;
-            readonly supportsGasDrop: false;
-        };
-        readonly 3: {
-            readonly requiresInputWallet: true;
-            readonly requiresOutputWallet: false;
-            readonly supportsGasDrop: false;
-        };
-        readonly 0: {
-            readonly requiresInputWallet: false;
-            readonly requiresOutputWallet: true;
-            readonly supportsGasDrop: false;
-        };
-        readonly 1: {
-            readonly requiresInputWallet: false;
-            readonly requiresOutputWallet: true;
-            readonly supportsGasDrop: false;
-        };
-        readonly 6: {
-            readonly requiresInputWallet: true;
-            readonly requiresOutputWallet: false;
-            readonly supportsGasDrop: true;
-        };
-        readonly 7: {
-            readonly requiresInputWallet: false;
-            readonly requiresOutputWallet: false;
-            readonly supportsGasDrop: true;
-        };
-        readonly 4: {
-            readonly requiresInputWallet: false;
-            readonly requiresOutputWallet: false;
-            readonly supportsGasDrop: false;
-        };
-        readonly 5: {
-            readonly requiresInputWallet: false;
-            readonly requiresOutputWallet: false;
-            readonly supportsGasDrop: false;
-        };
-    };
+    readonly SwapTypeInfo: SwapTypeInfoType;
     /**
      * Returns minimum/maximum limits for inputs and outputs for a swap between given tokens
      *

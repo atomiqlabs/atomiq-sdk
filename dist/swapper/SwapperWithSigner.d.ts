@@ -104,7 +104,16 @@ export declare class SwapperWithSigner<T extends MultiChain, ChainIdentifier ext
             readonly requiresInputWallet: true;
             readonly requiresOutputWallet: false;
             readonly supportsGasDrop: true;
-        };
+        }; /**
+         * Creates Smart chain -> Bitcoin ({@link SwapType.TO_BTC}) swap
+         *
+         * @param tokenAddress Token address to pay with
+         * @param address Recipient's bitcoin address
+         * @param amount Amount to send in token based units (if `exactIn=true`) or receive in satoshis (if `exactIn=false`)
+         * @param exactIn Whether to use exact in instead of exact out
+         * @param additionalParams Additional parameters sent to the LP when creating the swap
+         * @param options Additional options for the swap
+         */
         readonly 7: {
             readonly requiresInputWallet: false;
             readonly requiresOutputWallet: false;

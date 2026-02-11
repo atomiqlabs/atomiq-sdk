@@ -10,17 +10,18 @@ import {SwapType} from "../../../enums/SwapType";
 export type LnForGasSwapTypeDefinition<T extends ChainType> = SwapTypeDefinition<T, LnForGasWrapper<T>, LnForGasSwap<T>>;
 
 export class LnForGasWrapper<T extends ChainType> extends ISwapWrapper<T, LnForGasSwapTypeDefinition<T>> {
-    public TYPE = SwapType.TRUSTED_FROM_BTCLN;
+    public TYPE: SwapType.TRUSTED_FROM_BTCLN = SwapType.TRUSTED_FROM_BTCLN;
     public readonly swapDeserializer = LnForGasSwap;
 
     /**
-     * Returns a newly created swap, receiving 'amount' on lightning network
+     * Returns a newly created trusted Lightning network -> Smart chain swap, receiving
+     *  the specified amount of native token on the destination chain.
      *
-     * @param signer
-     * @param amount            Amount you wish to receive in base units (satoshis)
-     * @param lpOrUrl           Intermediary/Counterparty swap service Intermediary object or raw url
+     * @param recipient Address of the recipient on the smart chain destination chain
+     * @param amount Amount of native token to receive in base units
+     * @param lpOrUrl Intermediary (LP) to use for the swap
      */
-    async create(signer: string, amount: bigint, lpOrUrl: Intermediary | string): Promise<LnForGasSwap<T>> {
+    async create(recipient: string, amount: bigint, lpOrUrl: Intermediary | string): Promise<LnForGasSwap<T>> {
         if(!this.isInitialized) throw new Error("Not initialized, call init() first!");
 
         const lpUrl = typeof(lpOrUrl)==="string" ? lpOrUrl : lpOrUrl.url;
@@ -28,7 +29,7 @@ export class LnForGasWrapper<T extends ChainType> extends ISwapWrapper<T, LnForG
         const token = this.chain.getNativeCurrencyAddress();
 
         const resp = await TrustedIntermediaryAPI.initTrustedFromBTCLN(this.chainIdentifier, lpUrl, {
-            address: signer,
+            address: recipient,
             amount,
             token
         }, this.options.getRequestTimeout);
@@ -51,7 +52,7 @@ export class LnForGasWrapper<T extends ChainType> extends ISwapWrapper<T, LnForG
         const quoteInit: LnForGasSwapInit = {
             pr: resp.pr,
             outputAmount: resp.total,
-            recipient: signer,
+            recipient,
             pricingInfo,
             url: lpUrl,
             expiry: decodedPr.timeExpireDate*1000,

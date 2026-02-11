@@ -36,6 +36,48 @@ const RetryUtils_1 = require("../utils/RetryUtils");
 const btc_mempool_1 = require("@atomiqlabs/btc-mempool");
 const IEscrowSwap_1 = require("../swaps/escrow_swaps/IEscrowSwap");
 const LightningInvoiceCreateService_1 = require("../types/wallets/LightningInvoiceCreateService");
+const SwapTypeInfo = {
+    [SwapType_1.SwapType.TO_BTC]: {
+        requiresInputWallet: true,
+        requiresOutputWallet: false,
+        supportsGasDrop: false
+    },
+    [SwapType_1.SwapType.TO_BTCLN]: {
+        requiresInputWallet: true,
+        requiresOutputWallet: false,
+        supportsGasDrop: false
+    },
+    [SwapType_1.SwapType.FROM_BTC]: {
+        requiresInputWallet: false,
+        requiresOutputWallet: true,
+        supportsGasDrop: false
+    },
+    [SwapType_1.SwapType.FROM_BTCLN]: {
+        requiresInputWallet: false,
+        requiresOutputWallet: true,
+        supportsGasDrop: false
+    },
+    [SwapType_1.SwapType.SPV_VAULT_FROM_BTC]: {
+        requiresInputWallet: true,
+        requiresOutputWallet: false,
+        supportsGasDrop: true
+    },
+    [SwapType_1.SwapType.FROM_BTCLN_AUTO]: {
+        requiresInputWallet: false,
+        requiresOutputWallet: false,
+        supportsGasDrop: true
+    },
+    [SwapType_1.SwapType.TRUSTED_FROM_BTC]: {
+        requiresInputWallet: false,
+        requiresOutputWallet: false,
+        supportsGasDrop: false
+    },
+    [SwapType_1.SwapType.TRUSTED_FROM_BTCLN]: {
+        requiresInputWallet: false,
+        requiresOutputWallet: false,
+        supportsGasDrop: false
+    }
+};
 /**
  * Core orchestrator for all atomiq swap operations
  *
@@ -55,48 +97,7 @@ class Swapper extends events_1.EventEmitter {
          * - `supportsGasDrop`: Whether a swap supports the "gas drop" feature, allowing to user to receive a small
          *  amount of native token as part of the swap when swapping to smart chains
          */
-        this.SwapTypeInfo = {
-            [SwapType_1.SwapType.TO_BTC]: {
-                requiresInputWallet: true,
-                requiresOutputWallet: false,
-                supportsGasDrop: false
-            },
-            [SwapType_1.SwapType.TO_BTCLN]: {
-                requiresInputWallet: true,
-                requiresOutputWallet: false,
-                supportsGasDrop: false
-            },
-            [SwapType_1.SwapType.FROM_BTC]: {
-                requiresInputWallet: false,
-                requiresOutputWallet: true,
-                supportsGasDrop: false
-            },
-            [SwapType_1.SwapType.FROM_BTCLN]: {
-                requiresInputWallet: false,
-                requiresOutputWallet: true,
-                supportsGasDrop: false
-            },
-            [SwapType_1.SwapType.SPV_VAULT_FROM_BTC]: {
-                requiresInputWallet: true,
-                requiresOutputWallet: false,
-                supportsGasDrop: true
-            },
-            [SwapType_1.SwapType.FROM_BTCLN_AUTO]: {
-                requiresInputWallet: false,
-                requiresOutputWallet: false,
-                supportsGasDrop: true
-            },
-            [SwapType_1.SwapType.TRUSTED_FROM_BTC]: {
-                requiresInputWallet: false,
-                requiresOutputWallet: false,
-                supportsGasDrop: false
-            },
-            [SwapType_1.SwapType.TRUSTED_FROM_BTCLN]: {
-                requiresInputWallet: false,
-                requiresOutputWallet: false,
-                supportsGasDrop: false
-            }
-        };
+        this.SwapTypeInfo = SwapTypeInfo;
         const storagePrefix = options?.storagePrefix ?? "atomiq-";
         options ??= {};
         options.bitcoinNetwork = options.bitcoinNetwork == null ? base_1.BitcoinNetwork.TESTNET : options.bitcoinNetwork;

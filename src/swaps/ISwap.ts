@@ -494,7 +494,7 @@ export abstract class ISwap<
     abstract getInputToken(): Token<T["ChainId"]>;
 
     /**
-     * Returns input amount if the swap without the fees (swap fee, network fee)
+     * Returns input amount of the swap without the fees (swap fee, network fee)
      */
     abstract getInputWithoutFee(): TokenAmount;
 

@@ -66,6 +66,51 @@ import {MempoolApi, MempoolBitcoinBlock, MempoolBitcoinRpc, MempoolBtcRelaySynch
 import {IEscrowSwap} from "../swaps/escrow_swaps/IEscrowSwap";
 import {LightningInvoiceCreateService, isLightningInvoiceCreateService} from "../types/wallets/LightningInvoiceCreateService";
 
+const SwapTypeInfo = {
+    [SwapType.TO_BTC]: {
+        requiresInputWallet: true,
+        requiresOutputWallet: false,
+        supportsGasDrop: false
+    },
+    [SwapType.TO_BTCLN]: {
+        requiresInputWallet: true,
+        requiresOutputWallet: false,
+        supportsGasDrop: false
+    },
+    [SwapType.FROM_BTC]: {
+        requiresInputWallet: false,
+        requiresOutputWallet: true,
+        supportsGasDrop: false
+    },
+    [SwapType.FROM_BTCLN]: {
+        requiresInputWallet: false,
+        requiresOutputWallet: true,
+        supportsGasDrop: false
+    },
+    [SwapType.SPV_VAULT_FROM_BTC]: {
+        requiresInputWallet: true,
+        requiresOutputWallet: false,
+        supportsGasDrop: true
+    },
+    [SwapType.FROM_BTCLN_AUTO]: {
+        requiresInputWallet: false,
+        requiresOutputWallet: false,
+        supportsGasDrop: true
+    },
+    [SwapType.TRUSTED_FROM_BTC]: {
+        requiresInputWallet: false,
+        requiresOutputWallet: false,
+        supportsGasDrop: false
+    },
+    [SwapType.TRUSTED_FROM_BTCLN]: {
+        requiresInputWallet: false,
+        requiresOutputWallet: false,
+        supportsGasDrop: false
+    }
+} as const;
+
+type SwapTypeInfoType = typeof SwapTypeInfo;
+
 /**
  * Configuration options for the Swapper
  * @category Core
@@ -1937,48 +1982,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
      * - `supportsGasDrop`: Whether a swap supports the "gas drop" feature, allowing to user to receive a small
      *  amount of native token as part of the swap when swapping to smart chains
      */
-    readonly SwapTypeInfo = {
-        [SwapType.TO_BTC]: {
-            requiresInputWallet: true,
-            requiresOutputWallet: false,
-            supportsGasDrop: false
-        },
-        [SwapType.TO_BTCLN]: {
-            requiresInputWallet: true,
-            requiresOutputWallet: false,
-            supportsGasDrop: false
-        },
-        [SwapType.FROM_BTC]: {
-            requiresInputWallet: false,
-            requiresOutputWallet: true,
-            supportsGasDrop: false
-        },
-        [SwapType.FROM_BTCLN]: {
-            requiresInputWallet: false,
-            requiresOutputWallet: true,
-            supportsGasDrop: false
-        },
-        [SwapType.SPV_VAULT_FROM_BTC]: {
-            requiresInputWallet: true,
-            requiresOutputWallet: false,
-            supportsGasDrop: true
-        },
-        [SwapType.FROM_BTCLN_AUTO]: {
-            requiresInputWallet: false,
-            requiresOutputWallet: false,
-            supportsGasDrop: true
-        },
-        [SwapType.TRUSTED_FROM_BTC]: {
-            requiresInputWallet: false,
-            requiresOutputWallet: false,
-            supportsGasDrop: false
-        },
-        [SwapType.TRUSTED_FROM_BTCLN]: {
-            requiresInputWallet: false,
-            requiresOutputWallet: false,
-            supportsGasDrop: false
-        }
-    } as const;
+    readonly SwapTypeInfo: SwapTypeInfoType = SwapTypeInfo;
 
     /**
      * Returns minimum/maximum limits for inputs and outputs for a swap between given tokens

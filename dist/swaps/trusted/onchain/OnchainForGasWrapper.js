@@ -28,20 +28,21 @@ class OnchainForGasWrapper extends ISwapWrapper_1.ISwapWrapper {
         this.btcRpc = btcRpc;
     }
     /**
-     * Returns a newly created swap, receiving 'amount' base units of gas token
+     * Returns a newly created trusted Bitcoin on-chain -> Smart chain swap, receiving
+     *  the specified amount of native token on the destination chain.
      *
-     * @param signer
-     * @param amount            Amount you wish to receive in base units
-     * @param lpOrUrl           Intermediary/Counterparty swap service Intermediary object or raw url
-     * @param refundAddress     Bitcoin address to receive refund on in case the counterparty cannot execute the swap
+     * @param recipient Address of the recipient on the smart chain destination chain
+     * @param amount Amount of native token to receive in base units
+     * @param lpOrUrl Intermediary (LP) to use for the swap
+     * @param refundAddress Bitcoin address to receive refund on in case the intermediary (LP) cannot execute the swap
      */
-    async create(signer, amount, lpOrUrl, refundAddress) {
+    async create(recipient, amount, lpOrUrl, refundAddress) {
         if (!this.isInitialized)
             throw new Error("Not initialized, call init() first!");
         const lpUrl = typeof (lpOrUrl) === "string" ? lpOrUrl : lpOrUrl.url;
         const token = this.chain.getNativeCurrencyAddress();
         const resp = await TrustedIntermediaryAPI_1.TrustedIntermediaryAPI.initTrustedFromBTC(this.chainIdentifier, lpUrl, {
-            address: signer,
+            address: recipient,
             amount,
             refundAddress,
             token
@@ -57,7 +58,7 @@ class OnchainForGasWrapper extends ISwapWrapper_1.ISwapWrapper {
             address: resp.btcAddress,
             inputAmount: resp.amountSats,
             outputAmount: resp.total,
-            recipient: signer,
+            recipient,
             refundAddress,
             pricingInfo,
             url: lpUrl,

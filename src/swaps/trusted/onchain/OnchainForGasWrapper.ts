@@ -19,7 +19,7 @@ export type OnchainForGasWrapperOptions = ISwapWrapperOptions & {
 export type OnchainForGasSwapTypeDefinition<T extends ChainType> = SwapTypeDefinition<T, OnchainForGasWrapper<T>, OnchainForGasSwap<T>>;
 
 export class OnchainForGasWrapper<T extends ChainType> extends ISwapWrapper<T, OnchainForGasSwapTypeDefinition<T>, OnchainForGasWrapperOptions> {
-    public readonly TYPE = SwapType.TRUSTED_FROM_BTC;
+    public readonly TYPE: SwapType.TRUSTED_FROM_BTC = SwapType.TRUSTED_FROM_BTC;
     public readonly swapDeserializer = OnchainForGasSwap;
 
     readonly btcRpc: BitcoinRpcWithAddressIndex<any>;
@@ -51,14 +51,15 @@ export class OnchainForGasWrapper<T extends ChainType> extends ISwapWrapper<T, O
     }
 
     /**
-     * Returns a newly created swap, receiving 'amount' base units of gas token
+     * Returns a newly created trusted Bitcoin on-chain -> Smart chain swap, receiving
+     *  the specified amount of native token on the destination chain.
      *
-     * @param signer
-     * @param amount            Amount you wish to receive in base units
-     * @param lpOrUrl           Intermediary/Counterparty swap service Intermediary object or raw url
-     * @param refundAddress     Bitcoin address to receive refund on in case the counterparty cannot execute the swap
+     * @param recipient Address of the recipient on the smart chain destination chain
+     * @param amount Amount of native token to receive in base units
+     * @param lpOrUrl Intermediary (LP) to use for the swap
+     * @param refundAddress Bitcoin address to receive refund on in case the intermediary (LP) cannot execute the swap
      */
-    async create(signer: string, amount: bigint, lpOrUrl: Intermediary | string, refundAddress?: string): Promise<OnchainForGasSwap<T>> {
+    async create(recipient: string, amount: bigint, lpOrUrl: Intermediary | string, refundAddress?: string): Promise<OnchainForGasSwap<T>> {
         if(!this.isInitialized) throw new Error("Not initialized, call init() first!");
 
         const lpUrl = typeof(lpOrUrl)==="string" ? lpOrUrl : lpOrUrl.url;
@@ -66,7 +67,7 @@ export class OnchainForGasWrapper<T extends ChainType> extends ISwapWrapper<T, O
         const token = this.chain.getNativeCurrencyAddress();
 
         const resp = await TrustedIntermediaryAPI.initTrustedFromBTC(this.chainIdentifier, lpUrl, {
-            address: signer,
+            address: recipient,
             amount,
             refundAddress,
             token
@@ -88,7 +89,7 @@ export class OnchainForGasWrapper<T extends ChainType> extends ISwapWrapper<T, O
             address: resp.btcAddress,
             inputAmount: resp.amountSats,
             outputAmount: resp.total,
-            recipient: signer,
+            recipient,
             refundAddress,
             pricingInfo,
             url: lpUrl,

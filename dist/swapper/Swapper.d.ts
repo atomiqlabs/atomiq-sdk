@@ -82,7 +82,7 @@ declare const SwapTypeInfo: {
         readonly supportsGasDrop: false;
     };
 };
-type SwapTypeInfoType = typeof SwapTypeInfo;
+export type SwapTypeInfoType = typeof SwapTypeInfo;
 /**
  * Configuration options for the Swapper
  * @category Core

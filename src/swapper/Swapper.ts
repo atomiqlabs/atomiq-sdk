@@ -107,9 +107,13 @@ const SwapTypeInfo = {
         requiresOutputWallet: false,
         supportsGasDrop: false
     }
-} as const;
+} as const satisfies Record<SwapType, {
+    requiresInputWallet: boolean,
+    requiresOutputWallet: boolean,
+    supportsGasDrop: boolean
+}>;
 
-type SwapTypeInfoType = typeof SwapTypeInfo;
+export type SwapTypeInfoType = typeof SwapTypeInfo;
 
 /**
  * Configuration options for the Swapper

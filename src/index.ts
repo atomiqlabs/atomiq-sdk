@@ -65,7 +65,7 @@ export * from "./storage/UnifiedSwapStorage";
 export {IndexedDBUnifiedStorage} from "./storage-browser/IndexedDBUnifiedStorage";
 export * from "./storage-browser/LocalStorageManager";
 
-export {Swapper} from "./swapper/Swapper";
+export {Swapper, ChainIds, SupportsSwapType, SwapTypeInfoType, SwapperOptions, MultiChain} from "./swapper/Swapper";
 export * from "./swapper/SwapperFactory";
 export * from "./swapper/SwapperUtils";
 export * from "./swapper/SwapperWithChain";

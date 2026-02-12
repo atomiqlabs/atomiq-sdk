@@ -37,10 +37,10 @@ export declare function identifyAddressType(address: string, network: BTC_NETWOR
  * @category Bitcoin
  */
 export declare abstract class BitcoinWallet implements IBitcoinWallet {
-    rpc: BitcoinRpcWithAddressIndex<any>;
-    network: BTC_NETWORK;
-    feeMultiplier: number;
-    feeOverride?: number;
+    protected readonly rpc: BitcoinRpcWithAddressIndex<any>;
+    protected readonly network: BTC_NETWORK;
+    protected feeMultiplier: number;
+    protected feeOverride?: number;
     constructor(mempoolApi: BitcoinRpcWithAddressIndex<any>, network: BTC_NETWORK, feeMultiplier?: number, feeOverride?: number);
     /**
      * @inheritDoc

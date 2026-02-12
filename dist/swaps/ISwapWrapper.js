@@ -11,29 +11,35 @@ const Logger_1 = require("../utils/Logger");
  */
 class ISwapWrapper {
     constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, options, events) {
+        /**
+         * Logger instance
+         * @internal
+         */
         this.logger = (0, Logger_1.getLogger)(this.constructor.name + ": ");
         /**
          * In-memory mapping of pending (not initiated) swaps, utilizing weak references to automatically
          *  free memory when swaps are dereferenced in not initiated state
+         * @internal
          */
         this.pendingSwaps = new Map();
         /**
          * Whether this wrapper is initialized (have to call {@link init} to initialize a wrapper)
+         * @internal
          */
         this.isInitialized = false;
         this.unifiedStorage = unifiedStorage;
         this.unifiedChainEvents = unifiedChainEvents;
         this.chainIdentifier = chainIdentifier;
-        this.chain = chain;
-        this.prices = prices;
+        this._chain = chain;
+        this._prices = prices;
         this.events = events || new events_1.EventEmitter();
-        this.options = options;
-        this.tokens = {};
+        this._options = options;
+        this._tokens = {};
         for (let tokenData of tokens) {
             const chainData = tokenData.chains[chainIdentifier];
             if (chainData == null)
                 continue;
-            this.tokens[chainData.address] = {
+            this._tokens[chainData.address] = {
                 chain: "SC",
                 chainId: this.chainIdentifier,
                 address: chainData.address,
@@ -49,11 +55,11 @@ class ISwapWrapper {
      *
      * @param amountData Amount data
      * @param abortSignal Abort signal
-     * @protected
      * @returns Price of the token in uSats (micro sats)
+     * @internal
      */
     preFetchPrice(amountData, abortSignal) {
-        return this.prices.preFetchPrice(this.chainIdentifier, amountData.token, abortSignal).catch(e => {
+        return this._prices.preFetchPrice(this.chainIdentifier, amountData.token, abortSignal).catch(e => {
             this.logger.error("preFetchPrice.token(): Error: ", e);
             return undefined;
         });
@@ -62,10 +68,10 @@ class ISwapWrapper {
      * Pre-fetches bitcoin's USD price
      *
      * @param abortSignal Abort signal
-     * @protected
+     * @internal
      */
     preFetchUsdPrice(abortSignal) {
-        return this.prices.preFetchUsdPrice(abortSignal).catch(e => {
+        return this._prices.preFetchUsdPrice(abortSignal).catch(e => {
             this.logger.error("preFetchPrice.usd(): Error: ", e);
             return undefined;
         });
@@ -82,9 +88,10 @@ class ISwapWrapper {
      * @param pricePrefetchPromise Optional price pre-fetch promise
      * @param usdPricePrefetchPromise Optiona USD price pre-fetch promise
      * @param abortSignal Abort signal
-     * @protected
      * @returns Price info object
      * @throws {IntermediaryError} if the calculated fee is too high
+     *
+     * @internal
      */
     async verifyReturnedPrice(lpServiceData, send, amountSats, amountToken, token, feeData, pricePrefetchPromise = Promise.resolve(undefined), usdPricePrefetchPromise = Promise.resolve(undefined), abortSignal) {
         const swapBaseFee = BigInt(lpServiceData.swapBaseFee);
@@ -93,18 +100,50 @@ class ISwapWrapper {
             amountToken = amountToken - feeData.networkFee;
         const [isValidAmount, usdPrice] = await Promise.all([
             send ?
-                this.prices.isValidAmountSend(this.chainIdentifier, amountSats, swapBaseFee, swapFeePPM, amountToken, token, abortSignal, await pricePrefetchPromise) :
-                this.prices.isValidAmountReceive(this.chainIdentifier, amountSats, swapBaseFee, swapFeePPM, amountToken, token, abortSignal, await pricePrefetchPromise),
+                this._prices.isValidAmountSend(this.chainIdentifier, amountSats, swapBaseFee, swapFeePPM, amountToken, token, abortSignal, await pricePrefetchPromise) :
+                this._prices.isValidAmountReceive(this.chainIdentifier, amountSats, swapBaseFee, swapFeePPM, amountToken, token, abortSignal, await pricePrefetchPromise),
             usdPricePrefetchPromise.then(value => {
                 if (value != null)
                     return value;
-                return this.prices.preFetchUsdPrice(abortSignal);
+                return this._prices.preFetchUsdPrice(abortSignal);
             })
         ]);
         if (!isValidAmount.isValid)
             throw new IntermediaryError_1.IntermediaryError("Fee too high");
         isValidAmount.realPriceUsdPerBitcoin = usdPrice;
         return isValidAmount;
+    }
+    /**
+     * Starts the interval calling the {@link ISwap._tick} on all the known swaps in tick-enabled states
+     * @internal
+     */
+    startTickInterval() {
+        if (this.tickSwapState == null || this.tickSwapState.length === 0)
+            return;
+        this.tickInterval = setInterval(() => {
+            this.tick();
+        }, 1000);
+    }
+    /**
+     * Runs checks on passed swaps, syncing their state from on-chain data
+     *
+     * @param pastSwaps Swaps to check
+     * @internal
+     */
+    async _checkPastSwaps(pastSwaps) {
+        const changedSwaps = [];
+        const removeSwaps = [];
+        await Promise.all(pastSwaps.map((swap) => swap._sync(false).then(changed => {
+            if (swap.isQuoteExpired()) {
+                removeSwaps.push(swap);
+                this.logger.debug("_checkPastSwaps(): Removing expired swap: " + swap.getId());
+            }
+            else {
+                if (changed)
+                    changedSwaps.push(swap);
+            }
+        }).catch(e => this.logger.error("_checkPastSwaps(): Error when checking swap " + swap.getId() + ": ", e))));
+        return { changedSwaps, removeSwaps };
     }
     /**
      * Initializes the swap wrapper, needs to be called before any other action can be taken
@@ -126,7 +165,7 @@ class ISwapWrapper {
                 return Promise.resolve();
             };
             if (this.processEvent != null)
-                this.unifiedChainEvents.registerListener(this.TYPE, initListener, this.swapDeserializer.bind(null, this));
+                this.unifiedChainEvents.registerListener(this.TYPE, initListener, this._swapDeserializer.bind(null, this));
             await this.checkPastSwaps();
             if (this.processEvent != null) {
                 //Process accumulated event queue
@@ -138,43 +177,21 @@ class ISwapWrapper {
             }
         }
         if (this.processEvent != null)
-            this.unifiedChainEvents.registerListener(this.TYPE, this.processEvent.bind(this), this.swapDeserializer.bind(null, this));
+            this.unifiedChainEvents.registerListener(this.TYPE, this.processEvent.bind(this), this._swapDeserializer.bind(null, this));
         if (!noTimers)
             this.startTickInterval();
         // this.logger.info("init(): Swap wrapper initialized");
         this.isInitialized = true;
     }
     /**
-     * Starts the interval calling the {@link ISwap._tick} on all the known swaps in tick-enabled states
-     * @protected
+     * Un-subscribes from event listeners on the smart chain, terminates the tick interval and stops this wrapper
      */
-    startTickInterval() {
-        if (this.tickSwapState == null || this.tickSwapState.length === 0)
-            return;
-        this.tickInterval = setInterval(() => {
-            this.tick();
-        }, 1000);
-    }
-    /**
-     * Runs checks on passed swaps, syncing their state from on-chain data
-     *
-     * @param pastSwaps Swaps to check
-     * @protected
-     */
-    async _checkPastSwaps(pastSwaps) {
-        const changedSwaps = [];
-        const removeSwaps = [];
-        await Promise.all(pastSwaps.map((swap) => swap._sync(false).then(changed => {
-            if (swap.isQuoteExpired()) {
-                removeSwaps.push(swap);
-                this.logger.debug("_checkPastSwaps(): Removing expired swap: " + swap.getId());
-            }
-            else {
-                if (changed)
-                    changedSwaps.push(swap);
-            }
-        }).catch(e => this.logger.error("_checkPastSwaps(): Error when checking swap " + swap.getId() + ": ", e))));
-        return { changedSwaps, removeSwaps };
+    async stop() {
+        this.isInitialized = false;
+        this.unifiedChainEvents.unregisterListener(this.TYPE);
+        this.logger.info("stop(): Swap wrapper stopped");
+        if (this.tickInterval != null)
+            clearInterval(this.tickInterval);
     }
     /**
      * Runs checks on all the known pending swaps, syncing their state from on-chain data
@@ -185,7 +202,7 @@ class ISwapWrapper {
      */
     async checkPastSwaps(pastSwaps, noSave) {
         if (pastSwaps == null)
-            pastSwaps = await this.unifiedStorage.query([[{ key: "type", value: this.TYPE }, { key: "state", value: this.pendingSwapStates }]], (val) => new this.swapDeserializer(this, val));
+            pastSwaps = await this.unifiedStorage.query([[{ key: "type", value: this.TYPE }, { key: "state", value: this._pendingSwapStates }]], (val) => new this._swapDeserializer(this, val));
         const { removeSwaps, changedSwaps } = await this._checkPastSwaps(pastSwaps);
         if (!noSave) {
             await this.unifiedStorage.removeAll(removeSwaps);
@@ -206,7 +223,7 @@ class ISwapWrapper {
      */
     async tick(swaps) {
         if (swaps == null)
-            swaps = await this.unifiedStorage.query([[{ key: "type", value: this.TYPE }, { key: "state", value: this.tickSwapState }]], (val) => new this.swapDeserializer(this, val));
+            swaps = await this.unifiedStorage.query([[{ key: "type", value: this.TYPE }, { key: "state", value: this.tickSwapState }]], (val) => new this._swapDeserializer(this, val));
         for (let pendingSwap of this.pendingSwaps.values()) {
             const value = pendingSwap.deref();
             if (value != null)
@@ -215,6 +232,13 @@ class ISwapWrapper {
         swaps.forEach(value => {
             value._tick(true);
         });
+    }
+    /**
+     * Returns the smart chain's native token used to pay for fees
+     * @internal
+     */
+    _getNativeToken() {
+        return this._tokens[this._chain.getNativeCurrencyAddress()];
     }
     /**
      * Saves the swap, if it is not initiated it is only saved to pending swaps
@@ -248,20 +272,14 @@ class ISwapWrapper {
         return this.unifiedStorage.remove(swap);
     }
     /**
-     * Un-subscribes from event listeners on the smart chain, terminates the tick interval and stops this wrapper
+     * Retrieves a swap by its ID from the pending swap mapping
+     *
+     * @param id
+     *
+     * @internal
      */
-    async stop() {
-        this.isInitialized = false;
-        this.unifiedChainEvents.unregisterListener(this.TYPE);
-        this.logger.info("stop(): Swap wrapper stopped");
-        if (this.tickInterval != null)
-            clearInterval(this.tickInterval);
-    }
-    /**
-     * Returns the smart chain's native token used to pay for fees
-     */
-    getNativeToken() {
-        return this.tokens[this.chain.getNativeCurrencyAddress()];
+    _getPendingSwap(id) {
+        return this.pendingSwaps.get(id)?.deref() ?? null;
     }
 }
 exports.ISwapWrapper = ISwapWrapper;

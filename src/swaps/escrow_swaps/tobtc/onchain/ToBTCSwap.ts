@@ -8,6 +8,7 @@ import {toBigInt} from "../../../../utils/Utils";
 import {TokenAmount, toTokenAmount} from "../../../../types/TokenAmount";
 import {BitcoinTokens, BtcToken} from "../../../../types/Token";
 import {getLogger, LoggerType} from "../../../../utils/Logger";
+import {fromOutputScript} from "../../../../utils/BitcoinUtils";
 
 
 export type ToBTCSwapInit<T extends SwapData> = IToBTCSwapInit<T> & {
@@ -30,12 +31,19 @@ export function isToBTCSwapInit<T extends SwapData>(obj: any): obj is ToBTCSwapI
 }
 
 /**
- * Smart Chain to on-chain BTC swap
+ * Escrow based (PrTLC) swap for Smart chains -> Bitcoin
+ *
  * @category Swaps
  */
 export class ToBTCSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, ToBTCDefinition<T>> {
+    protected readonly TYPE: SwapType.TO_BTC = SwapType.TO_BTC;
+    /**
+     * @internal
+     */
     protected readonly outputToken: BtcToken<false> = BitcoinTokens.BTC;
-    protected readonly TYPE = SwapType.TO_BTC;
+    /**
+     * @internal
+     */
     protected readonly logger: LoggerType;
 
     private address?: string;
@@ -70,18 +78,22 @@ export class ToBTCSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, To
             this.satsPerVByte = initOrObject.satsPerVByte;
             this.txId = initOrObject.txId;
 
-            this.requiredConfirmations = initOrObject.requiredConfirmations ?? this.data.getConfirmationsHint();
-            this.nonce = toBigInt(initOrObject.nonce) ?? this.data.getNonceHint();
+            this.requiredConfirmations = initOrObject.requiredConfirmations ?? this._data.getConfirmationsHint();
+            this.nonce = toBigInt(initOrObject.nonce) ?? this._data.getNonceHint();
         }
         this.logger = getLogger("ToBTC("+this.getIdentifierHashString()+"): ");
         this.tryRecomputeSwapPrice();
     }
 
+    /**
+     * @inheritDoc
+     * @internal
+     */
     async _setPaymentResult(result: { secret?: string; txId?: string }, check: boolean = false): Promise<boolean> {
         if(result==null) return false;
         if(result.txId==null) throw new IntermediaryError("No btc txId returned!");
         if(check || this.address==null || this.amount==null || this.nonce==null || this.requiredConfirmations==null) {
-            const btcTx = await this.wrapper.btcRpc.getTransaction(result.txId);
+            const btcTx = await this.wrapper._btcRpc.getTransaction(result.txId);
             if(btcTx==null) return false;
 
             //Extract nonce from tx
@@ -90,7 +102,7 @@ export class ToBTCSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, To
 
             const foundVout = btcTx.outs.find(vout => {
                 if(requiredConfirmations!=null) {
-                    return this.data.getClaimHash()===this.wrapper.contract.getHashForOnchain(
+                    return this._data.getClaimHash()===this.wrapper._contract.getHashForOnchain(
                         Buffer.from(vout.scriptPubKey.hex, "hex"),
                         BigInt(vout.value),
                         requiredConfirmations,
@@ -99,7 +111,7 @@ export class ToBTCSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, To
                 } else {
                     for(let i=1;i<=20;i++) {
                         if(
-                            this.data.getClaimHash()===this.wrapper.contract.getHashForOnchain(
+                            this._data.getClaimHash()===this.wrapper._contract.getHashForOnchain(
                                 Buffer.from(vout.scriptPubKey.hex, "hex"),
                                 BigInt(vout.value),
                                 i,
@@ -117,8 +129,7 @@ export class ToBTCSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, To
 
             if(foundVout!=null) {
                 this.nonce = nonce;
-                if(this.wrapper.btcRpc.outputScriptToAddress!=null)
-                    this.address = await this.wrapper.btcRpc.outputScriptToAddress(foundVout.scriptPubKey.hex);
+                this.address = fromOutputScript(this.wrapper._options.bitcoinNetwork, foundVout.scriptPubKey.hex);
                 this.amount = BigInt(foundVout.value);
                 this.requiredConfirmations = requiredConfirmations;
             } else {
@@ -133,12 +144,18 @@ export class ToBTCSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, To
     //////////////////////////////
     //// Amounts & fees
 
+    /**
+     * @inheritDoc
+     */
     getOutputToken(): BtcToken<false> {
         return BitcoinTokens.BTC;
     }
 
+    /**
+     * @inheritDoc
+     */
     getOutput(): TokenAmount<T["ChainId"], BtcToken<false>> {
-        return toTokenAmount(this.amount ?? null, this.outputToken, this.wrapper.prices, this.pricingInfo);
+        return toTokenAmount(this.amount ?? null, this.outputToken, this.wrapper._prices, this.pricingInfo);
     }
 
 
@@ -146,18 +163,21 @@ export class ToBTCSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, To
     //// Getters & utils
 
     /**
-     * Returns the bitcoin address where the BTC will be sent to
+     * @inheritDoc
      */
     getOutputAddress(): string | null {
         return this.address ?? null;
     }
 
+    /**
+     * @inheritDoc
+     */
     getOutputTxId(): string | null {
         return this.txId ?? null;
     }
 
     /**
-     * Returns fee rate of the bitcoin transaction in sats/vB
+     * Returns fee rate of the output bitcoin transaction in sats/vB as reported by the intermediary (LP)
      */
     getBitcoinFeeRate(): number {
         return this.satsPerVByte;
@@ -167,6 +187,9 @@ export class ToBTCSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, To
     //////////////////////////////
     //// Storage
 
+    /**
+     * @inheritDoc
+     */
     serialize(): any {
         return {
             ...super.serialize(),

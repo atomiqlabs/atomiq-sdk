@@ -5,6 +5,7 @@ import {toDecimal} from "../utils/Utils";
 
 /**
  * Represents a token amount along with its formatted values and USD valuation helpers
+ *
  * @category Tokens
  */
 export type TokenAmount<
@@ -68,7 +69,9 @@ export type TokenAmount<
 
 /**
  * Factory function to create a TokenAmount
+ *
  * @category Tokens
+ * @internal
  */
 export function toTokenAmount<
     ChainIdentifier extends string = string,

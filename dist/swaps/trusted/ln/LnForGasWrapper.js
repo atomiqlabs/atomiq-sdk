@@ -7,13 +7,31 @@ const TrustedIntermediaryAPI_1 = require("../../../intermediaries/apis/TrustedIn
 const bolt11_1 = require("@atomiqlabs/bolt11");
 const IntermediaryError_1 = require("../../../errors/IntermediaryError");
 const SwapType_1 = require("../../../enums/SwapType");
+/**
+ * Trusted swap for Bitcoin Lightning -> Smart chains, to be used for minor amounts to get gas tokens on
+ *  the destination chain, which is only needed for Solana, which still uses legacy swaps
+ *
+ * @category Swaps
+ */
 class LnForGasWrapper extends ISwapWrapper_1.ISwapWrapper {
     constructor() {
         super(...arguments);
         this.TYPE = SwapType_1.SwapType.TRUSTED_FROM_BTCLN;
-        this.swapDeserializer = LnForGasSwap_1.LnForGasSwap;
-        this.pendingSwapStates = [LnForGasSwap_1.LnForGasSwapState.PR_CREATED];
+        /**
+         * @internal
+         */
+        this._swapDeserializer = LnForGasSwap_1.LnForGasSwap;
+        /**
+         * @internal
+         */
+        this._pendingSwapStates = [LnForGasSwap_1.LnForGasSwapState.PR_CREATED];
+        /**
+         * @internal
+         */
         this.tickSwapState = undefined;
+        /**
+         * @internal
+         */
         this.processEvent = undefined;
     }
     /**
@@ -28,12 +46,12 @@ class LnForGasWrapper extends ISwapWrapper_1.ISwapWrapper {
         if (!this.isInitialized)
             throw new Error("Not initialized, call init() first!");
         const lpUrl = typeof (lpOrUrl) === "string" ? lpOrUrl : lpOrUrl.url;
-        const token = this.chain.getNativeCurrencyAddress();
+        const token = this._chain.getNativeCurrencyAddress();
         const resp = await TrustedIntermediaryAPI_1.TrustedIntermediaryAPI.initTrustedFromBTCLN(this.chainIdentifier, lpUrl, {
             address: recipient,
             amount,
             token
-        }, this.options.getRequestTimeout);
+        }, this._options.getRequestTimeout);
         const decodedPr = (0, bolt11_1.decode)(resp.pr);
         if (decodedPr.millisatoshis == null)
             throw new Error("Invalid payment request returned, no msat amount value!");

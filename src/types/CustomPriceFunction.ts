@@ -1,5 +1,6 @@
 /**
- * Custom pricing callback function type
+ * Custom pricing callback function type, fetches the USD price for the provided array
+ *  of token tickers.
  *
  * @param tickers Tickers of the tokens to fetch USD price for
  * @param abortSignal Abort signal

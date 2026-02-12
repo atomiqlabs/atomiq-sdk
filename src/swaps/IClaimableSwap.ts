@@ -32,19 +32,34 @@ export interface IClaimableSwap<
     isClaimable(): boolean;
 
     /**
-     * Returns the smart chain transactions required to be signed and sent to settle the swap on the destination
-     *  chain and claim the funds
+     * Returns transactions for settling (claiming) the swap if the swap requires manual settlement, you can check
+     *  so with {@link isClaimable}. After sending the transaction manually be sure to call the {@link waitTillClaimed}
+     *  function to wait till the claim transaction is observed, processed by the SDK and state of the swap
+     *  properly updated.
      *
      * @param _signer Address of the signer to create the refund transactions for
      */
     txsClaim(_signer?: string | T["Signer"] | T["NativeSigner"]): Promise<T["TX"][]>;
 
     /**
-     * Settles the swap by claiming the funds on the destination chain
+     * Settles the swap by claiming the funds on the destination chain if the swap requires manual settlement,
+     *  you can check so with {@link isClaimable}
      *
-     * @param _signer Signer to use for signing the transactions
+     * @param _signer Signer to use for signing the settlement transactions
      * @param abortSignal Abort signal
+     * @param onBeforeTxSent Optional callback triggered before the claim transaction is broadcasted
      */
-    claim(_signer?: T["Signer"] | T["NativeSigner"], abortSignal?: AbortSignal): Promise<string>;
+    claim(_signer?: T["Signer"] | T["NativeSigner"], abortSignal?: AbortSignal, onBeforeTxSent?: (txId: string) => void): Promise<string>;
+
+    /**
+     * Waits till the swap is successfully settled (claimed), should be called after sending the claim (settlement)
+     *  transactions manually to wait till the SDK processes the settlement and updates the swap state accordingly
+     *
+     * @param maxWaitTimeSeconds Maximum time in seconds to wait for the swap to be settled
+     * @param abortSignal AbortSignal
+     *
+     * @returns {boolean} whether the swap was claimed in time or not
+     */
+    waitTillClaimed(maxWaitTimeSeconds?: number, abortSignal?: AbortSignal): Promise<boolean>;
 
 }

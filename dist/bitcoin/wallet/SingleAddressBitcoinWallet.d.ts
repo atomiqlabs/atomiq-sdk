@@ -10,9 +10,9 @@ import { BitcoinRpcWithAddressIndex } from "@atomiqlabs/base";
  */
 export declare class SingleAddressBitcoinWallet extends BitcoinWallet {
     protected readonly privKey?: Uint8Array;
-    readonly pubkey: Uint8Array;
-    readonly address: string;
-    readonly addressType: CoinselectAddressTypes;
+    protected readonly pubkey: Uint8Array;
+    protected readonly address: string;
+    protected readonly addressType: CoinselectAddressTypes;
     constructor(mempoolApi: BitcoinRpcWithAddressIndex<any>, network: BTC_NETWORK, addressDataOrWIF: string | {
         address: string;
         publicKey: string;

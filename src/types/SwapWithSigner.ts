@@ -7,7 +7,8 @@ import {FromBTCLNAutoSwap} from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLN
 import {SpvFromBTCSwap} from "../swaps/spv_swaps/SpvFromBTCSwap";
 
 /**
- * Proxy type that auto-injects signer into swap methods
+ * Proxy type that auto-injects a smart chain signer into swap methods
+ *
  * @category Swaps
  */
 export type SwapWithSigner<T extends ISwap> = {
@@ -21,7 +22,9 @@ export type SwapWithSigner<T extends ISwap> = {
 
 /**
  * Wraps a swap with automatic signer injection for methods like commit, refund, and claim
+ *
  * @category Swaps
+ * @internal
  */
 export function wrapSwapWithSigner<C extends ChainType, T extends ISwap<C>>(swap: T, signer: C["Signer"]): SwapWithSigner<T> {
     return new Proxy(swap, {

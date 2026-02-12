@@ -20,30 +20,6 @@ class SwapperWithSigner {
         return this.swapper.intermediaryDiscovery;
     }
     /**
-     * Mempool (mempool.space) api used for fetching bitcoin chain and lightning network data
-     */
-    get mempoolApi() {
-        return this.swapper.mempoolApi;
-    }
-    /**
-     * Bitcoin RPC for fetching bitcoin chain data
-     */
-    get bitcoinRpc() {
-        return this.swapper.bitcoinRpc;
-    }
-    /**
-     * Bitcoin network specification
-     */
-    get bitcoinNetwork() {
-        return this.swapper.bitcoinNetwork;
-    }
-    /**
-     * Data propagation layer used for broadcasting messages to watchtowers
-     */
-    get messenger() {
-        return this.swapper.messenger;
-    }
-    /**
      * Miscellaneous utility functions
      */
     get Utils() {
@@ -57,6 +33,9 @@ class SwapperWithSigner {
      *  arbitrary transactions
      * - `supportsGasDrop`: Whether a swap supports the "gas drop" feature, allowing to user to receive a small
      *  amount of native token as part of the swap when swapping to smart chains
+     *
+     * Uses a `Record` type here, use the {@link SwapProtocolInfo} import for a literal readonly type, with
+     *  pre-filled exact values in the type.
      */
     get SwapTypeInfo() {
         return this.swapper.SwapTypeInfo;
@@ -310,6 +289,12 @@ class SwapperWithSigner {
     supportsSwapType(swapType) {
         return this.swapper.supportsSwapType(swapType);
     }
+    /**
+     * Returns type of the swap based on input and output tokens specified
+     *
+     * @param srcToken Source token
+     * @param dstToken Destination token
+     */
     getSwapType(srcToken, dstToken) {
         return this.swapper.getSwapType(srcToken, dstToken);
     }
@@ -328,35 +313,6 @@ class SwapperWithSigner {
      */
     getSwapCounterTokens(token, input) {
         return this.swapper.getSwapCounterTokens(token, input);
-    }
-    ///////////////////////////////////
-    /// Deprecated
-    /**
-     * Returns swap bounds (minimums & maximums) for different swap types & tokens
-     * @deprecated Use getSwapLimits() instead!
-     */
-    getSwapBounds() {
-        return this.swapper.getSwapBounds();
-    }
-    /**
-     * Returns maximum possible swap amount
-     * @deprecated Use getSwapLimits() instead!
-     *
-     * @param type      Type of the swap
-     * @param token     Token of the swap
-     */
-    getMaximum(type, token) {
-        return this.swapper.getMaximum(type, token);
-    }
-    /**
-     * Returns minimum possible swap amount
-     * @deprecated Use getSwapLimits() instead!
-     *
-     * @param type      Type of swap
-     * @param token     Token of the swap
-     */
-    getMinimum(type, token) {
-        return this.swapper.getMinimum(type, token);
     }
 }
 exports.SwapperWithSigner = SwapperWithSigner;

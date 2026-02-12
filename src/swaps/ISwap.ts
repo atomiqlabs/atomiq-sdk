@@ -55,27 +55,81 @@ export abstract class ISwap<
 > {
     /**
      * Swap type
-     * @protected
      */
     protected readonly abstract TYPE: SwapType;
+    /**
+     * Swap logger
+     * @internal
+     */
     protected readonly abstract logger: LoggerType;
-
     /**
      * Current newest defined version of the swap
-     * @protected
+     * @internal
      */
     protected readonly currentVersion: number = 1;
     /**
      * Wrapper instance holding this swap
-     * @protected
+     * @internal
      */
     protected readonly wrapper: D["Wrapper"];
 
+
+    /**
+     * The current version of the swap
+     * @internal
+     */
+    protected version: number;
+    /**
+     * Whether a swap was initialized, a swap is considered initialize on first interaction with it, i.e.
+     *  calling commit() on a Smart chain -> Bitcoin swaps, calling waitForPayment() or similar on the other
+     *  direction. Not initiated swaps are not saved to the persistent storage by default (see
+     *  {@link SwapperOptions.saveUninitializedSwaps})
+     * @internal
+     */
+    protected initiated: boolean = false;
+    /**
+     * Expiration of the swap quote
+     * @internal
+     */
+    protected expiry: number;
+    /**
+     * Pricing information of the swap
+     * @internal
+     */
+    protected pricingInfo?: PriceInfoType;
+    /**
+     * Swap fee in the non-bitcoin token
+     * @internal
+     */
+    protected swapFee: bigint;
+    /**
+     * Swap fee in bitcoin satoshis
+     * @internal
+     */
+    protected swapFeeBtc: bigint;
+
+
+    /**
+     * Swap state
+     * @internal
+     */
+    _state: S = 0 as S;
+    /**
+     * Random nonce to differentiate the swap from others with the same identifier hash (i.e. when quoting the same swap
+     *  from multiple LPs)
+     * @internal
+     */
+    _randomNonce: string;
+
+
+    /**
+     * Event emitter emitting `"swapState"` event when swap's state changes
+     */
+    readonly events: EventEmitter<{swapState: [D["Swap"]]}> = new EventEmitter();
     /**
      * URL of the intermediary (LP) used for this swap, already has the swap service specific path appended
      */
     readonly url?: string;
-
     /**
      * Smart chain identifier string corresponding to this swap
      */
@@ -88,55 +142,6 @@ export abstract class ISwap<
      * A UNIX milliseconds timestamps of when this swap was created
      */
     createdAt: number;
-
-    /**
-     * The current version of the swap
-     * @protected
-     */
-    protected version: number;
-    /**
-     * Whether a swap was initialized, a swap is considered initialize on first interaction with it, i.e.
-     *  calling commit() on a Smart chain -> Bitcoin swaps, calling waitForPayment() or similar on the other
-     *  direction. Not initiated swaps are not saved to the persistent storage by default (see
-     *  {@link SwapperOptions.saveUninitializedSwaps})
-     * @protected
-     */
-    protected initiated: boolean = false;
-
-    /**
-     * Swap state
-     */
-    state: S = 0 as S;
-    /**
-     * Expiration of the swap quote
-     */
-    expiry: number;
-    /**
-     * Pricing information of the swap
-     */
-    pricingInfo?: PriceInfoType;
-
-    /**
-     * Swap fee in the non-bitcoin token
-     * @protected
-     */
-    protected swapFee: bigint;
-    /**
-     * Swap fee in bitcoin satoshis
-     * @protected
-     */
-    protected swapFeeBtc: bigint;
-
-    /**
-     * Random nonce to differentiate the swap from others with the same identifier hash (i.e. when quoting the same swap
-     *  from multiple LPs)
-     */
-    randomNonce: string;
-
-    /**
-     * Event emitter emitting `"swapState"` event when swap's state changes
-     */
-    events: EventEmitter<{swapState: [D["Swap"]]}> = new EventEmitter();
 
     protected constructor(wrapper: D["Wrapper"], obj: any);
     protected constructor(wrapper: D["Wrapper"], swapInit: ISwapInit);
@@ -155,12 +160,12 @@ export abstract class ISwap<
             this.exactIn = swapInitOrObj.exactIn;
             this.version = this.currentVersion;
             this.createdAt = Date.now();
-            this.randomNonce = randomBytes(16).toString("hex");
+            this._randomNonce = randomBytes(16).toString("hex");
         } else {
             this.expiry = swapInitOrObj.expiry;
             this.url = swapInitOrObj.url;
 
-            this.state = swapInitOrObj.state;
+            this._state = swapInitOrObj.state;
 
             if(
                 swapInitOrObj._isValid!=null && swapInitOrObj._differencePPM!=null && swapInitOrObj._satsBaseFee!=null &&
@@ -185,7 +190,7 @@ export abstract class ISwap<
             this.exactIn = swapInitOrObj.exactIn;
             this.createdAt = swapInitOrObj.createdAt ?? swapInitOrObj.expiry;
 
-            this.randomNonce = swapInitOrObj.randomNonce;
+            this._randomNonce = swapInitOrObj.randomNonce;
         }
         if(this.version!==this.currentVersion) {
             this.upgradeVersion();
@@ -206,13 +211,13 @@ export abstract class ISwap<
      * @param targetState The state to wait for
      * @param type Whether to wait for the state exactly or also to a state with a higher number
      * @param abortSignal Abort signal
-     * @protected
+     * @internal
      */
     protected waitTillState(targetState: S, type: "eq" | "gte" | "neq" = "eq", abortSignal?: AbortSignal): Promise<void> {
         return new Promise((resolve, reject) => {
             let listener: (swap: D["Swap"]) => void;
             listener = (swap) => {
-                if(type==="eq" ? swap.state===targetState : type==="gte" ? swap.state>=targetState : swap.state!=targetState) {
+                if(type==="eq" ? swap._state===targetState : type==="gte" ? swap._state>=targetState : swap._state!=targetState) {
                     resolve();
                     this.events.removeListener("swapState", listener);
                 }
@@ -230,7 +235,7 @@ export abstract class ISwap<
      *
      * @param options Additional options for executing the swap
      */
-    abstract txsExecute(options?: any): Promise<SwapExecutionAction<T>[]>;
+    public abstract txsExecute(options?: any): Promise<SwapExecutionAction<T>[]>;
 
     //////////////////////////////
     //// Pricing
@@ -248,7 +253,7 @@ export abstract class ISwap<
             const output = this.getOutput();
             if(input.isUnknown || output.isUnknown) return;
             if(isSCToken(input.token) && this.getDirection()===SwapDirection.TO_BTC) {
-                this.pricingInfo = this.wrapper.prices.recomputePriceInfoSend(
+                this.pricingInfo = this.wrapper._prices.recomputePriceInfoSend(
                     this.chainIdentifier,
                     output.rawAmount!,
                     this.pricingInfo.satsBaseFee,
@@ -258,7 +263,7 @@ export abstract class ISwap<
                 );
                 this.pricingInfo.realPriceUsdPerBitcoin = priceUsdPerBtc;
             } else if(isSCToken(output.token) && this.getDirection()===SwapDirection.FROM_BTC) {
-                this.pricingInfo = this.wrapper.prices.recomputePriceInfoReceive(
+                this.pricingInfo = this.wrapper._prices.recomputePriceInfoReceive(
                     this.chainIdentifier,
                     input.rawAmount!,
                     this.pricingInfo.satsBaseFee,
@@ -274,7 +279,7 @@ export abstract class ISwap<
     /**
      * Re-fetches & revalidates the price data based on the current market prices
      */
-    async refreshPriceData(): Promise<void> {
+    public async refreshPriceData(): Promise<void> {
         if(this.pricingInfo==null) return;
         const priceUsdPerBtc = this.pricingInfo.realPriceUsdPerBitcoin;
         const input = this.getInput();
@@ -282,7 +287,7 @@ export abstract class ISwap<
         if(input.isUnknown || output.isUnknown) return;
 
         if(isSCToken(input.token) && this.getDirection()===SwapDirection.TO_BTC) {
-            this.pricingInfo = await this.wrapper.prices.isValidAmountSend(
+            this.pricingInfo = await this.wrapper._prices.isValidAmountSend(
                 this.chainIdentifier,
                 output.rawAmount!,
                 this.pricingInfo.satsBaseFee,
@@ -292,7 +297,7 @@ export abstract class ISwap<
             );
             this.pricingInfo.realPriceUsdPerBitcoin = priceUsdPerBtc;
         } else if(isSCToken(output.token) && this.getDirection()===SwapDirection.FROM_BTC) {
-            this.pricingInfo = await this.wrapper.prices.isValidAmountReceive(
+            this.pricingInfo = await this.wrapper._prices.isValidAmountReceive(
                 this.chainIdentifier,
                 input.rawAmount!,
                 this.pricingInfo.satsBaseFee,
@@ -307,7 +312,7 @@ export abstract class ISwap<
     /**
      * Checks if the pricing for the swap is valid, according to max allowed price difference set in the ISwapPrice
      */
-    hasValidPrice(): boolean {
+    public hasValidPrice(): boolean {
         if(this.pricingInfo==null) throw new Error("Pricing info not found, cannot check price validity!");
         return this.pricingInfo.isValid;
     }
@@ -315,7 +320,7 @@ export abstract class ISwap<
     /**
      * Returns pricing info about the swap
      */
-    getPriceInfo(): {
+    public getPriceInfo(): {
         marketPrice?: number,
         swapPrice: number,
         difference: PercentagePPM
@@ -344,6 +349,17 @@ export abstract class ISwap<
     //// Getters & utils
 
     /**
+     * Asserts a given signer is the initiator of this swap
+     *
+     * @param signer Signer to check with this swap's initiator
+     * @throws {Error} When signer's address doesn't match with the swap's initiator one
+     * @internal
+     */
+    protected checkSigner(signer: T["Signer"] | string): void {
+        if((typeof(signer)==="string" ? signer : signer.getAddress())!==this._getInitiator()) throw new Error("Invalid signer provided!");
+    }
+
+    /**
      * Returns an escrow hash of the swap
      *
      * @internal
@@ -351,91 +367,25 @@ export abstract class ISwap<
     abstract _getEscrowHash(): string | null;
 
     /**
-     * Asserts a given signer is the initiator of this swap
-     *
-     * @param signer Signer to check with this swap's initiator
-     * @throws {Error} When signer's address doesn't match with the swap's initiator one
+     * Checks if the swap's quote is expired for good (i.e. the swap strictly cannot be initiated anymore)
+     * @internal
      */
-    protected checkSigner(signer: T["Signer"] | string): void {
-        if((typeof(signer)==="string" ? signer : signer.getAddress())!==this._getInitiator()) throw new Error("Invalid signer provided!");
-    }
+    abstract _verifyQuoteDefinitelyExpired(): Promise<boolean>;
 
     /**
      * Checks if the swap's quote is still valid
+     * @internal
      */
-    abstract verifyQuoteValid(): Promise<boolean>;
-
-    /**
-     * Returns source address of the swap
-     */
-    abstract getInputAddress(): string | null;
-
-    /**
-     * Returns destination address of the swap
-     */
-    abstract getOutputAddress(): string | null;
-
-    /**
-     * Returns swap input transaction ID on the source chain
-     */
-    abstract getInputTxId(): string | null;
-
-    /**
-     * Returns swap output transaction ID on the destination chain
-     */
-    abstract getOutputTxId(): string | null;
-
-    /**
-     * Returns the ID of the swap, as used in the storage
-     */
-    abstract getId(): string;
-
-    /**
-     * Checks whether there is some action required from the user for this swap - can mean either refundable or claimable
-     */
-    abstract requiresAction(): boolean;
-
-    /**
-     * Returns whether the swap is finished and in its terminal state (this can mean successful, refunded or failed)
-     */
-    abstract isFinished(): boolean;
-
-    /**
-     * Checks whether the swap's quote has definitely expired and cannot be committed anymore, we can remove such swap
-     */
-    abstract isQuoteExpired(): boolean;
-
-    /**
-     * Checks whether the swap's quote is soft expired (this means there is not enough time buffer for it to commit,
-     *  but it still can happen)
-     */
-    abstract isQuoteSoftExpired(): boolean;
-
-    /**
-     * Returns whether the swap finished successful
-     */
-    abstract isSuccessful(): boolean;
-
-    /**
-     * Returns whether the swap failed (e.g. was refunded)
-     */
-    abstract isFailed(): boolean;
+    abstract _verifyQuoteValid(): Promise<boolean>;
 
     /**
      * Returns the intiator address of the swap - address that created this swap
+     * @internal
      */
     abstract _getInitiator(): string;
 
     /**
-     * Returns whether a swap was considered initiated (i.e. not just a quote)
-     */
-    isInitiated(): boolean {
-        return this.initiated;
-    }
-
-    /**
      * Sets this swap as initiated
-     *
      * @internal
      */
     _setInitiated(): void {
@@ -443,31 +393,97 @@ export abstract class ISwap<
     }
 
     /**
+     * Returns source address of the swap
+     */
+    public abstract getInputAddress(): string | null;
+
+    /**
+     * Returns destination address of the swap
+     */
+    public abstract getOutputAddress(): string | null;
+
+    /**
+     * Returns swap input transaction ID on the source chain
+     */
+    public abstract getInputTxId(): string | null;
+
+    /**
+     * Returns swap output transaction ID on the destination chain
+     */
+    public abstract getOutputTxId(): string | null;
+
+    /**
+     * Returns the ID of the swap, as used in the storage
+     */
+    public abstract getId(): string;
+
+    /**
+     * Checks whether there is some action required from the user for this swap - can mean either refundable or claimable
+     */
+    public abstract requiresAction(): boolean;
+
+    /**
+     * Returns whether the swap is finished and in its terminal state (this can mean successful, refunded or failed)
+     */
+    public abstract isFinished(): boolean;
+
+    /**
+     * Checks whether the swap's quote has definitely expired and cannot be committed anymore, we can remove such swap
+     */
+    public abstract isQuoteExpired(): boolean;
+
+    /**
+     * Checks whether the swap's quote is soft expired (this means there is not enough time buffer for it to commit,
+     *  but it still can happen)
+     */
+    public abstract isQuoteSoftExpired(): boolean;
+
+    /**
+     * Returns whether the swap finished successful
+     */
+    public abstract isSuccessful(): boolean;
+
+    /**
+     * Returns whether the swap failed (e.g. was refunded)
+     */
+    public abstract isFailed(): boolean;
+
+    /**
+     * Whether a swap was initialized, a swap is considered initialized on first interaction with it, i.e.
+     *  calling commit() on a Smart chain -> Bitcoin swaps, calling waitForPayment() or similar on the other
+     *  direction. Not initiated swaps are not saved to the persistent storage by default (see
+     *  {@link SwapperOptions.saveUninitializedSwaps})
+     */
+    public isInitiated(): boolean {
+        return this.initiated;
+    }
+
+    /**
      * Returns quote expiry in UNIX millis
      */
-    getQuoteExpiry(): number {
+    public getQuoteExpiry(): number {
         return this.expiry;
     }
 
     /**
      * Returns the type of the swap
      */
-    getType(): SwapType {
+    public getType(): SwapType {
         return this.TYPE;
     }
 
     /**
      * Returns the direction of the swap
      */
-    getDirection(): SwapDirection {
+    public getDirection(): SwapDirection {
         return this.TYPE===SwapType.TO_BTC || this.TYPE===SwapType.TO_BTCLN ? SwapDirection.TO_BTC : SwapDirection.FROM_BTC;
     }
 
     /**
      * Returns the current state of the swap
      */
-    getState(): S {
-        return this.state;
+    public getState(): S {
+        return this._state;
     }
 
     //////////////////////////////
@@ -476,73 +492,42 @@ export abstract class ISwap<
     /**
      * Returns output amount of the swap, user receives this much
      */
-    abstract getOutput(): TokenAmount;
+    public abstract getOutput(): TokenAmount;
 
     /**
      * Returns the output token of the swap
      */
-    abstract getOutputToken(): Token<T["ChainId"]>;
+    public abstract getOutputToken(): Token<T["ChainId"]>;
 
     /**
      * Returns input amount of the swap, user needs to pay this much
      */
-    abstract getInput(): TokenAmount;
+    public abstract getInput(): TokenAmount;
 
     /**
      * Returns the input token of the swap
      */
-    abstract getInputToken(): Token<T["ChainId"]>;
+    public abstract getInputToken(): Token<T["ChainId"]>;
 
     /**
      * Returns input amount of the swap without the fees (swap fee, network fee)
      */
-    abstract getInputWithoutFee(): TokenAmount;
+    public abstract getInputWithoutFee(): TokenAmount;
 
     /**
      * Returns total fee for the swap, the fee is represented in source currency & destination currency, but is
      *  paid only once
      */
-    abstract getFee(): Fee;
+    public abstract getFee(): Fee;
 
     /**
      * Returns the breakdown of all the fees paid
      */
-    abstract getFeeBreakdown(): FeeBreakdown<T["ChainId"]>;
+    public abstract getFeeBreakdown(): FeeBreakdown<T["ChainId"]>;
 
 
     //////////////////////////////
     //// Storage
-
-    /**
-     * Serializes the swap to a JSON stringifiable representation (i.e. no bigints, buffers etc.)
-     */
-    serialize(): any {
-        if(this.pricingInfo==null) return {};
-        return {
-            id: this.getId(),
-            type: this.getType(),
-            escrowHash: this._getEscrowHash(),
-            initiator: this._getInitiator(),
-
-            _isValid: this.pricingInfo.isValid,
-            _differencePPM: this.pricingInfo.differencePPM==null ? null :this.pricingInfo.differencePPM.toString(10),
-            _satsBaseFee: this.pricingInfo.satsBaseFee==null ? null :this.pricingInfo.satsBaseFee.toString(10),
-            _feePPM: this.pricingInfo.feePPM==null ? null :this.pricingInfo.feePPM.toString(10),
-            _realPriceUSatPerToken: this.pricingInfo.realPriceUSatPerToken==null ? null :this.pricingInfo.realPriceUSatPerToken.toString(10),
-            _realPriceUsdPerBitcoin: this.pricingInfo.realPriceUsdPerBitcoin,
-            _swapPriceUSatPerToken: this.pricingInfo.swapPriceUSatPerToken==null ? null :this.pricingInfo.swapPriceUSatPerToken.toString(10),
-            state: this.state,
-            url: this.url,
-            swapFee: this.swapFee==null ? null : this.swapFee.toString(10),
-            swapFeeBtc: this.swapFeeBtc==null ? null : this.swapFeeBtc.toString(10),
-            expiry: this.expiry,
-            version: this.version,
-            initiated: this.initiated,
-            exactIn: this.exactIn,
-            createdAt: this.createdAt,
-            randomNonce: this.randomNonce
-        }
-    }
 
     /**
      * Saves the swap data to the underlying storage, or removes it if it is in a quote expired state
@@ -565,9 +550,40 @@ export abstract class ISwap<
      * @internal
      */
     async _saveAndEmit(state?: S): Promise<void> {
-        if(state!=null) this.state = state;
+        if(state!=null) this._state = state;
         await this._save();
         this._emitEvent();
+    }
+
+    /**
+     * Serializes the swap to a JSON stringifiable representation (i.e. no bigints, buffers etc.)
+     */
+    public serialize(): any {
+        if(this.pricingInfo==null) return {};
+        return {
+            id: this.getId(),
+            type: this.getType(),
+            escrowHash: this._getEscrowHash(),
+            initiator: this._getInitiator(),
+
+            _isValid: this.pricingInfo.isValid,
+            _differencePPM: this.pricingInfo.differencePPM==null ? null :this.pricingInfo.differencePPM.toString(10),
+            _satsBaseFee: this.pricingInfo.satsBaseFee==null ? null :this.pricingInfo.satsBaseFee.toString(10),
+            _feePPM: this.pricingInfo.feePPM==null ? null :this.pricingInfo.feePPM.toString(10),
+            _realPriceUSatPerToken: this.pricingInfo.realPriceUSatPerToken==null ? null :this.pricingInfo.realPriceUSatPerToken.toString(10),
+            _realPriceUsdPerBitcoin: this.pricingInfo.realPriceUsdPerBitcoin,
+            _swapPriceUSatPerToken: this.pricingInfo.swapPriceUSatPerToken==null ? null :this.pricingInfo.swapPriceUSatPerToken.toString(10),
+            state: this._state,
+            url: this.url,
+            swapFee: this.swapFee==null ? null : this.swapFee.toString(10),
+            swapFeeBtc: this.swapFeeBtc==null ? null : this.swapFeeBtc.toString(10),
+            expiry: this.expiry,
+            version: this.version,
+            initiated: this.initiated,
+            exactIn: this.exactIn,
+            createdAt: this.createdAt,
+            randomNonce: this._randomNonce
+        }
     }
 
 

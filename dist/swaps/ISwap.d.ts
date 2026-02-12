@@ -39,20 +39,73 @@ export declare function isISwapInit(obj: any): obj is ISwapInit;
 export declare abstract class ISwap<T extends ChainType = ChainType, D extends SwapTypeDefinition<T, ISwapWrapper<T, D>, ISwap<T, D, S>> = SwapTypeDefinition<T, ISwapWrapper<T, any>, ISwap<T, any, any>>, S extends number = number> {
     /**
      * Swap type
-     * @protected
      */
     protected readonly abstract TYPE: SwapType;
+    /**
+     * Swap logger
+     * @internal
+     */
     protected readonly abstract logger: LoggerType;
     /**
      * Current newest defined version of the swap
-     * @protected
+     * @internal
      */
     protected readonly currentVersion: number;
     /**
      * Wrapper instance holding this swap
-     * @protected
+     * @internal
      */
     protected readonly wrapper: D["Wrapper"];
+    /**
+     * The current version of the swap
+     * @internal
+     */
+    protected version: number;
+    /**
+     * Whether a swap was initialized, a swap is considered initialize on first interaction with it, i.e.
+     *  calling commit() on a Smart chain -> Bitcoin swaps, calling waitForPayment() or similar on the other
+     *  direction. Not initiated swaps are not saved to the persistent storage by default (see
+     *  {@link SwapperOptions.saveUninitializedSwaps})
+     * @internal
+     */
+    protected initiated: boolean;
+    /**
+     * Expiration of the swap quote
+     * @internal
+     */
+    protected expiry: number;
+    /**
+     * Pricing information of the swap
+     * @internal
+     */
+    protected pricingInfo?: PriceInfoType;
+    /**
+     * Swap fee in the non-bitcoin token
+     * @internal
+     */
+    protected swapFee: bigint;
+    /**
+     * Swap fee in bitcoin satoshis
+     * @internal
+     */
+    protected swapFeeBtc: bigint;
+    /**
+     * Swap state
+     * @internal
+     */
+    _state: S;
+    /**
+     * Random nonce to differentiate the swap from others with the same identifier hash (i.e. when quoting the same swap
+     *  from multiple LPs)
+     * @internal
+     */
+    _randomNonce: string;
+    /**
+     * Event emitter emitting `"swapState"` event when swap's state changes
+     */
+    readonly events: EventEmitter<{
+        swapState: [D["Swap"]];
+    }>;
     /**
      * URL of the intermediary (LP) used for this swap, already has the swap service specific path appended
      */
@@ -69,52 +122,6 @@ export declare abstract class ISwap<T extends ChainType = ChainType, D extends S
      * A UNIX milliseconds timestamps of when this swap was created
      */
     createdAt: number;
-    /**
-     * The current version of the swap
-     * @protected
-     */
-    protected version: number;
-    /**
-     * Whether a swap was initialized, a swap is considered initialize on first interaction with it, i.e.
-     *  calling commit() on a Smart chain -> Bitcoin swaps, calling waitForPayment() or similar on the other
-     *  direction. Not initiated swaps are not saved to the persistent storage by default (see
-     *  {@link SwapperOptions.saveUninitializedSwaps})
-     * @protected
-     */
-    protected initiated: boolean;
-    /**
-     * Swap state
-     */
-    state: S;
-    /**
-     * Expiration of the swap quote
-     */
-    expiry: number;
-    /**
-     * Pricing information of the swap
-     */
-    pricingInfo?: PriceInfoType;
-    /**
-     * Swap fee in the non-bitcoin token
-     * @protected
-     */
-    protected swapFee: bigint;
-    /**
-     * Swap fee in bitcoin satoshis
-     * @protected
-     */
-    protected swapFeeBtc: bigint;
-    /**
-     * Random nonce to differentiate the swap from others with the same identifier hash (i.e. when quoting the same swap
-     *  from multiple LPs)
-     */
-    randomNonce: string;
-    /**
-     * Event emitter emitting `"swapState"` event when swap's state changes
-     */
-    events: EventEmitter<{
-        swapState: [D["Swap"]];
-    }>;
     protected constructor(wrapper: D["Wrapper"], obj: any);
     protected constructor(wrapper: D["Wrapper"], swapInit: ISwapInit);
     /**
@@ -129,7 +136,7 @@ export declare abstract class ISwap<T extends ChainType = ChainType, D extends S
      * @param targetState The state to wait for
      * @param type Whether to wait for the state exactly or also to a state with a higher number
      * @param abortSignal Abort signal
-     * @protected
+     * @internal
      */
     protected waitTillState(targetState: S, type?: "eq" | "gte" | "neq", abortSignal?: AbortSignal): Promise<void>;
     /**
@@ -161,22 +168,39 @@ export declare abstract class ISwap<T extends ChainType = ChainType, D extends S
         difference: PercentagePPM;
     };
     /**
+     * Asserts a given signer is the initiator of this swap
+     *
+     * @param signer Signer to check with this swap's initiator
+     * @throws {Error} When signer's address doesn't match with the swap's initiator one
+     * @internal
+     */
+    protected checkSigner(signer: T["Signer"] | string): void;
+    /**
      * Returns an escrow hash of the swap
      *
      * @internal
      */
     abstract _getEscrowHash(): string | null;
     /**
-     * Asserts a given signer is the initiator of this swap
-     *
-     * @param signer Signer to check with this swap's initiator
-     * @throws {Error} When signer's address doesn't match with the swap's initiator one
+     * Checks if the swap's quote is expired for good (i.e. the swap strictly cannot be initiated anymore)
+     * @internal
      */
-    protected checkSigner(signer: T["Signer"] | string): void;
+    abstract _verifyQuoteDefinitelyExpired(): Promise<boolean>;
     /**
      * Checks if the swap's quote is still valid
+     * @internal
      */
-    abstract verifyQuoteValid(): Promise<boolean>;
+    abstract _verifyQuoteValid(): Promise<boolean>;
+    /**
+     * Returns the intiator address of the swap - address that created this swap
+     * @internal
+     */
+    abstract _getInitiator(): string;
+    /**
+     * Sets this swap as initiated
+     * @internal
+     */
+    _setInitiated(): void;
     /**
      * Returns source address of the swap
      */
@@ -223,19 +247,12 @@ export declare abstract class ISwap<T extends ChainType = ChainType, D extends S
      */
     abstract isFailed(): boolean;
     /**
-     * Returns the intiator address of the swap - address that created this swap
-     */
-    abstract _getInitiator(): string;
-    /**
-     * Returns whether a swap was considered initiated (i.e. not just a quote)
+     * Whether a swap was initialized, a swap is considered initialized on first interaction with it, i.e.
+     *  calling commit() on a Smart chain -> Bitcoin swaps, calling waitForPayment() or similar on the other
+     *  direction. Not initiated swaps are not saved to the persistent storage by default (see
+     *  {@link SwapperOptions.saveUninitializedSwaps})
      */
     isInitiated(): boolean;
-    /**
-     * Sets this swap as initiated
-     *
-     * @internal
-     */
-    _setInitiated(): void;
     /**
      * Returns quote expiry in UNIX millis
      */
@@ -282,10 +299,6 @@ export declare abstract class ISwap<T extends ChainType = ChainType, D extends S
      */
     abstract getFeeBreakdown(): FeeBreakdown<T["ChainId"]>;
     /**
-     * Serializes the swap to a JSON stringifiable representation (i.e. no bigints, buffers etc.)
-     */
-    serialize(): any;
-    /**
      * Saves the swap data to the underlying storage, or removes it if it is in a quote expired state
      *
      * @internal
@@ -299,6 +312,10 @@ export declare abstract class ISwap<T extends ChainType = ChainType, D extends S
      * @internal
      */
     _saveAndEmit(state?: S): Promise<void>;
+    /**
+     * Serializes the swap to a JSON stringifiable representation (i.e. no bigints, buffers etc.)
+     */
+    serialize(): any;
     /**
      * Emits a `swapState` event with the current swap
      *

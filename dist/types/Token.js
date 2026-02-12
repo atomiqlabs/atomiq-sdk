@@ -2,7 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.isToken = exports.isSCToken = exports.BitcoinTokens = exports.isBtcToken = void 0;
 /**
- * Type guard for BtcToken
+ * Type guard for {@link BtcToken} (token on the bitcoin network - lightning or on-chain)
+ *
  * @category Tokens
  */
 function isBtcToken(obj) {
@@ -16,6 +17,7 @@ function isBtcToken(obj) {
 exports.isBtcToken = isBtcToken;
 /**
  * Predefined Bitcoin token constants
+ *
  * @category Tokens
  */
 exports.BitcoinTokens = {
@@ -35,7 +37,7 @@ exports.BitcoinTokens = {
     }
 };
 /**
- * Type guard for SCToken
+ * Type guard for {@link SCToken} (token on the smart chain)
  * @category Tokens
  */
 function isSCToken(obj) {
@@ -49,7 +51,8 @@ function isSCToken(obj) {
 }
 exports.isSCToken = isSCToken;
 /**
- * Type guard for Token
+ * Type guard for an union {@link Token} type, encompassing all tokens (BTC or smart chain)
+ *
  * @category Tokens
  */
 function isToken(obj) {

@@ -15,6 +15,11 @@ const LNURL_1 = require("../../../../lnurl/LNURL");
 const IToBTCSwap_1 = require("../IToBTCSwap");
 const sha2_1 = require("@noble/hashes/sha2");
 const RetryUtils_1 = require("../../../../utils/RetryUtils");
+/**
+ * Escrow based (HTLC) swap for Smart chains -> Bitcoin lightning
+ *
+ * @category Swaps
+ */
 class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
     constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, options, events) {
         super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, {
@@ -23,12 +28,15 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
             lightningFeePPM: options?.lightningFeePPM ?? 2000
         }, events);
         this.TYPE = SwapType_1.SwapType.TO_BTCLN;
-        this.swapDeserializer = ToBTCLNSwap_1.ToBTCLNSwap;
+        /**
+         * @internal
+         */
+        this._swapDeserializer = ToBTCLNSwap_1.ToBTCLNSwap;
     }
     toRequiredSwapOptions(amountData, options, pricePreFetchPromise, abortSignal) {
-        const expirySeconds = options?.expirySeconds ?? this.options.paymentTimeoutSeconds;
-        const maxRoutingBaseFee = options?.maxRoutingBaseFee ?? BigInt(this.options.lightningBaseFee);
-        const maxRoutingPPM = options?.maxRoutingPPM ?? BigInt(this.options.lightningFeePPM);
+        const expirySeconds = options?.expirySeconds ?? this._options.paymentTimeoutSeconds;
+        const maxRoutingBaseFee = options?.maxRoutingBaseFee ?? BigInt(this._options.lightningBaseFee);
+        const maxRoutingPPM = options?.maxRoutingPPM ?? BigInt(this._options.lightningFeePPM);
         let maxFee;
         if (options?.maxFee != null) {
             maxFee = options.maxFee;
@@ -36,11 +44,11 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
         else if (amountData.exactIn) {
             if (pricePreFetchPromise != null) {
                 maxFee = pricePreFetchPromise
-                    .then(val => this.prices.getFromBtcSwapAmount(this.chainIdentifier, maxRoutingBaseFee, amountData.token, abortSignal, val))
+                    .then(val => this._prices.getFromBtcSwapAmount(this.chainIdentifier, maxRoutingBaseFee, amountData.token, abortSignal, val))
                     .then(_maxBaseFee => this.calculateFeeForAmount(amountData.amount, _maxBaseFee, maxRoutingPPM));
             }
             else {
-                maxFee = this.prices.getFromBtcSwapAmount(this.chainIdentifier, maxRoutingBaseFee, amountData.token, abortSignal)
+                maxFee = this._prices.getFromBtcSwapAmount(this.chainIdentifier, maxRoutingBaseFee, amountData.token, abortSignal)
                     .then(_maxBaseFee => this.calculateFeeForAmount(amountData.amount, _maxBaseFee, maxRoutingPPM));
             }
         }
@@ -55,10 +63,18 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
             maxFee
         };
     }
+    /**
+     * Verifies whether a given payment hash was already paid by checking the local
+     *  storage of known swaps
+     *
+     * @param paymentHash Payment hash to check
+     *
+     * @private
+     */
     async checkPaymentHashWasPaid(paymentHash) {
-        const swaps = await this.unifiedStorage.query([[{ key: "type", value: this.TYPE }, { key: "paymentHash", value: paymentHash }]], (obj) => new this.swapDeserializer(this, obj));
+        const swaps = await this.unifiedStorage.query([[{ key: "type", value: this.TYPE }, { key: "paymentHash", value: paymentHash }]], (obj) => new this._swapDeserializer(this, obj));
         for (let value of swaps) {
-            if (value.state === IToBTCSwap_1.ToBTCSwapState.CLAIMED || value.state === IToBTCSwap_1.ToBTCSwapState.SOFT_CLAIMED)
+            if (value._state === IToBTCSwap_1.ToBTCSwapState.CLAIMED || value._state === IToBTCSwap_1.ToBTCSwapState.SOFT_CLAIMED)
                 throw new UserError_1.UserError("Lightning invoice was already paid!");
         }
     }
@@ -68,12 +84,14 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
      * @param amount BTC amount of the swap in satoshis
      * @param overrideBaseFee Override wrapper's default base fee
      * @param overrideFeePPM Override wrapper's default PPM
-     * @private
+     *
      * @returns Maximum lightning routing fee in sats
+     *
+     * @private
      */
     calculateFeeForAmount(amount, overrideBaseFee, overrideFeePPM) {
-        return BigInt(overrideBaseFee ?? this.options.lightningBaseFee)
-            + (amount * BigInt(overrideFeePPM ?? this.options.lightningFeePPM) / 1000000n);
+        return BigInt(overrideBaseFee ?? this._options.lightningBaseFee)
+            + (amount * BigInt(overrideFeePPM ?? this._options.lightningFeePPM) / 1000000n);
     }
     /**
      * Verifies returned LP data
@@ -86,8 +104,10 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
      * @param options Swap options as passed to the swap create function
      * @param data Parsed swap data returned by the LP
      * @param requiredTotal Required total to be paid on the input (for exactIn swaps)
-     * @private
+     *
      * @throws {IntermediaryError} In case the response is not valid
+     *
+     * @private
      */
     async verifyReturnedData(signer, resp, parsedPr, token, lp, options, data, requiredTotal) {
         if (resp.routingFeeSats > await options.maxFee)
@@ -96,7 +116,7 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
             throw new IntermediaryError_1.IntermediaryError("Invalid data returned - total amount");
         if (parsedPr.tagsObject.payment_hash == null)
             throw new Error("Swap invoice doesn't contain payment hash field!");
-        const claimHash = this.contract.getHashForHtlc(Buffer.from(parsedPr.tagsObject.payment_hash, "hex"));
+        const claimHash = this._contract.getHashForHtlc(Buffer.from(parsedPr.tagsObject.payment_hash, "hex"));
         if (data.getAmount() !== resp.total ||
             !Buffer.from(data.getClaimHash(), "hex").equals(claimHash) ||
             data.getExpiry() !== options.expiryTimestamp ||
@@ -122,6 +142,7 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
      * @param abort Abort signal or controller, if AbortController is passed it is used as-is, when AbortSignal is passed
      *  it is extended with extendAbortController and then used
      * @param additionalParams Additional params that should be sent to the LP
+     *
      * @private
      */
     async getIntermediaryQuote(signer, amountData, lp, pr, parsedPr, options, preFetches, abort, additionalParams) {
@@ -139,7 +160,7 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                     token: amountData.token,
                     feeRate: (0, Utils_1.throwIfUndefined)(preFetches.feeRatePromise),
                     additionalParams
-                }, this.options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined);
+                }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined);
                 return {
                     signDataPromise: preFetches.signDataPrefetchPromise ?? this.preFetchSignData(signDataPrefetch),
                     resp: await response
@@ -149,7 +170,7 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                 throw new Error("Swap invoice doesn't have msat amount field!");
             const amountOut = (BigInt(parsedPr.millisatoshis) + 999n) / 1000n;
             const totalFee = resp.swapFee + resp.maxFee;
-            const data = new this.swapDataDeserializer(resp.data);
+            const data = new this._swapDataDeserializer(resp.data);
             data.setOfferer(signer);
             await this.verifyReturnedData(signer, resp, parsedPr, amountData.token, lp, options, data);
             const [pricingInfo, signatureExpiry, reputation] = await Promise.all([
@@ -185,25 +206,26 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
         }
     }
     /**
-     * Returns a newly created swap, paying for 'bolt11PayRequest' - a bitcoin LN invoice
+     * Returns a newly created Smart chain -> Lightning swap using the HTLC based escrow swap protocol,
+     *  the amount is parsed from the provided lightning network payment request (bolt11 invoice)
      *
-     * @param signer                Smartchain signer's address initiating the swap
-     * @param bolt11PayRequest      BOLT11 payment request (bitcoin lightning invoice) you wish to pay
-     * @param amountData            Amount of token & amount to swap
-     * @param lps                   LPs (liquidity providers) to get the quotes from
-     * @param options               Quote options
-     * @param additionalParams      Additional parameters sent to the LP when creating the swap
-     * @param abortSignal           Abort signal for aborting the process
-     * @param preFetches            Existing pre-fetches for the swap (only used internally for LNURL swaps)
+     * @param signer Source chain signer address initiating the swap
+     * @param recipient BOLT11 payment request (bitcoin lightning invoice) you wish to pay
+     * @param amountData Token to swap
+     * @param lps An array of intermediaries (LPs) to get the quotes from
+     * @param options Optional additional quote options
+     * @param additionalParams Optional additional parameters sent to the LP when creating the swap
+     * @param abortSignal Abort signal
+     * @param preFetches Optional existing pre-fetch promises for the swap (only used internally for LNURL swaps)
      */
-    async create(signer, bolt11PayRequest, amountData, lps, options, additionalParams, abortSignal, preFetches) {
-        const parsedPr = (0, bolt11_1.decode)(bolt11PayRequest);
+    async create(signer, recipient, amountData, lps, options, additionalParams, abortSignal, preFetches) {
+        const parsedPr = (0, bolt11_1.decode)(recipient);
         if (parsedPr.millisatoshis == null)
             throw new UserError_1.UserError("Must be an invoice with amount");
         const amountOut = (BigInt(parsedPr.millisatoshis) + 999n) / 1000n;
-        const expirySeconds = options?.expirySeconds ?? this.options.paymentTimeoutSeconds;
-        const maxRoutingBaseFee = options?.maxRoutingBaseFee ?? BigInt(this.options.lightningBaseFee);
-        const maxRoutingPPM = options?.maxRoutingPPM ?? BigInt(this.options.lightningFeePPM);
+        const expirySeconds = options?.expirySeconds ?? this._options.paymentTimeoutSeconds;
+        const maxRoutingBaseFee = options?.maxRoutingBaseFee ?? BigInt(this._options.lightningBaseFee);
+        const maxRoutingPPM = options?.maxRoutingPPM ?? BigInt(this._options.lightningFeePPM);
         const _options = {
             expirySeconds,
             expiryTimestamp: options?.expiryTimestamp ?? BigInt(Math.floor(Date.now() / 1000) + expirySeconds),
@@ -214,18 +236,18 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
         if (parsedPr.tagsObject.payment_hash == null)
             throw new Error("Provided lightning invoice doesn't contain payment hash field!");
         await this.checkPaymentHashWasPaid(parsedPr.tagsObject.payment_hash);
-        const claimHash = this.contract.getHashForHtlc(Buffer.from(parsedPr.tagsObject.payment_hash, "hex"));
+        const claimHash = this._contract.getHashForHtlc(Buffer.from(parsedPr.tagsObject.payment_hash, "hex"));
         const _abortController = (0, Utils_1.extendAbortController)(abortSignal);
         const _preFetches = preFetches ?? {
             pricePreFetchPromise: this.preFetchPrice(amountData, _abortController.signal),
             feeRatePromise: this.preFetchFeeRate(signer, amountData, claimHash.toString("hex"), _abortController),
             usdPricePrefetchPromise: this.preFetchUsdPrice(_abortController.signal),
-            signDataPrefetchPromise: this.contract.preFetchBlockDataForSignatures == null ? this.preFetchSignData(Promise.resolve(true)) : undefined
+            signDataPrefetchPromise: this._contract.preFetchBlockDataForSignatures == null ? this.preFetchSignData(Promise.resolve(true)) : undefined
         };
         return lps.map(lp => {
             return {
                 intermediary: lp,
-                quote: this.getIntermediaryQuote(signer, amountData, lp, bolt11PayRequest, parsedPr, _options, _preFetches, _abortController.signal, additionalParams)
+                quote: this.getIntermediaryQuote(signer, amountData, lp, recipient, parsedPr, _options, _preFetches, _abortController.signal, additionalParams)
             };
         });
     }
@@ -233,14 +255,15 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
      * Parses and fetches lnurl pay params from the specified lnurl
      *
      * @param lnurl LNURL to be parsed and fetched
-     * @param abortSignal
-     * @private
+     * @param abortSignal Abort signal
      * @throws {UserError} if the LNURL is invalid or if it's not a LNURL-pay
+     *
+     * @private
      */
     async getLNURLPay(lnurl, abortSignal) {
         if (typeof (lnurl) !== "string")
             return lnurl;
-        const res = await LNURL_1.LNURL.getLNURL(lnurl, true, this.options.getRequestTimeout, abortSignal);
+        const res = await LNURL_1.LNURL.getLNURL(lnurl, true, this._options.getRequestTimeout, abortSignal);
         if (res == null)
             throw new UserError_1.UserError("Invalid LNURL");
         if (res.tag !== "payRequest")
@@ -250,15 +273,17 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
     /**
      * Returns the quote/swap from the given LP
      *
-     * @param signer Smartchain signer's address initiating the swap
-     * @param amountData
+     * @param signer Source chain signer address initiating the swap
+     * @param amountData Token to swap
      * @param invoiceCreateService Service for creating fixed amount invoices
-     * @param lp Intermediary
-     * @param dummyPr Dummy minimum value bolt11 lightning invoice returned from the LNURL-pay
-     * @param options Options as passed to the swap create function
-     * @param preFetches
-     * @param abortSignal
+     * @param lp Intermediary (LPs) to get the quote from
+     * @param dummyPr Dummy minimum value bolt11 lightning invoice returned from the LNURL-pay, used to estimate
+     *  network fees for an actual invoice
+     * @param options Optional additional quote options
+     * @param preFetches Optional existing pre-fetch promises for the swap (only used internally for LNURL swaps)
+     * @param abortSignal Abort signal
      * @param additionalParams Additional params to be sent to the intermediary
+     *
      * @private
      */
     async getIntermediaryQuoteExactIn(signer, amountData, invoiceCreateService, lp, dummyPr, options, preFetches, abortSignal, additionalParams) {
@@ -276,7 +301,7 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                     maxFee: await options.maxFee,
                     expiryTimestamp: options.expiryTimestamp,
                     additionalParams
-                }, this.options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined);
+                }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined);
                 return {
                     signDataPromise: this.preFetchSignData(signDataPrefetch),
                     prepareResp: await response
@@ -299,12 +324,12 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                 reqId: prepareResp.reqId,
                 feeRate: (0, Utils_1.throwIfUndefined)(preFetches.feeRatePromise),
                 additionalParams
-            }, this.options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined), undefined, RequestError_1.RequestError, abortController.signal);
+            }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined), undefined, RequestError_1.RequestError, abortController.signal);
             if (parsedInvoice.millisatoshis == null)
                 throw new Error("Swap invoice doesn't have msat amount field!");
             const amountOut = (BigInt(parsedInvoice.millisatoshis) + 999n) / 1000n;
             const totalFee = resp.swapFee + resp.maxFee;
-            const data = new this.swapDataDeserializer(resp.data);
+            const data = new this._swapDataDeserializer(resp.data);
             data.setOfferer(signer);
             await this.verifyReturnedData(signer, resp, parsedInvoice, amountData.token, lp, options, data, amountData.amount);
             const [pricingInfo, signatureExpiry, reputation] = await Promise.all([
@@ -340,15 +365,17 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
         }
     }
     /**
-     * Returns a newly created swap, allowing exactIn swaps with invoice creation service
+     * Returns a newly created Smart chain -> Lightning swap using the HTLC based escrow swap protocol via
+     *  invoice creation service. This allows exactIn swaps by requesting the desired fixed amount lightning
+     *  network invoice from the service.
      *
-     * @param signer                Smartchain signer's address initiating the swap
-     * @param invoiceCreateServicePromise
-     * @param amountData            Amount of token & amount to swap
-     * @param lps                   LPs (liquidity providers/intermediaries) to get the quotes from
-     * @param options               Quote options
-     * @param additionalParams      Additional parameters sent to the intermediary when creating the swap
-     * @param abortSignal           Abort signal for aborting the process
+     * @param signer Source chain signer address initiating the swap
+     * @param invoiceCreateServicePromise Service to request destination lightning network invoices from
+     * @param amountData Amount, token and exact input/output data for to swap
+     * @param lps An array of intermediaries (LPs) to get the quotes from
+     * @param options Optional additional quote options
+     * @param additionalParams Optional additional parameters sent to the LP when creating the swap
+     * @param abortSignal Abort signal
      */
     async createViaInvoiceCreateService(signer, invoiceCreateServicePromise, amountData, lps, options, additionalParams, abortSignal) {
         if (!this.isInitialized)
@@ -357,7 +384,7 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
         const pricePreFetchPromise = this.preFetchPrice(amountData, _abortController.signal);
         const usdPricePrefetchPromise = this.preFetchUsdPrice(_abortController.signal);
         const feeRatePromise = this.preFetchFeeRate(signer, amountData, undefined, _abortController);
-        const signDataPrefetchPromise = this.contract.preFetchBlockDataForSignatures == null ?
+        const signDataPrefetchPromise = this._contract.preFetchBlockDataForSignatures == null ?
             this.preFetchSignData(Promise.resolve(true)) :
             undefined;
         const _options = this.toRequiredSwapOptions(amountData, options, pricePreFetchPromise, _abortController.signal);
@@ -400,15 +427,17 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
         }
     }
     /**
-     * Returns a newly created swap, paying for 'lnurl' - a lightning LNURL-pay
+     * Returns a newly created Smart chain -> Lightning swap using the HTLC based escrow swap protocol. Pays to
+     *  an LNURL-pay link. This allows exactIn swaps by requesting the desired fixed amount lightning
+     *  network invoice from the LNURL service.
      *
-     * @param signer                Smartchain signer's address initiating the swap
-     * @param lnurl                 LMURL-pay you wish to pay
-     * @param amountData            Amount of token & amount to swap
-     * @param lps                   LPs (liquidity providers/intermediaries) to get the quotes from
-     * @param options               Quote options
-     * @param additionalParams      Additional parameters sent to the intermediary when creating the swap
-     * @param abortSignal           Abort signal for aborting the process
+     * @param signer Source chain signer address initiating the swap
+     * @param lnurl LNURL-pay link of the recipient
+     * @param amountData Amount, token and exact input/output data for to swap
+     * @param lps An array of intermediaries (LPs) to get the quotes from
+     * @param options Optional additional quote options
+     * @param additionalParams Optional additional parameters sent to the LP when creating the swap
+     * @param abortSignal Abort signal
      */
     async createViaLNURL(signer, lnurl, amountData, lps, options, additionalParams, abortSignal) {
         let successActions = {};
@@ -420,7 +449,7 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                 throw new UserError_1.UserError("Comment not allowed or too long");
             return {
                 getInvoice: async (amountSats, abortSignal) => {
-                    const { invoice, successAction } = await LNURL_1.LNURL.useLNURLPay(payRequest, BigInt(amountSats), options?.comment, this.options.getRequestTimeout, abortSignal);
+                    const { invoice, successAction } = await LNURL_1.LNURL.useLNURLPay(payRequest, BigInt(amountSats), options?.comment, this._options.getRequestTimeout, abortSignal);
                     if (successAction != null)
                         successActions[invoice] = successAction;
                     return invoice;
@@ -436,18 +465,22 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
         _abortController.signal.throwIfAborted();
         return quotes.map(value => ({
             quote: value.quote.then(quote => {
-                quote.lnurl = resolved.url;
+                let _successAction;
                 const quoteAddress = quote.getOutputAddress();
                 if (quoteAddress != null) {
                     const successAction = successActions[quoteAddress];
                     if (successAction != null)
-                        quote.successAction = successAction;
+                        _successAction = successAction;
                 }
+                quote._setLNURLData(resolved.url, _successAction);
                 return quote;
             }),
             intermediary: value.intermediary
         }));
     }
+    /**
+     * @inheritDoc
+     */
     async recoverFromSwapDataAndState(init, state, lp) {
         const data = init.data;
         let paymentHash = data.getHTLCHashHint();
@@ -479,36 +512,14 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
             exactIn: false
         };
         const swap = new ToBTCLNSwap_1.ToBTCLNSwap(this, swapInit);
-        swap.commitTxId = await init.getInitTxId();
+        swap._commitTxId = await init.getInitTxId();
         const blockData = await init.getTxBlock();
         swap.createdAt = blockData.blockTime * 1000;
         swap._setInitiated();
-        swap.state = IToBTCSwap_1.ToBTCSwapState.COMMITED;
+        swap._state = IToBTCSwap_1.ToBTCSwapState.COMMITED;
         await swap._sync(false, false, state);
         await swap._save();
         return swap;
-        // switch(state.type) {
-        //     case SwapCommitStateType.PAID:
-        //         secret ??= await state.getClaimResult();
-        //         await swap._setPaymentResult({secret}, false);
-        //         swap.claimTxId = await state.getClaimTxId();
-        //         swap.state = ToBTCSwapState.CLAIMED;
-        //         break;
-        //     case SwapCommitStateType.NOT_COMMITED:
-        //     case SwapCommitStateType.EXPIRED:
-        //         if(state.getRefundTxId==null) return null;
-        //         swap.refundTxId = await state.getRefundTxId();
-        //         swap.state = ToBTCSwapState.REFUNDED;
-        //         break;
-        //     case SwapCommitStateType.COMMITED:
-        //         swap.state = ToBTCSwapState.COMMITED;
-        //         //Try to fetch refund signature
-        //         if(lp!=null) await swap._sync(false, false, state);
-        //         break;
-        //     case SwapCommitStateType.REFUNDABLE:
-        //         swap.state = ToBTCSwapState.REFUNDABLE;
-        //         break;
-        // }
     }
 }
 exports.ToBTCLNWrapper = ToBTCLNWrapper;

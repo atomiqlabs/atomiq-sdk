@@ -65,7 +65,7 @@ export * from "./storage/UnifiedSwapStorage";
 export {IndexedDBUnifiedStorage} from "./storage-browser/IndexedDBUnifiedStorage";
 export * from "./storage-browser/LocalStorageManager";
 
-export {Swapper, ChainIds, SupportsSwapType, SwapTypeInfoType, SwapperOptions, MultiChain} from "./swapper/Swapper";
+export {Swapper} from "./swapper/Swapper";
 export * from "./swapper/SwapperFactory";
 export * from "./swapper/SwapperUtils";
 export * from "./swapper/SwapperWithChain";
@@ -122,7 +122,6 @@ export * from "./types/wallets/LightningInvoiceCreateService";
 
 export * from "./types/AmountData";
 export * from "./types/CustomPriceFunction";
-export * from "./types/PriceInfoType";
 export * from "./types/SwapExecutionAction";
 export * from "./types/SwapWithSigner";
 export * from "./types/Token";

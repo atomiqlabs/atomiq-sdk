@@ -18,7 +18,7 @@ var SwapType;
      */
     SwapType[SwapType["FROM_BTC"] = 0] = "FROM_BTC";
     /**
-     * Legacy swap HTLC for Bitcoin Lightning -> Smart chains, requires manual settlement of the swap on the
+     * Legacy escrow (HTLC) based swap for Bitcoin Lightning -> Smart chains, requires manual settlement of the swap on the
      *  destination network once the lightning network payment is received by the LP
      *
      * Handled by {@link FromBTCLNWrapper} & {@link FromBTCLNSwap}.

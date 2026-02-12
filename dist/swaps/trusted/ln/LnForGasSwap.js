@@ -59,14 +59,17 @@ class LnForGasSwap extends ISwap_1.ISwap {
         if (isLnForGasSwapInit(initOrObj) && initOrObj.url != null)
             initOrObj.url += "/lnforgas";
         super(wrapper, initOrObj);
-        this.currentVersion = 2;
         this.TYPE = SwapType_1.SwapType.TRUSTED_FROM_BTCLN;
+        /**
+         * @internal
+         */
+        this.currentVersion = 2;
         if (isLnForGasSwapInit(initOrObj)) {
             this.pr = initOrObj.pr;
             this.outputAmount = initOrObj.outputAmount;
             this.recipient = initOrObj.recipient;
             this.token = initOrObj.token;
-            this.state = LnForGasSwapState.PR_CREATED;
+            this._state = LnForGasSwapState.PR_CREATED;
         }
         else {
             this.pr = initOrObj.pr;
@@ -85,11 +88,12 @@ class LnForGasSwap extends ISwap_1.ISwap {
     }
     /**
      * @inheritDoc
+     * @internal
      */
     upgradeVersion() {
         if (this.version == 1) {
-            if (this.state === 1)
-                this.state = LnForGasSwapState.FINISHED;
+            if (this._state === 1)
+                this._state = LnForGasSwapState.FINISHED;
             this.version = 2;
         }
         if (this.version == null) {
@@ -99,6 +103,7 @@ class LnForGasSwap extends ISwap_1.ISwap {
     }
     /**
      * @inheritDoc
+     * @internal
      */
     tryRecomputeSwapPrice() {
         if (this.swapFeeBtc == null && this.swapFee != null) {
@@ -110,6 +115,7 @@ class LnForGasSwap extends ISwap_1.ISwap {
     //// Getters & utils
     /**
      * @inheritDoc
+     * @internal
      */
     _getEscrowHash() {
         return this.getId();
@@ -171,13 +177,13 @@ class LnForGasSwap extends ISwap_1.ISwap {
      * @inheritDoc
      */
     isFinished() {
-        return this.state === LnForGasSwapState.FINISHED || this.state === LnForGasSwapState.FAILED || this.state === LnForGasSwapState.EXPIRED;
+        return this._state === LnForGasSwapState.FINISHED || this._state === LnForGasSwapState.FAILED || this._state === LnForGasSwapState.EXPIRED;
     }
     /**
      * @inheritDoc
      */
     isQuoteExpired() {
-        return this.state === LnForGasSwapState.EXPIRED;
+        return this._state === LnForGasSwapState.EXPIRED;
     }
     /**
      * @inheritDoc
@@ -189,18 +195,26 @@ class LnForGasSwap extends ISwap_1.ISwap {
      * @inheritDoc
      */
     isFailed() {
-        return this.state === LnForGasSwapState.FAILED;
+        return this._state === LnForGasSwapState.FAILED;
     }
     /**
      * @inheritDoc
      */
     isSuccessful() {
-        return this.state === LnForGasSwapState.FINISHED;
+        return this._state === LnForGasSwapState.FINISHED;
     }
     /**
      * @inheritDoc
+     * @internal
      */
-    verifyQuoteValid() {
+    _verifyQuoteDefinitelyExpired() {
+        return Promise.resolve(this.expiry < Date.now());
+    }
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    _verifyQuoteValid() {
         return Promise.resolve(this.expiry > Date.now());
     }
     //////////////////////////////
@@ -209,7 +223,7 @@ class LnForGasSwap extends ISwap_1.ISwap {
      * Returns an output amount in base units without a swap fee included, hence this value
      *  is larger than the actual output amount
      *
-     * @protected
+     * @internal
      */
     getOutAmountWithoutFee() {
         return this.outputAmount + (this.swapFee ?? 0n);
@@ -218,13 +232,13 @@ class LnForGasSwap extends ISwap_1.ISwap {
      * @inheritDoc
      */
     getOutputToken() {
-        return this.wrapper.tokens[this.wrapper.chain.getNativeCurrencyAddress()];
+        return this.wrapper._tokens[this.wrapper._chain.getNativeCurrencyAddress()];
     }
     /**
      * @inheritDoc
      */
     getOutput() {
-        return (0, TokenAmount_1.toTokenAmount)(this.outputAmount, this.wrapper.tokens[this.wrapper.chain.getNativeCurrencyAddress()], this.wrapper.prices, this.pricingInfo);
+        return (0, TokenAmount_1.toTokenAmount)(this.outputAmount, this.wrapper._tokens[this.wrapper._chain.getNativeCurrencyAddress()], this.wrapper._prices, this.pricingInfo);
     }
     /**
      * @inheritDoc
@@ -241,7 +255,7 @@ class LnForGasSwap extends ISwap_1.ISwap {
         if (msats == null)
             throw new Error("Swap lightning invoice has no msat amount field!");
         const amount = (BigInt(msats) + 999n) / 1000n;
-        return (0, TokenAmount_1.toTokenAmount)(amount, Token_1.BitcoinTokens.BTCLN, this.wrapper.prices, this.pricingInfo);
+        return (0, TokenAmount_1.toTokenAmount)(amount, Token_1.BitcoinTokens.BTCLN, this.wrapper._prices, this.pricingInfo);
     }
     /**
      * @inheritDoc
@@ -252,27 +266,27 @@ class LnForGasSwap extends ISwap_1.ISwap {
         if (msats == null)
             throw new Error("Swap lightning invoice has no msat amount field!");
         const amount = (BigInt(msats) + 999n) / 1000n;
-        return (0, TokenAmount_1.toTokenAmount)(amount - (this.swapFeeBtc ?? 0n), Token_1.BitcoinTokens.BTCLN, this.wrapper.prices, this.pricingInfo);
+        return (0, TokenAmount_1.toTokenAmount)(amount - (this.swapFeeBtc ?? 0n), Token_1.BitcoinTokens.BTCLN, this.wrapper._prices, this.pricingInfo);
     }
     /**
      * Returns the swap fee charged by the intermediary (LP) on this swap
      *
-     * @protected
+     * @internal
      */
     getSwapFee() {
         if (this.pricingInfo == null)
             throw new Error("No pricing info known, cannot estimate swap fee!");
         const feeWithoutBaseFee = this.swapFeeBtc == null ? 0n : this.swapFeeBtc - this.pricingInfo.satsBaseFee;
         const swapFeePPM = feeWithoutBaseFee * 1000000n / this.getInputWithoutFee().rawAmount;
-        const amountInSrcToken = (0, TokenAmount_1.toTokenAmount)(this.swapFeeBtc ?? 0n, Token_1.BitcoinTokens.BTCLN, this.wrapper.prices, this.pricingInfo);
+        const amountInSrcToken = (0, TokenAmount_1.toTokenAmount)(this.swapFeeBtc ?? 0n, Token_1.BitcoinTokens.BTCLN, this.wrapper._prices, this.pricingInfo);
         return {
             amountInSrcToken,
-            amountInDstToken: (0, TokenAmount_1.toTokenAmount)(this.swapFee ?? 0n, this.wrapper.tokens[this.wrapper.chain.getNativeCurrencyAddress()], this.wrapper.prices, this.pricingInfo),
+            amountInDstToken: (0, TokenAmount_1.toTokenAmount)(this.swapFee ?? 0n, this.wrapper._tokens[this.wrapper._chain.getNativeCurrencyAddress()], this.wrapper._prices, this.pricingInfo),
             currentUsdValue: amountInSrcToken.currentUsdValue,
             usdValue: amountInSrcToken.usdValue,
             pastUsdValue: amountInSrcToken.pastUsdValue,
             composition: {
-                base: (0, TokenAmount_1.toTokenAmount)(this.pricingInfo.satsBaseFee, Token_1.BitcoinTokens.BTCLN, this.wrapper.prices, this.pricingInfo),
+                base: (0, TokenAmount_1.toTokenAmount)(this.pricingInfo.satsBaseFee, Token_1.BitcoinTokens.BTCLN, this.wrapper._prices, this.pricingInfo),
                 percentage: (0, PercentagePPM_1.ppmToPercentage)(swapFeePPM)
             }
         };
@@ -298,8 +312,8 @@ class LnForGasSwap extends ISwap_1.ISwap {
      * @inheritDoc
      */
     async txsExecute() {
-        if (this.state === LnForGasSwapState.PR_CREATED) {
-            if (!await this.verifyQuoteValid())
+        if (this._state === LnForGasSwapState.PR_CREATED) {
+            if (!await this._verifyQuoteValid())
                 throw new Error("Quote already expired or close to expiry!");
             return [
                 {
@@ -308,6 +322,7 @@ class LnForGasSwap extends ISwap_1.ISwap {
                     chain: "LIGHTNING",
                     txs: [
                         {
+                            type: "BOLT11_PAYMENT_REQUEST",
                             address: this.pr,
                             hyperlink: this.getHyperlink()
                         }
@@ -323,12 +338,12 @@ class LnForGasSwap extends ISwap_1.ISwap {
      * @param save Whether the save the result or not
      *
      * @returns Whether the swap was successful as `boolean` or `null` if the swap is still pending
-     * @protected
+     * @internal
      */
     async checkInvoicePaid(save = true) {
-        if (this.state === LnForGasSwapState.FAILED || this.state === LnForGasSwapState.EXPIRED)
+        if (this._state === LnForGasSwapState.FAILED || this._state === LnForGasSwapState.EXPIRED)
             return false;
-        if (this.state === LnForGasSwapState.FINISHED)
+        if (this._state === LnForGasSwapState.FINISHED)
             return true;
         if (this.url == null)
             return false;
@@ -336,40 +351,40 @@ class LnForGasSwap extends ISwap_1.ISwap {
         const paymentHash = decodedPR.tagsObject.payment_hash;
         if (paymentHash == null)
             throw new Error("Invalid swap invoice, payment hash not found!");
-        const response = await TrustedIntermediaryAPI_1.TrustedIntermediaryAPI.getInvoiceStatus(this.url, paymentHash, this.wrapper.options.getRequestTimeout);
+        const response = await TrustedIntermediaryAPI_1.TrustedIntermediaryAPI.getInvoiceStatus(this.url, paymentHash, this.wrapper._options.getRequestTimeout);
         this.logger.debug("checkInvoicePaid(): LP response: ", response);
         switch (response.code) {
             case TrustedIntermediaryAPI_1.InvoiceStatusResponseCodes.PAID:
                 this.scTxId = response.data.txId;
-                const txStatus = await this.wrapper.chain.getTxIdStatus(this.scTxId);
+                const txStatus = await this.wrapper._chain.getTxIdStatus(this.scTxId);
                 if (txStatus === "success") {
-                    this.state = LnForGasSwapState.FINISHED;
+                    this._state = LnForGasSwapState.FINISHED;
                     if (save)
                         await this._saveAndEmit();
                     return true;
                 }
                 return null;
             case TrustedIntermediaryAPI_1.InvoiceStatusResponseCodes.EXPIRED:
-                if (this.state === LnForGasSwapState.PR_CREATED) {
-                    this.state = LnForGasSwapState.EXPIRED;
+                if (this._state === LnForGasSwapState.PR_CREATED) {
+                    this._state = LnForGasSwapState.EXPIRED;
                 }
                 else {
-                    this.state = LnForGasSwapState.FAILED;
+                    this._state = LnForGasSwapState.FAILED;
                 }
                 if (save)
                     await this._saveAndEmit();
                 return false;
             case TrustedIntermediaryAPI_1.InvoiceStatusResponseCodes.TX_SENT:
                 this.scTxId = response.data.txId;
-                if (this.state === LnForGasSwapState.PR_CREATED) {
-                    this.state = LnForGasSwapState.PR_PAID;
+                if (this._state === LnForGasSwapState.PR_CREATED) {
+                    this._state = LnForGasSwapState.PR_PAID;
                     if (save)
                         await this._saveAndEmit();
                 }
                 return null;
             case TrustedIntermediaryAPI_1.InvoiceStatusResponseCodes.PENDING:
-                if (this.state === LnForGasSwapState.PR_CREATED) {
-                    this.state = LnForGasSwapState.PR_PAID;
+                if (this._state === LnForGasSwapState.PR_CREATED) {
+                    this._state = LnForGasSwapState.PR_PAID;
                     if (save)
                         await this._saveAndEmit();
                 }
@@ -377,7 +392,7 @@ class LnForGasSwap extends ISwap_1.ISwap {
             case TrustedIntermediaryAPI_1.InvoiceStatusResponseCodes.AWAIT_PAYMENT:
                 return null;
             default:
-                this.state = LnForGasSwapState.FAILED;
+                this._state = LnForGasSwapState.FAILED;
                 if (save)
                     await this._saveAndEmit();
                 return false;
@@ -392,15 +407,15 @@ class LnForGasSwap extends ISwap_1.ISwap {
      * @throws {Error} When in invalid state (not PR_CREATED)
      */
     async waitForPayment(checkIntervalSeconds, abortSignal) {
-        if (this.state !== LnForGasSwapState.PR_CREATED)
+        if (this._state !== LnForGasSwapState.PR_CREATED)
             throw new Error("Must be in PR_CREATED state!");
         if (!this.initiated) {
             this.initiated = true;
             await this._saveAndEmit();
         }
-        while (!abortSignal?.aborted && (this.state === LnForGasSwapState.PR_CREATED || this.state === LnForGasSwapState.PR_PAID)) {
+        while (!abortSignal?.aborted && (this._state === LnForGasSwapState.PR_CREATED || this._state === LnForGasSwapState.PR_PAID)) {
             await this.checkInvoicePaid(true);
-            if (this.state === LnForGasSwapState.PR_CREATED || this.state === LnForGasSwapState.PR_PAID)
+            if (this._state === LnForGasSwapState.PR_CREATED || this._state === LnForGasSwapState.PR_PAID)
                 await (0, TimeoutUtils_1.timeoutPromise)((checkIntervalSeconds ?? 5) * 1000, abortSignal);
         }
         if (this.isFailed())
@@ -424,6 +439,7 @@ class LnForGasSwap extends ISwap_1.ISwap {
     }
     /**
      * @inheritDoc
+     * @internal
      */
     _getInitiator() {
         return this.recipient;
@@ -432,9 +448,10 @@ class LnForGasSwap extends ISwap_1.ISwap {
     //// Swap ticks & sync
     /**
      * @inheritDoc
+     * @internal
      */
     async _sync(save) {
-        if (this.state === LnForGasSwapState.PR_CREATED) {
+        if (this._state === LnForGasSwapState.PR_CREATED) {
             //Check if it's maybe already paid
             const res = await this.checkInvoicePaid(false);
             if (res !== null) {
@@ -447,6 +464,7 @@ class LnForGasSwap extends ISwap_1.ISwap {
     }
     /**
      * @inheritDoc
+     * @internal
      */
     _tick(save) {
         return Promise.resolve(false);

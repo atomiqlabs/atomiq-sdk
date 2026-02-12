@@ -26,10 +26,21 @@ export type ToBTCWrapperOptions = ISwapWrapperOptions & {
     maxExpectedOnchainSendGracePeriodBlocks: number;
 };
 export type ToBTCDefinition<T extends ChainType> = IToBTCDefinition<T, ToBTCWrapper<T>, ToBTCSwap<T>>;
+/**
+ * Escrow based (PrTLC) swap for Smart chains -> Bitcoin
+ *
+ * @category Swaps
+ */
 export declare class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDefinition<T>, ToBTCWrapperOptions> {
-    readonly TYPE = SwapType.TO_BTC;
-    readonly swapDeserializer: typeof ToBTCSwap;
-    readonly btcRpc: BitcoinRpc<any>;
+    readonly TYPE: SwapType.TO_BTC;
+    /**
+     * @internal
+     */
+    readonly _swapDeserializer: typeof ToBTCSwap;
+    /**
+     * @internal
+     */
+    readonly _btcRpc: BitcoinRpc<any>;
     /**
      * @param chainIdentifier
      * @param unifiedStorage Storage interface for the current environment
@@ -47,18 +58,22 @@ export declare class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, 
         swapState: [ISwap];
     }>);
     /**
-     * Returns randomly generated random escrow nonce to be used for to BTC on-chain swaps
-     * @private
+     * Returns randomly generated random bitcoin transaction nonce to be used for BTC on-chain swaps
+     *
      * @returns Escrow nonce
+     *
+     * @private
      */
     private getRandomNonce;
     /**
      * Converts bitcoin address to its corresponding output script
      *
      * @param addr Bitcoin address to get the output script for
-     * @private
+     *
      * @returns Output script as Buffer
      * @throws {UserError} if invalid address is specified
+     *
+     * @private
      */
     private btcAddressToOutputScript;
     /**
@@ -71,25 +86,31 @@ export declare class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, 
      * @param options Options as passed to the swap create function
      * @param data LP's returned parsed swap data
      * @param hash Payment hash of the swap
-     * @private
+     *
      * @throws {IntermediaryError} if returned data are not correct
+     *
+     * @private
      */
     private verifyReturnedData;
     /**
-     * Returns quotes fetched from LPs, paying to an 'address' - a bitcoin address
+     * Returns a newly created Smart chain -> Bitcoin swap using the PrTLC based escrow swap protocol,
+     *  with the passed amount.
      *
-     * @param signer                Smart-chain signer address initiating the swap
-     * @param address               Bitcoin on-chain address you wish to pay to
-     * @param amountData            Amount of token & amount to swap
-     * @param lps                   LPs (liquidity providers) to get the quotes from
-     * @param options               Quote options
-     * @param additionalParams      Additional parameters sent to the LP when creating the swap
-     * @param abortSignal           Abort signal for aborting the process
+     * @param signer Source chain signer address initiating the swap
+     * @param recipient Recipient bitcoin on-chain address
+     * @param amountData Amount, token and exact input/output data for to swap
+     * @param lps An array of intermediaries (LPs) to get the quotes from
+     * @param options Optional additional quote options
+     * @param additionalParams Optional additional parameters sent to the LP when creating the swap
+     * @param abortSignal Abort signal
      */
-    create(signer: string, address: string, amountData: AmountData, lps: Intermediary[], options?: ToBTCOptions, additionalParams?: Record<string, any>, abortSignal?: AbortSignal): {
+    create(signer: string, recipient: string, amountData: AmountData, lps: Intermediary[], options?: ToBTCOptions, additionalParams?: Record<string, any>, abortSignal?: AbortSignal): {
         quote: Promise<ToBTCSwap<T>>;
         intermediary: Intermediary;
     }[];
+    /**
+     * @inheritDoc
+     */
     recoverFromSwapDataAndState(init: {
         data: T["Data"];
         getInitTxId: () => Promise<string>;

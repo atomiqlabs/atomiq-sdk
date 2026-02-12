@@ -18,11 +18,36 @@ export type OnchainForGasWrapperOptions = ISwapWrapperOptions & {
 
 export type OnchainForGasSwapTypeDefinition<T extends ChainType> = SwapTypeDefinition<T, OnchainForGasWrapper<T>, OnchainForGasSwap<T>>;
 
+/**
+ * Trusted swap for Bitcoin -> Smart chains, to be used for minor amounts to get gas tokens on the
+ *  destination chain, which is only needed for Solana, which still uses legacy swaps
+ *
+ * @category Swaps
+ */
 export class OnchainForGasWrapper<T extends ChainType> extends ISwapWrapper<T, OnchainForGasSwapTypeDefinition<T>, OnchainForGasWrapperOptions> {
     public readonly TYPE: SwapType.TRUSTED_FROM_BTC = SwapType.TRUSTED_FROM_BTC;
-    public readonly swapDeserializer = OnchainForGasSwap;
+    /**
+     * @internal
+     */
+    readonly _swapDeserializer = OnchainForGasSwap;
 
-    readonly btcRpc: BitcoinRpcWithAddressIndex<any>;
+    /**
+     * @internal
+     */
+    readonly _pendingSwapStates = [OnchainForGasSwapState.PR_CREATED];
+    /**
+     * @internal
+     */
+    protected readonly tickSwapState = undefined;
+    /**
+     * @internal
+     */
+    protected processEvent = undefined;
+
+    /**
+     * @internal
+     */
+    readonly _btcRpc: BitcoinRpcWithAddressIndex<any>;
 
     /**
      * @param chainIdentifier
@@ -47,7 +72,7 @@ export class OnchainForGasWrapper<T extends ChainType> extends ISwapWrapper<T, O
         events?: EventEmitter<{swapState: [ISwap]}>
     ) {
         super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, options, events);
-        this.btcRpc = btcRpc;
+        this._btcRpc = btcRpc;
     }
 
     /**
@@ -64,14 +89,14 @@ export class OnchainForGasWrapper<T extends ChainType> extends ISwapWrapper<T, O
 
         const lpUrl = typeof(lpOrUrl)==="string" ? lpOrUrl : lpOrUrl.url;
 
-        const token = this.chain.getNativeCurrencyAddress();
+        const token = this._chain.getNativeCurrencyAddress();
 
         const resp = await TrustedIntermediaryAPI.initTrustedFromBTC(this.chainIdentifier, lpUrl, {
             address: recipient,
             amount,
             refundAddress,
             token
-        }, this.options.getRequestTimeout);
+        }, this._options.getRequestTimeout);
 
         if(resp.total !== amount) throw new IntermediaryError("Invalid total returned");
 
@@ -80,7 +105,7 @@ export class OnchainForGasWrapper<T extends ChainType> extends ISwapWrapper<T, O
                 {swapFeePPM: 10000, swapBaseFee: 10} :
                 lpOrUrl.services[SwapType.TRUSTED_FROM_BTC],
             false, resp.amountSats,
-            amount, this.chain.getNativeCurrencyAddress(), {}
+            amount, this._chain.getNativeCurrencyAddress(), {}
         );
 
         const quote = new OnchainForGasSwap(this, {
@@ -102,9 +127,5 @@ export class OnchainForGasWrapper<T extends ChainType> extends ISwapWrapper<T, O
         await quote._save();
         return quote;
     }
-
-    public readonly pendingSwapStates = [OnchainForGasSwapState.PR_CREATED];
-    public readonly tickSwapState = undefined;
-    protected processEvent = undefined;
 
 }

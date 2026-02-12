@@ -9,9 +9,31 @@ import {SwapType} from "../../../enums/SwapType";
 
 export type LnForGasSwapTypeDefinition<T extends ChainType> = SwapTypeDefinition<T, LnForGasWrapper<T>, LnForGasSwap<T>>;
 
+/**
+ * Trusted swap for Bitcoin Lightning -> Smart chains, to be used for minor amounts to get gas tokens on
+ *  the destination chain, which is only needed for Solana, which still uses legacy swaps
+ *
+ * @category Swaps
+ */
 export class LnForGasWrapper<T extends ChainType> extends ISwapWrapper<T, LnForGasSwapTypeDefinition<T>> {
     public TYPE: SwapType.TRUSTED_FROM_BTCLN = SwapType.TRUSTED_FROM_BTCLN;
-    public readonly swapDeserializer = LnForGasSwap;
+    /**
+     * @internal
+     */
+    public readonly _swapDeserializer = LnForGasSwap;
+
+    /**
+     * @internal
+     */
+    readonly _pendingSwapStates = [LnForGasSwapState.PR_CREATED];
+    /**
+     * @internal
+     */
+    protected readonly tickSwapState = undefined;
+    /**
+     * @internal
+     */
+    protected processEvent = undefined;
 
     /**
      * Returns a newly created trusted Lightning network -> Smart chain swap, receiving
@@ -26,13 +48,13 @@ export class LnForGasWrapper<T extends ChainType> extends ISwapWrapper<T, LnForG
 
         const lpUrl = typeof(lpOrUrl)==="string" ? lpOrUrl : lpOrUrl.url;
 
-        const token = this.chain.getNativeCurrencyAddress();
+        const token = this._chain.getNativeCurrencyAddress();
 
         const resp = await TrustedIntermediaryAPI.initTrustedFromBTCLN(this.chainIdentifier, lpUrl, {
             address: recipient,
             amount,
             token
-        }, this.options.getRequestTimeout);
+        }, this._options.getRequestTimeout);
 
         const decodedPr = bolt11Decode(resp.pr);
         if(decodedPr.millisatoshis==null) throw new Error("Invalid payment request returned, no msat amount value!");
@@ -65,9 +87,5 @@ export class LnForGasWrapper<T extends ChainType> extends ISwapWrapper<T, LnForG
         await quote._save();
         return quote;
     }
-
-    public readonly pendingSwapStates = [LnForGasSwapState.PR_CREATED];
-    public readonly tickSwapState = undefined;
-    protected processEvent = undefined;
 
 }

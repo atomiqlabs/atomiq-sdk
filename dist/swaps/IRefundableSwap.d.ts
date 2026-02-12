@@ -18,16 +18,26 @@ export interface IRefundableSwap<T extends ChainType = ChainType, D extends Swap
      */
     isRefundable(): boolean;
     /**
-     * Returns the smart chain transactions required to be signed and sent to refund the swap
+     * Returns transactions for refunding the swap if the swap is in refundable state, you can check so with
+     *  {@link isRefundable}. After sending the transaction manually be sure to call the {@link waitTillRefunded}
+     *  function to wait till the refund transaction is observed, processed by the SDK and state of the swap
+     *  properly updated.
      *
      * @param _signer Address of the signer to create the refund transactions for
      */
     txsRefund(_signer?: string): Promise<T["TX"][]>;
     /**
-     * Refunds the swap
+     * Refunds the swap if the swap is in refundable state, you can check so with {@link isRefundable}
      *
-     * @param _signer Signer to use for signing the transactions
+     * @param _signer Signer to sign the transactions with, must be the same as used in the initialization
      * @param abortSignal Abort signal
      */
     refund(_signer?: T["Signer"] | T["NativeSigner"], abortSignal?: AbortSignal): Promise<string>;
+    /**
+     * Waits till a swap is refunded, should be called after sending the refund transactions manually to
+     *  wait till the SDK processes the refund and updates the swap state accordingly
+     *
+     * @param abortSignal AbortSignal
+     */
+    waitTillRefunded(abortSignal?: AbortSignal): Promise<void>;
 }

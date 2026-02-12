@@ -8,6 +8,7 @@ import { FeeType } from "../../../enums/FeeType";
 import { TokenAmount } from "../../../types/TokenAmount";
 import { BtcToken, SCToken } from "../../../types/Token";
 import { LoggerType } from "../../../utils/Logger";
+import { SwapExecutionActionLightning } from "../../../types/SwapExecutionAction";
 /**
  * State enum for trusted Lightning gas swaps
  *
@@ -49,8 +50,14 @@ export declare function isLnForGasSwapInit(obj: any): obj is LnForGasSwapInit;
  * @category Swaps
  */
 export declare class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnForGasSwapTypeDefinition<T>, LnForGasSwapState> implements IAddressSwap {
-    protected readonly currentVersion: number;
     protected readonly TYPE: SwapType.TRUSTED_FROM_BTCLN;
+    /**
+     * @internal
+     */
+    protected readonly currentVersion: number;
+    /**
+     * @internal
+     */
     protected readonly logger: LoggerType;
     private readonly pr;
     private readonly outputAmount;
@@ -58,20 +65,24 @@ export declare class LnForGasSwap<T extends ChainType = ChainType> extends ISwap
     private readonly token;
     /**
      * Destination transaction ID on the smart chain side
+     * @private
      */
-    scTxId?: string;
+    private scTxId?;
     constructor(wrapper: LnForGasWrapper<T>, init: LnForGasSwapInit);
     constructor(wrapper: LnForGasWrapper<T>, obj: any);
     /**
      * @inheritDoc
+     * @internal
      */
     protected upgradeVersion(): void;
     /**
      * @inheritDoc
+     * @internal
      */
     protected tryRecomputeSwapPrice(): void;
     /**
      * @inheritDoc
+     * @internal
      */
     _getEscrowHash(): string;
     /**
@@ -128,13 +139,19 @@ export declare class LnForGasSwap<T extends ChainType = ChainType> extends ISwap
     isSuccessful(): boolean;
     /**
      * @inheritDoc
+     * @internal
      */
-    verifyQuoteValid(): Promise<boolean>;
+    _verifyQuoteDefinitelyExpired(): Promise<boolean>;
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    _verifyQuoteValid(): Promise<boolean>;
     /**
      * Returns an output amount in base units without a swap fee included, hence this value
      *  is larger than the actual output amount
      *
-     * @protected
+     * @internal
      */
     protected getOutAmountWithoutFee(): bigint;
     /**
@@ -160,7 +177,7 @@ export declare class LnForGasSwap<T extends ChainType = ChainType> extends ISwap
     /**
      * Returns the swap fee charged by the intermediary (LP) on this swap
      *
-     * @protected
+     * @internal
      */
     protected getSwapFee(): Fee<T["ChainId"], BtcToken<true>, SCToken<T["ChainId"]>>;
     /**
@@ -177,22 +194,14 @@ export declare class LnForGasSwap<T extends ChainType = ChainType> extends ISwap
     /**
      * @inheritDoc
      */
-    txsExecute(): Promise<{
-        name: "Payment";
-        description: string;
-        chain: string;
-        txs: {
-            address: string;
-            hyperlink: string;
-        }[];
-    }[]>;
+    txsExecute(): Promise<[SwapExecutionActionLightning]>;
     /**
      * Queries the intermediary (LP) node for the state of the swap
      *
      * @param save Whether the save the result or not
      *
      * @returns Whether the swap was successful as `boolean` or `null` if the swap is still pending
-     * @protected
+     * @internal
      */
     protected checkInvoicePaid(save?: boolean): Promise<boolean | null>;
     /**
@@ -210,14 +219,17 @@ export declare class LnForGasSwap<T extends ChainType = ChainType> extends ISwap
     serialize(): any;
     /**
      * @inheritDoc
+     * @internal
      */
     _getInitiator(): string;
     /**
      * @inheritDoc
+     * @internal
      */
     _sync(save?: boolean): Promise<boolean>;
     /**
      * @inheritDoc
+     * @internal
      */
     _tick(save?: boolean): Promise<boolean>;
 }

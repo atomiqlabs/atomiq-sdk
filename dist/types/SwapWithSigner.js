@@ -8,7 +8,9 @@ const FromBTCLNAutoSwap_1 = require("../swaps/escrow_swaps/frombtc/ln_auto/FromB
 const SpvFromBTCSwap_1 = require("../swaps/spv_swaps/SpvFromBTCSwap");
 /**
  * Wraps a swap with automatic signer injection for methods like commit, refund, and claim
+ *
  * @category Swaps
+ * @internal
  */
 function wrapSwapWithSigner(swap, signer) {
     return new Proxy(swap, {

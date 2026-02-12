@@ -33,7 +33,7 @@ class ISwap {
     constructor(wrapper, swapInitOrObj) {
         /**
          * Current newest defined version of the swap
-         * @protected
+         * @internal
          */
         this.currentVersion = 1;
         /**
@@ -41,13 +41,14 @@ class ISwap {
          *  calling commit() on a Smart chain -> Bitcoin swaps, calling waitForPayment() or similar on the other
          *  direction. Not initiated swaps are not saved to the persistent storage by default (see
          *  {@link SwapperOptions.saveUninitializedSwaps})
-         * @protected
+         * @internal
          */
         this.initiated = false;
         /**
          * Swap state
+         * @internal
          */
-        this.state = 0;
+        this._state = 0;
         /**
          * Event emitter emitting `"swapState"` event when swap's state changes
          */
@@ -63,12 +64,12 @@ class ISwap {
             this.exactIn = swapInitOrObj.exactIn;
             this.version = this.currentVersion;
             this.createdAt = Date.now();
-            this.randomNonce = (0, Utils_1.randomBytes)(16).toString("hex");
+            this._randomNonce = (0, Utils_1.randomBytes)(16).toString("hex");
         }
         else {
             this.expiry = swapInitOrObj.expiry;
             this.url = swapInitOrObj.url;
-            this.state = swapInitOrObj.state;
+            this._state = swapInitOrObj.state;
             if (swapInitOrObj._isValid != null && swapInitOrObj._differencePPM != null && swapInitOrObj._satsBaseFee != null &&
                 swapInitOrObj._feePPM != null && swapInitOrObj._swapPriceUSatPerToken != null) {
                 this.pricingInfo = {
@@ -87,7 +88,7 @@ class ISwap {
             this.initiated = swapInitOrObj.initiated;
             this.exactIn = swapInitOrObj.exactIn;
             this.createdAt = swapInitOrObj.createdAt ?? swapInitOrObj.expiry;
-            this.randomNonce = swapInitOrObj.randomNonce;
+            this._randomNonce = swapInitOrObj.randomNonce;
         }
         if (this.version !== this.currentVersion) {
             this.upgradeVersion();
@@ -101,13 +102,13 @@ class ISwap {
      * @param targetState The state to wait for
      * @param type Whether to wait for the state exactly or also to a state with a higher number
      * @param abortSignal Abort signal
-     * @protected
+     * @internal
      */
     waitTillState(targetState, type = "eq", abortSignal) {
         return new Promise((resolve, reject) => {
             let listener;
             listener = (swap) => {
-                if (type === "eq" ? swap.state === targetState : type === "gte" ? swap.state >= targetState : swap.state != targetState) {
+                if (type === "eq" ? swap._state === targetState : type === "gte" ? swap._state >= targetState : swap._state != targetState) {
                     resolve();
                     this.events.removeListener("swapState", listener);
                 }
@@ -137,11 +138,11 @@ class ISwap {
             if (input.isUnknown || output.isUnknown)
                 return;
             if ((0, Token_1.isSCToken)(input.token) && this.getDirection() === SwapDirection_1.SwapDirection.TO_BTC) {
-                this.pricingInfo = this.wrapper.prices.recomputePriceInfoSend(this.chainIdentifier, output.rawAmount, this.pricingInfo.satsBaseFee, this.pricingInfo.feePPM, input.rawAmount, input.token.address);
+                this.pricingInfo = this.wrapper._prices.recomputePriceInfoSend(this.chainIdentifier, output.rawAmount, this.pricingInfo.satsBaseFee, this.pricingInfo.feePPM, input.rawAmount, input.token.address);
                 this.pricingInfo.realPriceUsdPerBitcoin = priceUsdPerBtc;
             }
             else if ((0, Token_1.isSCToken)(output.token) && this.getDirection() === SwapDirection_1.SwapDirection.FROM_BTC) {
-                this.pricingInfo = this.wrapper.prices.recomputePriceInfoReceive(this.chainIdentifier, input.rawAmount, this.pricingInfo.satsBaseFee, this.pricingInfo.feePPM, output.rawAmount, output.token.address);
+                this.pricingInfo = this.wrapper._prices.recomputePriceInfoReceive(this.chainIdentifier, input.rawAmount, this.pricingInfo.satsBaseFee, this.pricingInfo.feePPM, output.rawAmount, output.token.address);
                 this.pricingInfo.realPriceUsdPerBitcoin = priceUsdPerBtc;
             }
         }
@@ -158,11 +159,11 @@ class ISwap {
         if (input.isUnknown || output.isUnknown)
             return;
         if ((0, Token_1.isSCToken)(input.token) && this.getDirection() === SwapDirection_1.SwapDirection.TO_BTC) {
-            this.pricingInfo = await this.wrapper.prices.isValidAmountSend(this.chainIdentifier, output.rawAmount, this.pricingInfo.satsBaseFee, this.pricingInfo.feePPM, input.rawAmount, input.token.address);
+            this.pricingInfo = await this.wrapper._prices.isValidAmountSend(this.chainIdentifier, output.rawAmount, this.pricingInfo.satsBaseFee, this.pricingInfo.feePPM, input.rawAmount, input.token.address);
             this.pricingInfo.realPriceUsdPerBitcoin = priceUsdPerBtc;
         }
         else if ((0, Token_1.isSCToken)(output.token) && this.getDirection() === SwapDirection_1.SwapDirection.FROM_BTC) {
-            this.pricingInfo = await this.wrapper.prices.isValidAmountReceive(this.chainIdentifier, input.rawAmount, this.pricingInfo.satsBaseFee, this.pricingInfo.feePPM, output.rawAmount, output.token.address);
+            this.pricingInfo = await this.wrapper._prices.isValidAmountReceive(this.chainIdentifier, input.rawAmount, this.pricingInfo.satsBaseFee, this.pricingInfo.feePPM, output.rawAmount, output.token.address);
             this.pricingInfo.realPriceUsdPerBitcoin = priceUsdPerBtc;
         }
     }
@@ -194,29 +195,34 @@ class ISwap {
             difference: (0, PercentagePPM_1.ppmToPercentage)(this.pricingInfo.differencePPM)
         };
     }
+    //////////////////////////////
+    //// Getters & utils
     /**
      * Asserts a given signer is the initiator of this swap
      *
      * @param signer Signer to check with this swap's initiator
      * @throws {Error} When signer's address doesn't match with the swap's initiator one
+     * @internal
      */
     checkSigner(signer) {
         if ((typeof (signer) === "string" ? signer : signer.getAddress()) !== this._getInitiator())
             throw new Error("Invalid signer provided!");
     }
     /**
-     * Returns whether a swap was considered initiated (i.e. not just a quote)
-     */
-    isInitiated() {
-        return this.initiated;
-    }
-    /**
      * Sets this swap as initiated
-     *
      * @internal
      */
     _setInitiated() {
         this.initiated = true;
+    }
+    /**
+     * Whether a swap was initialized, a swap is considered initialized on first interaction with it, i.e.
+     *  calling commit() on a Smart chain -> Bitcoin swaps, calling waitForPayment() or similar on the other
+     *  direction. Not initiated swaps are not saved to the persistent storage by default (see
+     *  {@link SwapperOptions.saveUninitializedSwaps})
+     */
+    isInitiated() {
+        return this.initiated;
     }
     /**
      * Returns quote expiry in UNIX millis
@@ -240,40 +246,10 @@ class ISwap {
      * Returns the current state of the swap
      */
     getState() {
-        return this.state;
+        return this._state;
     }
     //////////////////////////////
     //// Storage
-    /**
-     * Serializes the swap to a JSON stringifiable representation (i.e. no bigints, buffers etc.)
-     */
-    serialize() {
-        if (this.pricingInfo == null)
-            return {};
-        return {
-            id: this.getId(),
-            type: this.getType(),
-            escrowHash: this._getEscrowHash(),
-            initiator: this._getInitiator(),
-            _isValid: this.pricingInfo.isValid,
-            _differencePPM: this.pricingInfo.differencePPM == null ? null : this.pricingInfo.differencePPM.toString(10),
-            _satsBaseFee: this.pricingInfo.satsBaseFee == null ? null : this.pricingInfo.satsBaseFee.toString(10),
-            _feePPM: this.pricingInfo.feePPM == null ? null : this.pricingInfo.feePPM.toString(10),
-            _realPriceUSatPerToken: this.pricingInfo.realPriceUSatPerToken == null ? null : this.pricingInfo.realPriceUSatPerToken.toString(10),
-            _realPriceUsdPerBitcoin: this.pricingInfo.realPriceUsdPerBitcoin,
-            _swapPriceUSatPerToken: this.pricingInfo.swapPriceUSatPerToken == null ? null : this.pricingInfo.swapPriceUSatPerToken.toString(10),
-            state: this.state,
-            url: this.url,
-            swapFee: this.swapFee == null ? null : this.swapFee.toString(10),
-            swapFeeBtc: this.swapFeeBtc == null ? null : this.swapFeeBtc.toString(10),
-            expiry: this.expiry,
-            version: this.version,
-            initiated: this.initiated,
-            exactIn: this.exactIn,
-            createdAt: this.createdAt,
-            randomNonce: this.randomNonce
-        };
-    }
     /**
      * Saves the swap data to the underlying storage, or removes it if it is in a quote expired state
      *
@@ -296,9 +272,39 @@ class ISwap {
      */
     async _saveAndEmit(state) {
         if (state != null)
-            this.state = state;
+            this._state = state;
         await this._save();
         this._emitEvent();
+    }
+    /**
+     * Serializes the swap to a JSON stringifiable representation (i.e. no bigints, buffers etc.)
+     */
+    serialize() {
+        if (this.pricingInfo == null)
+            return {};
+        return {
+            id: this.getId(),
+            type: this.getType(),
+            escrowHash: this._getEscrowHash(),
+            initiator: this._getInitiator(),
+            _isValid: this.pricingInfo.isValid,
+            _differencePPM: this.pricingInfo.differencePPM == null ? null : this.pricingInfo.differencePPM.toString(10),
+            _satsBaseFee: this.pricingInfo.satsBaseFee == null ? null : this.pricingInfo.satsBaseFee.toString(10),
+            _feePPM: this.pricingInfo.feePPM == null ? null : this.pricingInfo.feePPM.toString(10),
+            _realPriceUSatPerToken: this.pricingInfo.realPriceUSatPerToken == null ? null : this.pricingInfo.realPriceUSatPerToken.toString(10),
+            _realPriceUsdPerBitcoin: this.pricingInfo.realPriceUsdPerBitcoin,
+            _swapPriceUSatPerToken: this.pricingInfo.swapPriceUSatPerToken == null ? null : this.pricingInfo.swapPriceUSatPerToken.toString(10),
+            state: this._state,
+            url: this.url,
+            swapFee: this.swapFee == null ? null : this.swapFee.toString(10),
+            swapFeeBtc: this.swapFeeBtc == null ? null : this.swapFeeBtc.toString(10),
+            expiry: this.expiry,
+            version: this.version,
+            initiated: this.initiated,
+            exactIn: this.exactIn,
+            createdAt: this.createdAt,
+            randomNonce: this._randomNonce
+        };
     }
     //////////////////////////////
     //// Events

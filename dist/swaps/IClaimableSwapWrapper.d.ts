@@ -9,6 +9,7 @@ import { IClaimableSwap } from "./IClaimableSwap";
 export interface IClaimableSwapWrapper<T extends ISwap & IClaimableSwap = ISwap & IClaimableSwap> {
     /**
      * A list of swap states when the swap is potentially claimable
+     * @internal
      */
-    claimableSwapStates: T["state"][];
+    _claimableSwapStates: T["_state"][];
 }

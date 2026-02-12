@@ -15,7 +15,9 @@ const IFromBTCLNWrapper_1 = require("../IFromBTCLNWrapper");
 const RetryUtils_1 = require("../../../../utils/RetryUtils");
 const sha2_1 = require("@noble/hashes/sha2");
 /**
- * Factory wrapper for creating Lightning BTC to Smart Chain swaps
+ * Legacy escrow (HTLC) based swap for Bitcoin Lightning -> Smart chains, requires manual settlement
+ *  of the swap on the destination network once the lightning network payment is received by the LP.
+ *
  * @category Swaps
  */
 class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
@@ -38,40 +40,64 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
             bitcoinBlocktime: options?.bitcoinBlocktime ?? 10 * 60,
             unsafeSkipLnNodeCheck: options?.unsafeSkipLnNodeCheck ?? false
         }, events);
-        this.claimableSwapStates = [FromBTCLNSwap_1.FromBTCLNSwapState.CLAIM_COMMITED];
         this.TYPE = SwapType_1.SwapType.FROM_BTCLN;
-        this.swapDeserializer = FromBTCLNSwap_1.FromBTCLNSwap;
-        this.pendingSwapStates = [
+        /**
+         * @internal
+         */
+        this.tickSwapState = [
+            FromBTCLNSwap_1.FromBTCLNSwapState.PR_CREATED,
+            FromBTCLNSwap_1.FromBTCLNSwapState.PR_PAID,
+            FromBTCLNSwap_1.FromBTCLNSwapState.CLAIM_COMMITED
+        ];
+        /**
+         * @internal
+         */
+        this._pendingSwapStates = [
             FromBTCLNSwap_1.FromBTCLNSwapState.PR_CREATED,
             FromBTCLNSwap_1.FromBTCLNSwapState.QUOTE_SOFT_EXPIRED,
             FromBTCLNSwap_1.FromBTCLNSwapState.PR_PAID,
             FromBTCLNSwap_1.FromBTCLNSwapState.CLAIM_COMMITED,
             FromBTCLNSwap_1.FromBTCLNSwapState.EXPIRED
         ];
-        this.tickSwapState = [
-            FromBTCLNSwap_1.FromBTCLNSwapState.PR_CREATED,
-            FromBTCLNSwap_1.FromBTCLNSwapState.PR_PAID,
-            FromBTCLNSwap_1.FromBTCLNSwapState.CLAIM_COMMITED
-        ];
+        /**
+         * @internal
+         */
+        this._claimableSwapStates = [FromBTCLNSwap_1.FromBTCLNSwapState.CLAIM_COMMITED];
+        /**
+         * @internal
+         */
+        this._swapDeserializer = FromBTCLNSwap_1.FromBTCLNSwap;
     }
+    /**
+     * @inheritDoc
+     * @internal
+     */
     processEventInitialize(swap, event) {
-        if (swap.state === FromBTCLNSwap_1.FromBTCLNSwapState.PR_PAID || swap.state === FromBTCLNSwap_1.FromBTCLNSwapState.QUOTE_SOFT_EXPIRED) {
-            swap.state = FromBTCLNSwap_1.FromBTCLNSwapState.CLAIM_COMMITED;
+        if (swap._state === FromBTCLNSwap_1.FromBTCLNSwapState.PR_PAID || swap._state === FromBTCLNSwap_1.FromBTCLNSwapState.QUOTE_SOFT_EXPIRED) {
+            swap._state = FromBTCLNSwap_1.FromBTCLNSwapState.CLAIM_COMMITED;
             return Promise.resolve(true);
         }
         return Promise.resolve(false);
     }
+    /**
+     * @inheritDoc
+     * @internal
+     */
     processEventClaim(swap, event) {
-        if (swap.state !== FromBTCLNSwap_1.FromBTCLNSwapState.FAILED && swap.state !== FromBTCLNSwap_1.FromBTCLNSwapState.CLAIM_CLAIMED) {
-            swap.state = FromBTCLNSwap_1.FromBTCLNSwapState.CLAIM_CLAIMED;
+        if (swap._state !== FromBTCLNSwap_1.FromBTCLNSwapState.FAILED && swap._state !== FromBTCLNSwap_1.FromBTCLNSwapState.CLAIM_CLAIMED) {
+            swap._state = FromBTCLNSwap_1.FromBTCLNSwapState.CLAIM_CLAIMED;
             swap._setSwapSecret(event.result);
             return Promise.resolve(true);
         }
         return Promise.resolve(false);
     }
+    /**
+     * @inheritDoc
+     * @internal
+     */
     processEventRefund(swap, event) {
-        if (swap.state !== FromBTCLNSwap_1.FromBTCLNSwapState.CLAIM_CLAIMED && swap.state !== FromBTCLNSwap_1.FromBTCLNSwapState.FAILED) {
-            swap.state = FromBTCLNSwap_1.FromBTCLNSwapState.FAILED;
+        if (swap._state !== FromBTCLNSwap_1.FromBTCLNSwapState.CLAIM_CLAIMED && swap._state !== FromBTCLNSwap_1.FromBTCLNSwapState.FAILED) {
+            swap._state = FromBTCLNSwap_1.FromBTCLNSwapState.FAILED;
             return Promise.resolve(true);
         }
         return Promise.resolve(false);
@@ -85,8 +111,10 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
      * @param options Options as passed to the swap creation function
      * @param decodedPr Decoded bolt11 lightning network invoice
      * @param paymentHash Expected payment hash of the bolt11 lightning network invoice
-     * @private
+     *
      * @throws {IntermediaryError} in case the response is invalid
+     *
+     * @private
      */
     verifyReturnedData(resp, amountData, lp, options, decodedPr, paymentHash) {
         if (lp.getAddress(this.chainIdentifier) !== resp.intermediaryKey)
@@ -109,29 +137,32 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
         }
     }
     /**
-     * Returns a newly created swap, receiving 'amount' on lightning network
+     * Returns a newly created legacy Lightning -> Smart chain swap using the HTLC based escrow swap protocol,
+     *  where the user needs to manually settle swap on the destination smart chain. The user has to pay
+     *  a bolt11 invoice on the input lightning network side.
      *
-     * @param signer                Smart chain signer's address intiating the swap
-     * @param amountData            Amount of token & amount to swap
-     * @param lps                   LPs (liquidity providers) to get the quotes from
-     * @param options               Quote options
-     * @param additionalParams      Additional parameters sent to the LP when creating the swap
-     * @param abortSignal           Abort signal for aborting the process
-     * @param preFetches
+     * @param recipient Smart chain signer's address on the destination chain, that will have to manually
+     *  settle the swap.
+     * @param amountData Amount, token and exact input/output data for to swap
+     * @param lps An array of intermediaries (LPs) to get the quotes from
+     * @param options Optional additional quote options
+     * @param additionalParams Optional additional parameters sent to the LP when creating the swap
+     * @param abortSignal Abort signal
+     * @param preFetches Optional pre-fetches for speeding up the quoting process (mainly used internally)
      */
-    create(signer, amountData, lps, options, additionalParams, abortSignal, preFetches) {
+    create(recipient, amountData, lps, options, additionalParams, abortSignal, preFetches) {
         if (options == null)
             options = {};
-        options.unsafeSkipLnNodeCheck ??= this.options.unsafeSkipLnNodeCheck;
+        options.unsafeSkipLnNodeCheck ??= this._options.unsafeSkipLnNodeCheck;
         if (options.descriptionHash != null && options.descriptionHash.length !== 32)
             throw new UserError_1.UserError("Invalid description hash length");
         const { secret, paymentHash } = this.getSecretAndHash();
-        const claimHash = this.contract.getHashForHtlc(paymentHash);
-        const nativeTokenAddress = this.chain.getNativeCurrencyAddress();
+        const claimHash = this._contract.getHashForHtlc(paymentHash);
+        const nativeTokenAddress = this._chain.getNativeCurrencyAddress();
         const _abortController = (0, Utils_1.extendAbortController)(abortSignal);
         const _preFetches = {
             pricePrefetchPromise: preFetches?.pricePrefetchPromise ?? this.preFetchPrice(amountData, _abortController.signal),
-            feeRatePromise: preFetches?.feeRatePromise ?? this.preFetchFeeRate(signer, amountData, claimHash.toString("hex"), _abortController),
+            feeRatePromise: preFetches?.feeRatePromise ?? this.preFetchFeeRate(recipient, amountData, claimHash.toString("hex"), _abortController),
             usdPricePrefetchPromise: preFetches?.usdPricePrefetchPromise ?? this.preFetchUsdPrice(_abortController.signal),
         };
         return lps.map(lp => {
@@ -146,13 +177,13 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
                         const { lnPublicKey, response } = IntermediaryAPI_1.IntermediaryAPI.initFromBTCLN(this.chainIdentifier, lp.url, nativeTokenAddress, {
                             paymentHash,
                             amount: amountData.amount,
-                            claimer: signer,
+                            claimer: recipient,
                             token: amountData.token.toString(),
                             descriptionHash: options?.descriptionHash,
                             exactOut: !amountData.exactIn,
                             feeRate: (0, Utils_1.throwIfUndefined)(_preFetches.feeRatePromise),
                             additionalParams
-                        }, this.options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined);
+                        }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined);
                         return {
                             lnCapacityPromise: options?.unsafeSkipLnNodeCheck ? null : this.preFetchLnCapacity(lnPublicKey),
                             resp: await response
@@ -178,7 +209,7 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
                             swapFee: resp.swapFee,
                             swapFeeBtc: resp.swapFee * amountIn / (resp.total - resp.swapFee),
                             feeRate: (await _preFetches.feeRatePromise),
-                            initialSwapData: await this.contract.createSwapData(base_1.ChainSwapType.HTLC, lp.getAddress(this.chainIdentifier), signer, amountData.token, resp.total, claimHash.toString("hex"), this.getRandomSequence(), BigInt(Math.floor(Date.now() / 1000)), false, true, resp.securityDeposit, 0n, nativeTokenAddress),
+                            initialSwapData: await this._contract.createSwapData(base_1.ChainSwapType.HTLC, lp.getAddress(this.chainIdentifier), recipient, amountData.token, resp.total, claimHash.toString("hex"), this.getRandomSequence(), BigInt(Math.floor(Date.now() / 1000)), false, true, resp.securityDeposit, 0n, nativeTokenAddress),
                             pr: resp.pr,
                             secret: secret.toString("hex"),
                             exactIn: amountData.exactIn ?? true
@@ -195,26 +226,30 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
         });
     }
     /**
-     * Returns a newly created swap, receiving 'amount' from the lnurl-withdraw
+     * Returns a newly created legacy Lightning -> Smart chain swap using the HTLC based escrow swap protocol,
+     *  where the user needs to manually settle swap on the destination smart chain. The swap is created
+     *  with an LNURL-withdraw link which will be used to pay the generated bolt11 invoice automatically
+     *  when {@link FromBTCLNSwap.waitForPayment} is called on the swap.
      *
-     * @param signer                Smart chains signer's address intiating the swap
-     * @param lnurl                 LNURL-withdraw to withdraw funds from
-     * @param amountData            Amount of token & amount to swap
-     * @param lps                   LPs (liquidity providers) to get the quotes from
-     * @param additionalParams      Additional parameters sent to the LP when creating the swap
-     * @param abortSignal           Abort signal for aborting the process
+     * @param recipient Smart chain signer's address on the destination chain, that will have to manually
+     *  settle the swap.
+     * @param lnurl LNURL-withdraw link to pull the funds from
+     * @param amountData Amount, token and exact input/output data for to swap
+     * @param lps An array of intermediaries (LPs) to get the quotes from
+     * @param additionalParams Optional additional parameters sent to the LP when creating the swap
+     * @param abortSignal Abort signal
      */
-    async createViaLNURL(signer, lnurl, amountData, lps, additionalParams, abortSignal) {
+    async createViaLNURL(recipient, lnurl, amountData, lps, additionalParams, abortSignal) {
         if (!this.isInitialized)
             throw new Error("Not initialized, call init() first!");
         const abortController = (0, Utils_1.extendAbortController)(abortSignal);
         const preFetches = {
             pricePrefetchPromise: this.preFetchPrice(amountData, abortController.signal),
             usdPricePrefetchPromise: this.preFetchUsdPrice(abortController.signal),
-            feeRatePromise: this.preFetchFeeRate(signer, amountData, undefined, abortController)
+            feeRatePromise: this.preFetchFeeRate(recipient, amountData, undefined, abortController)
         };
         try {
-            const exactOutAmountPromise = !amountData.exactIn ? preFetches.pricePrefetchPromise.then(price => this.prices.getToBtcSwapAmount(this.chainIdentifier, amountData.amount, amountData.token, abortController.signal, price)).catch(e => {
+            const exactOutAmountPromise = !amountData.exactIn ? preFetches.pricePrefetchPromise.then(price => this._prices.getToBtcSwapAmount(this.chainIdentifier, amountData.amount, amountData.token, abortController.signal, price)).catch(e => {
                 abortController.abort(e);
                 return undefined;
             }) : undefined;
@@ -235,12 +270,10 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
                 if ((amount * 105n / 100n) > max)
                     throw new UserError_1.UserError("Amount more than LNURL-withdraw maximum");
             }
-            return this.create(signer, amountData, lps, undefined, additionalParams, abortSignal, preFetches).map(data => {
+            return this.create(recipient, amountData, lps, undefined, additionalParams, abortSignal, preFetches).map(data => {
                 return {
                     quote: data.quote.then(quote => {
-                        quote.lnurl = withdrawRequest.url;
-                        quote.lnurlK1 = withdrawRequest.k1;
-                        quote.lnurlCallback = withdrawRequest.callback;
+                        quote._setLNURLData(withdrawRequest.url, withdrawRequest.k1, withdrawRequest.callback);
                         const amountIn = quote.getInput().rawAmount;
                         if (amountIn < min)
                             throw new UserError_1.UserError("Amount less than LNURL-withdraw minimum");
@@ -257,6 +290,10 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
             throw e;
         }
     }
+    /**
+     * @inheritDoc
+     * @internal
+     */
     async _checkPastSwaps(pastSwaps) {
         const changedSwapSet = new Set();
         const swapExpiredStatus = {};
@@ -277,13 +314,13 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
                 //Check expiry
                 swapExpiredStatus[pastSwap.getId()] = await pastSwap._verifyQuoteDefinitelyExpired();
             }
-            if (pastSwap._shouldFetchCommitStatus()) {
+            if (pastSwap._shouldFetchOnchainState()) {
                 //Add to swaps for which status should be checked
-                if (pastSwap.data != null)
+                if (pastSwap._data != null)
                     checkStatusSwaps.push(pastSwap);
             }
         }));
-        const swapStatuses = await this.contract.getCommitStatuses(checkStatusSwaps.map(val => ({ signer: val._getInitiator(), swapData: val.data })));
+        const swapStatuses = await this._contract.getCommitStatuses(checkStatusSwaps.map(val => ({ signer: val._getInitiator(), swapData: val._data })));
         for (let pastSwap of checkStatusSwaps) {
             const shouldSave = await pastSwap._sync(false, swapExpiredStatus[pastSwap.getId()], swapStatuses[pastSwap.getEscrowHash()], true);
             if (shouldSave) {
@@ -305,6 +342,10 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
             removeSwaps
         };
     }
+    /**
+     * @inheritDoc
+     * @internal
+     */
     async recoverFromSwapDataAndState(init, state, lp) {
         const data = init.data;
         let paymentHash = data.getHTLCHashHint();
@@ -335,37 +376,14 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
             exactIn: false
         };
         const swap = new FromBTCLNSwap_1.FromBTCLNSwap(this, swapInit);
-        swap.commitTxId = await init.getInitTxId();
+        swap._commitTxId = await init.getInitTxId();
         const blockData = await init.getTxBlock();
         swap.createdAt = blockData.blockTime * 1000;
         swap._setInitiated();
-        swap.state = FromBTCLNSwap_1.FromBTCLNSwapState.CLAIM_COMMITED;
+        swap._state = FromBTCLNSwap_1.FromBTCLNSwapState.CLAIM_COMMITED;
         await swap._sync(false, false, state);
         await swap._save();
         return swap;
-        // switch(state.type) {
-        //     case SwapCommitStateType.PAID:
-        //         secret ??= await state.getClaimResult();
-        //         swap._setSwapSecret(secret);
-        //         swap.claimTxId = await state.getClaimTxId();
-        //         swap.state = FromBTCLNSwapState.CLAIM_CLAIMED;
-        //         break;
-        //     case SwapCommitStateType.NOT_COMMITED:
-        //     case SwapCommitStateType.EXPIRED:
-        //         if(state.getRefundTxId==null) return null;
-        //         swap.refundTxId = await state.getRefundTxId();
-        //         swap.state = FromBTCLNSwapState.FAILED;
-        //         break;
-        //     case SwapCommitStateType.COMMITED:
-        //     case SwapCommitStateType.REFUNDABLE:
-        //         const expired = await this.contract.isExpired(swap._getInitiator(), data);
-        //         if(expired) {
-        //             swap.state = FromBTCLNSwapState.EXPIRED;
-        //         } else {
-        //             swap.state = FromBTCLNSwapState.CLAIM_COMMITED;
-        //         }
-        //         break;
-        // }
     }
 }
 exports.FromBTCLNWrapper = FromBTCLNWrapper;

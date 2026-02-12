@@ -27,7 +27,7 @@ export class SwapperUtils<T extends MultiChain> {
     private readonly root: Swapper<T>;
 
     constructor(root: Swapper<T>) {
-        this.bitcoinNetwork = root.bitcoinNetwork;
+        this.bitcoinNetwork = root._btcNetwork;
         this.root = root;
     }
 
@@ -39,11 +39,11 @@ export class SwapperUtils<T extends MultiChain> {
      */
     isValidSmartChainAddress(address: string, chainId?: ChainIds<T>): boolean {
         if(chainId!=null) {
-            if(this.root.chains[chainId]==null) throw new Error(`Unknown chain id: ${chainId}`);
-            return this.root.chains[chainId].chainInterface.isValidAddress(address);
+            if(this.root._chains[chainId]==null) throw new Error(`Unknown chain id: ${chainId}`);
+            return this.root._chains[chainId].chainInterface.isValidAddress(address);
         }
         for(let chainId of this.root.getSmartChains()) {
-            if(this.root.chains[chainId].chainInterface.isValidAddress(address)) return true;
+            if(this.root._chains[chainId].chainInterface.isValidAddress(address)) return true;
         }
         return false;
     }
@@ -235,7 +235,7 @@ export class SwapperUtils<T extends MultiChain> {
         max?: TokenAmount
     } | null {
         for(let chainId of this.root.getSmartChains()) {
-            if(this.root.chains[chainId].chainInterface.isValidAddress(resultText)) {
+            if(this.root._chains[chainId].chainInterface.isValidAddress(resultText)) {
                 return {
                     address: resultText,
                     type: chainId,
@@ -346,7 +346,7 @@ export class SwapperUtils<T extends MultiChain> {
      * @param includeGasToken Whether to return the PSBT also with the gas token amount (increases the vSize by 8)
      */
     getRandomSpvVaultPsbt<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier, includeGasToken?: boolean): Transaction {
-        const wrapper = this.root.chains[chainIdentifier].wrappers[SwapType.SPV_VAULT_FROM_BTC];
+        const wrapper = this.root._chains[chainIdentifier].wrappers[SwapType.SPV_VAULT_FROM_BTC];
         if(wrapper==null) throw new Error("Chain doesn't support spv vault swaps!");
         return wrapper.getDummySwapPsbt(includeGasToken);
     }
@@ -374,9 +374,9 @@ export class SwapperUtils<T extends MultiChain> {
     }> {
         let bitcoinWallet: IBitcoinWallet;
         if(typeof(wallet)==="string") {
-            bitcoinWallet = new SingleAddressBitcoinWallet(this.root.bitcoinRpc, this.bitcoinNetwork, {address: wallet, publicKey: ""});
+            bitcoinWallet = new SingleAddressBitcoinWallet(this.root._bitcoinRpc, this.bitcoinNetwork, {address: wallet, publicKey: ""});
         } else {
-            bitcoinWallet = toBitcoinWallet(wallet, this.root.bitcoinRpc, this.bitcoinNetwork);
+            bitcoinWallet = toBitcoinWallet(wallet, this.root._bitcoinRpc, this.bitcoinNetwork);
         }
 
         let feeRate = options?.feeRate ?? await bitcoinWallet.getFeeRate();
@@ -403,8 +403,8 @@ export class SwapperUtils<T extends MultiChain> {
         feeMultiplier?: number,
         feeRate?: any
     }): Promise<TokenAmount> {
-        if(this.root.chains[token.chainId]==null) throw new Error("Invalid chain identifier! Unknown chain: "+token.chainId);
-        const {swapContract, chainInterface} = this.root.chains[token.chainId];
+        if(this.root._chains[token.chainId]==null) throw new Error("Invalid chain identifier! Unknown chain: "+token.chainId);
+        const {swapContract, chainInterface} = this.root._chains[token.chainId];
 
         let signer: string;
         if(typeof(wallet)==="string") {
@@ -448,8 +448,8 @@ export class SwapperUtils<T extends MultiChain> {
      * Returns the address of the native currency of the smart chain
      */
     getNativeToken<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier): SCToken<ChainIdentifier> {
-        if(this.root.chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
-        return this.root.tokens[chainIdentifier][this.root.chains[chainIdentifier].chainInterface.getNativeCurrencyAddress()] as SCToken<ChainIdentifier>;
+        if(this.root._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
+        return this.root._tokens[chainIdentifier][this.root._chains[chainIdentifier].chainInterface.getNativeCurrencyAddress()] as SCToken<ChainIdentifier>;
     }
 
     /**
@@ -458,8 +458,8 @@ export class SwapperUtils<T extends MultiChain> {
      * @param chainIdentifier
      */
     randomSigner<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier): T[ChainIdentifier]["Signer"] {
-        if(this.root.chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
-        return this.root.chains[chainIdentifier].chainInterface.randomSigner();
+        if(this.root._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
+        return this.root._chains[chainIdentifier].chainInterface.randomSigner();
     }
 
     /**
@@ -468,8 +468,8 @@ export class SwapperUtils<T extends MultiChain> {
      * @param chainIdentifier
      */
     randomAddress<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier): string {
-        if(this.root.chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
-        return this.root.chains[chainIdentifier].chainInterface.randomAddress();
+        if(this.root._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
+        return this.root._chains[chainIdentifier].chainInterface.randomAddress();
     }
 
     /**
@@ -488,8 +488,8 @@ export class SwapperUtils<T extends MultiChain> {
         abortSignal?: AbortSignal,
         onBeforePublish?: (txId: string, rawTx: string) => Promise<void>
     ): Promise<string[]> {
-        if(this.root.chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
-        return this.root.chains[chainIdentifier].chainInterface.sendAndConfirm(signer, txs, true, abortSignal, false, onBeforePublish);
+        if(this.root._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
+        return this.root._chains[chainIdentifier].chainInterface.sendAndConfirm(signer, txs, true, abortSignal, false, onBeforePublish);
     }
 
     /**
@@ -506,8 +506,8 @@ export class SwapperUtils<T extends MultiChain> {
         abortSignal?: AbortSignal,
         onBeforePublish?: (txId: string, rawTx: string) => Promise<void>
     ): Promise<string[]> {
-        if(this.root.chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
-        return this.root.chains[chainIdentifier].chainInterface.sendSignedAndConfirm(txs, true, abortSignal, false, onBeforePublish);
+        if(this.root._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
+        return this.root._chains[chainIdentifier].chainInterface.sendSignedAndConfirm(txs, true, abortSignal, false, onBeforePublish);
     }
 
     /**
@@ -517,8 +517,8 @@ export class SwapperUtils<T extends MultiChain> {
      * @param tx An unsigned transaction to serialize
      */
     serializeUnsignedTransaction<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier, tx: T[ChainIdentifier]["TX"]): Promise<string> {
-        if(this.root.chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
-        return this.root.chains[chainIdentifier].chainInterface.serializeTx(tx);
+        if(this.root._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
+        return this.root._chains[chainIdentifier].chainInterface.serializeTx(tx);
     }
 
     /**
@@ -528,8 +528,8 @@ export class SwapperUtils<T extends MultiChain> {
      * @param tx Serialized unsigned transaction
      */
     deserializeUnsignedTransaction<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier, tx: string): Promise<T[ChainIdentifier]["TX"]> {
-        if(this.root.chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
-        return this.root.chains[chainIdentifier].chainInterface.deserializeTx(tx);
+        if(this.root._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
+        return this.root._chains[chainIdentifier].chainInterface.deserializeTx(tx);
     }
 
     /**
@@ -539,8 +539,8 @@ export class SwapperUtils<T extends MultiChain> {
      * @param tx A signed transaction to serialize
      */
     serializeSignedTransaction<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier, tx: T[ChainIdentifier]["SignedTXType"]): Promise<string> {
-        if(this.root.chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
-        return this.root.chains[chainIdentifier].chainInterface.serializeSignedTx(tx);
+        if(this.root._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
+        return this.root._chains[chainIdentifier].chainInterface.serializeSignedTx(tx);
     }
 
     /**
@@ -550,8 +550,8 @@ export class SwapperUtils<T extends MultiChain> {
      * @param tx Serialized signed transaction
      */
     deserializeSignedTransaction<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier, tx: string): Promise<T[ChainIdentifier]["SignedTXType"]> {
-        if(this.root.chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
-        return this.root.chains[chainIdentifier].chainInterface.deserializeSignedTx(tx);
+        if(this.root._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
+        return this.root._chains[chainIdentifier].chainInterface.deserializeSignedTx(tx);
     }
 
 }

@@ -146,7 +146,6 @@ __exportStar(require("./types/wallets/MinimalLightningNetworkWalletInterface"), 
 __exportStar(require("./types/wallets/LightningInvoiceCreateService"), exports);
 __exportStar(require("./types/AmountData"), exports);
 __exportStar(require("./types/CustomPriceFunction"), exports);
-__exportStar(require("./types/PriceInfoType"), exports);
 __exportStar(require("./types/SwapExecutionAction"), exports);
 __exportStar(require("./types/SwapWithSigner"), exports);
 __exportStar(require("./types/Token"), exports);

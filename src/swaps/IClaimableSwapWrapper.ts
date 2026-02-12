@@ -11,7 +11,8 @@ export interface IClaimableSwapWrapper<T extends ISwap & IClaimableSwap = ISwap 
 
     /**
      * A list of swap states when the swap is potentially claimable
+     * @internal
      */
-    claimableSwapStates: T["state"][];
+    _claimableSwapStates: T["_state"][];
 
 }

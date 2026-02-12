@@ -12,6 +12,7 @@ import { FeeType } from "../../../enums/FeeType";
 import { TokenAmount } from "../../../types/TokenAmount";
 import { BtcToken, SCToken } from "../../../types/Token";
 import { LoggerType } from "../../../utils/Logger";
+import { SwapExecutionActionBitcoin } from "../../../types/SwapExecutionAction";
 /**
  * State enum for trusted on-chain gas swaps
  *
@@ -61,8 +62,10 @@ export declare function isOnchainForGasSwapInit(obj: any): obj is OnchainForGasS
  * @category Swaps
  */
 export declare class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T, OnchainForGasSwapTypeDefinition<T>> implements IAddressSwap, IBTCWalletSwap {
-    getSmartChainNetworkFee: null;
     protected readonly TYPE: SwapType.TRUSTED_FROM_BTC;
+    /**
+     * @internal
+     */
     protected readonly logger: LoggerType;
     private readonly paymentHash;
     private readonly sequence;
@@ -74,32 +77,38 @@ export declare class OnchainForGasSwap<T extends ChainType = ChainType> extends 
     private refundAddress?;
     /**
      * Destination transaction ID on the smart chain side
+     * @private
      */
-    scTxId?: string;
+    private scTxId?;
     /**
      * Source transaction ID on the source (bitcoin) side
+     * @private
      */
-    txId?: string;
+    private txId?;
     /**
      * Transaction ID on the source (bitcoin) side used for refunding the funds back to the user
+     * @private
      */
-    refundTxId?: string;
+    private refundTxId?;
     /**
-     * @inheritDoc
+     * @internal
      */
-    wrapper: OnchainForGasWrapper<T>;
+    protected readonly wrapper: OnchainForGasWrapper<T>;
     constructor(wrapper: OnchainForGasWrapper<T>, init: OnchainForGasSwapInit);
     constructor(wrapper: OnchainForGasWrapper<T>, obj: any);
     /**
      * @inheritDoc
+     * @internal
      */
     protected upgradeVersion(): void;
     /**
      * @inheritDoc
+     * @internal
      */
     protected tryRecomputeSwapPrice(): void;
     /**
      * @inheritDoc
+     * @internal
      */
     _getEscrowHash(): string;
     /**
@@ -156,13 +165,19 @@ export declare class OnchainForGasSwap<T extends ChainType = ChainType> extends 
     isSuccessful(): boolean;
     /**
      * @inheritDoc
+     * @internal
      */
-    verifyQuoteValid(): Promise<boolean>;
+    _verifyQuoteDefinitelyExpired(): Promise<boolean>;
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    _verifyQuoteValid(): Promise<boolean>;
     /**
      * Returns an output amount in base units without a swap fee included, hence this value
      *  is larger than the actual output amount
      *
-     * @protected
+     * @internal
      */
     protected getOutAmountWithoutFee(): bigint;
     /**
@@ -188,7 +203,7 @@ export declare class OnchainForGasSwap<T extends ChainType = ChainType> extends 
     /**
      * Returns the swap fee charged by the intermediary (LP) on this swap
      *
-     * @protected
+     * @internal
      */
     protected getSwapFee(): Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>;
     /**
@@ -235,43 +250,29 @@ export declare class OnchainForGasSwap<T extends ChainType = ChainType> extends 
     sendBitcoinTransaction(wallet: IBitcoinWallet | MinimalBitcoinWalletInterfaceWithSigner, feeRate?: number): Promise<string>;
     /**
      * @inheritDoc
+     *
+     * @param options.bitcoinWallet Optional bitcoin wallet address specification to return a funded PSBT,
+     *  if not provided an address is returned instead.
      */
     txsExecute(options?: {
         bitcoinWallet?: MinimalBitcoinWalletInterface;
-    }): Promise<{
-        name: "Payment";
-        description: string;
-        chain: string;
-        txs: ({
-            address: string;
-            amount: number;
-            hyperlink: string;
-            type: string;
-        } | {
-            type: string;
-            psbt: Transaction;
-            psbtHex: string;
-            psbtBase64: string;
-            signInputs: number[];
-            address?: undefined;
-            amount?: undefined;
-            hyperlink?: undefined;
-        })[];
-    }[]>;
+    }): Promise<[
+        SwapExecutionActionBitcoin<"ADDRESS" | "FUNDED_PSBT">
+    ]>;
     /**
      * Queries the intermediary (LP) node for the state of the swap
      *
      * @param save Whether the save the result or not
      *
      * @returns Whether the swap was successful as `boolean` or `null` if the swap is still pending
-     * @protected
+     * @internal
      */
     protected checkAddress(save?: boolean): Promise<boolean | null>;
     /**
      * Sets the bitcoin address used for possible refunds in case something goes wrong with the swap
      *
      * @param refundAddress Bitcoin address to receive the refund to
-     * @protected
+     * @internal
      */
     protected setRefundAddress(refundAddress: string): Promise<void>;
     /**
@@ -300,14 +301,17 @@ export declare class OnchainForGasSwap<T extends ChainType = ChainType> extends 
     serialize(): any;
     /**
      * @inheritDoc
+     * @internal
      */
     _getInitiator(): string;
     /**
      * @inheritDoc
+     * @internal
      */
     _sync(save?: boolean): Promise<boolean>;
     /**
      * @inheritDoc
+     * @internal
      */
     _tick(save?: boolean): Promise<boolean>;
 }

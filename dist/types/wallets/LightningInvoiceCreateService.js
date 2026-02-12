@@ -1,6 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.isLightningInvoiceCreateService = void 0;
+/**
+ * Type guard for {@link LightningInvoiceCreateService}
+ *
+ * @internal
+ */
 function isLightningInvoiceCreateService(obj) {
     return typeof (obj) === "object" &&
         typeof (obj.getInvoice) === "function" &&

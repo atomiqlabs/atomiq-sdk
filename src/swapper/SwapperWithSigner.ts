@@ -38,12 +38,16 @@ import {SwapTypeMapping} from "../utils/SwapUtils";
  */
 export class SwapperWithSigner<T extends MultiChain, ChainIdentifier extends ChainIds<T>> {
 
-    readonly chainIdentifier: ChainIdentifier;
-    readonly signer: T[ChainIdentifier]["Signer"];
+    private readonly signer: T[ChainIdentifier]["Signer"];
     /**
      * Underlying single chain swapper instance
      */
-    readonly swapper: SwapperWithChain<T, ChainIdentifier>;
+    private readonly swapper: SwapperWithChain<T, ChainIdentifier>;
+
+    /**
+     * Smart chain identifier of this swapper with chain and signer
+     */
+    readonly chainIdentifier: ChainIdentifier;
 
     /**
      * Pricing API used by the SDK
@@ -56,30 +60,6 @@ export class SwapperWithSigner<T extends MultiChain, ChainIdentifier extends Cha
      */
     get intermediaryDiscovery(): IntermediaryDiscovery {
         return this.swapper.intermediaryDiscovery;
-    }
-    /**
-     * Mempool (mempool.space) api used for fetching bitcoin chain and lightning network data
-     */
-    get mempoolApi(): MempoolApi {
-        return this.swapper.mempoolApi;
-    }
-    /**
-     * Bitcoin RPC for fetching bitcoin chain data
-     */
-    get bitcoinRpc(): MempoolBitcoinRpc {
-        return this.swapper.bitcoinRpc;
-    }
-    /**
-     * Bitcoin network specification
-     */
-    get bitcoinNetwork(): BTC_NETWORK {
-        return this.swapper.bitcoinNetwork;
-    }
-    /**
-     * Data propagation layer used for broadcasting messages to watchtowers
-     */
-    get messenger(): Messenger {
-        return this.swapper.messenger;
     }
     /**
      * Miscellaneous utility functions
@@ -95,6 +75,9 @@ export class SwapperWithSigner<T extends MultiChain, ChainIdentifier extends Cha
      *  arbitrary transactions
      * - `supportsGasDrop`: Whether a swap supports the "gas drop" feature, allowing to user to receive a small
      *  amount of native token as part of the swap when swapping to smart chains
+     *
+     * Uses a `Record` type here, use the {@link SwapProtocolInfo} import for a literal readonly type, with
+     *  pre-filled exact values in the type.
      */
     get SwapTypeInfo() {
         return this.swapper.SwapTypeInfo;
@@ -338,11 +321,35 @@ export class SwapperWithSigner<T extends MultiChain, ChainIdentifier extends Cha
         return this.swapper.createTrustedOnchainForGasSwap(this.signer.getAddress(), amount, refundAddress, trustedIntermediaryOrUrl);
     }
 
+    /**
+     * @internal
+     */
     create(srcToken: BtcToken<true>, dstToken: SCToken<ChainIdentifier>, amount: bigint, exactIn: boolean, lnurlWithdraw?: string | LNURLWithdraw): Promise<(SupportsSwapType<T[ChainIdentifier], SwapType.FROM_BTCLN_AUTO> extends true ? FromBTCLNAutoSwap<T[ChainIdentifier]> : FromBTCLNSwap<T[ChainIdentifier]>)>;
+    /**
+     * @internal
+     */
     create(srcToken: BtcToken<false>, dstToken: SCToken<ChainIdentifier>, amount: bigint, exactIn: boolean): Promise<(SupportsSwapType<T[ChainIdentifier], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCSwap<T[ChainIdentifier]> : FromBTCSwap<T[ChainIdentifier]>)>;
+    /**
+     * @internal
+     */
     create(srcToken: SCToken<ChainIdentifier>, dstToken: BtcToken<false>, amount: bigint, exactIn: boolean, address: string): Promise<ToBTCSwap<T[ChainIdentifier]>>;
+    /**
+     * @internal
+     */
     create(srcToken: SCToken<ChainIdentifier>, dstToken: BtcToken<true>, amount: bigint, exactIn: boolean, lnurlPay: string | LNURLPay): Promise<ToBTCLNSwap<T[ChainIdentifier]>>;
-    create(srcToken: SCToken<ChainIdentifier>, dstToken: BtcToken<true>, amount: undefined, exactIn: false, lightningInvoice: string): Promise<ToBTCLNSwap<T[ChainIdentifier]>>;
+    /**
+     * Creates a swap from srcToken to dstToken, of a specific token amount, either specifying input amount (exactIn=true)
+     *  or output amount (exactIn=false), NOTE: For regular -> BTC-LN (lightning) swaps the passed amount is ignored and
+     *  invoice's pre-set amount is used instead.
+     *
+     * @param srcToken Source token of the swap, user pays this token
+     * @param dstToken Destination token of the swap, user receives this token
+     * @param amount Amount of the swap
+     * @param exactIn Whether the amount specified is an input amount (exactIn=true) or an output amount (exactIn=false)
+     * @param addressLnurlLightningInvoice Bitcoin on-chain address, lightning invoice, LNURL-pay to pay or
+     *  LNURL-withdrawal to withdraw money from
+     */
+    create(srcToken: SCToken<ChainIdentifier>, dstToken: BtcToken<true>, amount: undefined, exactIn: false, addressLnurlLightningInvoice: string): Promise<ToBTCLNSwap<T[ChainIdentifier]>>;
     /**
      * Creates a swap from srcToken to dstToken, of a specific token amount, either specifying input amount (exactIn=true)
      *  or output amount (exactIn=false), NOTE: For regular -> BTC-LN (lightning) swaps the passed amount is ignored and
@@ -443,16 +450,34 @@ export class SwapperWithSigner<T extends MultiChain, ChainIdentifier extends Cha
     }
 
     /**
+     * @internal
+     */
+    getSwapType(srcToken: BtcToken<true>, dstToken: SCToken<ChainIdentifier>): (SupportsSwapType<T[ChainIdentifier], SwapType.FROM_BTCLN_AUTO> extends true ? SwapType.FROM_BTCLN_AUTO : SwapType.FROM_BTCLN);
+    /**
+     * @internal
+     */
+    getSwapType(srcToken: BtcToken<false>, dstToken: SCToken<ChainIdentifier>): (SupportsSwapType<T[ChainIdentifier], SwapType.SPV_VAULT_FROM_BTC> extends true ? SwapType.SPV_VAULT_FROM_BTC : SwapType.FROM_BTC);
+    /**
+     * @internal
+     */
+    getSwapType(srcToken: SCToken<ChainIdentifier>, dstToken: BtcToken<false>): SwapType.TO_BTC;
+    /**
+     * @internal
+     */
+    getSwapType(srcToken: SCToken<ChainIdentifier>, dstToken: BtcToken<true>): SwapType.TO_BTCLN;
+    /**
      * Returns type of the swap based on input and output tokens specified
      *
      * @param srcToken Source token
      * @param dstToken Destination token
      */
-    getSwapType(srcToken: BtcToken<true>, dstToken: SCToken<ChainIdentifier>): (SupportsSwapType<T[ChainIdentifier], SwapType.FROM_BTCLN_AUTO> extends true ? SwapType.FROM_BTCLN_AUTO : SwapType.FROM_BTCLN);
-    getSwapType(srcToken: BtcToken<false>, dstToken: SCToken<ChainIdentifier>): (SupportsSwapType<T[ChainIdentifier], SwapType.SPV_VAULT_FROM_BTC> extends true ? SwapType.SPV_VAULT_FROM_BTC : SwapType.FROM_BTC);
-    getSwapType(srcToken: SCToken<ChainIdentifier>, dstToken: BtcToken<false>): SwapType.TO_BTC;
-    getSwapType(srcToken: SCToken<ChainIdentifier>, dstToken: BtcToken<true>): SwapType.TO_BTCLN;
     getSwapType(srcToken: Token<ChainIdentifier>, dstToken: Token<ChainIdentifier>): SwapType.FROM_BTCLN_AUTO | SwapType.FROM_BTCLN | SwapType.SPV_VAULT_FROM_BTC | SwapType.FROM_BTC | SwapType.TO_BTC | SwapType.TO_BTCLN;
+    /**
+     * Returns type of the swap based on input and output tokens specified
+     *
+     * @param srcToken Source token
+     * @param dstToken Destination token
+     */
     getSwapType(srcToken: Token<ChainIdentifier>, dstToken: Token<ChainIdentifier>): SwapType.FROM_BTCLN_AUTO | SwapType.FROM_BTCLN | SwapType.SPV_VAULT_FROM_BTC | SwapType.FROM_BTC | SwapType.TO_BTC | SwapType.TO_BTCLN {
         return this.swapper.getSwapType(srcToken, dstToken);
     }
@@ -476,40 +501,6 @@ export class SwapperWithSigner<T extends MultiChain, ChainIdentifier extends Cha
      */
     getSwapCounterTokens(token: Token, input: boolean): Token<ChainIdentifier>[] {
         return this.swapper.getSwapCounterTokens(token, input);
-    }
-
-
-    ///////////////////////////////////
-    /// Deprecated
-
-    /**
-     * Returns swap bounds (minimums & maximums) for different swap types & tokens
-     * @deprecated Use getSwapLimits() instead!
-     */
-    getSwapBounds(): SwapBounds {
-        return this.swapper.getSwapBounds();
-    }
-
-    /**
-     * Returns maximum possible swap amount
-     * @deprecated Use getSwapLimits() instead!
-     *
-     * @param type      Type of the swap
-     * @param token     Token of the swap
-     */
-    getMaximum(type: SwapType, token: string): bigint {
-        return this.swapper.getMaximum(type, token);
-    }
-
-    /**
-     * Returns minimum possible swap amount
-     * @deprecated Use getSwapLimits() instead!
-     *
-     * @param type      Type of swap
-     * @param token     Token of the swap
-     */
-    getMinimum(type: SwapType, token: string): bigint {
-        return this.swapper.getMinimum(type, token);
     }
 
 }

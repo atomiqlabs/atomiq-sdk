@@ -15,12 +15,19 @@ export type ToBTCSwapInit<T extends SwapData> = IToBTCSwapInit<T> & {
 };
 export declare function isToBTCSwapInit<T extends SwapData>(obj: any): obj is ToBTCSwapInit<T>;
 /**
- * Smart Chain to on-chain BTC swap
+ * Escrow based (PrTLC) swap for Smart chains -> Bitcoin
+ *
  * @category Swaps
  */
 export declare class ToBTCSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, ToBTCDefinition<T>> {
+    protected readonly TYPE: SwapType.TO_BTC;
+    /**
+     * @internal
+     */
     protected readonly outputToken: BtcToken<false>;
-    protected readonly TYPE = SwapType.TO_BTC;
+    /**
+     * @internal
+     */
     protected readonly logger: LoggerType;
     private address?;
     private amount?;
@@ -31,20 +38,36 @@ export declare class ToBTCSwap<T extends ChainType = ChainType> extends IToBTCSw
     private txId?;
     constructor(wrapper: ToBTCWrapper<T>, serializedObject: any);
     constructor(wrapper: ToBTCWrapper<T>, init: ToBTCSwapInit<T["Data"]>);
+    /**
+     * @inheritDoc
+     * @internal
+     */
     _setPaymentResult(result: {
         secret?: string;
         txId?: string;
     }, check?: boolean): Promise<boolean>;
+    /**
+     * @inheritDoc
+     */
     getOutputToken(): BtcToken<false>;
+    /**
+     * @inheritDoc
+     */
     getOutput(): TokenAmount<T["ChainId"], BtcToken<false>>;
     /**
-     * Returns the bitcoin address where the BTC will be sent to
+     * @inheritDoc
      */
     getOutputAddress(): string | null;
+    /**
+     * @inheritDoc
+     */
     getOutputTxId(): string | null;
     /**
-     * Returns fee rate of the bitcoin transaction in sats/vB
+     * Returns fee rate of the output bitcoin transaction in sats/vB as reported by the intermediary (LP)
      */
     getBitcoinFeeRate(): number;
+    /**
+     * @inheritDoc
+     */
     serialize(): any;
 }

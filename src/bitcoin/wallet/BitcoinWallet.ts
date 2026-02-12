@@ -60,10 +60,10 @@ const logger = getLogger("BitcoinWallet: ");
  */
 export abstract class BitcoinWallet implements IBitcoinWallet {
 
-    rpc: BitcoinRpcWithAddressIndex<any>;
-    network: BTC_NETWORK;
-    feeMultiplier: number;
-    feeOverride?: number;
+    protected readonly rpc: BitcoinRpcWithAddressIndex<any>;
+    protected readonly network: BTC_NETWORK;
+    protected feeMultiplier: number;
+    protected feeOverride?: number;
 
     constructor(mempoolApi: BitcoinRpcWithAddressIndex<any>, network: BTC_NETWORK, feeMultiplier: number = 1.25, feeOverride?: number) {
         this.rpc = mempoolApi;

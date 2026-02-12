@@ -11,18 +11,23 @@ function isIEscrowSwapInit(obj) {
         (0, ISwap_1.isISwapInit)(obj);
 }
 exports.isIEscrowSwapInit = isIEscrowSwapInit;
+/**
+ * Base class for escrow-based swaps (i.e. swaps utilizing PrTLC and HTLC primitives)
+ *
+ * @category Swaps
+ */
 class IEscrowSwap extends ISwap_1.ISwap {
     constructor(wrapper, swapInitOrObj) {
         super(wrapper, swapInitOrObj);
         if (isIEscrowSwapInit(swapInitOrObj)) {
-            this.data = swapInitOrObj.data;
+            this._data = swapInitOrObj.data;
         }
         else {
             if (swapInitOrObj.data != null)
-                this.data = new wrapper.swapDataDeserializer(swapInitOrObj.data);
-            this.commitTxId = swapInitOrObj.commitTxId;
-            this.claimTxId = swapInitOrObj.claimTxId;
-            this.refundTxId = swapInitOrObj.refundTxId;
+                this._data = new wrapper._swapDataDeserializer(swapInitOrObj.data);
+            this._commitTxId = swapInitOrObj.commitTxId;
+            this._claimTxId = swapInitOrObj.claimTxId;
+            this._refundTxId = swapInitOrObj.refundTxId;
         }
     }
     //////////////////////////////
@@ -30,23 +35,31 @@ class IEscrowSwap extends ISwap_1.ISwap {
     /**
      * Returns the identification hash of the swap, usually claim data hash, but can be overriden, e.g. for
      *  lightning swaps the identifier hash is used instead of claim data hash
+     *
+     * @internal
      */
     getIdentifierHash() {
         const claimHashBuffer = buffer_1.Buffer.from(this.getClaimHash(), "hex");
-        if (this.randomNonce == null)
+        if (this._randomNonce == null)
             return claimHashBuffer;
-        return buffer_1.Buffer.concat([claimHashBuffer, buffer_1.Buffer.from(this.randomNonce, "hex")]);
+        return buffer_1.Buffer.concat([claimHashBuffer, buffer_1.Buffer.from(this._randomNonce, "hex")]);
     }
     /**
      * Returns the identification hash of the swap, usually claim data hash, but can be overriden, e.g. for
      *  lightning swaps the identifier hash is used instead of claim data hash
+     *
+     * @internal
      */
     getIdentifierHashString() {
         const identifierHash = this.getIdentifierHash();
         return identifierHash.toString("hex");
     }
+    /**
+     * @inheritDoc
+     * @internal
+     */
     _getEscrowHash() {
-        return this.data?.getEscrowHash() ?? null;
+        return this._data?.getEscrowHash() ?? null;
     }
     /**
      * Returns the escrow hash - i.e. hash of the escrow data
@@ -55,11 +68,14 @@ class IEscrowSwap extends ISwap_1.ISwap {
         return this._getEscrowHash();
     }
     /**
-     * Returns the claim data hash - i.e. hash passed to the claim handler
+     * Returns the claim data hash specifying the claim path of the escrow - i.e. hash passed to the claim handler
      */
     getClaimHash() {
         return this.getSwapData().getClaimHash();
     }
+    /**
+     * @inheritDoc
+     */
     getId() {
         return this.getIdentifierHashString();
     }
@@ -70,17 +86,17 @@ class IEscrowSwap extends ISwap_1.ISwap {
      *
      * @param intervalSeconds How often to check (in seconds), default to 5s
      * @param abortSignal
-     * @protected
+     * @internal
      */
     async watchdogWaitTillCommited(intervalSeconds, abortSignal) {
-        if (this.data == null)
+        if (this._data == null)
             throw new Error("Tried to await commitment but data is null, invalid state?");
         intervalSeconds ??= 5;
         let status = { type: base_1.SwapCommitStateType.NOT_COMMITED };
         while (status?.type === base_1.SwapCommitStateType.NOT_COMMITED) {
             await (0, TimeoutUtils_1.timeoutPromise)(intervalSeconds * 1000, abortSignal);
             try {
-                status = await this.wrapper.contract.getCommitStatus(this._getInitiator(), this.data);
+                status = await this.wrapper._contract.getCommitStatus(this._getInitiator(), this._data);
                 if (status?.type === base_1.SwapCommitStateType.NOT_COMMITED &&
                     await this._verifyQuoteDefinitelyExpired())
                     return false;
@@ -98,17 +114,17 @@ class IEscrowSwap extends ISwap_1.ISwap {
      *
      * @param intervalSeconds How often to check (in seconds), default to 5s
      * @param abortSignal
-     * @protected
+     * @internal
      */
     async watchdogWaitTillResult(intervalSeconds, abortSignal) {
-        if (this.data == null)
+        if (this._data == null)
             throw new Error("Tried to await result but data is null, invalid state?");
         intervalSeconds ??= 5;
         let status = { type: base_1.SwapCommitStateType.COMMITED };
         while (status?.type === base_1.SwapCommitStateType.COMMITED || status?.type === base_1.SwapCommitStateType.REFUNDABLE) {
             await (0, TimeoutUtils_1.timeoutPromise)(intervalSeconds * 1000, abortSignal);
             try {
-                status = await this.wrapper.contract.getCommitStatus(this._getInitiator(), this.data);
+                status = await this.wrapper._contract.getCommitStatus(this._getInitiator(), this._data);
             }
             catch (e) {
                 this.logger.error("watchdogWaitTillResult(): Error when fetching commit status: ", e);
@@ -118,16 +134,16 @@ class IEscrowSwap extends ISwap_1.ISwap {
             abortSignal.throwIfAborted();
         return status;
     }
-    _forciblySetOnchainState(commitStatus) {
-        return Promise.resolve(false);
-    }
+    /**
+     * @inheritDoc
+     */
     serialize() {
         return {
             ...super.serialize(),
-            data: this.data != null ? this.data.serialize() : null,
-            commitTxId: this.commitTxId,
-            claimTxId: this.claimTxId,
-            refundTxId: this.refundTxId
+            data: this._data != null ? this._data.serialize() : null,
+            commitTxId: this._commitTxId,
+            claimTxId: this._claimTxId,
+            refundTxId: this._refundTxId
         };
     }
     ;

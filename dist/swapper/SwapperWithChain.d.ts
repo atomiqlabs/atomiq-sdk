@@ -1,4 +1,4 @@
-import { IntermediaryDiscovery, SwapBounds } from "../intermediaries/IntermediaryDiscovery";
+import { IntermediaryDiscovery } from "../intermediaries/IntermediaryDiscovery";
 import { SwapType } from "../enums/SwapType";
 import { LnForGasSwap } from "../swaps/trusted/ln/LnForGasSwap";
 import { ISwap } from "../swaps/ISwap";
@@ -9,7 +9,6 @@ import { FromBTCSwap } from "../swaps/escrow_swaps/frombtc/onchain/FromBTCSwap";
 import { ToBTCLNSwap } from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNSwap";
 import { ToBTCSwap } from "../swaps/escrow_swaps/tobtc/onchain/ToBTCSwap";
 import { SwapPriceWithChain } from "../prices/SwapPriceWithChain";
-import { BTC_NETWORK } from "@scure/btc-signer/utils";
 import { ToBTCOptions } from "../swaps/escrow_swaps/tobtc/onchain/ToBTCWrapper";
 import { ToBTCLNOptions } from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNWrapper";
 import { FromBTCOptions } from "../swaps/escrow_swaps/frombtc/onchain/FromBTCWrapper";
@@ -18,6 +17,7 @@ import { SwapperUtils } from "./SwapperUtils";
 import { SpvFromBTCOptions } from "../swaps/spv_swaps/SpvFromBTCWrapper";
 import { SpvFromBTCSwap } from "../swaps/spv_swaps/SpvFromBTCSwap";
 import { OnchainForGasSwap } from "../swaps/trusted/onchain/OnchainForGasSwap";
+import { SwapperWithSigner } from "./SwapperWithSigner";
 import { FromBTCLNAutoOptions } from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoWrapper";
 import { FromBTCLNAutoSwap } from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap";
 import { SwapAmountType } from "../enums/SwapAmountType";
@@ -26,9 +26,7 @@ import { TokenAmount } from "../types/TokenAmount";
 import { BtcToken, SCToken, Token } from "../types/Token";
 import { LNURLWithdraw } from "../types/lnurl/LNURLWithdraw";
 import { LNURLPay } from "../types/lnurl/LNURLPay";
-import { MempoolApi, MempoolBitcoinRpc } from "@atomiqlabs/btc-mempool";
 import { LightningInvoiceCreateService } from "../types/wallets/LightningInvoiceCreateService";
-import { Messenger } from "@atomiqlabs/base";
 import { Intermediary } from "../intermediaries/Intermediary";
 import { SwapTypeMapping } from "../utils/SwapUtils";
 /**
@@ -37,11 +35,14 @@ import { SwapTypeMapping } from "../utils/SwapUtils";
  * @category Core
  */
 export declare class SwapperWithChain<T extends MultiChain, ChainIdentifier extends ChainIds<T>> {
-    readonly chainIdentifier: ChainIdentifier;
     /**
      * Underlying multichain swapper instance
      */
-    readonly swapper: Swapper<T>;
+    private readonly swapper;
+    /**
+     * Smart chain identifier of this swapper with chain
+     */
+    readonly chainIdentifier: ChainIdentifier;
     /**
      * Pricing API used by the SDK
      */
@@ -50,22 +51,6 @@ export declare class SwapperWithChain<T extends MultiChain, ChainIdentifier exte
      * Intermediary discovery instance
      */
     get intermediaryDiscovery(): IntermediaryDiscovery;
-    /**
-     * Mempool (mempool.space) api used for fetching bitcoin chain and lightning network data
-     */
-    get mempoolApi(): MempoolApi;
-    /**
-     * Bitcoin RPC for fetching bitcoin chain data
-     */
-    get bitcoinRpc(): MempoolBitcoinRpc;
-    /**
-     * Bitcoin network specification
-     */
-    get bitcoinNetwork(): BTC_NETWORK;
-    /**
-     * Data propagation layer used for broadcasting messages to watchtowers
-     */
-    get messenger(): Messenger;
     /**
      * Miscellaneous utility functions
      */
@@ -78,49 +63,15 @@ export declare class SwapperWithChain<T extends MultiChain, ChainIdentifier exte
      *  arbitrary transactions
      * - `supportsGasDrop`: Whether a swap supports the "gas drop" feature, allowing to user to receive a small
      *  amount of native token as part of the swap when swapping to smart chains
+     *
+     * Uses a `Record` type here, use the {@link SwapProtocolInfo} import for a literal readonly type, with
+     *  pre-filled exact values in the type.
      */
-    get SwapTypeInfo(): {
-        readonly 2: {
-            readonly requiresInputWallet: true;
-            readonly requiresOutputWallet: false;
-            readonly supportsGasDrop: false;
-        };
-        readonly 3: {
-            readonly requiresInputWallet: true;
-            readonly requiresOutputWallet: false;
-            readonly supportsGasDrop: false;
-        };
-        readonly 0: {
-            readonly requiresInputWallet: false;
-            readonly requiresOutputWallet: true;
-            readonly supportsGasDrop: false;
-        };
-        readonly 1: {
-            readonly requiresInputWallet: false;
-            readonly requiresOutputWallet: true;
-            readonly supportsGasDrop: false;
-        };
-        readonly 6: {
-            readonly requiresInputWallet: true;
-            readonly requiresOutputWallet: false;
-            readonly supportsGasDrop: true;
-        };
-        readonly 7: {
-            readonly requiresInputWallet: false;
-            readonly requiresOutputWallet: false;
-            readonly supportsGasDrop: true;
-        };
-        readonly 4: {
-            readonly requiresInputWallet: false;
-            readonly requiresOutputWallet: false;
-            readonly supportsGasDrop: false;
-        };
-        readonly 5: {
-            readonly requiresInputWallet: false;
-            readonly requiresOutputWallet: false;
-            readonly supportsGasDrop: false;
-        };
-    };
+    get SwapTypeInfo(): Record<SwapType, {
+        requiresInputWallet: boolean;
+        requiresOutputWallet: boolean;
+        supportsGasDrop: boolean;
+    }>;
     constructor(swapper: Swapper<T>, chainIdentifier: ChainIdentifier);
     /**
      * Creates Smart chain -> Bitcoin ({@link SwapType.TO_BTC}) swap
@@ -259,18 +210,72 @@ export declare class SwapperWithChain<T extends MultiChain, ChainIdentifier exte
      * @throws {Error} If no trusted intermediary specified
      */
     createTrustedOnchainForGasSwap(recipient: string, amount: bigint, refundAddress?: string, trustedIntermediaryOrUrl?: Intermediary | string): Promise<OnchainForGasSwap<T[ChainIdentifier]>>;
+    /**
+     * @internal
+     */
     create(signer: string, srcToken: BtcToken<true>, dstToken: SCToken<ChainIdentifier>, amount: bigint, exactIn: boolean, lnurlWithdraw?: string | LNURLWithdraw): Promise<SupportsSwapType<T[ChainIdentifier], SwapType.FROM_BTCLN_AUTO> extends true ? FromBTCLNAutoSwap<T[ChainIdentifier]> : FromBTCLNSwap<T[ChainIdentifier]>>;
+    /**
+     * @internal
+     */
     create(signer: string, srcToken: BtcToken<false>, dstToken: SCToken<ChainIdentifier>, amount: bigint, exactIn: boolean): Promise<(SupportsSwapType<T[ChainIdentifier], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCSwap<T[ChainIdentifier]> : FromBTCSwap<T[ChainIdentifier]>)>;
+    /**
+     * @internal
+     */
     create(signer: string, srcToken: SCToken<ChainIdentifier>, dstToken: BtcToken<false>, amount: bigint, exactIn: boolean, address: string): Promise<ToBTCSwap<T[ChainIdentifier]>>;
+    /**
+     * @internal
+     */
     create(signer: string, srcToken: SCToken<ChainIdentifier>, dstToken: BtcToken<true>, amount: bigint, exactIn: boolean, lnurlPay: string | LNURLPay): Promise<ToBTCLNSwap<T[ChainIdentifier]>>;
-    create(signer: string, srcToken: SCToken<ChainIdentifier>, dstToken: BtcToken<true>, amount: undefined, exactIn: false, lightningInvoice: string): Promise<ToBTCLNSwap<T[ChainIdentifier]>>;
+    /**
+     * Creates a swap from srcToken to dstToken, of a specific token amount, either specifying input amount (exactIn=true)
+     *  or output amount (exactIn=false), NOTE: For regular -> BTC-LN (lightning) swaps the passed amount is ignored and
+     *  invoice's pre-set amount is used instead.
+     * @deprecated Use swap() instead
+     *
+     * @param signer Smartchain (Solana, Starknet, etc.) address of the user
+     * @param srcToken Source token of the swap, user pays this token
+     * @param dstToken Destination token of the swap, user receives this token
+     * @param amount Amount of the swap
+     * @param exactIn Whether the amount specified is an input amount (exactIn=true) or an output amount (exactIn=false)
+     * @param addressLnurlLightningInvoice Bitcoin on-chain address, lightning invoice, LNURL-pay to pay or
+     *  LNURL-withdrawal to withdraw money from
+     */
+    create(signer: string, srcToken: SCToken<ChainIdentifier>, dstToken: BtcToken<true>, amount: undefined, exactIn: false, addressLnurlLightningInvoice: string): Promise<ToBTCLNSwap<T[ChainIdentifier]>>;
+    /**
+     * @internal
+     */
     swap(srcToken: BtcToken<true>, dstToken: SCToken<ChainIdentifier>, amount: bigint | string, exactIn: boolean | SwapAmountType, src: undefined | string | LNURLWithdraw, dstSmartchainWallet: string, options?: (SupportsSwapType<T[ChainIdentifier], SwapType.FROM_BTCLN_AUTO> extends true ? FromBTCLNAutoOptions : FromBTCLNOptions)): Promise<SupportsSwapType<T[ChainIdentifier], SwapType.FROM_BTCLN_AUTO> extends true ? FromBTCLNAutoSwap<T[ChainIdentifier]> : FromBTCLNSwap<T[ChainIdentifier]>>;
+    /**
+     * @internal
+     */
     swap(srcToken: BtcToken<false>, dstToken: SCToken<ChainIdentifier>, amount: bigint | string, exactIn: boolean | SwapAmountType, src: undefined | string, dstSmartchainWallet: string, options?: (SupportsSwapType<T[ChainIdentifier], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCOptions : FromBTCOptions)): Promise<(SupportsSwapType<T[ChainIdentifier], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCSwap<T[ChainIdentifier]> : FromBTCSwap<T[ChainIdentifier]>)>;
+    /**
+     * @internal
+     */
     swap(srcToken: SCToken<ChainIdentifier>, dstToken: BtcToken<false>, amount: bigint | string, exactIn: boolean | SwapAmountType, src: string, dstAddress: string, options?: ToBTCOptions): Promise<ToBTCSwap<T[ChainIdentifier]>>;
+    /**
+     * @internal
+     */
     swap(srcToken: SCToken<ChainIdentifier>, dstToken: BtcToken<true>, amount: bigint | string, exactIn: boolean | SwapAmountType, src: string, dstLnurlPayOrInvoiceCreateService: string | LNURLPay | LightningInvoiceCreateService, options?: ToBTCLNOptions & {
         comment?: string;
     }): Promise<ToBTCLNSwap<T[ChainIdentifier]>>;
+    /**
+     * @internal
+     */
     swap(srcToken: SCToken<ChainIdentifier>, dstToken: BtcToken<true>, amount: undefined, exactIn: false | SwapAmountType.EXACT_OUT, src: string, dstLightningInvoice: string, options?: ToBTCLNOptions): Promise<ToBTCLNSwap<T[ChainIdentifier]>>;
+    /**
+     * Creates a swap from srcToken to dstToken, of a specific token amount, either specifying input amount (exactIn=true)
+     *  or output amount (exactIn=false), NOTE: For regular SmartChain -> BTC-LN (lightning) swaps the passed amount is ignored and
+     *  invoice's pre-set amount is used instead, use LNURL-pay for dynamic amounts
+     *
+     * @param srcToken Source token of the swap, user pays this token
+     * @param dstToken Destination token of the swap, user receives this token
+     * @param amount Amount of the swap
+     * @param exactIn Whether the amount specified is an input amount (exactIn=true) or an output amount (exactIn=false)
+     * @param src Source wallet/lnurl-withdraw of the swap
+     * @param dst Destination smart chain address, bitcoin on-chain address, lightning invoice, LNURL-pay
+     * @param options Options for the swap
+     */
     swap(srcToken: Token<ChainIdentifier> | string, dstToken: Token<ChainIdentifier> | string, amount: bigint | string | undefined, exactIn: boolean | SwapAmountType, src: undefined | string | LNURLWithdraw, dst: string | LNURLPay | LightningInvoiceCreateService, options?: FromBTCLNOptions | SpvFromBTCOptions | FromBTCOptions | ToBTCOptions | (ToBTCLNOptions & {
         comment?: string;
     }) | FromBTCLNAutoOptions): Promise<ISwap<T[ChainIdentifier]>>;
@@ -339,15 +344,27 @@ export declare class SwapperWithChain<T extends MultiChain, ChainIdentifier exte
      */
     supportsSwapType<Type extends SwapType>(swapType: Type): SupportsSwapType<T[ChainIdentifier], Type>;
     /**
+     * @internal
+     */
+    getSwapType(srcToken: BtcToken<true>, dstToken: SCToken<ChainIdentifier>): (SupportsSwapType<T[ChainIdentifier], SwapType.FROM_BTCLN_AUTO> extends true ? SwapType.FROM_BTCLN_AUTO : SwapType.FROM_BTCLN);
+    /**
+     * @internal
+     */
+    getSwapType(srcToken: BtcToken<false>, dstToken: SCToken<ChainIdentifier>): (SupportsSwapType<T[ChainIdentifier], SwapType.SPV_VAULT_FROM_BTC> extends true ? SwapType.SPV_VAULT_FROM_BTC : SwapType.FROM_BTC);
+    /**
+     * @internal
+     */
+    getSwapType(srcToken: SCToken<ChainIdentifier>, dstToken: BtcToken<false>): SwapType.TO_BTC;
+    /**
+     * @internal
+     */
+    getSwapType(srcToken: SCToken<ChainIdentifier>, dstToken: BtcToken<true>): SwapType.TO_BTCLN;
+    /**
      * Returns type of the swap based on input and output tokens specified
      *
      * @param srcToken Source token
      * @param dstToken Destination token
      */
-    getSwapType(srcToken: BtcToken<true>, dstToken: SCToken<ChainIdentifier>): (SupportsSwapType<T[ChainIdentifier], SwapType.FROM_BTCLN_AUTO> extends true ? SwapType.FROM_BTCLN_AUTO : SwapType.FROM_BTCLN);
-    getSwapType(srcToken: BtcToken<false>, dstToken: SCToken<ChainIdentifier>): (SupportsSwapType<T[ChainIdentifier], SwapType.SPV_VAULT_FROM_BTC> extends true ? SwapType.SPV_VAULT_FROM_BTC : SwapType.FROM_BTC);
-    getSwapType(srcToken: SCToken<ChainIdentifier>, dstToken: BtcToken<false>): SwapType.TO_BTC;
-    getSwapType(srcToken: SCToken<ChainIdentifier>, dstToken: BtcToken<true>): SwapType.TO_BTCLN;
     getSwapType(srcToken: Token<ChainIdentifier>, dstToken: Token<ChainIdentifier>): SwapType.FROM_BTCLN_AUTO | SwapType.FROM_BTCLN | SwapType.SPV_VAULT_FROM_BTC | SwapType.FROM_BTC | SwapType.TO_BTC | SwapType.TO_BTCLN;
     /**
      * Returns minimum/maximum limits for inputs and outputs for a swap between given tokens
@@ -383,24 +400,9 @@ export declare class SwapperWithChain<T extends MultiChain, ChainIdentifier exte
      */
     getSwapCounterTokens(token: Token, input: boolean): Token<ChainIdentifier>[];
     /**
-     * Returns swap bounds (minimums & maximums) for different swap types & tokens
-     * @deprecated Use getSwapLimits() instead!
-     */
-    getSwapBounds(): SwapBounds;
-    /**
-     * Returns maximum possible swap amount
-     * @deprecated Use getSwapLimits() instead!
+     * Creates a child swapper instance with a signer
      *
-     * @param type      Type of the swap
-     * @param token     Token of the swap
+     * @param signer Signer to use for the new swapper instance
      */
-    getMaximum(type: SwapType, token: string): bigint;
-    /**
-     * Returns minimum possible swap amount
-     * @deprecated Use getSwapLimits() instead!
-     *
-     * @param type      Type of swap
-     * @param token     Token of the swap
-     */
-    getMinimum(type: SwapType, token: string): bigint;
+    withSigner(signer: T[ChainIdentifier]["Signer"]): SwapperWithSigner<T, ChainIdentifier>;
 }

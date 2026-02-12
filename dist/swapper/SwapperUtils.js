@@ -21,7 +21,7 @@ const BitcoinWalletUtils_1 = require("../utils/BitcoinWalletUtils");
  */
 class SwapperUtils {
     constructor(root) {
-        this.bitcoinNetwork = root.bitcoinNetwork;
+        this.bitcoinNetwork = root._btcNetwork;
         this.root = root;
     }
     /**
@@ -32,12 +32,12 @@ class SwapperUtils {
      */
     isValidSmartChainAddress(address, chainId) {
         if (chainId != null) {
-            if (this.root.chains[chainId] == null)
+            if (this.root._chains[chainId] == null)
                 throw new Error(`Unknown chain id: ${chainId}`);
-            return this.root.chains[chainId].chainInterface.isValidAddress(address);
+            return this.root._chains[chainId].chainInterface.isValidAddress(address);
         }
         for (let chainId of this.root.getSmartChains()) {
-            if (this.root.chains[chainId].chainInterface.isValidAddress(address))
+            if (this.root._chains[chainId].chainInterface.isValidAddress(address))
                 return true;
         }
         return false;
@@ -202,7 +202,7 @@ class SwapperUtils {
     }
     parseSmartchainAddress(resultText) {
         for (let chainId of this.root.getSmartChains()) {
-            if (this.root.chains[chainId].chainInterface.isValidAddress(resultText)) {
+            if (this.root._chains[chainId].chainInterface.isValidAddress(resultText)) {
                 return {
                     address: resultText,
                     type: chainId,
@@ -293,7 +293,7 @@ class SwapperUtils {
      * @param includeGasToken Whether to return the PSBT also with the gas token amount (increases the vSize by 8)
      */
     getRandomSpvVaultPsbt(chainIdentifier, includeGasToken) {
-        const wrapper = this.root.chains[chainIdentifier].wrappers[SwapType_1.SwapType.SPV_VAULT_FROM_BTC];
+        const wrapper = this.root._chains[chainIdentifier].wrappers[SwapType_1.SwapType.SPV_VAULT_FROM_BTC];
         if (wrapper == null)
             throw new Error("Chain doesn't support spv vault swaps!");
         return wrapper.getDummySwapPsbt(includeGasToken);
@@ -310,10 +310,10 @@ class SwapperUtils {
     async getBitcoinSpendableBalance(wallet, targetChain, options) {
         let bitcoinWallet;
         if (typeof (wallet) === "string") {
-            bitcoinWallet = new SingleAddressBitcoinWallet_1.SingleAddressBitcoinWallet(this.root.bitcoinRpc, this.bitcoinNetwork, { address: wallet, publicKey: "" });
+            bitcoinWallet = new SingleAddressBitcoinWallet_1.SingleAddressBitcoinWallet(this.root._bitcoinRpc, this.bitcoinNetwork, { address: wallet, publicKey: "" });
         }
         else {
-            bitcoinWallet = (0, BitcoinWalletUtils_1.toBitcoinWallet)(wallet, this.root.bitcoinRpc, this.bitcoinNetwork);
+            bitcoinWallet = (0, BitcoinWalletUtils_1.toBitcoinWallet)(wallet, this.root._bitcoinRpc, this.bitcoinNetwork);
         }
         let feeRate = options?.feeRate ?? await bitcoinWallet.getFeeRate();
         if (options?.minFeeRate != null)
@@ -335,9 +335,9 @@ class SwapperUtils {
      *  to initiate a swap for native balances
      */
     async getSpendableBalance(wallet, token, options) {
-        if (this.root.chains[token.chainId] == null)
+        if (this.root._chains[token.chainId] == null)
             throw new Error("Invalid chain identifier! Unknown chain: " + token.chainId);
-        const { swapContract, chainInterface } = this.root.chains[token.chainId];
+        const { swapContract, chainInterface } = this.root._chains[token.chainId];
         let signer;
         if (typeof (wallet) === "string") {
             signer = wallet;
@@ -368,9 +368,9 @@ class SwapperUtils {
      * Returns the address of the native currency of the smart chain
      */
     getNativeToken(chainIdentifier) {
-        if (this.root.chains[chainIdentifier] == null)
+        if (this.root._chains[chainIdentifier] == null)
             throw new Error("Invalid chain identifier! Unknown chain: " + chainIdentifier);
-        return this.root.tokens[chainIdentifier][this.root.chains[chainIdentifier].chainInterface.getNativeCurrencyAddress()];
+        return this.root._tokens[chainIdentifier][this.root._chains[chainIdentifier].chainInterface.getNativeCurrencyAddress()];
     }
     /**
      * Returns a random signer for a given smart chain
@@ -378,9 +378,9 @@ class SwapperUtils {
      * @param chainIdentifier
      */
     randomSigner(chainIdentifier) {
-        if (this.root.chains[chainIdentifier] == null)
+        if (this.root._chains[chainIdentifier] == null)
             throw new Error("Invalid chain identifier! Unknown chain: " + chainIdentifier);
-        return this.root.chains[chainIdentifier].chainInterface.randomSigner();
+        return this.root._chains[chainIdentifier].chainInterface.randomSigner();
     }
     /**
      * Returns a random address for a given smart chain
@@ -388,9 +388,9 @@ class SwapperUtils {
      * @param chainIdentifier
      */
     randomAddress(chainIdentifier) {
-        if (this.root.chains[chainIdentifier] == null)
+        if (this.root._chains[chainIdentifier] == null)
             throw new Error("Invalid chain identifier! Unknown chain: " + chainIdentifier);
-        return this.root.chains[chainIdentifier].chainInterface.randomAddress();
+        return this.root._chains[chainIdentifier].chainInterface.randomAddress();
     }
     /**
      * Signs and broadcasts the supplied smart chain transaction
@@ -402,9 +402,9 @@ class SwapperUtils {
      * @param onBeforePublish Callback invoked before a transaction is sent (invoked for every transaction to be sent)
      */
     sendAndConfirm(chainIdentifier, signer, txs, abortSignal, onBeforePublish) {
-        if (this.root.chains[chainIdentifier] == null)
+        if (this.root._chains[chainIdentifier] == null)
             throw new Error("Invalid chain identifier! Unknown chain: " + chainIdentifier);
-        return this.root.chains[chainIdentifier].chainInterface.sendAndConfirm(signer, txs, true, abortSignal, false, onBeforePublish);
+        return this.root._chains[chainIdentifier].chainInterface.sendAndConfirm(signer, txs, true, abortSignal, false, onBeforePublish);
     }
     /**
      * Broadcasts already signed smart chain transactions
@@ -415,9 +415,9 @@ class SwapperUtils {
      * @param onBeforePublish Callback invoked before a transaction is sent (invoked for every transaction to be sent)
      */
     sendSignedAndConfirm(chainIdentifier, txs, abortSignal, onBeforePublish) {
-        if (this.root.chains[chainIdentifier] == null)
+        if (this.root._chains[chainIdentifier] == null)
             throw new Error("Invalid chain identifier! Unknown chain: " + chainIdentifier);
-        return this.root.chains[chainIdentifier].chainInterface.sendSignedAndConfirm(txs, true, abortSignal, false, onBeforePublish);
+        return this.root._chains[chainIdentifier].chainInterface.sendSignedAndConfirm(txs, true, abortSignal, false, onBeforePublish);
     }
     /**
      * Serializes an unsigned smart chain transaction
@@ -426,9 +426,9 @@ class SwapperUtils {
      * @param tx An unsigned transaction to serialize
      */
     serializeUnsignedTransaction(chainIdentifier, tx) {
-        if (this.root.chains[chainIdentifier] == null)
+        if (this.root._chains[chainIdentifier] == null)
             throw new Error("Invalid chain identifier! Unknown chain: " + chainIdentifier);
-        return this.root.chains[chainIdentifier].chainInterface.serializeTx(tx);
+        return this.root._chains[chainIdentifier].chainInterface.serializeTx(tx);
     }
     /**
      * Deserializes an unsigned smart chain transaction
@@ -437,9 +437,9 @@ class SwapperUtils {
      * @param tx Serialized unsigned transaction
      */
     deserializeUnsignedTransaction(chainIdentifier, tx) {
-        if (this.root.chains[chainIdentifier] == null)
+        if (this.root._chains[chainIdentifier] == null)
             throw new Error("Invalid chain identifier! Unknown chain: " + chainIdentifier);
-        return this.root.chains[chainIdentifier].chainInterface.deserializeTx(tx);
+        return this.root._chains[chainIdentifier].chainInterface.deserializeTx(tx);
     }
     /**
      * Serializes a signed smart chain transaction
@@ -448,9 +448,9 @@ class SwapperUtils {
      * @param tx A signed transaction to serialize
      */
     serializeSignedTransaction(chainIdentifier, tx) {
-        if (this.root.chains[chainIdentifier] == null)
+        if (this.root._chains[chainIdentifier] == null)
             throw new Error("Invalid chain identifier! Unknown chain: " + chainIdentifier);
-        return this.root.chains[chainIdentifier].chainInterface.serializeSignedTx(tx);
+        return this.root._chains[chainIdentifier].chainInterface.serializeSignedTx(tx);
     }
     /**
      * Deserializes a signed smart chain transaction
@@ -459,9 +459,9 @@ class SwapperUtils {
      * @param tx Serialized signed transaction
      */
     deserializeSignedTransaction(chainIdentifier, tx) {
-        if (this.root.chains[chainIdentifier] == null)
+        if (this.root._chains[chainIdentifier] == null)
             throw new Error("Invalid chain identifier! Unknown chain: " + chainIdentifier);
-        return this.root.chains[chainIdentifier].chainInterface.deserializeSignedTx(tx);
+        return this.root._chains[chainIdentifier].chainInterface.deserializeSignedTx(tx);
     }
 }
 exports.SwapperUtils = SwapperUtils;

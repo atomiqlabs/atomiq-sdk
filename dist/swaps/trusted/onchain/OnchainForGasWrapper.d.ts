@@ -14,10 +14,34 @@ export type OnchainForGasWrapperOptions = ISwapWrapperOptions & {
     bitcoinNetwork: BTC_NETWORK;
 };
 export type OnchainForGasSwapTypeDefinition<T extends ChainType> = SwapTypeDefinition<T, OnchainForGasWrapper<T>, OnchainForGasSwap<T>>;
+/**
+ * Trusted swap for Bitcoin -> Smart chains, to be used for minor amounts to get gas tokens on the
+ *  destination chain, which is only needed for Solana, which still uses legacy swaps
+ *
+ * @category Swaps
+ */
 export declare class OnchainForGasWrapper<T extends ChainType> extends ISwapWrapper<T, OnchainForGasSwapTypeDefinition<T>, OnchainForGasWrapperOptions> {
     readonly TYPE: SwapType.TRUSTED_FROM_BTC;
-    readonly swapDeserializer: typeof OnchainForGasSwap;
-    readonly btcRpc: BitcoinRpcWithAddressIndex<any>;
+    /**
+     * @internal
+     */
+    readonly _swapDeserializer: typeof OnchainForGasSwap;
+    /**
+     * @internal
+     */
+    readonly _pendingSwapStates: OnchainForGasSwapState[];
+    /**
+     * @internal
+     */
+    protected readonly tickSwapState: undefined;
+    /**
+     * @internal
+     */
+    protected processEvent: undefined;
+    /**
+     * @internal
+     */
+    readonly _btcRpc: BitcoinRpcWithAddressIndex<any>;
     /**
      * @param chainIdentifier
      * @param unifiedStorage Storage interface for the current environment
@@ -42,7 +66,4 @@ export declare class OnchainForGasWrapper<T extends ChainType> extends ISwapWrap
      * @param refundAddress Bitcoin address to receive refund on in case the intermediary (LP) cannot execute the swap
      */
     create(recipient: string, amount: bigint, lpOrUrl: Intermediary | string, refundAddress?: string): Promise<OnchainForGasSwap<T>>;
-    readonly pendingSwapStates: OnchainForGasSwapState[];
-    readonly tickSwapState: undefined;
-    protected processEvent: undefined;
 }

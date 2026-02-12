@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SwapperWithChain = void 0;
 const SwapType_1 = require("../enums/SwapType");
 const SwapPriceWithChain_1 = require("../prices/SwapPriceWithChain");
+const SwapperWithSigner_1 = require("./SwapperWithSigner");
 const UserError_1 = require("../errors/UserError");
 const Token_1 = require("../types/Token");
 /**
@@ -18,30 +19,6 @@ class SwapperWithChain {
         return this.swapper.intermediaryDiscovery;
     }
     /**
-     * Mempool (mempool.space) api used for fetching bitcoin chain and lightning network data
-     */
-    get mempoolApi() {
-        return this.swapper.mempoolApi;
-    }
-    /**
-     * Bitcoin RPC for fetching bitcoin chain data
-     */
-    get bitcoinRpc() {
-        return this.swapper.bitcoinRpc;
-    }
-    /**
-     * Bitcoin network specification
-     */
-    get bitcoinNetwork() {
-        return this.swapper.bitcoinNetwork;
-    }
-    /**
-     * Data propagation layer used for broadcasting messages to watchtowers
-     */
-    get messenger() {
-        return this.swapper.messenger;
-    }
-    /**
      * Miscellaneous utility functions
      */
     get Utils() {
@@ -55,6 +32,9 @@ class SwapperWithChain {
      *  arbitrary transactions
      * - `supportsGasDrop`: Whether a swap supports the "gas drop" feature, allowing to user to receive a small
      *  amount of native token as part of the swap when swapping to smart chains
+     *
+     * Uses a `Record` type here, use the {@link SwapProtocolInfo} import for a literal readonly type, with
+     *  pre-filled exact values in the type.
      */
     get SwapTypeInfo() {
         return this.swapper.SwapTypeInfo;
@@ -344,21 +324,21 @@ class SwapperWithChain {
             const [chainId, ticker] = tickerOrAddress.split("-");
             if (chainId !== this.chainIdentifier)
                 throw new UserError_1.UserError(`Invalid chainId specified in ticker: ${chainId}, swapper chainId: ${this.chainIdentifier}`);
-            const token = this.swapper.tokensByTicker[this.chainIdentifier]?.[ticker];
+            const token = this.swapper._tokensByTicker[this.chainIdentifier]?.[ticker];
             if (token == null)
                 throw new UserError_1.UserError(`Not found ticker: ${ticker} for chainId: ${chainId}`);
             return token;
         }
-        const chain = this.swapper.chains[this.chainIdentifier];
+        const chain = this.swapper._chains[this.chainIdentifier];
         if (chain.chainInterface.isValidToken(tickerOrAddress)) {
             //Try to find in known token addresses
-            const token = this.swapper.tokens[this.chainIdentifier]?.[tickerOrAddress];
+            const token = this.swapper._tokens[this.chainIdentifier]?.[tickerOrAddress];
             if (token != null)
                 return token;
         }
         else {
             //Check in known tickers
-            const token = this.swapper.tokensByTicker[this.chainIdentifier]?.[tickerOrAddress];
+            const token = this.swapper._tokensByTicker[this.chainIdentifier]?.[tickerOrAddress];
             if (token != null)
                 return token;
         }
@@ -372,6 +352,12 @@ class SwapperWithChain {
     supportsSwapType(swapType) {
         return this.swapper.supportsSwapType(this.chainIdentifier, swapType);
     }
+    /**
+     * Returns type of the swap based on input and output tokens specified
+     *
+     * @param srcToken Source token
+     * @param dstToken Destination token
+     */
     getSwapType(srcToken, dstToken) {
         return this.swapper.getSwapType(srcToken, dstToken);
     }
@@ -401,7 +387,7 @@ class SwapperWithChain {
             if (chainTokens == null)
                 return;
             for (let tokenAddress of chainTokens) {
-                const token = this.swapper.tokens?.[this.chainIdentifier]?.[tokenAddress];
+                const token = this.swapper._tokens?.[this.chainIdentifier]?.[tokenAddress];
                 if (token != null)
                     tokens.push(token);
             }
@@ -471,34 +457,13 @@ class SwapperWithChain {
             }
         }
     }
-    ///////////////////////////////////
-    /// Deprecated
     /**
-     * Returns swap bounds (minimums & maximums) for different swap types & tokens
-     * @deprecated Use getSwapLimits() instead!
-     */
-    getSwapBounds() {
-        return this.swapper.getSwapBounds(this.chainIdentifier);
-    }
-    /**
-     * Returns maximum possible swap amount
-     * @deprecated Use getSwapLimits() instead!
+     * Creates a child swapper instance with a signer
      *
-     * @param type      Type of the swap
-     * @param token     Token of the swap
+     * @param signer Signer to use for the new swapper instance
      */
-    getMaximum(type, token) {
-        return this.swapper.getMaximum(this.chainIdentifier, type, token);
-    }
-    /**
-     * Returns minimum possible swap amount
-     * @deprecated Use getSwapLimits() instead!
-     *
-     * @param type      Type of swap
-     * @param token     Token of the swap
-     */
-    getMinimum(type, token) {
-        return this.swapper.getMinimum(this.chainIdentifier, type, token);
+    withSigner(signer) {
+        return new SwapperWithSigner_1.SwapperWithSigner(this, signer);
     }
 }
 exports.SwapperWithChain = SwapperWithChain;

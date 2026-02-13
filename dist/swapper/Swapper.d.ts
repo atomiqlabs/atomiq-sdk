@@ -471,6 +471,16 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
     getTypedSwapById<C extends ChainIds<T>, S extends SwapType>(id: string, chainId: C, swapType: S, signer?: string): Promise<SwapTypeMapping<T[C]>[S] | undefined>;
     private syncSwapsForChain;
     /**
+     * Deletes the swaps from the persistent storage backend. Note that some data (like lightning network
+     *  amounts and bolt11 invoices) are purely off-chain and can never be recovered later just from
+     *  on-chain data!
+     *
+     * @param chainId Optional, to only delete swaps for this smart chain
+     * @param signer Optional, to only delete swaps for this smart chain signer (`chainId` param must be
+     *  set to delete only signer's swaps)
+     */
+    wipeStorage<C extends ChainIds<T>>(chainId?: C, signer?: string): Promise<void>;
+    /**
      * Synchronizes swaps from on-chain, this is ran automatically when SDK is initialized, hence
      *  should only be ran manually when `dontCheckPastSwaps=true` is passed in the swapper options,
      *  also deletes expired quotes

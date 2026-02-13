@@ -20,7 +20,8 @@ export {
     IStorageManager,
     StorageObject,
     SwapContract,
-    SwapData
+    SwapData,
+    AbstractSigner
 } from "@atomiqlabs/base";
 
 export {

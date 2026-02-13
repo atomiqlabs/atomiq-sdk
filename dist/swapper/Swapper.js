@@ -1111,6 +1111,38 @@ class Swapper extends events_1.EventEmitter {
         removeSwaps.forEach(swap => swap._emitEvent());
     }
     /**
+     * Deletes the swaps from the persistent storage backend. Note that some data (like lightning network
+     *  amounts and bolt11 invoices) are purely off-chain and can never be recovered later just from
+     *  on-chain data!
+     *
+     * @param chainId Optional, to only delete swaps for this smart chain
+     * @param signer Optional, to only delete swaps for this smart chain signer (`chainId` param must be
+     *  set to delete only signer's swaps)
+     */
+    async wipeStorage(chainId, signer) {
+        if (chainId == null) {
+            const swaps = await this.getAllSwaps();
+            const chainSwaps = {};
+            swaps.forEach(swap => (chainSwaps[swap.chainIdentifier] ??= []).push(swap));
+            for (let chainId in chainSwaps) {
+                const currentChainSwaps = chainSwaps[chainId];
+                if (this._chains[chainId] == null) {
+                    this.logger.warn(`wipeStorage(): Attempted to remove ${currentChainSwaps.length} swaps on ${chainId}, but smart chain not known!`);
+                    continue;
+                }
+                await this._chains[chainId].unifiedSwapStorage.removeAll(currentChainSwaps);
+                this.logger.debug(`wipeStorage(): Successfully removed ${currentChainSwaps.length} swaps on ${chainId}!`);
+            }
+        }
+        else {
+            if (this._chains[chainId] == null)
+                throw new Error(`wipeStorage(): Smart chain with identifier ${chainId} not found!`);
+            const swaps = await this.getAllSwaps(chainId, signer);
+            await this._chains[chainId].unifiedSwapStorage.removeAll(swaps);
+            this.logger.debug(`wipeStorage(): Successfully removed ${swaps.length} swaps on ${chainId}!`);
+        }
+    }
+    /**
      * Synchronizes swaps from on-chain, this is ran automatically when SDK is initialized, hence
      *  should only be ran manually when `dontCheckPastSwaps=true` is passed in the swapper options,
      *  also deletes expired quotes

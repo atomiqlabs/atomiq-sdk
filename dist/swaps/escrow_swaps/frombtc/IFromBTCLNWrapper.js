@@ -11,7 +11,7 @@ const sha256_1 = require("@noble/hashes/sha256");
 /**
  * Base class for wrappers of escrow-based Lightning -> Smart chain swaps
  *
- * @category Swaps
+ * @category Swaps/Abstract
  */
 class IFromBTCLNWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
     /**

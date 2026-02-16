@@ -5,7 +5,7 @@ const HttpPriceProvider_1 = require("./abstract/HttpPriceProvider");
 const HttpUtils_1 = require("../../http/HttpUtils");
 /**
  * Price provider using CoinGecko API
- * @category Pricing and LPs
+ * @category Pricing
  */
 class CoinGeckoPriceProvider extends HttpPriceProvider_1.HttpPriceProvider {
     constructor(coinsMap, url = "https://api.coingecko.com/api/v3", httpRequestTimeout) {

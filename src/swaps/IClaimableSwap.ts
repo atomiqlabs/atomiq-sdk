@@ -5,7 +5,7 @@ import {ISwapWrapper, SwapTypeDefinition} from "./ISwapWrapper";
 /**
  * Type guard to check if an object is an {@link IClaimableSwap}
  *
- * @category Swaps
+ * @category Swaps/Types
  */
 export function isIClaimableSwap(obj: any): obj is IClaimableSwap {
     return obj!=null &&
@@ -18,7 +18,7 @@ export function isIClaimableSwap(obj: any): obj is IClaimableSwap {
  * Interface for swaps that can end up in a claimable state, requiring the user to claim the
  *  assets on the destination chain.
  *
- * @category Swaps
+ * @category Swaps/Types
  */
 export interface IClaimableSwap<
     T extends ChainType = ChainType,
@@ -37,7 +37,7 @@ export interface IClaimableSwap<
      *  function to wait till the claim transaction is observed, processed by the SDK and state of the swap
      *  properly updated.
      *
-     * @param _signer Address of the signer to create the refund transactions for
+     * @param _signer Address of the signer to create the settlement (claim) transactions for
      */
     txsClaim(_signer?: string | T["Signer"] | T["NativeSigner"]): Promise<T["TX"][]>;
 

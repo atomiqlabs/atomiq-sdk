@@ -20,7 +20,7 @@ const BitcoinWalletUtils_1 = require("../../../utils/BitcoinWalletUtils");
 /**
  * State enum for trusted on-chain gas swaps
  *
- * @category Swaps
+ * @category Swaps/Trusted Gas Swaps
  */
 var OnchainForGasSwapState;
 (function (OnchainForGasSwapState) {
@@ -65,7 +65,7 @@ exports.isOnchainForGasSwapInit = isOnchainForGasSwapInit;
  * Trusted swap for Bitcoin -> Smart chains, to be used for minor amounts to get gas tokens on the
  *  destination chain, which is only needed for Solana, which still uses legacy swaps
  *
- * @category Swaps
+ * @category Swaps/Trusted Gas Swaps
  */
 class OnchainForGasSwap extends ISwap_1.ISwap {
     constructor(wrapper, initOrObj) {

@@ -15,7 +15,7 @@ import { PriceInfoType } from "../types/PriceInfoType";
 /**
  * Initialization data for creating a swap
  *
- * @category Swaps
+ * @category Swaps/Base
  */
 export type ISwapInit = {
     pricingInfo: PriceInfoType;
@@ -28,13 +28,13 @@ export type ISwapInit = {
 /**
  * Type guard to check if an object is an ISwapInit
  *
- * @category Swaps
+ * @category Swaps/Base
  */
 export declare function isISwapInit(obj: any): obj is ISwapInit;
 /**
  * Base abstract class for all swap types
  *
- * @category Swaps
+ * @category Swaps/Base
  */
 export declare abstract class ISwap<T extends ChainType = ChainType, D extends SwapTypeDefinition<T, ISwapWrapper<T, D>, ISwap<T, D, S>> = SwapTypeDefinition<T, ISwapWrapper<T, any>, ISwap<T, any, any>>, S extends number = number> {
     /**

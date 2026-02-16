@@ -13,7 +13,7 @@ const RetryUtils_1 = require("../utils/RetryUtils");
 /**
  * Swap handler type mapping for intermediary communication
  *
- * @category Pricing and LPs
+ * @category LPs
  */
 var SwapHandlerType;
 (function (SwapHandlerType) {
@@ -89,7 +89,7 @@ const DEFAULT_CHAIN = "SOLANA";
 /**
  * Discovery service for available intermediaries (liquidity providers)
  *
- * @category Pricing and LPs
+ * @category LPs
  */
 class IntermediaryDiscovery extends events_1.EventEmitter {
     constructor(swapContracts, registryUrl = REGISTRY_URL, nodeUrls, httpRequestTimeout, maxWaitForOthersTimeout) {

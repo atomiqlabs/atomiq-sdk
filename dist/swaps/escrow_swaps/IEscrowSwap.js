@@ -14,7 +14,7 @@ exports.isIEscrowSwapInit = isIEscrowSwapInit;
 /**
  * Base class for escrow-based swaps (i.e. swaps utilizing PrTLC and HTLC primitives)
  *
- * @category Swaps
+ * @category Swaps/Abstract
  */
 class IEscrowSwap extends ISwap_1.ISwap {
     constructor(wrapper, swapInitOrObj) {

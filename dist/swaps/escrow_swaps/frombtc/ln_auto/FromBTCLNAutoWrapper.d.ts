@@ -36,7 +36,7 @@ export type FromBTCLNAutoDefinition<T extends ChainType> = IFromBTCLNDefinition<
  *  handles the claiming of HTLC, with the swap secret broadcasted over Nostr. Also adds a possibility for the user
  *  to receive a native token on the destination chain as part of the swap (a "gas drop" feature).
  *
- * @category Swaps
+ * @category Swaps/Lightning → Smart chain
  */
 export declare class FromBTCLNAutoWrapper<T extends ChainType> extends IFromBTCLNWrapper<T, FromBTCLNAutoDefinition<T>, FromBTCLNAutoWrapperOptions> implements IClaimableSwapWrapper<FromBTCLNAutoSwap<T>> {
     readonly TYPE: SwapType.FROM_BTCLN_AUTO;

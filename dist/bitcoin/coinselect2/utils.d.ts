@@ -1,5 +1,11 @@
 /// <reference types="node" />
 /// <reference types="node" />
+/**
+ * Defines a type of the address used by the wallet, for proper coinselection (as coinselection
+ *  depends on estimating the cost for spending the input + the cost of adding a change output)
+ *
+ * @category Bitcoin
+ */
 export type CoinselectAddressTypes = "p2sh-p2wpkh" | "p2wpkh" | "p2wsh" | "p2tr" | "p2pkh";
 export type CoinselectTxInput = {
     script?: Buffer;

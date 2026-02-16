@@ -6,7 +6,7 @@ import {Token} from "../Token";
  * Fee represented in both, source and destination tokens, as well as providing USD valuation helpers and
  *  fee composition
  *
- * @category Pricing and LPs
+ * @category Pricing
  */
 export type Fee<
     ChainIdentifier extends string = string,

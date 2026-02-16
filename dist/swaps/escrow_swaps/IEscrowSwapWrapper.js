@@ -6,7 +6,7 @@ const base_1 = require("@atomiqlabs/base");
 /**
  * Base class for wrappers of escrow-based swaps (i.e. swaps utilizing PrTLC and HTLC primitives)
  *
- * @category Swaps
+ * @category Swaps/Abstract
  */
 class IEscrowSwapWrapper extends ISwapWrapper_1.ISwapWrapper {
     constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, options, events) {

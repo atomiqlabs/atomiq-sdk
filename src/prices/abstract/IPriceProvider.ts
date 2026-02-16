@@ -2,7 +2,7 @@ import {ChainIds, MultiChain} from "../../swapper/Swapper";
 
 /**
  * Coin type definition for price providers
- * @category Pricing and LPs
+ * @category Pricing
  */
 export type CoinType = {
     coinId: string;
@@ -11,7 +11,7 @@ export type CoinType = {
 
 /**
  * Constructor coin types for price providers
- * @category Pricing and LPs
+ * @category Pricing
  */
 export type CtorCoinTypes<T extends MultiChain> = {
     coinId?: string,
@@ -25,7 +25,7 @@ export type CtorCoinTypes<T extends MultiChain> = {
 
 /**
  * Coin types mapping by chain
- * @category Pricing and LPs
+ * @category Pricing
  */
 export type CoinTypes<T extends MultiChain> = {
     [chainId in keyof T]?: {
@@ -35,7 +35,7 @@ export type CoinTypes<T extends MultiChain> = {
 
 /**
  * Abstract base class for price provider implementations
- * @category Pricing and LPs
+ * @category Pricing
  */
 export abstract class IPriceProvider<T extends MultiChain> {
 

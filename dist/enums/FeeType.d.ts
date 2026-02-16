@@ -1,7 +1,7 @@
 /**
  * Enum representing types of fees in a swap
  *
- * @category Pricing and LPs
+ * @category Pricing
  */
 export declare enum FeeType {
     /**

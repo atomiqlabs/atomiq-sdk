@@ -7,7 +7,7 @@ import {tryWithRetries} from "../utils/RetryUtils";
 /**
  * Services offered by an intermediary
  *
- * @category Pricing and LPs
+ * @category LPs
  */
 export type ServicesType = {
     [key in SwapType]?: SwapHandlerInfoType
@@ -16,7 +16,7 @@ export type ServicesType = {
 /**
  * Reputation data for an intermediary on a single chain
  *
- * @category Pricing and LPs
+ * @category LPs
  */
 export type SingleChainReputationType = {
     [token: string]: {
@@ -34,7 +34,7 @@ export type SingleChainReputationType = {
 /**
  * Smart chain liquidity data
  *
- * @category Pricing and LPs
+ * @category LPs
  */
 export type SCLiquidity = {
     [token: string]: bigint
@@ -43,7 +43,7 @@ export type SCLiquidity = {
 /**
  * Represents an intermediary (liquidity provider)
  *
- * @category Pricing and LPs
+ * @category LPs
  */
 export class Intermediary {
 

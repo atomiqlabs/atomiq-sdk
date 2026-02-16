@@ -4,7 +4,7 @@ exports.FeeType = void 0;
 /**
  * Enum representing types of fees in a swap
  *
- * @category Pricing and LPs
+ * @category Pricing
  */
 var FeeType;
 (function (FeeType) {

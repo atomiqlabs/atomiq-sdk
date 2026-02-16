@@ -18,7 +18,7 @@ const RetryUtils_1 = require("../../utils/RetryUtils");
  *  any initiation on the destination chain, and with the added possibility for the user to receive
  *  a native token on the destination chain as part of the swap (a "gas drop" feature).
  *
- * @category Swaps
+ * @category Swaps/Bitcoin → Smart chain
  */
 class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
     /**

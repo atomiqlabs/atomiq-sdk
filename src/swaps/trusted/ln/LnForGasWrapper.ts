@@ -13,7 +13,7 @@ export type LnForGasSwapTypeDefinition<T extends ChainType> = SwapTypeDefinition
  * Trusted swap for Bitcoin Lightning -> Smart chains, to be used for minor amounts to get gas tokens on
  *  the destination chain, which is only needed for Solana, which still uses legacy swaps
  *
- * @category Swaps
+ * @category Swaps/Trusted Gas Swaps
  */
 export class LnForGasWrapper<T extends ChainType> extends ISwapWrapper<T, LnForGasSwapTypeDefinition<T>> {
     public TYPE: SwapType.TRUSTED_FROM_BTCLN = SwapType.TRUSTED_FROM_BTCLN;

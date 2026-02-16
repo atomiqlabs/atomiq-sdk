@@ -43,7 +43,7 @@ import {sha256} from "@noble/hashes/sha2";
 
 /**
  * State enum for FromBTCLNAuto swaps
- * @category Swaps
+ * @category Swaps/Lightning → Smart chain
  */
 export enum FromBTCLNAutoSwapState {
     FAILED = -4,
@@ -93,7 +93,7 @@ export function isFromBTCLNAutoSwapInit<T extends SwapData>(obj: any): obj is Fr
  *  handles the claiming of HTLC, with the swap secret broadcasted over Nostr. Also adds a possibility for the user
  *  to receive a native token on the destination chain as part of the swap (a "gas drop" feature).
  *
- * @category Swaps
+ * @category Swaps/Lightning → Smart chain
  */
 export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
     extends IEscrowSwap<T, FromBTCLNAutoDefinition<T>>
@@ -1065,7 +1065,8 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
     }
 
     /**
-     * @inheritDoc
+     * Waits till the swap is successfully settled (claimed), should be called after sending the claim (settlement)
+     *  transactions manually to wait till the SDK processes the settlement and updates the swap state accordingly.
      *
      * @param maxWaitTimeSeconds Maximum time in seconds to wait for the swap to be settled
      * @param abortSignal AbortSignal

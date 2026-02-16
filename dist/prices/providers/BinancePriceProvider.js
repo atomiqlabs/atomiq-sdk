@@ -6,7 +6,7 @@ const HttpUtils_1 = require("../../http/HttpUtils");
 /**
  * Price provider using Binance exchange API
  *
- * @category Pricing and LPs
+ * @category Pricing
  */
 class BinancePriceProvider extends ExchangePriceProvider_1.ExchangePriceProvider {
     constructor(coinsMap, url = "https://api.binance.com/api/v3", httpRequestTimeout) {

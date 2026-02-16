@@ -1,11 +1,15 @@
 /**
  * Invoice getter callback for the {@link LightningInvoiceCreateService}
+ *
+ * @category Lightning
  */
 export type LightningWalletCallback = (valueSats: number, abortSignal?: AbortSignal) => Promise<string>;
 /**
  * Service that creates on-demand fixed amount bolt11 lightning network invoices, optionally
  *  specifying minimum and maximum swappable sats amount. This used for exact input Smart chain ->
  *  Lightning swaps.
+ *
+ * @category Lightning
  */
 export type LightningInvoiceCreateService = {
     getInvoice: LightningWalletCallback;

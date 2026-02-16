@@ -13,7 +13,7 @@ export type CoinPaprikaResponse<Currency extends string> = {
 
 /**
  * Price provider using CoinPaprika API
- * @category Pricing and LPs
+ * @category Pricing
  */
 export class CoinPaprikaPriceProvider<T extends MultiChain> extends HttpPriceProvider<T> {
 

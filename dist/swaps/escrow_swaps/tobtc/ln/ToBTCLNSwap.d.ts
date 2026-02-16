@@ -20,7 +20,7 @@ export declare function isToBTCLNSwapInit<T extends SwapData>(obj: any): obj is 
 /**
  * Escrow based (HTLC) swap for Smart chains -> Bitcoin lightning
  *
- * @category Swaps
+ * @category Swaps/Smart chain → Lightning
  */
 export declare class ToBTCLNSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, ToBTCLNDefinition<T>> {
     protected readonly TYPE = SwapType.TO_BTCLN;

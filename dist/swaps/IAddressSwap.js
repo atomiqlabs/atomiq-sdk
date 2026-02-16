@@ -4,7 +4,7 @@ exports.isIAddressSwap = void 0;
 /**
  * Type guard to check if an object is an {@link IAddressSwap}
  *
- * @category Swaps
+ * @category Swaps/Types
  */
 function isIAddressSwap(obj) {
     return obj != null &&

@@ -10,7 +10,7 @@ const TokenAmount_1 = require("../../../types/TokenAmount");
  * Base class for legacy escrow-based Bitcoin (on-chain & lightning) -> Smart chain swaps,
  *  which require the user to manually initiate the escrow on the destination smart chain
  *
- * @category Swaps
+ * @category Swaps/Abstract
  */
 class IFromBTCSelfInitSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
     constructor(wrapper, initOrObj) {
@@ -157,10 +157,11 @@ class IFromBTCSelfInitSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
     //////////////////////////////
     //// Commit
     /**
-     * Creates the escrow on the destination smart chain side, pre-locking the tokens from the intermediary (LP)
-     *  into an escrow.
+     * Returns transactions for initiating (committing) the escrow on the destination smart chain side, pre-locking the
+     *  tokens from the intermediary (LP) into an escrow.
      *
-     * @inheritDoc
+     * @param skipChecks Skip checks like making sure init signature is still valid and swap wasn't commited
+     *  yet (this is handled on swap creation, if you commit right after quoting, you can use skipChecks=true)
      *
      * @throws {Error} When in invalid state to commit the swap
      */

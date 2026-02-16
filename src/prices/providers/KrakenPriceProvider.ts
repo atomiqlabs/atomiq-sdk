@@ -22,7 +22,7 @@ export type KrakenResponse = {
 
 /**
  * Price provider using Kraken exchange API
- * @category Pricing and LPs
+ * @category Pricing
  */
 export class KrakenPriceProvider<T extends MultiChain> extends ExchangePriceProvider<T> {
 

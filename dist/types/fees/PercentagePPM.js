@@ -4,7 +4,7 @@ exports.ppmToPercentage = void 0;
 /**
  * Converts parts-per-million to percentage representation
  *
- * @category Pricing and LPs
+ * @category Pricing
  */
 function ppmToPercentage(ppm) {
     const percentage = Number(ppm) / 10000;

@@ -12,7 +12,7 @@ export type IFromBTCDefinition<T extends ChainType, W extends IFromBTCWrapper<T,
 /**
  * Base class for wrappers of escrow-based Bitcoin (on-chain & lightning) -> Smart chain swaps
  *
- * @category Swaps
+ * @category Swaps/Abstract
  */
 export abstract class IFromBTCWrapper<
     T extends ChainType,

@@ -17,7 +17,7 @@ const IToBTCSwap_1 = require("../IToBTCSwap");
 /**
  * Escrow based (PrTLC) swap for Smart chains -> Bitcoin
  *
- * @category Swaps
+ * @category Swaps/Smart chain → Bitcoin
  */
 class ToBTCWrapper extends IToBTCWrapper_1.IToBTCWrapper {
     /**

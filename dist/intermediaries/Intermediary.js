@@ -6,7 +6,7 @@ const RetryUtils_1 = require("../utils/RetryUtils");
 /**
  * Represents an intermediary (liquidity provider)
  *
- * @category Pricing and LPs
+ * @category LPs
  */
 class Intermediary {
     constructor(url, addresses, services, reputation = {}) {

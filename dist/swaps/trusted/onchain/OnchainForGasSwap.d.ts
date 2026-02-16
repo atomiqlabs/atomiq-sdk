@@ -16,7 +16,7 @@ import { SwapExecutionActionBitcoin } from "../../../types/SwapExecutionAction";
 /**
  * State enum for trusted on-chain gas swaps
  *
- * @category Swaps
+ * @category Swaps/Trusted Gas Swaps
  */
 export declare enum OnchainForGasSwapState {
     /**
@@ -59,7 +59,7 @@ export declare function isOnchainForGasSwapInit(obj: any): obj is OnchainForGasS
  * Trusted swap for Bitcoin -> Smart chains, to be used for minor amounts to get gas tokens on the
  *  destination chain, which is only needed for Solana, which still uses legacy swaps
  *
- * @category Swaps
+ * @category Swaps/Trusted Gas Swaps
  */
 export declare class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T, OnchainForGasSwapTypeDefinition<T>> implements IAddressSwap, IBTCWalletSwap {
     protected readonly TYPE: SwapType.TRUSTED_FROM_BTC;

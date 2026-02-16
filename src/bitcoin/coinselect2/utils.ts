@@ -25,6 +25,12 @@ const TX_OUTPUT_P2WPKH = 22;
 const TX_OUTPUT_P2WSH = 34;
 const TX_OUTPUT_P2TR = 34;
 
+/**
+ * Defines a type of the address used by the wallet, for proper coinselection (as coinselection
+ *  depends on estimating the cost for spending the input + the cost of adding a change output)
+ *
+ * @category Bitcoin
+ */
 export type CoinselectAddressTypes = "p2sh-p2wpkh" | "p2wpkh" | "p2wsh" | "p2tr" | "p2pkh";
 
 export type CoinselectTxInput = {

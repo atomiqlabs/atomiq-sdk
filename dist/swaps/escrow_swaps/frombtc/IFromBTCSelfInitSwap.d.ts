@@ -12,7 +12,7 @@ export type IFromBTCSelfInitDefinition<T extends ChainType, W extends IFromBTCWr
  * Base class for legacy escrow-based Bitcoin (on-chain & lightning) -> Smart chain swaps,
  *  which require the user to manually initiate the escrow on the destination smart chain
  *
- * @category Swaps
+ * @category Swaps/Abstract
  */
 export declare abstract class IFromBTCSelfInitSwap<T extends ChainType = ChainType, D extends IFromBTCSelfInitDefinition<T, IFromBTCWrapper<T, D>, IFromBTCSelfInitSwap<T, D, S>> = IFromBTCSelfInitDefinition<T, IFromBTCWrapper<T, any>, IFromBTCSelfInitSwap<T, any, any>>, S extends number = number> extends IEscrowSelfInitSwap<T, D, S> implements IAddressSwap, IClaimableSwap<T, D, S> {
     /**
@@ -121,10 +121,11 @@ export declare abstract class IFromBTCSelfInitSwap<T extends ChainType = ChainTy
      */
     getTotalDeposit(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
     /**
-     * Creates the escrow on the destination smart chain side, pre-locking the tokens from the intermediary (LP)
-     *  into an escrow.
+     * Returns transactions for initiating (committing) the escrow on the destination smart chain side, pre-locking the
+     *  tokens from the intermediary (LP) into an escrow.
      *
-     * @inheritDoc
+     * @param skipChecks Skip checks like making sure init signature is still valid and swap wasn't commited
+     *  yet (this is handled on swap creation, if you commit right after quoting, you can use skipChecks=true)
      *
      * @throws {Error} When in invalid state to commit the swap
      */
@@ -133,7 +134,10 @@ export declare abstract class IFromBTCSelfInitSwap<T extends ChainType = ChainTy
      * Creates the escrow on the destination smart chain side, pre-locking the tokens from the intermediary (LP)
      *  into an escrow.
      *
-     * @inheritDoc
+     * @param signer Signer to sign the transactions with, must be the same as used in the initialization
+     * @param abortSignal Abort signal
+     * @param skipChecks Skip checks like making sure init signature is still valid and swap wasn't commited
+     *  yet (this is handled on swap creation, if you commit right after quoting, you can use skipChecks=true)
      *
      * @throws {Error} If invalid signer is provided that doesn't match the swap data
      */

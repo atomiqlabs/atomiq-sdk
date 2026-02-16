@@ -15,7 +15,7 @@ const TimeoutUtils_1 = require("../../../utils/TimeoutUtils");
 /**
  * State enum for trusted Lightning gas swaps
  *
- * @category Swaps
+ * @category Swaps/Trusted Gas Swaps
  */
 var LnForGasSwapState;
 (function (LnForGasSwapState) {
@@ -52,7 +52,7 @@ exports.isLnForGasSwapInit = isLnForGasSwapInit;
  * Trusted swap for Bitcoin Lightning -> Smart chains, to be used for minor amounts to get gas tokens on
  *  the destination chain, which is only needed for Solana, which still uses legacy swaps
  *
- * @category Swaps
+ * @category Swaps/Trusted Gas Swaps
  */
 class LnForGasSwap extends ISwap_1.ISwap {
     constructor(wrapper, initOrObj) {

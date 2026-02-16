@@ -3,7 +3,7 @@ import { Transaction } from "@scure/btc-signer";
 /**
  * Swap execution action requiring a payment of the provided bolt11 lightning network invoice
  *
- * @category Swaps
+ * @category Swap Actions
  */
 export type SwapExecutionActionLightning = {
     name: "Payment";
@@ -22,7 +22,7 @@ export type SwapExecutionActionLightning = {
  * - `"RAW_PSBT"` - Raw PSBT without the inputs, the implementor needs to add the input UTXOs before signing
  *  the transaction
  *
- * @category Swaps
+ * @category Swap Actions
  */
 export type SwapExecutionActionBitcoin<T extends "ADDRESS" | "FUNDED_PSBT" | "RAW_PSBT" = "ADDRESS" | "FUNDED_PSBT" | "RAW_PSBT"> = {
     name: "Payment";
@@ -50,7 +50,7 @@ export type SwapExecutionActionBitcoin<T extends "ADDRESS" | "FUNDED_PSBT" | "RA
 /**
  * Swap execution action for committing (initiating) the escrow on the smart chain side
  *
- * @category Swaps
+ * @category Swap Actions
  */
 export type SwapExecutionActionCommit<T extends ChainType> = {
     name: "Commit";
@@ -61,7 +61,7 @@ export type SwapExecutionActionCommit<T extends ChainType> = {
 /**
  * Swap execution action for claiming (settling) the swap on the smart chain side
  *
- * @category Swaps
+ * @category Swap Actions
  */
 export type SwapExecutionActionClaim<T extends ChainType> = {
     name: "Claim";
@@ -70,8 +70,19 @@ export type SwapExecutionActionClaim<T extends ChainType> = {
     txs: T["TX"][];
 };
 /**
+ * Swap execution action for refunding the swap on the smart chain side after it fails
+ *
+ * @category Swap Actions
+ */
+export type SwapExecutionActionRefund<T extends ChainType> = {
+    name: "Refund";
+    description: string;
+    chain: T["ChainId"];
+    txs: T["TX"][];
+};
+/**
  * Swap execution action, a single step in the swapping process
  *
- * @category Swaps
+ * @category Swap Actions
  */
-export type SwapExecutionAction<T extends ChainType> = SwapExecutionActionLightning | SwapExecutionActionBitcoin | SwapExecutionActionCommit<T> | SwapExecutionActionClaim<T>;
+export type SwapExecutionAction<T extends ChainType> = SwapExecutionActionLightning | SwapExecutionActionBitcoin | SwapExecutionActionCommit<T> | SwapExecutionActionClaim<T> | SwapExecutionActionRefund<T>;

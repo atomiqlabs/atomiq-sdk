@@ -12,7 +12,7 @@ import {tryWithRetries} from "../utils/RetryUtils";
 /**
  * Swap handler type mapping for intermediary communication
  *
- * @category Pricing and LPs
+ * @category LPs
  */
 export enum SwapHandlerType {
     TO_BTC = "TO_BTC",
@@ -28,7 +28,7 @@ export enum SwapHandlerType {
 /**
  * Swap handler information type
  *
- * @category Pricing and LPs
+ * @category LPs
  */
 export type SwapHandlerInfoType = {
     swapFeePPM: number,
@@ -50,7 +50,7 @@ type InfoHandlerResponseEnvelope = {
 /**
  * Token bounds (min/max) for swaps
  *
- * @category Pricing and LPs
+ * @category LPs
  */
 export type TokenBounds = {
     [token: string]: {
@@ -62,7 +62,7 @@ export type TokenBounds = {
 /**
  * Multi-chain token bounds (min/max) for swaps
  *
- * @category Pricing and LPs
+ * @category LPs
  */
 export type MultichainTokenBounds = {
     [chainId: string]: TokenBounds
@@ -71,7 +71,7 @@ export type MultichainTokenBounds = {
 /**
  * Swap bounds by swap protocol type
  *
- * @category Pricing and LPs
+ * @category LPs
  */
 export type SwapBounds = {
     [key in SwapType]?: TokenBounds
@@ -80,7 +80,7 @@ export type SwapBounds = {
 /**
  * Multi-chain swap bounds
  *
- * @category Pricing and LPs
+ * @category LPs
  */
 export type MultichainSwapBounds = {
     [key in SwapType]?: MultichainTokenBounds
@@ -155,7 +155,7 @@ const DEFAULT_CHAIN = "SOLANA";
 /**
  * Discovery service for available intermediaries (liquidity providers)
  *
- * @category Pricing and LPs
+ * @category LPs
  */
 export class IntermediaryDiscovery extends EventEmitter {
 

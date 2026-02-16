@@ -4,7 +4,7 @@ import { ChainIds, MultiChain } from "../swapper/Swapper";
 /**
  * Asset configuration for redundant swap pricing
  *
- * @category Pricing and LPs
+ * @category Pricing
  */
 export type RedundantSwapPriceAssets<T extends MultiChain> = {
     binancePair?: string;
@@ -36,7 +36,7 @@ type CoinDecimals<T extends MultiChain> = {
  * Swap price API using multiple price sources, handles errors on the APIs and automatically switches between them, such
  *  that there always is a functional API
  *
- * @category Pricing and LPs
+ * @category Pricing
  */
 export declare class RedundantSwapPrice<T extends MultiChain> extends ICachedSwapPrice<T> {
     /**

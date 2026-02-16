@@ -36,7 +36,7 @@ const SNOWFLAKE_LIST: Set<string> = new Set([
 /**
  * Escrow based (HTLC) swap for Smart chains -> Bitcoin lightning
  *
- * @category Swaps
+ * @category Swaps/Smart chain → Lightning
  */
 export class ToBTCLNSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, ToBTCLNDefinition<T>> {
     protected readonly TYPE = SwapType.TO_BTCLN;

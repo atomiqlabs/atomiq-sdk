@@ -49,6 +49,8 @@ export function isSwapType<T extends ChainType, S extends SwapType>(swap: ISwap<
  *  arbitrary transactions
  * - `supportsGasDrop`: Whether a swap supports the "gas drop" feature, allowing to user to receive a small
  *  amount of native token as part of the swap when swapping to smart chains
+ *
+ * @category Core
  */
 export const SwapProtocolInfo = {
     [SwapType.TO_BTC]: {

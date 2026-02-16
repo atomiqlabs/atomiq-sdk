@@ -21,7 +21,7 @@ export type IFromBTCLNDefinition<T extends ChainType, W extends IFromBTCLNWrappe
 /**
  * Base class for wrappers of escrow-based Lightning -> Smart chain swaps
  *
- * @category Swaps
+ * @category Swaps/Abstract
  */
 export abstract class IFromBTCLNWrapper<
     T extends ChainType,

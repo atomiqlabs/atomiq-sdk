@@ -43,7 +43,7 @@ export type ToBTCLNDefinition<T extends ChainType> = IToBTCDefinition<T, ToBTCLN
 /**
  * Escrow based (HTLC) swap for Smart chains -> Bitcoin lightning
  *
- * @category Swaps
+ * @category Swaps/Smart chain → Lightning
  */
 export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCLNDefinition<T>, ToBTCLNWrapperOptions> {
     public readonly TYPE: SwapType.TO_BTCLN = SwapType.TO_BTCLN;

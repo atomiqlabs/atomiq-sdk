@@ -5,7 +5,7 @@ import {ChainIds, MultiChain} from "../swapper/Swapper";
 /**
  * Swap price API using a single price source
  *
- * @category Pricing and LPs
+ * @category Pricing
  */
 export class SingleSwapPrice<T extends MultiChain> extends ICachedSwapPrice<T> {
 

@@ -14,7 +14,7 @@ import {PriceInfoType} from "../types/PriceInfoType";
 /**
  * Options for swap wrapper configuration
  *
- * @category Swaps
+ * @category Swaps/Base
  */
 export type ISwapWrapperOptions = {
     getRequestTimeout?: number,
@@ -24,7 +24,7 @@ export type ISwapWrapperOptions = {
 /**
  * Token configuration for wrapper constructors
  *
- * @category Swaps
+ * @category Swaps/Base
  */
 export type WrapperCtorTokens<T extends MultiChain = MultiChain> = {
     ticker: string,
@@ -39,7 +39,7 @@ export type WrapperCtorTokens<T extends MultiChain = MultiChain> = {
 /**
  * Type definition linking wrapper and swap types
  *
- * @category Swaps
+ * @category Swaps/Base
  */
 export type SwapTypeDefinition<T extends ChainType, W extends ISwapWrapper<T, any>, S extends ISwap<T>> = {
     Wrapper: W;
@@ -49,7 +49,7 @@ export type SwapTypeDefinition<T extends ChainType, W extends ISwapWrapper<T, an
 /**
  * Base abstract class for swap handler implementations
  *
- * @category Swaps
+ * @category Swaps/Base
  */
 export abstract class ISwapWrapper<
     T extends ChainType,

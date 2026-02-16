@@ -15,7 +15,7 @@ import { LoggerType } from "../../../../utils/Logger";
 /**
  * State enum for legacy escrow based Bitcoin -> Smart chain swaps.
  *
- * @category Swaps
+ * @category Swaps/Legacy/Bitcoin → Smart chain
  */
 export declare enum FromBTCSwapState {
     /**
@@ -71,7 +71,7 @@ export declare function isFromBTCSwapInit<T extends SwapData>(obj: any): obj is 
  * Legacy escrow (PrTLC) based swap for Bitcoin -> Smart chains, requires manual initiation
  *  of the swap escrow on the destination chain.
  *
- * @category Swaps
+ * @category Swaps/Legacy/Bitcoin → Smart chain
  */
 export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromBTCSelfInitSwap<T, FromBTCDefinition<T>, FromBTCSwapState> implements IBTCWalletSwap, IClaimableSwap<T, FromBTCDefinition<T>, FromBTCSwapState>, IAddressSwap {
     protected readonly TYPE: SwapType.FROM_BTC;
@@ -340,17 +340,30 @@ export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromB
      */
     waitTillCommited(abortSignal?: AbortSignal): Promise<void>;
     /**
+     * Returns transactions for settling (claiming) the swap if the swap requires manual settlement, you can check so
+     *  with isClaimable. After sending the transaction manually be sure to call the waitTillClaimed function to wait
+     *  till the claim transaction is observed, processed by the SDK and state of the swap properly updated.
+     *
+     * @remarks
      * Might also return transactions necessary to sync the bitcoin light client.
      *
-     * @inheritDoc
+     * @param _signer Address of the signer to create the claim transactions for
      *
      * @throws {Error} If the swap is in invalid state (must be {@link FromBTCSwapState.BTC_TX_CONFIRMED})
      */
     txsClaim(_signer?: string | T["Signer"] | T["NativeSigner"]): Promise<T["TX"][]>;
     /**
-     * Might also sync the bitcoin light client. Signer can also be different to the initializer.
+     * Settles the swap by claiming the funds on the destination chain if the swap requires manual settlement, you can
+     *  check so with isClaimable.
      *
-     * @inheritDoc
+     * @remarks
+     * Might also sync the bitcoin light client during the process.
+     *
+     * @param _signer Signer to use for signing the settlement transactions, can also be different to the recipient
+     * @param abortSignal Abort signal
+     * @param onBeforeTxSent Optional callback triggered before the claim transaction is broadcasted
+     *
+     * @returns Transaction ID of the settlement (claim) transaction on the destination smart chain
      */
     claim(_signer: T["Signer"] | T["NativeSigner"], abortSignal?: AbortSignal, onBeforeTxSent?: (txId: string) => void): Promise<string>;
     /**
@@ -358,8 +371,6 @@ export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromB
      *
      * @throws {Error} If swap is in invalid state (must be {@link FromBTCSwapState.BTC_TX_CONFIRMED})
      * @throws {Error} If the LP refunded sooner than we were able to claim
-     *
-     * @returns {boolean} whether the swap was claimed in time or not
      */
     waitTillClaimed(maxWaitTimeSeconds?: number, abortSignal?: AbortSignal): Promise<boolean>;
     /**

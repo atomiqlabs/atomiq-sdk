@@ -22,7 +22,7 @@ const PriceInfoType_1 = require("../../../../types/PriceInfoType");
 const sha2_1 = require("@noble/hashes/sha2");
 /**
  * State enum for FromBTCLNAuto swaps
- * @category Swaps
+ * @category Swaps/Lightning → Smart chain
  */
 var FromBTCLNAutoSwapState;
 (function (FromBTCLNAutoSwapState) {
@@ -55,7 +55,7 @@ exports.isFromBTCLNAutoSwapInit = isFromBTCLNAutoSwapInit;
  *  handles the claiming of HTLC, with the swap secret broadcasted over Nostr. Also adds a possibility for the user
  *  to receive a native token on the destination chain as part of the swap (a "gas drop" feature).
  *
- * @category Swaps
+ * @category Swaps/Lightning → Smart chain
  */
 class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
     /**
@@ -891,7 +891,8 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
         return result[0];
     }
     /**
-     * @inheritDoc
+     * Waits till the swap is successfully settled (claimed), should be called after sending the claim (settlement)
+     *  transactions manually to wait till the SDK processes the settlement and updates the swap state accordingly.
      *
      * @param maxWaitTimeSeconds Maximum time in seconds to wait for the swap to be settled
      * @param abortSignal AbortSignal

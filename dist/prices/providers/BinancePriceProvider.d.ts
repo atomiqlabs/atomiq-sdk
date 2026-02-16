@@ -8,7 +8,7 @@ export type BinanceResponse = {
 /**
  * Price provider using Binance exchange API
  *
- * @category Pricing and LPs
+ * @category Pricing
  */
 export declare class BinancePriceProvider<T extends MultiChain> extends ExchangePriceProvider<T> {
     constructor(coinsMap: CtorCoinTypes<T>, url?: string, httpRequestTimeout?: number);

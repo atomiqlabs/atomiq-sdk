@@ -18,7 +18,7 @@ const RetryUtils_1 = require("../../../../utils/RetryUtils");
 /**
  * Escrow based (HTLC) swap for Smart chains -> Bitcoin lightning
  *
- * @category Swaps
+ * @category Swaps/Smart chain → Lightning
  */
 class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
     constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, options, events) {

@@ -12,7 +12,7 @@ import { SwapExecutionActionLightning } from "../../../types/SwapExecutionAction
 /**
  * State enum for trusted Lightning gas swaps
  *
- * @category Swaps
+ * @category Swaps/Trusted Gas Swaps
  */
 export declare enum LnForGasSwapState {
     /**
@@ -47,7 +47,7 @@ export declare function isLnForGasSwapInit(obj: any): obj is LnForGasSwapInit;
  * Trusted swap for Bitcoin Lightning -> Smart chains, to be used for minor amounts to get gas tokens on
  *  the destination chain, which is only needed for Solana, which still uses legacy swaps
  *
- * @category Swaps
+ * @category Swaps/Trusted Gas Swaps
  */
 export declare class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnForGasSwapTypeDefinition<T>, LnForGasSwapState> implements IAddressSwap {
     protected readonly TYPE: SwapType.TRUSTED_FROM_BTCLN;

@@ -11,7 +11,7 @@ export type BinanceResponse = {
 /**
  * Price provider using Binance exchange API
  *
- * @category Pricing and LPs
+ * @category Pricing
  */
 export class BinancePriceProvider<T extends MultiChain> extends ExchangePriceProvider<T> {
 

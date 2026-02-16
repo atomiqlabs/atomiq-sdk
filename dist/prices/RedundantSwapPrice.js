@@ -16,7 +16,7 @@ const logger = (0, Logger_1.getLogger)("RedundantSwapPrice: ");
  * Swap price API using multiple price sources, handles errors on the APIs and automatically switches between them, such
  *  that there always is a functional API
  *
- * @category Pricing and LPs
+ * @category Pricing
  */
 class RedundantSwapPrice extends ICachedSwapPrice_1.ICachedSwapPrice {
     /**

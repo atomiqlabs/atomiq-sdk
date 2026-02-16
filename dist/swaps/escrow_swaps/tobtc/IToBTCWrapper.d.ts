@@ -8,7 +8,7 @@ export type IToBTCDefinition<T extends ChainType, W extends IToBTCWrapper<T, any
 /**
  * Base class for wrappers of escrow-based Smart chain -> Bitcoin (on-chain & lightning) swaps
  *
- * @category Swaps
+ * @category Swaps/Smart chain → Bitcoin
  */
 export declare abstract class IToBTCWrapper<T extends ChainType, D extends IToBTCDefinition<T, IToBTCWrapper<T, D>, IToBTCSwap<T, D>>, O extends ISwapWrapperOptions = ISwapWrapperOptions> extends IEscrowSwapWrapper<T, D, O> {
     /**

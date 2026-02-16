@@ -58,7 +58,7 @@ export type SpvFromBTCTypeDefinition<T extends ChainType> = SwapTypeDefinition<T
  *  any initiation on the destination chain, and with the added possibility for the user to receive
  *  a native token on the destination chain as part of the swap (a "gas drop" feature).
  *
- * @category Swaps
+ * @category Swaps/Bitcoin → Smart chain
  */
 export class SpvFromBTCWrapper<
     T extends ChainType

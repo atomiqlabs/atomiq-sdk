@@ -14,7 +14,7 @@ export type IEscrowSelfInitSwapDefinition<T extends ChainType, W extends IEscrow
  * Base class for escrow-based swaps (i.e. swaps utilizing PrTLC and HTLC primitives) where the
  *  user needs to initiate the escrow on the smart chain side
  *
- * @category Swaps
+ * @category Swaps/Abstract
  */
 export declare abstract class IEscrowSelfInitSwap<T extends ChainType = ChainType, D extends IEscrowSelfInitSwapDefinition<T, IEscrowSwapWrapper<T, D>, IEscrowSelfInitSwap<T, D, S>> = IEscrowSwapDefinition<T, IEscrowSwapWrapper<T, any>, IEscrowSelfInitSwap<T, any, any>>, S extends number = number> extends IEscrowSwap<T, D, S> {
     /**
@@ -57,7 +57,9 @@ export declare abstract class IEscrowSelfInitSwap<T extends ChainType = ChainTyp
         required: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
     }>;
     /**
-     * Returns transactions for initiating (committing) the escrow on the smart chain side
+     * Returns transactions for initiating (committing) the escrow on the smart chain side. After sending the
+     *  transactions manually be sure to call the {@link waitTillCommited} function to wait till the initiation
+     *  transaction is observed, processed by the SDK and state of the swap properly updated.
      *
      * @param skipChecks Skip checks like making sure init signature is still valid and swap wasn't commited yet
      *  (this is handled on swap creation, if you commit right after quoting, you can use `skipChecks=true`)

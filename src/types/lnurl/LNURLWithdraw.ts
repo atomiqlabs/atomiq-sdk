@@ -1,7 +1,7 @@
 /**
  * Response of the LNURL-withdraw link
  *
- * @category Bitcoin
+ * @category Lightning
  */
 export type LNURLWithdrawParams = {
     tag: "withdrawRequest";
@@ -18,14 +18,14 @@ export type LNURLWithdrawParams = {
 /**
  * Response of the LNURL-withdraw link with the added original url
  *
- * @category Bitcoin
+ * @category Lightning
  */
 export type LNURLWithdrawParamsWithUrl = LNURLWithdrawParams & { url: string };
 
 /**
  * Parsed LNURL-withdraw specification
  *
- * @category Bitcoin
+ * @category Lightning
  */
 export type LNURLWithdraw = {
     type: "withdraw",
@@ -37,7 +37,7 @@ export type LNURLWithdraw = {
 /**
  * Type guard for {@link LNURLWithdraw}
  *
- * @category Bitcoin
+ * @category Lightning
  * @internal
  */
 export function isLNURLWithdraw(value: any): value is LNURLWithdraw {
@@ -54,7 +54,7 @@ export function isLNURLWithdraw(value: any): value is LNURLWithdraw {
 /**
  * Type guard for {@link LNURLWithdrawParams}
  *
- * @category Bitcoin
+ * @category Lightning
  * @internal
  */
 export function isLNURLWithdrawParams(obj: any): obj is LNURLWithdrawParams {

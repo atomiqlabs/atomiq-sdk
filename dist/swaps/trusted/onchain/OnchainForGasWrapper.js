@@ -10,7 +10,7 @@ const SwapType_1 = require("../../../enums/SwapType");
  * Trusted swap for Bitcoin -> Smart chains, to be used for minor amounts to get gas tokens on the
  *  destination chain, which is only needed for Solana, which still uses legacy swaps
  *
- * @category Swaps
+ * @category Swaps/Trusted Gas Swaps
  */
 class OnchainForGasWrapper extends ISwapWrapper_1.ISwapWrapper {
     /**

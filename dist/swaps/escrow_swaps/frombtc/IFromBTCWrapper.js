@@ -8,7 +8,7 @@ const IEscrowSwapWrapper_1 = require("../IEscrowSwapWrapper");
 /**
  * Base class for wrappers of escrow-based Bitcoin (on-chain & lightning) -> Smart chain swaps
  *
- * @category Swaps
+ * @category Swaps/Abstract
  */
 class IFromBTCWrapper extends IEscrowSwapWrapper_1.IEscrowSwapWrapper {
     /**

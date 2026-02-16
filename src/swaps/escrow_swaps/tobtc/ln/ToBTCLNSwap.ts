@@ -45,9 +45,9 @@ export class ToBTCLNSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, 
     protected readonly logger: LoggerType;
 
     private readonly confidence: number;
-    private readonly pr?: string;
+    private pr?: string;
 
-    readonly paymentHash?: string;
+    paymentHash?: string;
 
     lnurl?: string;
     successAction?: LNURLPaySuccessAction;
@@ -84,14 +84,20 @@ export class ToBTCLNSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, 
     _setPaymentResult(result: { secret?: string; txId?: string }, check: boolean = false): Promise<boolean> {
         if(result==null) return Promise.resolve(false);
         if(result.secret==null) throw new IntermediaryError("No payment secret returned!");
+
+        const secretBuffer = Buffer.from(result.secret, "hex");
+        const hash = Buffer.from(sha256(secretBuffer));
+
         if(check) {
-            const secretBuffer = Buffer.from(result.secret, "hex");
-            const hash = Buffer.from(sha256(secretBuffer));
             const claimHash = this.wrapper.contract.getHashForHtlc(hash);
 
             const expectedClaimHash = Buffer.from(this.getClaimHash(), "hex");
             if(!claimHash.equals(expectedClaimHash)) throw new IntermediaryError("Invalid payment secret returned");
         }
+
+        this.pr ??= hash.toString("hex");
+        this.paymentHash ??= hash.toString("hex");
+
         this.secret = result.secret;
         return Promise.resolve(true);
     }
@@ -118,7 +124,9 @@ export class ToBTCLNSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, 
     //// Getters & utils
 
     getOutputTxId(): string | null {
-        return this.getLpIdentifier();
+        const paymentHash = this.getPaymentHash();
+        if(paymentHash==null) return null;
+        return paymentHash.toString("hex");
     }
 
     /**

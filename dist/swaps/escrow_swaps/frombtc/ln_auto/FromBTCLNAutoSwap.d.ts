@@ -31,11 +31,11 @@ export declare enum FromBTCLNAutoSwapState {
     CLAIM_CLAIMED = 3
 }
 export type FromBTCLNAutoSwapInit<T extends SwapData> = IEscrowSwapInit<T> & {
-    pr: string;
-    secret: string;
+    pr?: string;
+    secret?: string;
     initialSwapData: T;
-    btcAmountSwap: bigint;
-    btcAmountGas: bigint;
+    btcAmountSwap?: bigint;
+    btcAmountGas?: bigint;
     gasSwapFeeBtc: bigint;
     gasSwapFee: bigint;
     gasPricingInfo?: PriceInfoType;
@@ -45,15 +45,16 @@ export type FromBTCLNAutoSwapInit<T extends SwapData> = IEscrowSwapInit<T> & {
 };
 export declare function isFromBTCLNAutoSwapInit<T extends SwapData>(obj: any): obj is FromBTCLNAutoSwapInit<T>;
 export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends IEscrowSwap<T, FromBTCLNAutoDefinition<T>> implements IAddressSwap, ISwapWithGasDrop<T>, IClaimableSwap<T, FromBTCLNAutoDefinition<T>, FromBTCLNAutoSwapState> {
+    private readonly usesClaimHashAsId;
     protected readonly logger: LoggerType;
     protected readonly inputToken: BtcToken<true>;
     protected readonly TYPE = SwapType.FROM_BTCLN_AUTO;
     protected readonly lnurlFailSignal: AbortController;
-    protected readonly pr: string;
-    protected readonly secret: string;
+    protected pr?: string;
+    protected secret?: string;
     protected initialSwapData: T["Data"];
-    protected readonly btcAmountSwap: bigint;
-    protected readonly btcAmountGas: bigint;
+    protected readonly btcAmountSwap?: bigint;
+    protected readonly btcAmountGas?: bigint;
     protected readonly gasSwapFeeBtc: bigint;
     protected readonly gasSwapFee: bigint;
     gasPricingInfo?: PriceInfoType;
@@ -78,9 +79,9 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
     getOutputTxId(): string | null;
     requiresAction(): boolean;
     protected getIdentifierHashString(): string;
-    protected getPaymentHash(): Buffer;
+    protected getPaymentHash(): Buffer | null;
     getInputAddress(): string | null;
-    getInputTxId(): string;
+    getInputTxId(): string | null;
     /**
      * Returns the lightning network BOLT11 invoice that needs to be paid as an input to the swap
      */
@@ -103,11 +104,11 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
     isQuoteSoftExpired(): boolean;
     _verifyQuoteDefinitelyExpired(): Promise<boolean>;
     verifyQuoteValid(): Promise<boolean>;
-    protected getLightningInvoiceSats(): bigint;
-    protected getWatchtowerFeeAmountBtc(): bigint;
-    protected getInputSwapAmountWithoutFee(): bigint;
-    protected getInputGasAmountWithoutFee(): bigint;
-    protected getInputAmountWithoutFee(): bigint;
+    protected getLightningInvoiceSats(): bigint | null;
+    protected getWatchtowerFeeAmountBtc(): bigint | null;
+    protected getInputSwapAmountWithoutFee(): bigint | null;
+    protected getInputGasAmountWithoutFee(): bigint | null;
+    protected getInputAmountWithoutFee(): bigint | null;
     protected getOutputAmountWithoutFee(): bigint;
     getInputToken(): BtcToken<true>;
     getInput(): TokenAmount<T["ChainId"], BtcToken<true>>;
@@ -128,6 +129,7 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
             fee: Fee<T["ChainId"], BtcToken<true>, SCToken<T["ChainId"]>>;
         }
     ];
+    private isValidSecretPreimage;
     /**
      * Executes the swap with the provided bitcoin lightning network wallet or LNURL
      *
@@ -135,6 +137,8 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
      *  link, wallet is not required and the LN invoice can be paid externally as well (just pass null or undefined here)
      * @param callbacks Callbacks to track the progress of the swap
      * @param options Optional options for the swap like feeRate, AbortSignal, and timeouts/intervals
+     * @param secret A swap secret to broadcast to watchtowers, generally only needed if the swap
+     *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      *
      * @returns {boolean} Whether a swap was settled automatically by swap watchtowers or requires manual claim by the
      *  user, in case `false` is returned the user should call `swap.claim()` to settle the swap on the destination manually
@@ -146,13 +150,13 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
         abortSignal?: AbortSignal;
         lightningTxCheckIntervalSeconds?: number;
         maxWaitTillAutomaticSettlementSeconds?: number;
-    }): Promise<boolean>;
+    }, secret?: string): Promise<boolean>;
     txsExecute(): Promise<{
         name: "Payment";
         description: string;
         chain: string;
         txs: {
-            address: string;
+            address: string | undefined;
             hyperlink: string;
         }[];
     }[]>;
@@ -186,26 +190,34 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
      *  (hash preimage)
      *
      * @param _signer Optional signer address to use for claiming the swap, can also be different from the initializer
+     * @param secret A swap secret to use for the claim transaction, generally only needed if the swap
+     *  was recovered from on-chain data, or the pre-image was generated outside the SDK
+     *
      * @throws {Error} If in invalid state (must be CLAIM_COMMITED)
      */
-    txsClaim(_signer?: T["Signer"] | T["NativeSigner"]): Promise<T["TX"][]>;
+    txsClaim(_signer?: T["Signer"] | T["NativeSigner"], secret?: string): Promise<T["TX"][]>;
     /**
      * Claims and finishes the swap
      *
      * @param _signer Signer to sign the transactions with, can also be different to the initializer
      * @param abortSignal Abort signal to stop waiting for transaction confirmation
+     * @param secret A swap secret to use for the claim transaction, generally only needed if the swap
+     *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      */
-    claim(_signer: T["Signer"] | T["NativeSigner"], abortSignal?: AbortSignal): Promise<string>;
+    claim(_signer: T["Signer"] | T["NativeSigner"], abortSignal?: AbortSignal, secret?: string): Promise<string>;
     /**
      * Waits till the swap is successfully claimed
      *
      * @param maxWaitTimeSeconds Maximum time in seconds to wait for the swap to be settled
      * @param abortSignal AbortSignal
+     * @param secret A swap secret to broadcast to watchtowers, generally only needed if the swap
+     *  was recovered from on-chain data, or the pre-image was generated outside the SDK
+     *
      * @throws {Error} If swap is in invalid state (must be BTC_TX_CONFIRMED)
      * @throws {Error} If the LP refunded sooner than we were able to claim
      * @returns {boolean} whether the swap was claimed in time or not
      */
-    waitTillClaimed(maxWaitTimeSeconds?: number, abortSignal?: AbortSignal): Promise<boolean>;
+    waitTillClaimed(maxWaitTimeSeconds?: number, abortSignal?: AbortSignal, secret?: string): Promise<boolean>;
     /**
      * Is this an LNURL-withdraw swap?
      */
@@ -230,7 +242,9 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
     _shouldFetchExpiryStatus(): boolean;
     _shouldCheckIntermediary(): boolean;
     _sync(save?: boolean, quoteDefinitelyExpired?: boolean, commitStatus?: SwapCommitState, skipLpCheck?: boolean): Promise<boolean>;
+    _forciblySetOnchainState(commitStatus: SwapCommitState): Promise<boolean>;
     private broadcastTickCounter;
-    _broadcastSecret(noCheckExpiry?: boolean): Promise<void>;
+    _broadcastSecret(noCheckExpiry?: boolean, secret?: string): Promise<void>;
     _tick(save?: boolean): Promise<boolean>;
+    _setSwapSecret(secret: string): void;
 }

@@ -20,6 +20,7 @@ const utils_1 = require("@scure/btc-signer/utils");
 const UnifiedSwapStorage_1 = require("../storage/UnifiedSwapStorage");
 const UnifiedSwapEventListener_1 = require("../events/UnifiedSwapEventListener");
 const SpvFromBTCWrapper_1 = require("../swaps/spv_swaps/SpvFromBTCWrapper");
+const SpvFromBTCSwap_1 = require("../swaps/spv_swaps/SpvFromBTCSwap");
 const SwapperUtils_1 = require("./SwapperUtils");
 const FromBTCLNAutoWrapper_1 = require("../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoWrapper");
 const UserError_1 = require("../errors/UserError");
@@ -33,6 +34,7 @@ const LNURLWithdraw_1 = require("../types/lnurl/LNURLWithdraw");
 const LNURLPay_1 = require("../types/lnurl/LNURLPay");
 const RetryUtils_1 = require("../utils/RetryUtils");
 const btc_mempool_1 = require("@atomiqlabs/btc-mempool");
+const IEscrowSwap_1 = require("../swaps/escrow_swaps/IEscrowSwap");
 /**
  * Core orchestrator for all swap operations with multi-chain support
  * @category Core
@@ -1157,11 +1159,15 @@ class Swapper extends events_1.EventEmitter {
      * @param startBlockheight
      */
     async recoverSwaps(chainId, signer, startBlockheight) {
-        const { swapContract, unifiedSwapStorage, reviver, wrappers } = this.chains[chainId];
-        if (swapContract.getHistoricalSwaps == null)
+        const { spvVaultContract, swapContract, unifiedSwapStorage, reviver, wrappers } = this.chains[chainId];
+        if (swapContract.getHistoricalSwaps == null ||
+            (spvVaultContract != null && spvVaultContract.getHistoricalWithdrawalStates == null))
             throw new Error(`Historical swap recovery is not supported for ${chainId}`);
-        const { swaps } = await swapContract.getHistoricalSwaps(signer);
+        const { swaps } = await swapContract.getHistoricalSwaps(signer, startBlockheight);
+        const spvVaultData = await spvVaultContract?.getHistoricalWithdrawalStates(signer, startBlockheight);
         const escrowHashes = Object.keys(swaps);
+        if (spvVaultData != null)
+            Object.keys(spvVaultData.withdrawals).forEach(btcTxId => escrowHashes.push(btcTxId));
         this.logger.debug(`recoverSwaps(): Loaded on-chain data for ${escrowHashes.length} swaps`);
         this.logger.debug(`recoverSwaps(): Fetching if swap escrowHashes are known: ${escrowHashes.join(", ")}`);
         const knownSwapsArray = await unifiedSwapStorage.query([[{ key: "escrowHash", value: escrowHashes }]], reviver);
@@ -1176,16 +1182,21 @@ class Swapper extends events_1.EventEmitter {
         for (let escrowHash in swaps) {
             const { init, state } = swaps[escrowHash];
             const knownSwap = knownSwaps[escrowHash];
-            if (init == null) {
-                if (knownSwap == null)
-                    this.logger.warn(`recoverSwaps(): Fetched ${escrowHash} swap state, but swap not found locally!`);
-                //TODO: Update the existing swaps here
-                this.logger.debug(`recoverSwaps(): Skipping ${escrowHash} swap: swap already known and in local storage!`);
+            if (knownSwap == null) {
+                if (init == null) {
+                    this.logger.warn(`recoverSwaps(escrow): Fetched ${escrowHash} swap state, but swap not found locally!`);
+                    continue;
+                }
+            }
+            else if (knownSwap instanceof IEscrowSwap_1.IEscrowSwap) {
+                this.logger.debug(`recoverSwaps(escrow): Forcibly updating ${escrowHash} swap: swap already known and in local storage!`);
+                if (await knownSwap._forciblySetOnchainState(state)) {
+                    await knownSwap._save();
+                }
                 continue;
             }
-            if (knownSwap != null) {
-                //TODO: Update the existing swaps here
-                this.logger.debug(`recoverSwaps(): Skipping ${escrowHash} swap: swap already known and in local storage!`);
+            else {
+                this.logger.debug(`recoverSwaps(escrow): Skipping ${escrowHash} swap: swap already known and in local storage!`);
                 continue;
             }
             const data = init.data;
@@ -1228,7 +1239,40 @@ class Swapper extends events_1.EventEmitter {
             }
             else {
                 if (typeIdentified)
-                    this.logger.debug(`recoverSwaps(): Swap data type correctly identified but swap returned is null for swap ${escrowHash}`);
+                    this.logger.debug(`recoverSwaps(escrow): Swap data type correctly identified but swap returned is null for swap ${escrowHash}`);
+            }
+        }
+        if (spvVaultContract != null && spvVaultData != null) {
+            const vaultsData = await spvVaultContract.getMultipleVaultData(Object.keys(spvVaultData.withdrawals)
+                .map(btcTxId => ({
+                owner: spvVaultData.withdrawals[btcTxId].owner,
+                vaultId: spvVaultData.withdrawals[btcTxId].vaultId
+            })));
+            for (let btcTxId in spvVaultData.withdrawals) {
+                const state = spvVaultData.withdrawals[btcTxId];
+                const knownSwap = knownSwaps[btcTxId];
+                if (knownSwap != null) {
+                    if (knownSwap instanceof SpvFromBTCSwap_1.SpvFromBTCSwap) {
+                        this.logger.debug(`recoverSwaps(spv_vault): Forcibly updating ${btcTxId} swap: swap already known and in local storage!`);
+                        //TODO: Forcibly set on-chain state to the swap
+                        // if(await knownSwap._forciblySetOnchainState(state)) {
+                        //     await knownSwap._save();
+                        // }
+                        continue;
+                    }
+                    else {
+                        this.logger.debug(`recoverSwaps(spv_vault): Skipping ${btcTxId} swap: swap already known and in local storage!`);
+                        continue;
+                    }
+                }
+                const lp = this.intermediaryDiscovery.intermediaries.find(val => val.supportsChain(chainId) && state.owner.toLowerCase() === val.getAddress(chainId).toLowerCase());
+                const swap = await wrappers[SwapType_1.SwapType.SPV_VAULT_FROM_BTC].recoverFromState(state, vaultsData[state.owner]?.[state.vaultId.toString(10)], lp);
+                if (swap != null) {
+                    recoveredSwaps.push(swap);
+                }
+                else {
+                    this.logger.debug(`recoverSwaps(spv_vault): Swap data type correctly identified but swap returned is null for swap ${btcTxId}`);
+                }
             }
         }
         this.logger.debug(`recoverSwaps(): Successfully recovered ${recoveredSwaps.length} swaps!`);

@@ -10,12 +10,12 @@ const TokenAmount_1 = require("../../../../types/TokenAmount");
 const Token_1 = require("../../../../types/Token");
 const Logger_1 = require("../../../../utils/Logger");
 function isToBTCSwapInit(obj) {
-    return typeof (obj.address) === "string" &&
-        typeof (obj.amount) === "bigint" &&
+    return (obj.address == null || typeof (obj.address) === "string") &&
+        (obj.amount == null || typeof (obj.amount) === "bigint") &&
         typeof (obj.confirmationTarget) === "number" &&
         typeof (obj.satsPerVByte) === "number" &&
-        typeof (obj.requiredConfirmations) === "number" &&
-        typeof (obj.nonce) === "bigint" &&
+        (obj.requiredConfirmations == null || typeof (obj.requiredConfirmations) === "number") &&
+        (obj.nonce == null || typeof (obj.nonce) === "bigint") &&
         (0, IToBTCSwap_1.isIToBTCSwapInit)(obj);
 }
 exports.isToBTCSwapInit = isToBTCSwapInit;
@@ -40,7 +40,7 @@ class ToBTCSwap extends IToBTCSwap_1.IToBTCSwap {
         }
         else {
             this.address = initOrObject.address;
-            this.amount = BigInt(initOrObject.amount);
+            this.amount = (0, Utils_1.toBigInt)(initOrObject.amount);
             this.confirmationTarget = initOrObject.confirmationTarget;
             this.satsPerVByte = initOrObject.satsPerVByte;
             this.txId = initOrObject.txId;
@@ -55,13 +55,39 @@ class ToBTCSwap extends IToBTCSwap_1.IToBTCSwap {
             return false;
         if (result.txId == null)
             throw new IntermediaryError_1.IntermediaryError("No btc txId returned!");
-        if (check) {
+        if (check || this.address == null || this.amount == null || this.nonce == null || this.requiredConfirmations == null) {
             const btcTx = await this.wrapper.btcRpc.getTransaction(result.txId);
             if (btcTx == null)
                 return false;
-            const foundVout = btcTx.outs.find(vout => this.data.getClaimHash() === this.wrapper.contract.getHashForOnchain(buffer_1.Buffer.from(vout.scriptPubKey.hex, "hex"), BigInt(vout.value), this.requiredConfirmations, this.nonce).toString("hex"));
-            if (foundVout == null)
-                throw new IntermediaryError_1.IntermediaryError("Invalid btc txId returned");
+            //Extract nonce from tx
+            const nonce = this.nonce ?? (BigInt(btcTx.ins[0].sequence) & 0x00ffffffn) | (BigInt(btcTx.locktime - 500000000) << 24n);
+            let requiredConfirmations = this.requiredConfirmations;
+            const foundVout = btcTx.outs.find(vout => {
+                if (requiredConfirmations != null) {
+                    return this.data.getClaimHash() === this.wrapper.contract.getHashForOnchain(buffer_1.Buffer.from(vout.scriptPubKey.hex, "hex"), BigInt(vout.value), requiredConfirmations, nonce).toString("hex");
+                }
+                else {
+                    for (let i = 1; i <= 20; i++) {
+                        if (this.data.getClaimHash() === this.wrapper.contract.getHashForOnchain(buffer_1.Buffer.from(vout.scriptPubKey.hex, "hex"), BigInt(vout.value), i, nonce).toString("hex")) {
+                            requiredConfirmations = i;
+                            return true;
+                        }
+                    }
+                }
+            });
+            if (requiredConfirmations == null)
+                this.logger.warn(`_setPaymentResult(): Tried to recover data from bitcoin transaction ${result.txId} data, but wasn't able to!`);
+            if (foundVout != null) {
+                this.nonce = nonce;
+                if (this.wrapper.btcRpc.outputScriptToAddress != null)
+                    this.address = await this.wrapper.btcRpc.outputScriptToAddress(foundVout.scriptPubKey.hex);
+                this.amount = BigInt(foundVout.value);
+                this.requiredConfirmations = requiredConfirmations;
+            }
+            else {
+                if (check)
+                    throw new IntermediaryError_1.IntermediaryError("Invalid btc txId returned");
+            }
         }
         this.txId = result.txId;
         return true;
@@ -72,7 +98,7 @@ class ToBTCSwap extends IToBTCSwap_1.IToBTCSwap {
         return Token_1.BitcoinTokens.BTC;
     }
     getOutput() {
-        return (0, TokenAmount_1.toTokenAmount)(this.amount, this.outputToken, this.wrapper.prices, this.pricingInfo);
+        return (0, TokenAmount_1.toTokenAmount)(this.amount ?? null, this.outputToken, this.wrapper.prices, this.pricingInfo);
     }
     //////////////////////////////
     //// Getters & utils
@@ -80,7 +106,7 @@ class ToBTCSwap extends IToBTCSwap_1.IToBTCSwap {
      * Returns the bitcoin address where the BTC will be sent to
      */
     getOutputAddress() {
-        return this.address;
+        return this.address ?? null;
     }
     getOutputTxId() {
         return this.txId ?? null;
@@ -97,7 +123,7 @@ class ToBTCSwap extends IToBTCSwap_1.IToBTCSwap {
         return {
             ...super.serialize(),
             address: this.address,
-            amount: this.amount.toString(10),
+            amount: this.amount == null ? null : this.amount.toString(10),
             confirmationTarget: this.confirmationTarget,
             satsPerVByte: this.satsPerVByte,
             nonce: this.nonce == null ? null : this.nonce.toString(10),

@@ -4,7 +4,7 @@ import {
     ChainType,
     ClaimEvent,
     InitializeEvent, LightningNetworkApi, Messenger,
-    RefundEvent
+    RefundEvent, SwapCommitState, SwapCommitStateType
 } from "@atomiqlabs/base";
 import {Intermediary} from "../../../../intermediaries/Intermediary";
 import {Buffer} from "buffer";
@@ -17,6 +17,7 @@ import {
     throwIfUndefined
 } from "../../../../utils/Utils";
 import {
+    FromBTCLNAutoInit,
     FromBTCLNAutoResponseType,
     IntermediaryAPI
 } from "../../../../intermediaries/apis/IntermediaryAPI";
@@ -34,6 +35,8 @@ import {AmountData} from "../../../../types/AmountData";
 import {LNURLWithdrawParamsWithUrl} from "../../../../types/lnurl/LNURLWithdraw";
 import {tryWithRetries} from "../../../../utils/RetryUtils";
 import {AllOptional} from "../../../../utils/TypeUtils";
+import {FromBTCLNSwap, FromBTCLNSwapInit, FromBTCLNSwapState} from "../ln/FromBTCLNSwap";
+import {sha256} from "@noble/hashes/sha2";
 
 export type FromBTCLNAutoOptions = {
     descriptionHash?: Buffer,
@@ -152,6 +155,7 @@ export class FromBTCLNAutoWrapper<
         if(swap.state!==FromBTCLNAutoSwapState.FAILED && swap.state!==FromBTCLNAutoSwapState.CLAIM_CLAIMED) {
             swap.claimTxId = event.meta?.txId;
             swap.state = FromBTCLNAutoSwapState.CLAIM_CLAIMED;
+            swap._setSwapSecret(event.result);
             return Promise.resolve(true);
         }
         return Promise.resolve(false);
@@ -543,6 +547,77 @@ export class FromBTCLNAutoWrapper<
             changedSwaps,
             removeSwaps
         };
+    }
+
+
+    async recoverFromSwapDataAndState(
+        init: {data: T["Data"], getInitTxId: () => Promise<string>, getTxBlock: () => Promise<{blockTime: number, blockHeight: number}>},
+        state: SwapCommitState,
+        lp?: Intermediary
+    ): Promise<FromBTCLNAutoSwap<T> | null> {
+        const data = init.data;
+
+        let paymentHash = data.getHTLCHashHint();
+        let secret: string | undefined;
+        if(state.type===SwapCommitStateType.PAID) {
+            secret = await state.getClaimResult();
+            paymentHash = Buffer.from(sha256(Buffer.from(secret, "hex"))).toString("hex");
+        }
+
+        const swapInit: FromBTCLNAutoSwapInit<T["Data"]> = {
+            pricingInfo: {
+                isValid: true,
+                satsBaseFee: 0n,
+                swapPriceUSatPerToken: 100_000_000_000_000n,
+                realPriceUSatPerToken: 100_000_000_000_000n,
+                differencePPM: 0n,
+                feePPM: 0n,
+            },
+            url: lp?.url,
+            expiry: 0,
+            swapFee: 0n,
+            swapFeeBtc: 0n,
+            gasSwapFee: 0n,
+            gasSwapFeeBtc: 0n,
+            initialSwapData: data,
+            data,
+            pr: paymentHash ?? undefined,
+            secret,
+            exactIn: false
+        }
+        const swap = new FromBTCLNAutoSwap(this, swapInit);
+        swap.commitTxId = await init.getInitTxId();
+        const blockData = await init.getTxBlock();
+        swap.createdAt = blockData.blockTime * 1000;
+        swap._setInitiated();
+        swap.state = FromBTCLNAutoSwapState.CLAIM_COMMITED;
+        await swap._sync(false, false, state);
+        await swap._save();
+        return swap;
+
+        // switch(state.type) {
+        //     case SwapCommitStateType.PAID:
+        //         secret ??= await state.getClaimResult();
+        //         swap._setSwapSecret(secret);
+        //         swap.claimTxId = await state.getClaimTxId();
+        //         swap.state = FromBTCLNAutoSwapState.CLAIM_CLAIMED;
+        //         break;
+        //     case SwapCommitStateType.NOT_COMMITED:
+        //     case SwapCommitStateType.EXPIRED:
+        //         if(state.getRefundTxId==null) return null;
+        //         swap.refundTxId = await state.getRefundTxId();
+        //         swap.state = FromBTCLNAutoSwapState.FAILED;
+        //         break;
+        //     case SwapCommitStateType.COMMITED:
+        //     case SwapCommitStateType.REFUNDABLE:
+        //         const expired = await this.contract.isExpired(swap._getInitiator(), data);
+        //         if(expired) {
+        //             swap.state = FromBTCLNAutoSwapState.EXPIRED;
+        //         } else {
+        //             swap.state = FromBTCLNAutoSwapState.CLAIM_COMMITED;
+        //         }
+        //         break;
+        // }
     }
 
 }

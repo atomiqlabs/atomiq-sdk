@@ -392,7 +392,7 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
      * @param startBlockheight
      */
     recoverSwaps<C extends ChainIds<T>>(chainId: C, signer: string, startBlockheight?: number): Promise<ISwap<T[C]>[]>;
-    getToken(tickerOrAddress: string): Token;
+    getToken(tickerOrAddress: string): Token<ChainIds<T>>;
     /**
      * Creates a child swapper instance with a given smart chain
      *

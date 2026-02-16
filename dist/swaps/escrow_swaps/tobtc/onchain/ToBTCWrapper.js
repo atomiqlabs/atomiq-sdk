@@ -13,6 +13,7 @@ const IntermediaryAPI_1 = require("../../../../intermediaries/apis/IntermediaryA
 const RequestError_1 = require("../../../../errors/RequestError");
 const utils_1 = require("@scure/btc-signer/utils");
 const RetryUtils_1 = require("../../../../utils/RetryUtils");
+const IToBTCSwap_1 = require("../IToBTCSwap");
 class ToBTCWrapper extends IToBTCWrapper_1.IToBTCWrapper {
     /**
      * @param chainIdentifier
@@ -212,6 +213,66 @@ class ToBTCWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                 })()
             };
         });
+    }
+    async recoverFromSwapDataAndState(init, state, lp) {
+        const data = init.data;
+        const swapInit = {
+            pricingInfo: {
+                isValid: true,
+                satsBaseFee: 0n,
+                swapPriceUSatPerToken: 100000000000000n,
+                realPriceUSatPerToken: 100000000000000n,
+                differencePPM: 0n,
+                feePPM: 0n,
+            },
+            url: lp?.url,
+            expiry: 0,
+            swapFee: 0n,
+            swapFeeBtc: 0n,
+            confirmationTarget: 1,
+            satsPerVByte: 0,
+            feeRate: "",
+            signatureData: undefined,
+            nonce: data.getNonceHint() ?? undefined,
+            requiredConfirmations: data.getConfirmationsHint() ?? undefined,
+            data,
+            networkFee: 0n,
+            networkFeeBtc: 0n,
+            exactIn: true
+        };
+        const swap = new ToBTCSwap_1.ToBTCSwap(this, swapInit);
+        swap.commitTxId = await init.getInitTxId();
+        const blockData = await init.getTxBlock();
+        swap.createdAt = blockData.blockTime * 1000;
+        swap._setInitiated();
+        swap.state = IToBTCSwap_1.ToBTCSwapState.COMMITED;
+        await swap._sync(false, false, state);
+        await swap._save();
+        return swap;
+        // switch(state.type) {
+        //     case SwapCommitStateType.PAID:
+        //         secret ??= await state.getClaimResult();
+        //         await swap._setPaymentResult({secret}, false);
+        //         swap.claimTxId = await state.getClaimTxId();
+        //         swap.state = ToBTCSwapState.CLAIMED;
+        //         break;
+        //     case SwapCommitStateType.NOT_COMMITED:
+        //     case SwapCommitStateType.EXPIRED:
+        //         if(state.getRefundTxId==null) return null;
+        //         swap.refundTxId = await state.getRefundTxId();
+        //         swap.state = ToBTCSwapState.REFUNDED;
+        //         break;
+        //     case SwapCommitStateType.COMMITED:
+        //         swap.state = ToBTCSwapState.COMMITED;
+        //         //Try to fetch refund signature
+        //         if(lp!=null) await swap._sync(false, false, state);
+        //         break;
+        //     case SwapCommitStateType.REFUNDABLE:
+        //         swap.state = ToBTCSwapState.REFUNDABLE;
+        //         break;
+        // }
+        // await swap._save();
+        // return swap;
     }
 }
 exports.ToBTCWrapper = ToBTCWrapper;

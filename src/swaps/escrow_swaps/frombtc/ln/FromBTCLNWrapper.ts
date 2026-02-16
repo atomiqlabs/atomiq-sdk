@@ -5,7 +5,7 @@ import {
     ChainType,
     ClaimEvent,
     InitializeEvent, LightningNetworkApi,
-    RefundEvent
+    RefundEvent, SwapCommitState, SwapCommitStateType
 } from "@atomiqlabs/base";
 import {Intermediary} from "../../../../intermediaries/Intermediary";
 import {Buffer} from "buffer";
@@ -30,6 +30,9 @@ import {AmountData} from "../../../../types/AmountData";
 import {LNURLWithdrawParamsWithUrl} from "../../../../types/lnurl/LNURLWithdraw";
 import {tryWithRetries} from "../../../../utils/RetryUtils";
 import {AllOptional, AllRequired} from "../../../../utils/TypeUtils";
+import {ToBTCLNSwap} from "../../tobtc/ln/ToBTCLNSwap";
+import {sha256} from "@noble/hashes/sha2";
+import {IToBTCSwapInit, ToBTCSwapState} from "../../tobtc/IToBTCSwap";
 
 export type FromBTCLNOptions = {
     descriptionHash?: Buffer,
@@ -117,6 +120,7 @@ export class FromBTCLNWrapper<
     protected processEventClaim(swap: FromBTCLNSwap<T>, event: ClaimEvent<T["Data"]>): Promise<boolean> {
         if(swap.state!==FromBTCLNSwapState.FAILED && swap.state!==FromBTCLNSwapState.CLAIM_CLAIMED) {
             swap.state = FromBTCLNSwapState.CLAIM_CLAIMED;
+            swap._setSwapSecret(event.result);
             return Promise.resolve(true);
         }
         return Promise.resolve(false);
@@ -423,6 +427,76 @@ export class FromBTCLNWrapper<
             changedSwaps,
             removeSwaps
         };
+    }
+
+    async recoverFromSwapDataAndState(
+        init: {data: T["Data"], getInitTxId: () => Promise<string>, getTxBlock: () => Promise<{blockTime: number, blockHeight: number}>},
+        state: SwapCommitState,
+        lp?: Intermediary
+    ): Promise<FromBTCLNSwap<T> | null> {
+        const data = init.data;
+
+        let paymentHash = data.getHTLCHashHint();
+        let secret: string | undefined;
+        if(state.type===SwapCommitStateType.PAID) {
+            secret = await state.getClaimResult();
+            paymentHash = Buffer.from(sha256(Buffer.from(secret, "hex"))).toString("hex");
+        }
+
+        const swapInit: FromBTCLNSwapInit<T["Data"]> = {
+            pricingInfo: {
+                isValid: true,
+                satsBaseFee: 0n,
+                swapPriceUSatPerToken: 100_000_000_000_000n,
+                realPriceUSatPerToken: 100_000_000_000_000n,
+                differencePPM: 0n,
+                feePPM: 0n,
+            },
+            url: lp?.url,
+            expiry: 0,
+            swapFee: 0n,
+            swapFeeBtc: 0n,
+            feeRate: "",
+            signatureData: undefined,
+            initialSwapData: data,
+            data,
+            pr: paymentHash ?? undefined,
+            secret,
+            exactIn: false
+        }
+        const swap = new FromBTCLNSwap(this, swapInit);
+        swap.commitTxId = await init.getInitTxId();
+        const blockData = await init.getTxBlock();
+        swap.createdAt = blockData.blockTime * 1000;
+        swap._setInitiated();
+        swap.state = FromBTCLNSwapState.CLAIM_COMMITED;
+        await swap._sync(false, false, state);
+        await swap._save();
+        return swap;
+
+        // switch(state.type) {
+        //     case SwapCommitStateType.PAID:
+        //         secret ??= await state.getClaimResult();
+        //         swap._setSwapSecret(secret);
+        //         swap.claimTxId = await state.getClaimTxId();
+        //         swap.state = FromBTCLNSwapState.CLAIM_CLAIMED;
+        //         break;
+        //     case SwapCommitStateType.NOT_COMMITED:
+        //     case SwapCommitStateType.EXPIRED:
+        //         if(state.getRefundTxId==null) return null;
+        //         swap.refundTxId = await state.getRefundTxId();
+        //         swap.state = FromBTCLNSwapState.FAILED;
+        //         break;
+        //     case SwapCommitStateType.COMMITED:
+        //     case SwapCommitStateType.REFUNDABLE:
+        //         const expired = await this.contract.isExpired(swap._getInitiator(), data);
+        //         if(expired) {
+        //             swap.state = FromBTCLNSwapState.EXPIRED;
+        //         } else {
+        //             swap.state = FromBTCLNSwapState.CLAIM_COMMITED;
+        //         }
+        //         break;
+        // }
     }
 
 }

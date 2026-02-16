@@ -214,6 +214,7 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
     _shouldFetchCommitStatus(): boolean;
     _shouldFetchExpiryStatus(): boolean;
     _sync(save?: boolean, quoteDefinitelyExpired?: boolean, commitStatus?: SwapCommitState): Promise<boolean>;
+    _forciblySetOnchainState(commitStatus: SwapCommitState): Promise<boolean>;
     _tick(save?: boolean): Promise<boolean>;
 }
 export declare enum ToBTCSwapState {

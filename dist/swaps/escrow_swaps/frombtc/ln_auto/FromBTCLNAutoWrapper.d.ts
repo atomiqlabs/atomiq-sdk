@@ -1,7 +1,7 @@
 /// <reference types="node" />
 /// <reference types="node" />
 /// <reference types="node" />
-import { ChainType, ClaimEvent, InitializeEvent, LightningNetworkApi, Messenger, RefundEvent } from "@atomiqlabs/base";
+import { ChainType, ClaimEvent, InitializeEvent, LightningNetworkApi, Messenger, RefundEvent, SwapCommitState } from "@atomiqlabs/base";
 import { Intermediary } from "../../../../intermediaries/Intermediary";
 import { Buffer } from "buffer";
 import { SwapType } from "../../../../enums/SwapType";
@@ -121,4 +121,12 @@ export declare class FromBTCLNAutoWrapper<T extends ChainType> extends IFromBTCL
         changedSwaps: FromBTCLNAutoSwap<T>[];
         removeSwaps: FromBTCLNAutoSwap<T>[];
     }>;
+    recoverFromSwapDataAndState(init: {
+        data: T["Data"];
+        getInitTxId: () => Promise<string>;
+        getTxBlock: () => Promise<{
+            blockTime: number;
+            blockHeight: number;
+        }>;
+    }, state: SwapCommitState, lp?: Intermediary): Promise<FromBTCLNAutoSwap<T> | null>;
 }

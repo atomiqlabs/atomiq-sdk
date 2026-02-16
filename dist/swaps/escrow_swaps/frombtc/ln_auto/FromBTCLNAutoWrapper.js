@@ -13,6 +13,7 @@ const RequestError_1 = require("../../../../errors/RequestError");
 const FromBTCLNAutoSwap_1 = require("./FromBTCLNAutoSwap");
 const IFromBTCLNWrapper_1 = require("../IFromBTCLNWrapper");
 const RetryUtils_1 = require("../../../../utils/RetryUtils");
+const sha2_1 = require("@noble/hashes/sha2");
 class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
     /**
      * @param chainIdentifier
@@ -87,6 +88,7 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
         if (swap.state !== FromBTCLNAutoSwap_1.FromBTCLNAutoSwapState.FAILED && swap.state !== FromBTCLNAutoSwap_1.FromBTCLNAutoSwapState.CLAIM_CLAIMED) {
             swap.claimTxId = event.meta?.txId;
             swap.state = FromBTCLNAutoSwap_1.FromBTCLNAutoSwapState.CLAIM_CLAIMED;
+            swap._setSwapSecret(event.result);
             return Promise.resolve(true);
         }
         return Promise.resolve(false);
@@ -388,6 +390,68 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
             changedSwaps,
             removeSwaps
         };
+    }
+    async recoverFromSwapDataAndState(init, state, lp) {
+        const data = init.data;
+        let paymentHash = data.getHTLCHashHint();
+        let secret;
+        if (state.type === base_1.SwapCommitStateType.PAID) {
+            secret = await state.getClaimResult();
+            paymentHash = buffer_1.Buffer.from((0, sha2_1.sha256)(buffer_1.Buffer.from(secret, "hex"))).toString("hex");
+        }
+        const swapInit = {
+            pricingInfo: {
+                isValid: true,
+                satsBaseFee: 0n,
+                swapPriceUSatPerToken: 100000000000000n,
+                realPriceUSatPerToken: 100000000000000n,
+                differencePPM: 0n,
+                feePPM: 0n,
+            },
+            url: lp?.url,
+            expiry: 0,
+            swapFee: 0n,
+            swapFeeBtc: 0n,
+            gasSwapFee: 0n,
+            gasSwapFeeBtc: 0n,
+            initialSwapData: data,
+            data,
+            pr: paymentHash ?? undefined,
+            secret,
+            exactIn: false
+        };
+        const swap = new FromBTCLNAutoSwap_1.FromBTCLNAutoSwap(this, swapInit);
+        swap.commitTxId = await init.getInitTxId();
+        const blockData = await init.getTxBlock();
+        swap.createdAt = blockData.blockTime * 1000;
+        swap._setInitiated();
+        swap.state = FromBTCLNAutoSwap_1.FromBTCLNAutoSwapState.CLAIM_COMMITED;
+        await swap._sync(false, false, state);
+        await swap._save();
+        return swap;
+        // switch(state.type) {
+        //     case SwapCommitStateType.PAID:
+        //         secret ??= await state.getClaimResult();
+        //         swap._setSwapSecret(secret);
+        //         swap.claimTxId = await state.getClaimTxId();
+        //         swap.state = FromBTCLNAutoSwapState.CLAIM_CLAIMED;
+        //         break;
+        //     case SwapCommitStateType.NOT_COMMITED:
+        //     case SwapCommitStateType.EXPIRED:
+        //         if(state.getRefundTxId==null) return null;
+        //         swap.refundTxId = await state.getRefundTxId();
+        //         swap.state = FromBTCLNAutoSwapState.FAILED;
+        //         break;
+        //     case SwapCommitStateType.COMMITED:
+        //     case SwapCommitStateType.REFUNDABLE:
+        //         const expired = await this.contract.isExpired(swap._getInitiator(), data);
+        //         if(expired) {
+        //             swap.state = FromBTCLNAutoSwapState.EXPIRED;
+        //         } else {
+        //             swap.state = FromBTCLNAutoSwapState.CLAIM_COMMITED;
+        //         }
+        //         break;
+        // }
     }
 }
 exports.FromBTCLNAutoWrapper = FromBTCLNAutoWrapper;

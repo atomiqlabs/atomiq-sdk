@@ -118,6 +118,9 @@ class IEscrowSwap extends ISwap_1.ISwap {
             abortSignal.throwIfAborted();
         return status;
     }
+    _forciblySetOnchainState(commitStatus) {
+        return Promise.resolve(false);
+    }
     serialize() {
         return {
             ...super.serialize(),

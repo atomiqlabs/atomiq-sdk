@@ -761,38 +761,7 @@ export abstract class IToBTCSwap<
             }
 
             commitStatus ??= await this.wrapper.contract.getCommitStatus(this._getInitiator(), this.data);
-            switch(commitStatus?.type) {
-                case SwapCommitStateType.PAID:
-                    if(this.claimTxId==null && commitStatus.getClaimTxId) this.claimTxId = await commitStatus.getClaimTxId();
-                    const eventResult = await commitStatus.getClaimResult();
-                    try {
-                        await this._setPaymentResult({secret: eventResult, txId: Buffer.from(eventResult, "hex").reverse().toString("hex")});
-                    } catch (e) {
-                        this.logger.error(`Failed to set payment result ${eventResult} on the swap!`);
-                    }
-                    this.state = ToBTCSwapState.CLAIMED;
-                    return true;
-                case SwapCommitStateType.REFUNDABLE:
-                    this.state = ToBTCSwapState.REFUNDABLE;
-                    return true;
-                case SwapCommitStateType.EXPIRED:
-                    if(this.refundTxId==null && commitStatus.getRefundTxId) this.refundTxId = await commitStatus.getRefundTxId();
-                    this.state = ToBTCSwapState.QUOTE_EXPIRED;
-                    return true;
-                case SwapCommitStateType.NOT_COMMITED:
-                    if(this.refundTxId==null && commitStatus.getRefundTxId) this.refundTxId = await commitStatus.getRefundTxId();
-                    if(this.state===ToBTCSwapState.COMMITED || this.state===ToBTCSwapState.REFUNDABLE) {
-                        this.state = ToBTCSwapState.REFUNDED;
-                        return true;
-                    }
-                    break;
-                case SwapCommitStateType.COMMITED:
-                    if(this.state!==ToBTCSwapState.COMMITED && this.state!==ToBTCSwapState.REFUNDABLE) {
-                        this.state = ToBTCSwapState.COMMITED;
-                        return true;
-                    }
-                    break;
-            }
+            if(commitStatus!=null && await this._forciblySetOnchainState(commitStatus)) return true;
 
             if((this.state===ToBTCSwapState.CREATED || this.state===ToBTCSwapState.QUOTE_SOFT_EXPIRED)) {
                 if(quoteExpired) {
@@ -831,6 +800,42 @@ export abstract class IToBTCSwap<
         if(save && changed) await this._saveAndEmit();
 
         return changed;
+    }
+
+    async _forciblySetOnchainState(commitStatus: SwapCommitState): Promise<boolean> {
+        switch(commitStatus.type) {
+            case SwapCommitStateType.PAID:
+                if(this.claimTxId==null && commitStatus.getClaimTxId) this.claimTxId = await commitStatus.getClaimTxId();
+                const eventResult = await commitStatus.getClaimResult();
+                try {
+                    await this._setPaymentResult({secret: eventResult, txId: Buffer.from(eventResult, "hex").reverse().toString("hex")});
+                } catch (e) {
+                    this.logger.error(`Failed to set payment result ${eventResult} on the swap!`);
+                }
+                this.state = ToBTCSwapState.CLAIMED;
+                return true;
+            case SwapCommitStateType.REFUNDABLE:
+                this.state = ToBTCSwapState.REFUNDABLE;
+                return true;
+            case SwapCommitStateType.EXPIRED:
+                if(this.refundTxId==null && commitStatus.getRefundTxId) this.refundTxId = await commitStatus.getRefundTxId();
+                this.state = this.refundTxId==null ? ToBTCSwapState.QUOTE_EXPIRED : ToBTCSwapState.REFUNDED;
+                return true;
+            case SwapCommitStateType.NOT_COMMITED:
+                if(this.refundTxId==null && commitStatus.getRefundTxId) this.refundTxId = await commitStatus.getRefundTxId();
+                if(this.refundTxId!=null) {
+                    this.state = ToBTCSwapState.REFUNDED;
+                    return true;
+                }
+                break;
+            case SwapCommitStateType.COMMITED:
+                if(this.state!==ToBTCSwapState.COMMITED && this.state!==ToBTCSwapState.REFUNDABLE && this.state!==ToBTCSwapState.SOFT_CLAIMED) {
+                    this.state = ToBTCSwapState.COMMITED;
+                    return true;
+                }
+                break;
+        }
+        return false;
     }
 
     async _tick(save?: boolean): Promise<boolean> {

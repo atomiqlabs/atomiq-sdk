@@ -184,6 +184,10 @@ export abstract class IEscrowSwap<
 
     abstract _sync(save?: boolean, quoteDefinitelyExpired?: boolean, commitStatus?: SwapCommitState): Promise<boolean>;
 
+    _forciblySetOnchainState(commitStatus: SwapCommitState): Promise<boolean> {
+        return Promise.resolve(false);
+    }
+
     serialize(): any {
         return {
             ...super.serialize(),

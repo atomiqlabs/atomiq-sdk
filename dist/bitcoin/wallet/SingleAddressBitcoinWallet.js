@@ -6,7 +6,8 @@ const btc_signer_1 = require("@scure/btc-signer");
 const buffer_1 = require("buffer");
 const BitcoinWallet_1 = require("./BitcoinWallet");
 /**
- * Bitcoin wallet implementation for single-address scenarios
+ * Bitcoin wallet implementation deriving a single address from a WIF encoded private key
+ *
  * @category Bitcoin
  */
 class SingleAddressBitcoinWallet extends BitcoinWallet_1.BitcoinWallet {
@@ -31,11 +32,19 @@ class SingleAddressBitcoinWallet extends BitcoinWallet_1.BitcoinWallet {
         }
         this.addressType = (0, BitcoinWallet_1.identifyAddressType)(this.address, network);
     }
+    /**
+     * Returns all the wallet addresses controlled by the wallet
+     *
+     * @protected
+     */
     toBitcoinWalletAccounts() {
         return [{
                 pubkey: buffer_1.Buffer.from(this.pubkey).toString("hex"), address: this.address, addressType: this.addressType
             }];
     }
+    /**
+     * @inheritDoc
+     */
     async sendTransaction(address, amount, feeRate) {
         if (!this.privKey)
             throw new Error("Not supported.");
@@ -47,6 +56,9 @@ class SingleAddressBitcoinWallet extends BitcoinWallet_1.BitcoinWallet {
         const txHex = buffer_1.Buffer.from(psbt.extract()).toString("hex");
         return await super._sendTransaction(txHex);
     }
+    /**
+     * @inheritDoc
+     */
     async fundPsbt(inputPsbt, feeRate) {
         const { psbt } = await super._fundPsbt(this.toBitcoinWalletAccounts(), inputPsbt, feeRate);
         if (psbt == null) {
@@ -54,6 +66,9 @@ class SingleAddressBitcoinWallet extends BitcoinWallet_1.BitcoinWallet {
         }
         return psbt;
     }
+    /**
+     * @inheritDoc
+     */
     async signPsbt(psbt, signInputs) {
         if (!this.privKey)
             throw new Error("Not supported.");
@@ -62,23 +77,43 @@ class SingleAddressBitcoinWallet extends BitcoinWallet_1.BitcoinWallet {
         }
         return psbt;
     }
+    /**
+     * @inheritDoc
+     */
     async getTransactionFee(address, amount, feeRate) {
         const { fee } = await super._getPsbt(this.toBitcoinWalletAccounts(), address, Number(amount), feeRate);
         return fee;
     }
+    /**
+     * @inheritDoc
+     */
     async getFundedPsbtFee(basePsbt, feeRate) {
         const { fee } = await super._fundPsbt(this.toBitcoinWalletAccounts(), basePsbt, feeRate);
         return fee;
     }
+    /**
+     * @inheritDoc
+     */
     getReceiveAddress() {
         return this.address;
     }
+    /**
+     * @inheritDoc
+     */
     getBalance() {
         return this._getBalance(this.address);
     }
+    /**
+     * @inheritDoc
+     */
     getSpendableBalance(psbt, feeRate) {
         return this._getSpendableBalance([{ address: this.address, addressType: this.addressType }], psbt, feeRate);
     }
+    /**
+     * Generates a new random private key WIF that can be used to instantiate the bitcoin wallet instance
+     *
+     * @returns A WIF encoded bitcoin private key
+     */
     static generateRandomPrivateKey(network) {
         return (0, btc_signer_1.WIF)(network).encode((0, utils_1.randomPrivateKeyBytes)());
     }

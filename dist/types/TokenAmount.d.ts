@@ -3,6 +3,7 @@ import { Token } from "./Token";
 import { PriceInfoType } from "./PriceInfoType";
 /**
  * Represents a token amount along with its formatted values and USD valuation helpers
+ *
  * @category Tokens
  */
 export type TokenAmount<ChainIdentifier extends string = string, T extends Token<ChainIdentifier> = Token<ChainIdentifier>, Known extends boolean = boolean> = {
@@ -61,6 +62,8 @@ export type TokenAmount<ChainIdentifier extends string = string, T extends Token
 };
 /**
  * Factory function to create a TokenAmount
+ *
  * @category Tokens
+ * @internal
  */
 export declare function toTokenAmount<ChainIdentifier extends string = string, T extends Token<ChainIdentifier> = Token<ChainIdentifier>, Known extends boolean = boolean>(amount: Known extends true ? bigint : null, token: T, prices: ISwapPrice, pricingInfo?: PriceInfoType): TokenAmount<ChainIdentifier, T, Known>;

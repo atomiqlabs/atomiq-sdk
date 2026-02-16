@@ -3,6 +3,11 @@ import {Buffer} from "buffer";
 import {Address, OutScript, Transaction} from "@scure/btc-signer";
 import {CoinselectAddressTypes} from "../bitcoin/coinselect2";
 
+
+export function fromOutputScript(network: BTC_NETWORK, outputScriptHex: string): string {
+    return Address(network).encode(OutScript.decode(Buffer.from(outputScriptHex, "hex")));
+}
+
 export function toOutputScript(network: BTC_NETWORK, address: string): Buffer {
     const outputScript = Address(network).decode(address);
     switch(outputScript.type) {

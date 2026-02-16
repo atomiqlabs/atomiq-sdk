@@ -2,7 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.isIBTCWalletSwap = void 0;
 /**
- * Type guard to check if an object is an IBTCWalletSwap
+ * Type guard to check if an object is an {@link IBTCWalletSwap}
+ *
  * @category Swaps
  */
 function isIBTCWalletSwap(obj) {

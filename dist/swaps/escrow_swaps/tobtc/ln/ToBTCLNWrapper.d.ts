@@ -13,13 +13,7 @@ import { ISwap } from "../../../ISwap";
 import { AmountData } from "../../../../types/AmountData";
 import { LNURLPayParamsWithUrl } from "../../../../types/lnurl/LNURLPay";
 import { AllOptional } from "../../../../utils/TypeUtils";
-export type LightningWalletCallback = (valueSats: number, abortSignal?: AbortSignal) => Promise<string>;
-export type InvoiceCreateService = {
-    getInvoice: LightningWalletCallback;
-    minMsats?: bigint;
-    maxMSats?: bigint;
-};
-export declare function isInvoiceCreateService(obj: any): obj is InvoiceCreateService;
+import { LightningInvoiceCreateService } from "../../../../types/wallets/LightningInvoiceCreateService";
 export type ToBTCLNOptions = {
     expirySeconds?: number;
     maxFee?: bigint | Promise<bigint>;
@@ -33,13 +27,29 @@ export type ToBTCLNWrapperOptions = ISwapWrapperOptions & {
     paymentTimeoutSeconds: number;
 };
 export type ToBTCLNDefinition<T extends ChainType> = IToBTCDefinition<T, ToBTCLNWrapper<T>, ToBTCLNSwap<T>>;
+/**
+ * Escrow based (HTLC) swap for Smart chains -> Bitcoin lightning
+ *
+ * @category Swaps
+ */
 export declare class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCLNDefinition<T>, ToBTCLNWrapperOptions> {
-    readonly TYPE = SwapType.TO_BTCLN;
-    readonly swapDeserializer: typeof ToBTCLNSwap;
+    readonly TYPE: SwapType.TO_BTCLN;
+    /**
+     * @internal
+     */
+    readonly _swapDeserializer: typeof ToBTCLNSwap;
     constructor(chainIdentifier: string, unifiedStorage: UnifiedSwapStorage<T>, unifiedChainEvents: UnifiedSwapEventListener<T>, chain: T["ChainInterface"], contract: T["Contract"], prices: ISwapPrice, tokens: WrapperCtorTokens, swapDataDeserializer: new (data: any) => T["Data"], options?: AllOptional<ToBTCLNWrapperOptions>, events?: EventEmitter<{
         swapState: [ISwap];
     }>);
     private toRequiredSwapOptions;
+    /**
+     * Verifies whether a given payment hash was already paid by checking the local
+     *  storage of known swaps
+     *
+     * @param paymentHash Payment hash to check
+     *
+     * @private
+     */
     private checkPaymentHashWasPaid;
     /**
      * Calculates maximum lightning network routing fee based on amount
@@ -47,8 +57,10 @@ export declare class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T
      * @param amount BTC amount of the swap in satoshis
      * @param overrideBaseFee Override wrapper's default base fee
      * @param overrideFeePPM Override wrapper's default PPM
-     * @private
+     *
      * @returns Maximum lightning routing fee in sats
+     *
+     * @private
      */
     private calculateFeeForAmount;
     /**
@@ -62,8 +74,10 @@ export declare class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T
      * @param options Swap options as passed to the swap create function
      * @param data Parsed swap data returned by the LP
      * @param requiredTotal Required total to be paid on the input (for exactIn swaps)
-     * @private
+     *
      * @throws {IntermediaryError} In case the response is not valid
+     *
+     * @private
      */
     private verifyReturnedData;
     /**
@@ -79,22 +93,24 @@ export declare class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T
      * @param abort Abort signal or controller, if AbortController is passed it is used as-is, when AbortSignal is passed
      *  it is extended with extendAbortController and then used
      * @param additionalParams Additional params that should be sent to the LP
+     *
      * @private
      */
     private getIntermediaryQuote;
     /**
-     * Returns a newly created swap, paying for 'bolt11PayRequest' - a bitcoin LN invoice
+     * Returns a newly created Smart chain -> Lightning swap using the HTLC based escrow swap protocol,
+     *  the amount is parsed from the provided lightning network payment request (bolt11 invoice)
      *
-     * @param signer                Smartchain signer's address initiating the swap
-     * @param bolt11PayRequest      BOLT11 payment request (bitcoin lightning invoice) you wish to pay
-     * @param amountData            Amount of token & amount to swap
-     * @param lps                   LPs (liquidity providers) to get the quotes from
-     * @param options               Quote options
-     * @param additionalParams      Additional parameters sent to the LP when creating the swap
-     * @param abortSignal           Abort signal for aborting the process
-     * @param preFetches            Existing pre-fetches for the swap (only used internally for LNURL swaps)
+     * @param signer Source chain signer address initiating the swap
+     * @param recipient BOLT11 payment request (bitcoin lightning invoice) you wish to pay
+     * @param amountData Token to swap
+     * @param lps An array of intermediaries (LPs) to get the quotes from
+     * @param options Optional additional quote options
+     * @param additionalParams Optional additional parameters sent to the LP when creating the swap
+     * @param abortSignal Abort signal
+     * @param preFetches Optional existing pre-fetch promises for the swap (only used internally for LNURL swaps)
      */
-    create(signer: string, bolt11PayRequest: string, amountData: Omit<AmountData, "amount">, lps: Intermediary[], options?: ToBTCLNOptions, additionalParams?: Record<string, any>, abortSignal?: AbortSignal, preFetches?: {
+    create(signer: string, recipient: string, amountData: Omit<AmountData, "amount">, lps: Intermediary[], options?: ToBTCLNOptions, additionalParams?: Record<string, any>, abortSignal?: AbortSignal, preFetches?: {
         feeRatePromise: Promise<string | undefined>;
         pricePreFetchPromise: Promise<bigint | undefined>;
         usdPricePrefetchPromise: Promise<number | undefined>;
@@ -107,51 +123,58 @@ export declare class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T
      * Parses and fetches lnurl pay params from the specified lnurl
      *
      * @param lnurl LNURL to be parsed and fetched
-     * @param abortSignal
-     * @private
+     * @param abortSignal Abort signal
      * @throws {UserError} if the LNURL is invalid or if it's not a LNURL-pay
+     *
+     * @private
      */
     private getLNURLPay;
     /**
      * Returns the quote/swap from the given LP
      *
-     * @param signer Smartchain signer's address initiating the swap
-     * @param amountData
+     * @param signer Source chain signer address initiating the swap
+     * @param amountData Token to swap
      * @param invoiceCreateService Service for creating fixed amount invoices
-     * @param lp Intermediary
-     * @param dummyPr Dummy minimum value bolt11 lightning invoice returned from the LNURL-pay
-     * @param options Options as passed to the swap create function
-     * @param preFetches
-     * @param abortSignal
+     * @param lp Intermediary (LPs) to get the quote from
+     * @param dummyPr Dummy minimum value bolt11 lightning invoice returned from the LNURL-pay, used to estimate
+     *  network fees for an actual invoice
+     * @param options Optional additional quote options
+     * @param preFetches Optional existing pre-fetch promises for the swap (only used internally for LNURL swaps)
+     * @param abortSignal Abort signal
      * @param additionalParams Additional params to be sent to the intermediary
+     *
      * @private
      */
     private getIntermediaryQuoteExactIn;
     /**
-     * Returns a newly created swap, allowing exactIn swaps with invoice creation service
+     * Returns a newly created Smart chain -> Lightning swap using the HTLC based escrow swap protocol via
+     *  invoice creation service. This allows exactIn swaps by requesting the desired fixed amount lightning
+     *  network invoice from the service.
      *
-     * @param signer                Smartchain signer's address initiating the swap
-     * @param invoiceCreateServicePromise
-     * @param amountData            Amount of token & amount to swap
-     * @param lps                   LPs (liquidity providers/intermediaries) to get the quotes from
-     * @param options               Quote options
-     * @param additionalParams      Additional parameters sent to the intermediary when creating the swap
-     * @param abortSignal           Abort signal for aborting the process
+     * @param signer Source chain signer address initiating the swap
+     * @param invoiceCreateServicePromise Service to request destination lightning network invoices from
+     * @param amountData Amount, token and exact input/output data for to swap
+     * @param lps An array of intermediaries (LPs) to get the quotes from
+     * @param options Optional additional quote options
+     * @param additionalParams Optional additional parameters sent to the LP when creating the swap
+     * @param abortSignal Abort signal
      */
-    createViaInvoiceCreateService(signer: string, invoiceCreateServicePromise: Promise<InvoiceCreateService>, amountData: AmountData, lps: Intermediary[], options?: ToBTCLNOptions, additionalParams?: Record<string, any>, abortSignal?: AbortSignal): Promise<{
+    createViaInvoiceCreateService(signer: string, invoiceCreateServicePromise: Promise<LightningInvoiceCreateService>, amountData: AmountData, lps: Intermediary[], options?: ToBTCLNOptions, additionalParams?: Record<string, any>, abortSignal?: AbortSignal): Promise<{
         quote: Promise<ToBTCLNSwap<T>>;
         intermediary: Intermediary;
     }[]>;
     /**
-     * Returns a newly created swap, paying for 'lnurl' - a lightning LNURL-pay
+     * Returns a newly created Smart chain -> Lightning swap using the HTLC based escrow swap protocol. Pays to
+     *  an LNURL-pay link. This allows exactIn swaps by requesting the desired fixed amount lightning
+     *  network invoice from the LNURL service.
      *
-     * @param signer                Smartchain signer's address initiating the swap
-     * @param lnurl                 LMURL-pay you wish to pay
-     * @param amountData            Amount of token & amount to swap
-     * @param lps                   LPs (liquidity providers/intermediaries) to get the quotes from
-     * @param options               Quote options
-     * @param additionalParams      Additional parameters sent to the intermediary when creating the swap
-     * @param abortSignal           Abort signal for aborting the process
+     * @param signer Source chain signer address initiating the swap
+     * @param lnurl LNURL-pay link of the recipient
+     * @param amountData Amount, token and exact input/output data for to swap
+     * @param lps An array of intermediaries (LPs) to get the quotes from
+     * @param options Optional additional quote options
+     * @param additionalParams Optional additional parameters sent to the LP when creating the swap
+     * @param abortSignal Abort signal
      */
     createViaLNURL(signer: string, lnurl: string | LNURLPayParamsWithUrl, amountData: AmountData, lps: Intermediary[], options?: ToBTCLNOptions & {
         comment?: string;
@@ -159,6 +182,9 @@ export declare class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T
         quote: Promise<ToBTCLNSwap<T>>;
         intermediary: Intermediary;
     }[]>;
+    /**
+     * @inheritDoc
+     */
     recoverFromSwapDataAndState(init: {
         data: T["Data"];
         getInitTxId: () => Promise<string>;

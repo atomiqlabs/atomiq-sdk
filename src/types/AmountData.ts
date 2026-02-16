@@ -1,5 +1,6 @@
 /**
- * Simple amount definition for swap operations
+ * Amount, token and exact input object for initiating swap operations
+ *
  * @category Tokens
  */
 export type AmountData = {

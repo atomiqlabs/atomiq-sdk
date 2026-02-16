@@ -11,7 +11,8 @@ const Logger_1 = require("../utils/Logger");
 const HttpUtils_1 = require("../http/HttpUtils");
 const RetryUtils_1 = require("../utils/RetryUtils");
 /**
- * Swap handler type enum for intermediary communication
+ * Swap handler type mapping for intermediary communication
+ *
  * @category Pricing and LPs
  */
 var SwapHandlerType;
@@ -27,7 +28,7 @@ var SwapHandlerType;
 })(SwapHandlerType = exports.SwapHandlerType || (exports.SwapHandlerType = {}));
 /**
  * Converts SwapHandlerType (represented as string & used in REST API communication with intermediaries) to regular
- *  SwapType
+ *  {@link SwapType}
  *
  * @param swapHandlerType
  */
@@ -52,7 +53,7 @@ function swapHandlerTypeToSwapType(swapHandlerType) {
     }
 }
 /**
- * A default intermediary comparator, only takes to announced fee into consideration
+ * A default intermediary comparator, only takes the announced fee into consideration
  *
  * @param swapType
  * @param tokenAddress
@@ -86,12 +87,16 @@ const REGISTRY_URL = "https://api.github.com/repos/adambor/SolLightning-registry
 //To allow for legacy responses from not-yet updated LPs
 const DEFAULT_CHAIN = "SOLANA";
 /**
- * Discovery service for available liquidity providers/intermediaries
+ * Discovery service for available intermediaries (liquidity providers)
+ *
  * @category Pricing and LPs
  */
 class IntermediaryDiscovery extends events_1.EventEmitter {
     constructor(swapContracts, registryUrl = REGISTRY_URL, nodeUrls, httpRequestTimeout, maxWaitForOthersTimeout) {
         super();
+        /**
+         * A current list of active intermediaries
+         */
         this.intermediaries = [];
         this.swapContracts = swapContracts;
         this.registryUrl = registryUrl;
@@ -189,9 +194,13 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
         }
     }
     /**
-     * Returns the intermediary at the provided URL, either from the already fetched list of LPs or fetches the data on-demand
+     * Returns the intermediary at the provided URL, either from the already fetched list of LPs
+     *  or fetches the data on-demand, by sending the handshake HTTP request (/info) to the LP.
      *
-     * @param url
+     * Doesn't save the fetched intermediary to the list of intermediaries if it isn't already
+     *  part of the known intermediaries
+     *
+     * @param url Base URL of the intermediary, which accepts HTTP requests
      * @param abortSignal
      */
     getIntermediary(url, abortSignal) {
@@ -202,6 +211,7 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
     }
     /**
      * Reloads the saves a list of intermediaries
+     *
      * @param abortSignal
      */
     async reloadIntermediaries(abortSignal) {
@@ -236,6 +246,9 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
         logger.info("init(): Initializing with registryUrl: " + this.registryUrl + " intermediary array: " + (this.overrideNodeUrls || []).join());
         return this.reloadIntermediaries(abortSignal);
     }
+    /**
+     * Returns known swap bounds (in satoshis - BTC) by aggregating values from all known intermediaries
+     */
     getMultichainSwapBounds() {
         const bounds = {};
         this.intermediaries.forEach(intermediary => {
@@ -265,7 +278,7 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
         return bounds;
     }
     /**
-     * Returns aggregate swap bounds (in sats - BTC) as indicated by the intermediaries
+     * Returns aggregate swap bounds (in satoshis - BTC) as indicated by the intermediaries
      */
     getSwapBounds(chainIdentifier) {
         const bounds = {};
@@ -294,15 +307,15 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
         return bounds;
     }
     /**
-     * Returns the aggregate swap minimum (in sats - BTC) for a specific swap type & token
+     * Returns the aggregate swap minimum (in satoshis - BTC) for a specific swap type & token
      *  as indicated by the intermediaries
      *
-     * @param chainIdentifier
-     * @param swapType
-     * @param token
+     * @param chainIdentifier Chain identifier of the smart chain
+     * @param swapType Swap protocol type
+     * @param tokenAddress Token address
      */
-    getSwapMinimum(chainIdentifier, swapType, token) {
-        const tokenStr = token.toString();
+    getSwapMinimum(chainIdentifier, swapType, tokenAddress) {
+        const tokenStr = tokenAddress.toString();
         return this.intermediaries.reduce((prevMin, intermediary) => {
             const swapService = intermediary.services[swapType];
             if (swapService == null)
@@ -316,15 +329,15 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
         }, null);
     }
     /**
-     * Returns the aggregate swap maximum (in sats - BTC) for a specific swap type & token
+     * Returns the aggregate swap maximum (in satoshis - BTC) for a specific swap type & token
      *  as indicated by the intermediaries
      *
-     * @param chainIdentifier
-     * @param swapType
-     * @param token
+     * @param chainIdentifier Chain identifier of the smart chain
+     * @param swapType Swap protocol type
+     * @param tokenAddress Token address
      */
-    getSwapMaximum(chainIdentifier, swapType, token) {
-        const tokenStr = token.toString();
+    getSwapMaximum(chainIdentifier, swapType, tokenAddress) {
+        const tokenStr = tokenAddress.toString();
         return this.intermediaries.reduce((prevMax, intermediary) => {
             const swapService = intermediary.services[swapType];
             if (swapService == null)
@@ -340,9 +353,9 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
     /**
      * Returns swap candidates for a specific swap type & token address
      *
-     * @param chainIdentifier
-     * @param swapType
-     * @param tokenAddress
+     * @param chainIdentifier Chain identifier of the smart chain
+     * @param swapType Swap protocol type
+     * @param tokenAddress Token address
      * @param amount Amount to be swapped in sats - BTC
      * @param count How many intermediaries to return at most
      */

@@ -3,7 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SingleSwapPrice = void 0;
 const ICachedSwapPrice_1 = require("./abstract/ICachedSwapPrice");
 /**
- * Swap price API using single price source
+ * Swap price API using a single price source
+ *
  * @category Pricing and LPs
  */
 class SingleSwapPrice extends ICachedSwapPrice_1.ICachedSwapPrice {
@@ -24,16 +25,18 @@ class SingleSwapPrice extends ICachedSwapPrice_1.ICachedSwapPrice {
         return this.priceProvider.getPrice(chainIdentifier, token, abortSignal);
     }
     /**
-     * Returns the decimal places of the specified token, or -1 if token should be ignored, returns null if
-     *  token is not found
-     *
-     * @param chainIdentifier
-     * @param token
-     * @protected
+     * @inheritDoc
      */
     getDecimals(chainIdentifier, token) {
         return this.priceProvider.getDecimals(chainIdentifier, token.toString());
     }
+    /**
+     * Fetches BTC price in USD
+     *
+     * @param abortSignal
+     * @protected
+     * @returns token price in uSats (micro sats)
+     */
     fetchUsdPrice(abortSignal) {
         return this.priceProvider.getUsdPrice(abortSignal);
     }

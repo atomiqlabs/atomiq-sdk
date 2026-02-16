@@ -8,7 +8,7 @@ import {
     RefundEvent,
     RelaySynchronizer,
     SwapData,
-    BtcRelay, BitcoinRpcWithAddressIndex, SwapCommitState, SwapCommitStateType
+    BtcRelay, BitcoinRpcWithAddressIndex, SwapCommitState
 } from "@atomiqlabs/base";
 import {EventEmitter} from "events";
 import {Intermediary} from "../../../../intermediaries/Intermediary";
@@ -34,8 +34,6 @@ import {IFromBTCSelfInitDefinition} from "../IFromBTCSelfInitSwap";
 import {AmountData} from "../../../../types/AmountData";
 import {tryWithRetries} from "../../../../utils/RetryUtils";
 import {AllOptional, AllRequired} from "../../../../utils/TypeUtils";
-import {FromBTCLNSwap, FromBTCLNSwapInit, FromBTCLNSwapState} from "../ln/FromBTCLNSwap";
-import {sha256} from "@noble/hashes/sha2";
 
 export type FromBTCOptions = {
     feeSafetyFactor?: bigint,
@@ -54,17 +52,50 @@ export type FromBTCWrapperOptions = ISwapWrapperOptions & {
 
 export type FromBTCDefinition<T extends ChainType> = IFromBTCSelfInitDefinition<T, FromBTCWrapper<T>, FromBTCSwap<T>>;
 
+/**
+ * Legacy escrow (PrTLC) based swap for Bitcoin -> Smart chains, requires manual initiation
+ *  of the swap escrow on the destination chain.
+ *
+ * @category Swaps
+ */
 export class FromBTCWrapper<
     T extends ChainType
 > extends IFromBTCWrapper<T, FromBTCDefinition<T>, FromBTCWrapperOptions> implements IClaimableSwapWrapper<FromBTCSwap<T>> {
+    public readonly TYPE: SwapType.FROM_BTC = SwapType.FROM_BTC;
 
-    public readonly claimableSwapStates = [FromBTCSwapState.BTC_TX_CONFIRMED];
-    public readonly TYPE = SwapType.FROM_BTC;
-    public readonly swapDeserializer = FromBTCSwap;
+    /**
+     * @internal
+     */
+    protected readonly tickSwapState = [FromBTCSwapState.PR_CREATED, FromBTCSwapState.CLAIM_COMMITED, FromBTCSwapState.EXPIRED];
 
-    readonly synchronizer: RelaySynchronizer<any, T["TX"], any>;
-    readonly btcRelay: BtcRelay<any, T["TX"], any>;
-    readonly btcRpc: BitcoinRpcWithAddressIndex<any>;
+    /**
+     * @internal
+     */
+    readonly _pendingSwapStates = [
+        FromBTCSwapState.PR_CREATED,
+        FromBTCSwapState.QUOTE_SOFT_EXPIRED,
+        FromBTCSwapState.CLAIM_COMMITED,
+        FromBTCSwapState.BTC_TX_CONFIRMED,
+        FromBTCSwapState.EXPIRED
+    ];
+    /**
+     * @internal
+     */
+    readonly _claimableSwapStates = [FromBTCSwapState.BTC_TX_CONFIRMED];
+    /**
+     * @internal
+     */
+    readonly _swapDeserializer = FromBTCSwap;
+    /**
+     * @internal
+     */
+    readonly _synchronizer: RelaySynchronizer<any, T["TX"], any>;
+    /**
+     * @internal
+     */
+    readonly _btcRpc: BitcoinRpcWithAddressIndex<any>;
+
+    private readonly btcRelay: BtcRelay<any, T["TX"], any>;
 
     /**
      * @param chainIdentifier
@@ -109,41 +140,44 @@ export class FromBTCWrapper<
             events
         );
         this.btcRelay = btcRelay;
-        this.synchronizer = synchronizer;
-        this.btcRpc = btcRpc;
+        this._synchronizer = synchronizer;
+        this._btcRpc = btcRpc;
     }
 
-    public readonly pendingSwapStates = [
-        FromBTCSwapState.PR_CREATED,
-        FromBTCSwapState.QUOTE_SOFT_EXPIRED,
-        FromBTCSwapState.CLAIM_COMMITED,
-        FromBTCSwapState.BTC_TX_CONFIRMED,
-        FromBTCSwapState.EXPIRED
-    ];
-    public readonly tickSwapState = [FromBTCSwapState.PR_CREATED, FromBTCSwapState.CLAIM_COMMITED, FromBTCSwapState.EXPIRED];
-
+    /**
+     * @inheritDoc
+     * @internal
+     */
     protected processEventInitialize(swap: FromBTCSwap<T>, event: InitializeEvent<T["Data"]>): Promise<boolean> {
-        if(swap.state===FromBTCSwapState.PR_CREATED || swap.state===FromBTCSwapState.QUOTE_SOFT_EXPIRED) {
-            swap.state = FromBTCSwapState.CLAIM_COMMITED;
+        if(swap._state===FromBTCSwapState.PR_CREATED || swap._state===FromBTCSwapState.QUOTE_SOFT_EXPIRED) {
+            swap._state = FromBTCSwapState.CLAIM_COMMITED;
             return Promise.resolve(true);
         }
         return Promise.resolve(false);
     }
 
+    /**
+     * @inheritDoc
+     * @internal
+     */
     protected async processEventClaim(swap: FromBTCSwap<T>, event: ClaimEvent<T["Data"]>): Promise<boolean> {
-        if(swap.state!==FromBTCSwapState.FAILED && swap.state!==FromBTCSwapState.CLAIM_CLAIMED) {
+        if(swap._state!==FromBTCSwapState.FAILED && swap._state!==FromBTCSwapState.CLAIM_CLAIMED) {
             await swap._setBitcoinTxId(Buffer.from(event.result, "hex").reverse().toString("hex")).catch(e => {
                 this.logger.warn("processEventClaim(): Error setting bitcoin txId: ", e);
             });
-            swap.state = FromBTCSwapState.CLAIM_CLAIMED;
+            swap._state = FromBTCSwapState.CLAIM_CLAIMED;
             return true;
         }
         return false;
     }
 
+    /**
+     * @inheritDoc
+     * @internal
+     */
     protected processEventRefund(swap: FromBTCSwap<T>, event: RefundEvent<T["Data"]>): Promise<boolean> {
-        if(swap.state!==FromBTCSwapState.CLAIM_CLAIMED && swap.state!==FromBTCSwapState.FAILED) {
-            swap.state = FromBTCSwapState.FAILED;
+        if(swap._state!==FromBTCSwapState.CLAIM_CLAIMED && swap._state!==FromBTCSwapState.FAILED) {
+            swap._state = FromBTCSwapState.FAILED;
             return Promise.resolve(true);
         }
         return Promise.resolve(false);
@@ -152,11 +186,13 @@ export class FromBTCWrapper<
     /**
      * Returns the swap expiry, leaving enough time for the user to send a transaction and for it to confirm
      *
-     * @param data Parsed swap data
-     * @param requiredConfirmations Confirmations required to claim the tx
+     * @param data Swap data
+     * @param requiredConfirmations Confirmations required on the bitcoin side to settle the swap
+     *
+     * @internal
      */
-    getOnchainSendTimeout(data: SwapData, requiredConfirmations: number): bigint {
-        const tsDelta = (this.options.blocksTillTxConfirms + requiredConfirmations) * this.options.bitcoinBlocktime * this.options.safetyFactor;
+    _getOnchainSendTimeout(data: SwapData, requiredConfirmations: number): bigint {
+        const tsDelta = (this._options.blocksTillTxConfirms + requiredConfirmations) * this._options.bitcoinBlocktime * this._options.safetyFactor;
         return data.getExpiry() - BigInt(tsDelta);
     }
 
@@ -168,6 +204,7 @@ export class FromBTCWrapper<
      * @param amountData
      * @param options Options as passed to the swap creation function
      * @param abortController
+     *
      * @private
      */
     private async preFetchClaimerBounty(
@@ -195,9 +232,9 @@ export class FromBTCWrapper<
         }
 
         const dummyAmount = BigInt(Math.floor(Math.random()* 0x1000000));
-        const dummySwapData = await this.contract.createSwapData(
+        const dummySwapData = await this._contract.createSwapData(
             ChainSwapType.CHAIN, signer, signer, amountData.token,
-            dummyAmount, this.contract.getHashForOnchain(randomBytes(20), dummyAmount, 3).toString("hex"),
+            dummyAmount, this._contract.getHashForOnchain(randomBytes(20), dummyAmount, 3).toString("hex"),
             this.getRandomSequence(), startTimestamp, false, true,
             BigInt(Math.floor(Math.random() * 0x10000)), BigInt(Math.floor(Math.random() * 0x10000))
         );
@@ -206,8 +243,8 @@ export class FromBTCWrapper<
             const [feePerBlock, btcRelayData, currentBtcBlock, claimFeeRate] = await Promise.all([
                 this.btcRelay.getFeePerBlock(),
                 this.btcRelay.getTipData(),
-                this.btcRpc.getTipHeight(),
-                this.contract.getClaimFee(signer, dummySwapData)
+                this._btcRpc.getTipHeight(),
+                this._contract.getClaimFee(signer, dummySwapData)
             ]);
 
             if(btcRelayData==null) throw new Error("Btc relay not initialized!");
@@ -232,7 +269,8 @@ export class FromBTCWrapper<
      *
      * @param data Parsed swap data returned from the intermediary
      * @param options Options as passed to the swap creation function
-     * @param claimerBounty Claimer bounty data as fetched from preFetchClaimerBounty() function
+     * @param claimerBounty Claimer bounty data as fetched from {@link preFetchClaimerBounty} function
+     *
      * @private
      */
     private getClaimerBounty(
@@ -247,7 +285,7 @@ export class FromBTCWrapper<
         }
     ) : bigint {
         const tsDelta = data.getExpiry() - claimerBounty.startTimestamp;
-        const blocksDelta = tsDelta / BigInt(this.options.bitcoinBlocktime) * BigInt(options.blockSafetyFactor);
+        const blocksDelta = tsDelta / BigInt(this._options.bitcoinBlocktime) * BigInt(options.blockSafetyFactor);
         const totalBlock = blocksDelta + BigInt(claimerBounty.addBlock);
         return claimerBounty.addFee + (totalBlock * claimerBounty.feePerBlock);
     }
@@ -264,8 +302,10 @@ export class FromBTCWrapper<
      * @param sequence Required swap sequence
      * @param claimerBounty Claimer bount data as returned from the preFetchClaimerBounty() pre-fetch promise
      * @param depositToken
-     * @private
+     *
      * @throws {IntermediaryError} in case the response is invalid
+     *
+     * @private
      */
     private verifyReturnedData(
         signer: string,
@@ -291,7 +331,7 @@ export class FromBTCWrapper<
         }
 
         const requiredConfirmations = resp.confirmations;
-        if(requiredConfirmations>this.options.maxConfirmations) throw new IntermediaryError("Requires too many confirmations");
+        if(requiredConfirmations>this._options.maxConfirmations) throw new IntermediaryError("Requires too many confirmations");
 
         const totalClaimerBounty = this.getClaimerBounty(data, options, claimerBounty);
 
@@ -311,15 +351,15 @@ export class FromBTCWrapper<
         }
 
         //Check that we have enough time to send the TX and for it to confirm
-        const expiry = this.getOnchainSendTimeout(data, requiredConfirmations);
+        const expiry = this._getOnchainSendTimeout(data, requiredConfirmations);
         const currentTimestamp = BigInt(Math.floor(Date.now()/1000));
-        if((expiry - currentTimestamp) < BigInt(this.options.minSendWindow)) {
+        if((expiry - currentTimestamp) < BigInt(this._options.minSendWindow)) {
             throw new IntermediaryError("Send window too low");
         }
 
-        const lockingScript = toOutputScript(this.options.bitcoinNetwork, resp.btcAddress);
-        const desiredExtraData = this.contract.getExtraData(lockingScript, resp.amount, requiredConfirmations);
-        const desiredClaimHash = this.contract.getHashForOnchain(lockingScript, resp.amount, requiredConfirmations);
+        const lockingScript = toOutputScript(this._options.bitcoinNetwork, resp.btcAddress);
+        const desiredExtraData = this._contract.getExtraData(lockingScript, resp.amount, requiredConfirmations);
+        const desiredClaimHash = this._contract.getHashForOnchain(lockingScript, resp.amount, requiredConfirmations);
         if(!desiredClaimHash.equals(Buffer.from(data.getClaimHash(), "hex"))) {
             throw new IntermediaryError("Invalid claim hash returned!");
         }
@@ -330,17 +370,18 @@ export class FromBTCWrapper<
     }
 
     /**
-     * Returns a newly created swap, receiving 'amount' on chain
+     * Returns a newly created legacy Bitcoin -> Smart chain swap using the PrTLC based escrow swap protocol,
+     *  with the passed amount.
      *
-     * @param signer                Smartchain signer's address intiating the swap
-     * @param amountData            Amount of token & amount to swap
-     * @param lps                   LPs (liquidity providers) to get the quotes from
-     * @param options               Quote options
-     * @param additionalParams      Additional parameters sent to the LP when creating the swap
-     * @param abortSignal           Abort signal for aborting the process
+     * @param recipient Smart chain signer's address on the destination chain
+     * @param amountData Amount, token and exact input/output data for to swap
+     * @param lps An array of intermediaries (LPs) to get the quotes from
+     * @param options Optional additional quote options
+     * @param additionalParams Optional additional parameters sent to the LP when creating the swap
+     * @param abortSignal Abort signal
      */
     create(
-        signer: string,
+        recipient: string,
         amountData: AmountData,
         lps: Intermediary[],
         options?: FromBTCOptions,
@@ -361,10 +402,10 @@ export class FromBTCWrapper<
         const _abortController = extendAbortController(abortSignal);
         const pricePrefetchPromise: Promise<bigint | undefined> = this.preFetchPrice(amountData, _abortController.signal);
         const usdPricePrefetchPromise: Promise<number | undefined> = this.preFetchUsdPrice(_abortController.signal);
-        const claimerBountyPrefetchPromise = this.preFetchClaimerBounty(signer, amountData, _options, _abortController);
-        const nativeTokenAddress = this.chain.getNativeCurrencyAddress();
-        const feeRatePromise: Promise<string | undefined> = this.preFetchFeeRate(signer, amountData, undefined, _abortController);
-        const _signDataPromise: Promise<T["PreFetchVerification"] | undefined> | undefined = this.contract.preFetchBlockDataForSignatures==null ?
+        const claimerBountyPrefetchPromise = this.preFetchClaimerBounty(recipient, amountData, _options, _abortController);
+        const nativeTokenAddress = this._chain.getNativeCurrencyAddress();
+        const feeRatePromise: Promise<string | undefined> = this.preFetchFeeRate(recipient, amountData, undefined, _abortController);
+        const _signDataPromise: Promise<T["PreFetchVerification"] | undefined> | undefined = this._contract.preFetchBlockDataForSignatures==null ?
             this.preFetchSignData(Promise.resolve(true)) :
             undefined;
 
@@ -382,7 +423,7 @@ export class FromBTCWrapper<
                             const {signDataPrefetch, response} = IntermediaryAPI.initFromBTC(
                                 this.chainIdentifier, lp.url, nativeTokenAddress,
                                 {
-                                    claimer: signer,
+                                    claimer: recipient,
                                     amount: amountData.amount,
                                     token: amountData.token.toString(),
 
@@ -393,7 +434,7 @@ export class FromBTCWrapper<
                                     feeRate: throwIfUndefined(feeRatePromise),
                                     additionalParams
                                 },
-                                this.options.postRequestTimeout, abortController.signal, retryCount>0 ? false : undefined
+                                this._options.postRequestTimeout, abortController.signal, retryCount>0 ? false : undefined
                             );
 
                             return {
@@ -402,17 +443,17 @@ export class FromBTCWrapper<
                             };
                         }, undefined, e => e instanceof RequestError, abortController.signal);
 
-                        const data: T["Data"] = new this.swapDataDeserializer(resp.data);
-                        data.setClaimer(signer);
+                        const data: T["Data"] = new this._swapDataDeserializer(resp.data);
+                        data.setClaimer(recipient);
 
-                        this.verifyReturnedData(signer, resp, amountData, lp, _options, data, sequence, (await claimerBountyPrefetchPromise)!, nativeTokenAddress);
+                        this.verifyReturnedData(recipient, resp, amountData, lp, _options, data, sequence, (await claimerBountyPrefetchPromise)!, nativeTokenAddress);
                         const [pricingInfo, signatureExpiry] = await Promise.all([
                             //Get intermediary's liquidity
                             this.verifyReturnedPrice(
                                 lp.services[SwapType.FROM_BTC], false, resp.amount, resp.total,
                                 amountData.token, {}, pricePrefetchPromise, usdPricePrefetchPromise, abortController.signal
                             ),
-                            this.verifyReturnedSignature(signer, data, resp, feeRatePromise, signDataPromise, abortController.signal),
+                            this.verifyReturnedSignature(recipient, data, resp, feeRatePromise, signDataPromise, abortController.signal),
                             this.verifyIntermediaryLiquidity(data.getAmount(), throwIfUndefined(liquidityPromise)),
                         ]);
 
@@ -441,6 +482,9 @@ export class FromBTCWrapper<
         });
     }
 
+    /**
+     * @inheritDoc
+     */
     async recoverFromSwapDataAndState(
         init: {data: T["Data"], getInitTxId: () => Promise<string>, getTxBlock: () => Promise<{blockTime: number, blockHeight: number}>},
         state: SwapCommitState,
@@ -467,38 +511,14 @@ export class FromBTCWrapper<
             exactIn: false
         }
         const swap = new FromBTCSwap(this, swapInit);
-        swap.commitTxId = await init.getInitTxId();
+        swap._commitTxId = await init.getInitTxId();
         const blockData = await init.getTxBlock();
         swap.createdAt = blockData.blockTime * 1000;
         swap._setInitiated();
-        swap.state = FromBTCSwapState.CLAIM_COMMITED;
+        swap._state = FromBTCSwapState.CLAIM_COMMITED;
         await swap._sync(false, false, state);
         await swap._save();
         return swap;
-
-        // switch(state.type) {
-        //     case SwapCommitStateType.PAID:
-        //         secret ??= await state.getClaimResult();
-        //         swap._setSwapSecret(secret);
-        //         swap.claimTxId = await state.getClaimTxId();
-        //         swap.state = FromBTCLNSwapState.CLAIM_CLAIMED;
-        //         break;
-        //     case SwapCommitStateType.NOT_COMMITED:
-        //     case SwapCommitStateType.EXPIRED:
-        //         if(state.getRefundTxId==null) return null;
-        //         swap.refundTxId = await state.getRefundTxId();
-        //         swap.state = FromBTCLNSwapState.FAILED;
-        //         break;
-        //     case SwapCommitStateType.COMMITED:
-        //     case SwapCommitStateType.REFUNDABLE:
-        //         const expired = await this.contract.isExpired(swap._getInitiator(), data);
-        //         if(expired) {
-        //             swap.state = FromBTCLNSwapState.EXPIRED;
-        //         } else {
-        //             swap.state = FromBTCLNSwapState.CLAIM_COMMITED;
-        //         }
-        //         break;
-        // }
     }
 
 }

@@ -23,6 +23,12 @@ export type OKXResponse = {
  */
 export declare class OKXPriceProvider<T extends MultiChain> extends ExchangePriceProvider<T> {
     constructor(coinsMap: CtorCoinTypes<T>, url?: string, httpRequestTimeout?: number);
+    /**
+     * @inheritDoc
+     */
     fetchPair(pair: string, abortSignal?: AbortSignal): Promise<number>;
+    /**
+     * @inheritDoc
+     */
     protected fetchUsdPrice(abortSignal?: AbortSignal): Promise<number>;
 }

@@ -1,5 +1,6 @@
 /**
- * LNURL-pay request parameters
+ * Response of the LNURL-pay link
+ *
  * @category Bitcoin
  */
 export type LNURLPayParams = {
@@ -14,13 +15,15 @@ export type LNURLPayParams = {
 }
 
 /**
- * LNURL-pay parameters with URL
+ * Response of the LNURL-pay link with the added original url
+ *
  * @category Bitcoin
  */
 export type LNURLPayParamsWithUrl = LNURLPayParams & { url: string };
 
 /**
- * LNURL-pay specification
+ * Parsed LNURL-pay specification
+ *
  * @category Bitcoin
  */
 export type LNURLPay = {
@@ -35,16 +38,20 @@ export type LNURLPay = {
 }
 
 /**
- * Type guard for LNURL-pay parameters
+ * Type guard for {@link LNURLPayParams}
+ *
  * @category Bitcoin
+ * @internal
  */
 export function isLNURLPayParams(obj: any): obj is LNURLPayParams {
     return obj.tag === "payRequest";
 }
 
 /**
- * Type guard for LNURL-pay
+ * Type guard for {@link LNURLPay}
+ *
  * @category Bitcoin
+ * @internal
  */
 export function isLNURLPay(value: any): value is LNURLPay {
     return (
@@ -62,7 +69,8 @@ export function isLNURLPay(value: any): value is LNURLPay {
 }
 
 /**
- * Decoded LNURL-pay success action
+ * Decoded LNURL-pay success action, revealed after a lightning payment is finished
+ *
  * @category Bitcoin
  */
 export type LNURLDecodedSuccessAction = {

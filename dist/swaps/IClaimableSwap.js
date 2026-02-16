@@ -2,7 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.isIClaimableSwap = void 0;
 /**
- * Type guard to check if an object is an IClaimableSwap
+ * Type guard to check if an object is an {@link IClaimableSwap}
+ *
  * @category Swaps
  */
 function isIClaimableSwap(obj) {

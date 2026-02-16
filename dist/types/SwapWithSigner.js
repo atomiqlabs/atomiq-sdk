@@ -4,14 +4,17 @@ exports.wrapSwapWithSigner = void 0;
 const IToBTCSwap_1 = require("../swaps/escrow_swaps/tobtc/IToBTCSwap");
 const IFromBTCSelfInitSwap_1 = require("../swaps/escrow_swaps/frombtc/IFromBTCSelfInitSwap");
 const FromBTCLNSwap_1 = require("../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap");
+const FromBTCLNAutoSwap_1 = require("../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap");
+const SpvFromBTCSwap_1 = require("../swaps/spv_swaps/SpvFromBTCSwap");
 /**
  * Wraps a swap with automatic signer injection for methods like commit, refund, and claim
+ *
  * @category Swaps
+ * @internal
  */
 function wrapSwapWithSigner(swap, signer) {
     return new Proxy(swap, {
         get: (target, prop, receiver) => {
-            // Override the "sayGoodbye" method
             if (prop === "commit") {
                 if (swap instanceof IToBTCSwap_1.IToBTCSwap || swap instanceof IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap) {
                     return (abortSignal, skipChecks) => swap.commit(signer, abortSignal, skipChecks);
@@ -23,7 +26,7 @@ function wrapSwapWithSigner(swap, signer) {
                 }
             }
             if (prop === "claim") {
-                if (swap instanceof IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap) {
+                if (swap instanceof IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap || swap instanceof FromBTCLNAutoSwap_1.FromBTCLNAutoSwap || swap instanceof SpvFromBTCSwap_1.SpvFromBTCSwap) {
                     return (abortSignal) => swap.claim(signer, abortSignal);
                 }
             }

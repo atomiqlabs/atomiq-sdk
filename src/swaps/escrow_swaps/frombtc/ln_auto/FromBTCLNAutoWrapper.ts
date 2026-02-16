@@ -17,7 +17,6 @@ import {
     throwIfUndefined
 } from "../../../../utils/Utils";
 import {
-    FromBTCLNAutoInit,
     FromBTCLNAutoResponseType,
     IntermediaryAPI
 } from "../../../../intermediaries/apis/IntermediaryAPI";
@@ -35,7 +34,6 @@ import {AmountData} from "../../../../types/AmountData";
 import {LNURLWithdrawParamsWithUrl} from "../../../../types/lnurl/LNURLWithdraw";
 import {tryWithRetries} from "../../../../utils/RetryUtils";
 import {AllOptional} from "../../../../utils/TypeUtils";
-import {FromBTCLNSwap, FromBTCLNSwapInit, FromBTCLNSwapState} from "../ln/FromBTCLNSwap";
 import {sha256} from "@noble/hashes/sha2";
 
 export type FromBTCLNAutoOptions = {
@@ -54,15 +52,52 @@ export type FromBTCLNAutoWrapperOptions = ISwapWrapperOptions & {
 
 export type FromBTCLNAutoDefinition<T extends ChainType> = IFromBTCLNDefinition<T, FromBTCLNAutoWrapper<T>, FromBTCLNAutoSwap<T>>;
 
+/**
+ * New escrow based (HTLC) swaps for Bitcoin Lightning -> Smart chain swaps not requiring manual settlement on
+ *  the destination by the user, and instead letting the LP initiate the escrow. Permissionless watchtower network
+ *  handles the claiming of HTLC, with the swap secret broadcasted over Nostr. Also adds a possibility for the user
+ *  to receive a native token on the destination chain as part of the swap (a "gas drop" feature).
+ *
+ * @category Swaps
+ */
 export class FromBTCLNAutoWrapper<
     T extends ChainType
 > extends IFromBTCLNWrapper<T, FromBTCLNAutoDefinition<T>, FromBTCLNAutoWrapperOptions> implements IClaimableSwapWrapper<FromBTCLNAutoSwap<T>> {
 
-    public readonly claimableSwapStates = [FromBTCLNAutoSwapState.CLAIM_COMMITED];
-    public readonly TYPE = SwapType.FROM_BTCLN_AUTO;
-    public readonly swapDeserializer = FromBTCLNAutoSwap;
+    public readonly TYPE: SwapType.FROM_BTCLN_AUTO = SwapType.FROM_BTCLN_AUTO;
 
-    readonly messenger: Messenger;
+    /**
+     * @internal
+     */
+    protected readonly tickSwapState = [
+        FromBTCLNAutoSwapState.PR_CREATED,
+        FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED,
+        FromBTCLNAutoSwapState.PR_PAID,
+        FromBTCLNAutoSwapState.CLAIM_COMMITED
+    ];
+
+    /**
+     * @internal
+     */
+    readonly _pendingSwapStates = [
+        FromBTCLNAutoSwapState.PR_CREATED,
+        FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED,
+        FromBTCLNAutoSwapState.PR_PAID,
+        FromBTCLNAutoSwapState.CLAIM_COMMITED,
+        FromBTCLNAutoSwapState.EXPIRED
+    ];
+    /**
+     * @internal
+     */
+    readonly _claimableSwapStates = [FromBTCLNAutoSwapState.CLAIM_COMMITED];
+    /**
+     * @internal
+     */
+    readonly _swapDeserializer = FromBTCLNAutoSwap;
+    /**
+     * @internal
+     */
+    readonly _messenger: Messenger;
 
     /**
      * @param chainIdentifier
@@ -101,26 +136,16 @@ export class FromBTCLNAutoWrapper<
             },
             events
         );
-        this.messenger = messenger;
+        this._messenger = messenger;
     }
 
-    public readonly pendingSwapStates = [
-        FromBTCLNAutoSwapState.PR_CREATED,
-        FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED,
-        FromBTCLNAutoSwapState.PR_PAID,
-        FromBTCLNAutoSwapState.CLAIM_COMMITED,
-        FromBTCLNAutoSwapState.EXPIRED
-    ];
-    public readonly tickSwapState = [
-        FromBTCLNAutoSwapState.PR_CREATED,
-        FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED,
-        FromBTCLNAutoSwapState.PR_PAID,
-        FromBTCLNAutoSwapState.CLAIM_COMMITED
-    ];
-
+    /**
+     * @inheritDoc
+     * @internal
+     */
     protected async processEventInitialize(swap: FromBTCLNAutoSwap<T>, event: InitializeEvent<T["Data"]>): Promise<boolean> {
-        if(swap.state===FromBTCLNAutoSwapState.PR_PAID || swap.state===FromBTCLNAutoSwapState.PR_CREATED || swap.state===FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED) {
-            if(swap.data==null) {
+        if(swap._state===FromBTCLNAutoSwapState.PR_PAID || swap._state===FromBTCLNAutoSwapState.PR_CREATED || swap._state===FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED) {
+            if(swap._data==null) {
                 //Obtain data from the initialize event
                 const eventData = await event.swapData();
                 if(eventData==null) {
@@ -141,8 +166,8 @@ export class FromBTCLNAutoWrapper<
                 return false;
             }
 
-            swap.commitTxId = event.meta?.txId;
-            swap.state = FromBTCLNAutoSwapState.CLAIM_COMMITED;
+            swap._commitTxId = event.meta?.txId;
+            swap._state = FromBTCLNAutoSwapState.CLAIM_COMMITED;
             swap._broadcastSecret().catch(e => {
                 this.logger.error("processEventInitialize("+swap.getId()+"): Error when broadcasting swap secret: ", e);
             });
@@ -151,20 +176,28 @@ export class FromBTCLNAutoWrapper<
         return false;
     }
 
+    /**
+     * @inheritDoc
+     * @internal
+     */
     protected processEventClaim(swap: FromBTCLNAutoSwap<T>, event: ClaimEvent<T["Data"]>): Promise<boolean> {
-        if(swap.state!==FromBTCLNAutoSwapState.FAILED && swap.state!==FromBTCLNAutoSwapState.CLAIM_CLAIMED) {
-            swap.claimTxId = event.meta?.txId;
-            swap.state = FromBTCLNAutoSwapState.CLAIM_CLAIMED;
+        if(swap._state!==FromBTCLNAutoSwapState.FAILED && swap._state!==FromBTCLNAutoSwapState.CLAIM_CLAIMED) {
+            swap._claimTxId = event.meta?.txId;
+            swap._state = FromBTCLNAutoSwapState.CLAIM_CLAIMED;
             swap._setSwapSecret(event.result);
             return Promise.resolve(true);
         }
         return Promise.resolve(false);
     }
 
+    /**
+     * @inheritDoc
+     * @internal
+     */
     protected processEventRefund(swap: FromBTCLNAutoSwap<T>, event: RefundEvent<T["Data"]>): Promise<boolean> {
-        if(swap.state!==FromBTCLNAutoSwapState.CLAIM_CLAIMED && swap.state!==FromBTCLNAutoSwapState.FAILED) {
-            swap.refundTxId ??= event.meta?.txId;
-            swap.state = FromBTCLNAutoSwapState.FAILED;
+        if(swap._state!==FromBTCLNAutoSwapState.CLAIM_CLAIMED && swap._state!==FromBTCLNAutoSwapState.FAILED) {
+            swap._refundTxId ??= event.meta?.txId;
+            swap._state = FromBTCLNAutoSwapState.FAILED;
             return Promise.resolve(true);
         }
         return Promise.resolve(false);
@@ -178,6 +211,7 @@ export class FromBTCLNAutoWrapper<
      * @param amountData
      * @param options Options as passed to the swap creation function
      * @param abortController
+     *
      * @private
      */
     private async preFetchClaimerBounty(
@@ -189,15 +223,15 @@ export class FromBTCLNAutoWrapper<
         if(options.unsafeZeroWatchtowerFee) return 0n;
 
         const dummyAmount = BigInt(Math.floor(Math.random()* 0x1000000));
-        const dummySwapData = await this.contract.createSwapData(
-            ChainSwapType.HTLC, this.chain.randomAddress(), signer, amountData.token,
-            dummyAmount, this.contract.getHashForHtlc(randomBytes(32)).toString("hex"),
+        const dummySwapData = await this._contract.createSwapData(
+            ChainSwapType.HTLC, this._chain.randomAddress(), signer, amountData.token,
+            dummyAmount, this._contract.getHashForHtlc(randomBytes(32)).toString("hex"),
             this.getRandomSequence(), BigInt(Math.floor(Date.now()/1000)), false, true,
             BigInt(Math.floor(Math.random() * 0x10000)), BigInt(Math.floor(Math.random() * 0x10000))
         );
 
         try {
-            const result = await this.contract.getClaimFee(this.chain.randomAddress(), dummySwapData);
+            const result = await this._contract.getClaimFee(this._chain.randomAddress(), dummySwapData);
             return result * BigInt(Math.floor(options.feeSafetyFactor*1000000)) / 1_000_000n
         } catch (e) {
             abortController.abort(e);
@@ -214,8 +248,10 @@ export class FromBTCLNAutoWrapper<
      * @param decodedPr Decoded bolt11 lightning network invoice
      * @param paymentHash Expected payment hash of the bolt11 lightning network invoice
      * @param claimerBounty Claimer bounty as request by the user
-     * @private
+     *
      * @throws {IntermediaryError} in case the response is invalid
+     *
+     * @private
      */
     private verifyReturnedData(
         resp: FromBTCLNAutoResponseType,
@@ -251,18 +287,21 @@ export class FromBTCLNAutoWrapper<
     }
 
     /**
-     * Returns a newly created swap, receiving 'amount' on lightning network
+     * Returns a newly created Lightning -> Smart chain swap using the HTLC based escrow swap protocol,
+     *  where watchtowers handle the automatic settlement of the swap on the destination chain. Also allows
+     *  specifying additional "gas drop" native token that the receipient receives on the destination chain
+     *  in the `options` argument. The user has to pay a bolt11 invoice on the input lightning network side.
      *
-     * @param signer                Smart chain signer's address intiating the swap
-     * @param amountData            Amount of token & amount to swap
-     * @param lps                   LPs (liquidity providers) to get the quotes from
-     * @param options               Quote options
-     * @param additionalParams      Additional parameters sent to the LP when creating the swap
-     * @param abortSignal           Abort signal for aborting the process
-     * @param preFetches
+     * @param recipient Recipient's address on the destination chain
+     * @param amountData Amount, token and exact input/output data for to swap
+     * @param lps An array of intermediaries (LPs) to get the quotes from
+     * @param options Optional additional quote options
+     * @param additionalParams Optional additional parameters sent to the LP when creating the swap
+     * @param abortSignal Abort signal
+     * @param preFetches Optional pre-fetches for speeding up the quoting process (mainly used internally)
      */
     create(
-        signer: string,
+        recipient: string,
         amountData: AmountData,
         lps: Intermediary[],
         options?: FromBTCLNAutoOptions,
@@ -279,7 +318,7 @@ export class FromBTCLNAutoWrapper<
         intermediary: Intermediary
     }[] {
         const _options = {
-            unsafeSkipLnNodeCheck: options?.unsafeSkipLnNodeCheck ?? this.options.unsafeSkipLnNodeCheck,
+            unsafeSkipLnNodeCheck: options?.unsafeSkipLnNodeCheck ?? this._options.unsafeSkipLnNodeCheck,
             gasAmount: options?.gasAmount ?? 0n,
             feeSafetyFactor: options?.feeSafetyFactor ?? 1.25, //No need to add much of a margin, since the claim should happen rather soon
             unsafeZeroWatchtowerFee: options?.unsafeZeroWatchtowerFee ?? false,
@@ -292,15 +331,15 @@ export class FromBTCLNAutoWrapper<
             throw new UserError("Invalid description hash length");
 
         const {secret, paymentHash} = this.getSecretAndHash();
-        const claimHash = this.contract.getHashForHtlc(paymentHash);
+        const claimHash = this._contract.getHashForHtlc(paymentHash);
 
-        const nativeTokenAddress = this.chain.getNativeCurrencyAddress();
+        const nativeTokenAddress = this._chain.getNativeCurrencyAddress();
 
         const _abortController = extendAbortController(abortSignal);
         const _preFetches = {
             pricePrefetchPromise: preFetches?.pricePrefetchPromise ?? this.preFetchPrice(amountData, _abortController.signal),
             usdPricePrefetchPromise: preFetches?.usdPricePrefetchPromise ?? this.preFetchUsdPrice(_abortController.signal),
-            claimerBountyPrefetch: preFetches?.claimerBountyPrefetch ?? this.preFetchClaimerBounty(signer, amountData, _options, _abortController),
+            claimerBountyPrefetch: preFetches?.claimerBountyPrefetch ?? this.preFetchClaimerBounty(recipient, amountData, _options, _abortController),
             gasTokenPricePrefetchPromise: _options.gasAmount!==0n || !_options.unsafeZeroWatchtowerFee ?
                 (preFetches.gasTokenPricePrefetchPromise ??= this.preFetchPrice({token: nativeTokenAddress}, _abortController.signal)) :
                 undefined
@@ -322,16 +361,16 @@ export class FromBTCLNAutoWrapper<
                             {
                                 paymentHash,
                                 amount: amountData.amount,
-                                claimer: signer,
+                                claimer: recipient,
                                 token: amountData.token.toString(),
                                 descriptionHash: _options.descriptionHash,
                                 exactOut: !amountData.exactIn,
                                 additionalParams,
-                                gasToken: this.chain.getNativeCurrencyAddress(),
+                                gasToken: this._chain.getNativeCurrencyAddress(),
                                 gasAmount: _options.gasAmount,
                                 claimerBounty: throwIfUndefined(_preFetches.claimerBountyPrefetch)
                             },
-                            this.options.postRequestTimeout, abortController.signal, retryCount>0 ? false : undefined
+                            this._options.postRequestTimeout, abortController.signal, retryCount>0 ? false : undefined
                         );
 
                         return {
@@ -381,8 +420,8 @@ export class FromBTCLNAutoWrapper<
 
                             gasPricingInfo,
 
-                            initialSwapData: await this.contract.createSwapData(
-                                ChainSwapType.HTLC, lp.getAddress(this.chainIdentifier), signer, amountData.token,
+                            initialSwapData: await this._contract.createSwapData(
+                                ChainSwapType.HTLC, lp.getAddress(this.chainIdentifier), recipient, amountData.token,
                                 resp.total, claimHash.toString("hex"),
                                 this.getRandomSequence(), BigInt(Math.floor(Date.now()/1000)), false, true,
                                 _options.gasAmount + resp.claimerBounty, resp.claimerBounty, nativeTokenAddress
@@ -405,18 +444,23 @@ export class FromBTCLNAutoWrapper<
     }
 
     /**
-     * Returns a newly created swap, receiving 'amount' from the lnurl-withdraw
+     * Returns a newly created Lightning -> Smart chain swap using the HTLC based escrow swap protocol,
+     *  where watchtowers handle the automatic settlement of the swap on the destination chain. Also allows
+     *  specifying additional "gas drop" native token that the receipient receives on the destination chain
+     *  in the `options` argument. The swap is created with an LNURL-withdraw link which will be used to pay
+     *  the generated bolt11 invoice automatically when {@link FromBTCLNSwap.waitForPayment} is called on the
+     *  swap.
      *
-     * @param signer                Smart chains signer's address intiating the swap
-     * @param lnurl                 LNURL-withdraw to withdraw funds from
-     * @param amountData            Amount of token & amount to swap
-     * @param lps                   LPs (liquidity providers) to get the quotes from
-     * @param options
-     * @param additionalParams      Additional parameters sent to the LP when creating the swap
-     * @param abortSignal           Abort signal for aborting the process
+     * @param recipient Recipient's address on the destination chain
+     * @param lnurl LNURL-withdraw link to pull the funds from
+     * @param amountData Amount, token and exact input/output data for to swap
+     * @param lps An array of intermediaries (LPs) to get the quotes from
+     * @param options Optional additional quote options
+     * @param additionalParams Optional additional parameters sent to the LP when creating the swap
+     * @param abortSignal Abort signal
      */
     async createViaLNURL(
-        signer: string,
+        recipient: string,
         lnurl: string | LNURLWithdrawParamsWithUrl,
         amountData: AmountData,
         lps: Intermediary[],
@@ -428,7 +472,7 @@ export class FromBTCLNAutoWrapper<
         intermediary: Intermediary
     }[]> {
         const _options = {
-            unsafeSkipLnNodeCheck: options?.unsafeSkipLnNodeCheck ?? this.options.unsafeSkipLnNodeCheck,
+            unsafeSkipLnNodeCheck: options?.unsafeSkipLnNodeCheck ?? this._options.unsafeSkipLnNodeCheck,
             gasAmount: options?.gasAmount ?? 0n,
             feeSafetyFactor: options?.feeSafetyFactor ?? 1.25, //No need to add much of a margin, since the claim should happen rather soon
             unsafeZeroWatchtowerFee: options?.unsafeZeroWatchtowerFee ?? false,
@@ -440,14 +484,14 @@ export class FromBTCLNAutoWrapper<
             pricePrefetchPromise: this.preFetchPrice(amountData, abortController.signal),
             usdPricePrefetchPromise: this.preFetchUsdPrice(abortController.signal),
             gasTokenPricePrefetchPromise: _options.gasAmount!==0n || !_options.unsafeZeroWatchtowerFee ?
-                this.preFetchPrice({token: this.chain.getNativeCurrencyAddress()}, abortController.signal) :
+                this.preFetchPrice({token: this._chain.getNativeCurrencyAddress()}, abortController.signal) :
                 undefined,
-            claimerBountyPrefetch: this.preFetchClaimerBounty(signer, amountData, _options, abortController)
+            claimerBountyPrefetch: this.preFetchClaimerBounty(recipient, amountData, _options, abortController)
         };
 
         try {
             const exactOutAmountPromise: Promise<bigint | undefined> | undefined = !amountData.exactIn ? preFetches.pricePrefetchPromise.then(price =>
-                this.prices.getToBtcSwapAmount(this.chainIdentifier, amountData.amount, amountData.token, abortController.signal, price)
+                this._prices.getToBtcSwapAmount(this.chainIdentifier, amountData.amount, amountData.token, abortController.signal, price)
             ).catch(e => {
                 abortController.abort(e);
                 return undefined;
@@ -469,12 +513,14 @@ export class FromBTCLNAutoWrapper<
                 if((amount * 105n / 100n) > max) throw new UserError("Amount more than LNURL-withdraw maximum");
             }
 
-            return this.create(signer, amountData, lps, _options, additionalParams, abortSignal, preFetches).map(data => {
+            return this.create(recipient, amountData, lps, _options, additionalParams, abortSignal, preFetches).map(data => {
                 return {
                     quote: data.quote.then(quote => {
-                        quote.lnurl = withdrawRequest.url;
-                        quote.lnurlK1 = withdrawRequest.k1;
-                        quote.lnurlCallback = withdrawRequest.callback;
+                        quote._setLNURLData(
+                            withdrawRequest.url,
+                            withdrawRequest.k1,
+                            withdrawRequest.callback
+                        );
 
                         const amountIn = quote.getInput().rawAmount!;
                         if(amountIn < min) throw new UserError("Amount less than LNURL-withdraw minimum");
@@ -491,6 +537,10 @@ export class FromBTCLNAutoWrapper<
         }
     }
 
+    /**
+     * @inheritDoc
+     * @internal
+     */
     protected async _checkPastSwaps(pastSwaps: FromBTCLNAutoSwap<T>[]): Promise<{
         changedSwaps: FromBTCLNAutoSwap<T>[];
         removeSwaps: FromBTCLNAutoSwap<T>[]
@@ -498,7 +548,7 @@ export class FromBTCLNAutoWrapper<
         const changedSwapSet: Set<FromBTCLNAutoSwap<T>> = new Set();
 
         const swapExpiredStatus: {[id: string]: boolean} = {};
-        const checkStatusSwaps: (FromBTCLNAutoSwap<T> & {data: T["Data"]})[] = [];
+        const checkStatusSwaps: (FromBTCLNAutoSwap<T> & {_data: T["Data"]})[] = [];
 
         await Promise.all(pastSwaps.map(async (pastSwap) => {
             if(pastSwap._shouldCheckIntermediary()) {
@@ -515,13 +565,13 @@ export class FromBTCLNAutoWrapper<
                 //Check expiry
                 swapExpiredStatus[pastSwap.getId()] = await pastSwap._verifyQuoteDefinitelyExpired();
             }
-            if(pastSwap._shouldFetchCommitStatus()) {
+            if(pastSwap._shouldFetchOnchainState()) {
                 //Add to swaps for which status should be checked
-                if(pastSwap.data!=null) checkStatusSwaps.push(pastSwap as FromBTCLNAutoSwap<T> & {data: T["Data"]});
+                if(pastSwap._data!=null) checkStatusSwaps.push(pastSwap as FromBTCLNAutoSwap<T> & {_data: T["Data"]});
             }
         }));
 
-        const swapStatuses = await this.contract.getCommitStatuses(checkStatusSwaps.map(val => ({signer: val._getInitiator(), swapData: val.data})));
+        const swapStatuses = await this._contract.getCommitStatuses(checkStatusSwaps.map(val => ({signer: val._getInitiator(), swapData: val._data})));
 
         for(let pastSwap of checkStatusSwaps) {
             const shouldSave = await pastSwap._sync(
@@ -549,7 +599,9 @@ export class FromBTCLNAutoWrapper<
         };
     }
 
-
+    /**
+     * @inheritDoc
+     */
     async recoverFromSwapDataAndState(
         init: {data: T["Data"], getInitTxId: () => Promise<string>, getTxBlock: () => Promise<{blockTime: number, blockHeight: number}>},
         state: SwapCommitState,
@@ -586,38 +638,14 @@ export class FromBTCLNAutoWrapper<
             exactIn: false
         }
         const swap = new FromBTCLNAutoSwap(this, swapInit);
-        swap.commitTxId = await init.getInitTxId();
+        swap._commitTxId = await init.getInitTxId();
         const blockData = await init.getTxBlock();
         swap.createdAt = blockData.blockTime * 1000;
         swap._setInitiated();
-        swap.state = FromBTCLNAutoSwapState.CLAIM_COMMITED;
+        swap._state = FromBTCLNAutoSwapState.CLAIM_COMMITED;
         await swap._sync(false, false, state);
         await swap._save();
         return swap;
-
-        // switch(state.type) {
-        //     case SwapCommitStateType.PAID:
-        //         secret ??= await state.getClaimResult();
-        //         swap._setSwapSecret(secret);
-        //         swap.claimTxId = await state.getClaimTxId();
-        //         swap.state = FromBTCLNAutoSwapState.CLAIM_CLAIMED;
-        //         break;
-        //     case SwapCommitStateType.NOT_COMMITED:
-        //     case SwapCommitStateType.EXPIRED:
-        //         if(state.getRefundTxId==null) return null;
-        //         swap.refundTxId = await state.getRefundTxId();
-        //         swap.state = FromBTCLNAutoSwapState.FAILED;
-        //         break;
-        //     case SwapCommitStateType.COMMITED:
-        //     case SwapCommitStateType.REFUNDABLE:
-        //         const expired = await this.contract.isExpired(swap._getInitiator(), data);
-        //         if(expired) {
-        //             swap.state = FromBTCLNAutoSwapState.EXPIRED;
-        //         } else {
-        //             swap.state = FromBTCLNAutoSwapState.CLAIM_COMMITED;
-        //         }
-        //         break;
-        // }
     }
 
 }

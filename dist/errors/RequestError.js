@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.OutOfBoundsError = exports.RequestError = void 0;
 /**
  * An error returned by the intermediary in a http response
+ *
  * @category Errors
  */
 class RequestError extends Error {
@@ -18,6 +19,12 @@ class RequestError extends Error {
         Object.setPrototypeOf(this, RequestError.prototype);
         this.httpCode = httpCode;
     }
+    /**
+     * Parses a message + a response code returned by the intermediary (LP) as an error
+     *
+     * @param msg Raw response
+     * @param httpCode HTTP response status code
+     */
     static parse(msg, httpCode) {
         try {
             const parsed = JSON.parse(msg);
@@ -33,6 +40,7 @@ class RequestError extends Error {
 exports.RequestError = RequestError;
 /**
  * An error indicating out of bounds (amount too high or too low) on swap initialization
+ *
  * @category Errors
  */
 class OutOfBoundsError extends RequestError {

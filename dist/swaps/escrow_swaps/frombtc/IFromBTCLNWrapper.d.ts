@@ -14,7 +14,15 @@ import { PaymentRequestObject, TagsObject } from "@atomiqlabs/bolt11";
 import { IEscrowSwap } from "../IEscrowSwap";
 import { LNURLWithdrawParamsWithUrl } from "../../../types/lnurl/LNURLWithdraw";
 export type IFromBTCLNDefinition<T extends ChainType, W extends IFromBTCLNWrapper<T, any>, S extends IEscrowSwap<T>> = IFromBTCDefinition<T, W, S>;
+/**
+ * Base class for wrappers of escrow-based Lightning -> Smart chain swaps
+ *
+ * @category Swaps
+ */
 export declare abstract class IFromBTCLNWrapper<T extends ChainType, D extends IFromBTCLNDefinition<T, IFromBTCLNWrapper<T, D>, IEscrowSwap<T, D>>, O extends ISwapWrapperOptions = ISwapWrapperOptions> extends IFromBTCWrapper<T, D, O> {
+    /**
+     * @internal
+     */
     protected readonly lnApi: LightningNetworkApi;
     /**
      * @param chainIdentifier
@@ -33,16 +41,11 @@ export declare abstract class IFromBTCLNWrapper<T extends ChainType, D extends I
         swapState: [IEscrowSwap];
     }>);
     /**
-     * Returns the swap expiry, leaving enough time for the user to claim the HTLC
+     * Generates a new 32-byte secret to be used as pre-image for lightning network invoice & HTLC swap
      *
-     * @param data Parsed swap data
-     */
-    getHtlcTimeout(data: SwapData): bigint;
-    /**
-     * Generates a new 32-byte secret to be used as pre-image for lightning network invoice & HTLC swap\
-     *
-     * @private
      * @returns Hash pre-image & payment hash
+     *
+     * @internal
      */
     protected getSecretAndHash(): {
         secret: Buffer;
@@ -51,10 +54,12 @@ export declare abstract class IFromBTCLNWrapper<T extends ChainType, D extends I
     /**
      * Pre-fetches intermediary's LN node capacity, doesn't throw, instead returns null
      *
-     * @param pubkeyPromise Promise that resolves when we receive "lnPublicKey" param from the intermediary thorugh
+     * @param pubkeyPromise Promise that resolves when we receive "lnPublicKey" param from the intermediary through
      *  streaming
-     * @private
+     *
      * @returns LN Node liquidity
+     *
+     * @internal
      */
     protected preFetchLnCapacity(pubkeyPromise: Promise<string | null>): Promise<LNNodeLiquidity | null>;
     /**
@@ -62,13 +67,14 @@ export declare abstract class IFromBTCLNWrapper<T extends ChainType, D extends I
      *
      * @param lp Intermediary
      * @param decodedPr Decoded bolt11 lightning network invoice
-     * @param amountIn Amount to be paid for the swap in sats
      * @param lnCapacityPrefetchPromise Pre-fetch for LN node capacity, preFetchLnCapacity()
-     * @param abortSignal
-     * @private
+     * @param abortSignal Abort signal
+     *
      * @throws {IntermediaryError} if the lightning network node doesn't have enough inbound liquidity
      * @throws {Error} if the lightning network node's inbound liquidity might be enough, but the swap would
      *  deplete more than half of the liquidity
+     *
+     * @internal
      */
     protected verifyLnNodeCapacity(lp: Intermediary, decodedPr: PaymentRequestObject & {
         tagsObject: TagsObject;
@@ -77,9 +83,19 @@ export declare abstract class IFromBTCLNWrapper<T extends ChainType, D extends I
      * Parses and fetches lnurl withdraw params from the specified lnurl
      *
      * @param lnurl LNURL to be parsed and fetched
-     * @param abortSignal
-     * @private
+     * @param abortSignal Abort signal
+     *
      * @throws {UserError} if the LNURL is invalid or if it's not a LNURL-withdraw
+     *
+     * @internal
      */
     protected getLNURLWithdraw(lnurl: string | LNURLWithdrawParamsWithUrl, abortSignal: AbortSignal): Promise<LNURLWithdrawParamsWithUrl>;
+    /**
+     * Returns the swap expiry, leaving enough time for the user to claim the HTLC
+     *
+     * @param data Parsed swap data
+     *
+     * @internal
+     */
+    _getHtlcTimeout(data: SwapData): bigint;
 }

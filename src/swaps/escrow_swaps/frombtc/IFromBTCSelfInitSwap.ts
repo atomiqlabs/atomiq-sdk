@@ -7,14 +7,24 @@ import {FeeType} from "../../../enums/FeeType";
 import {ppmToPercentage} from "../../../types/fees/PercentagePPM";
 import {TokenAmount, toTokenAmount} from "../../../types/TokenAmount";
 import {BtcToken, SCToken} from "../../../types/Token";
+import {IClaimableSwap} from "../../IClaimableSwap";
 
 export type IFromBTCSelfInitDefinition<T extends ChainType, W extends IFromBTCWrapper<T, any>, S extends IFromBTCSelfInitSwap<T>> = IEscrowSelfInitSwapDefinition<T, W, S>;
 
+/**
+ * Base class for legacy escrow-based Bitcoin (on-chain & lightning) -> Smart chain swaps,
+ *  which require the user to manually initiate the escrow on the destination smart chain
+ *
+ * @category Swaps
+ */
 export abstract class IFromBTCSelfInitSwap<
     T extends ChainType = ChainType,
     D extends IFromBTCSelfInitDefinition<T, IFromBTCWrapper<T, D>, IFromBTCSelfInitSwap<T, D, S>> = IFromBTCSelfInitDefinition<T, IFromBTCWrapper<T, any>, IFromBTCSelfInitSwap<T, any, any>>,
     S extends number = number
-> extends IEscrowSelfInitSwap<T, D, S> implements IAddressSwap {
+> extends IEscrowSelfInitSwap<T, D, S> implements IAddressSwap, IClaimableSwap<T, D, S> {
+    /**
+     * @internal
+     */
     protected abstract readonly inputToken: BtcToken;
 
     protected constructor(wrapper: D["Wrapper"], init: IEscrowSelfInitSwapInit<T["Data"]>);
@@ -27,8 +37,8 @@ export abstract class IFromBTCSelfInitSwap<
     }
 
     /**
-     * In case swapFee in BTC is not supplied it recalculates it based on swap price
-     * @protected
+     * @inheritDoc
+     * @internal
      */
     protected tryRecomputeSwapPrice() {
         const input = this.getInput();
@@ -43,35 +53,51 @@ export abstract class IFromBTCSelfInitSwap<
     //// Getters & utils
 
     /**
-     * Returns the bitcoin address or lightning invoice to be paid for the swap
+     * @inheritDoc
      */
     abstract getAddress(): string;
 
     /**
-     * Returns a string that can be displayed as QR code representation of the address or lightning invoice
-     *  (with bitcoin: or lightning: prefix)
+     * @inheritDoc
      */
     abstract getHyperlink(): string;
 
+    /**
+     * @inheritDoc
+     */
     abstract isClaimable(): boolean;
 
     /**
      * Returns if the swap can be committed
+     * @internal
      */
     protected abstract canCommit(): boolean;
 
+    /**
+     * @inheritDoc
+     * @internal
+     */
     _getInitiator(): string {
         return this.getSwapData().getClaimer();
     }
 
+    /**
+     * @inheritDoc
+     */
     getOutputTxId(): string | null {
-        return this.claimTxId ?? null;
+        return this._claimTxId ?? null;
     }
 
+    /**
+     * @inheritDoc
+     */
     getOutputAddress(): string | null {
         return this._getInitiator();
     }
 
+    /**
+     * @inheritDoc
+     */
     requiresAction(): boolean {
         return this.isClaimable();
     }
@@ -80,10 +106,21 @@ export abstract class IFromBTCSelfInitSwap<
     //////////////////////////////
     //// Amounts & fees
 
+    /**
+     * Returns the swap output amount in destination token based units without any fees, this
+     *  value is therefore always higher than the actual received output.
+     *
+     * @internal
+     */
     protected getOutAmountWithoutFee(): bigint {
         return this.getSwapData().getAmount() + this.swapFee;
     }
 
+    /**
+     * Returns the swap fee charged by the intermediary (LP) on this swap
+     *
+     * @internal
+     */
     protected getSwapFee(): Fee<T["ChainId"], BtcToken, SCToken<T["ChainId"]>> {
         if(this.pricingInfo==null) throw new Error("No pricing info known, cannot estimate fee!");
 
@@ -91,24 +128,30 @@ export abstract class IFromBTCSelfInitSwap<
         const inputWithoutFee = this.getInputWithoutFee();
         const swapFeePPM = inputWithoutFee.rawAmount==null ? 0n : feeWithoutBaseFee * 1000000n / inputWithoutFee.rawAmount;
 
-        const amountInSrcToken = toTokenAmount(this.swapFeeBtc, this.inputToken, this.wrapper.prices, this.pricingInfo);
+        const amountInSrcToken = toTokenAmount(this.swapFeeBtc, this.inputToken, this.wrapper._prices, this.pricingInfo);
         return {
             amountInSrcToken,
-            amountInDstToken: toTokenAmount(this.swapFee, this.wrapper.tokens[this.getSwapData().getToken()], this.wrapper.prices, this.pricingInfo),
+            amountInDstToken: toTokenAmount(this.swapFee, this.wrapper._tokens[this.getSwapData().getToken()], this.wrapper._prices, this.pricingInfo),
             currentUsdValue: amountInSrcToken.currentUsdValue,
             usdValue: amountInSrcToken.usdValue,
             pastUsdValue: amountInSrcToken.pastUsdValue,
             composition: {
-                base: toTokenAmount(this.pricingInfo.satsBaseFee, this.inputToken, this.wrapper.prices, this.pricingInfo),
+                base: toTokenAmount(this.pricingInfo.satsBaseFee, this.inputToken, this.wrapper._prices, this.pricingInfo),
                 percentage: ppmToPercentage(swapFeePPM)
             }
         };
     }
 
+    /**
+     * @inheritDoc
+     */
     getFee(): Fee {
         return this.getSwapFee();
     }
 
+    /**
+     * @inheritDoc
+     */
     getFeeBreakdown(): [{type: FeeType.SWAP, fee: Fee<T["ChainId"], BtcToken, SCToken<T["ChainId"]>>}] {
         return [{
             type: FeeType.SWAP,
@@ -116,45 +159,70 @@ export abstract class IFromBTCSelfInitSwap<
         }];
     }
 
+    /**
+     * @inheritDoc
+     */
     getOutputToken(): SCToken<T["ChainId"]> {
-        return this.wrapper.tokens[this.getSwapData().getToken()];
+        return this.wrapper._tokens[this.getSwapData().getToken()];
     }
 
+    /**
+     * @inheritDoc
+     */
     getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
-        return toTokenAmount(this.getSwapData().getAmount(), this.wrapper.tokens[this.getSwapData().getToken()], this.wrapper.prices, this.pricingInfo);
+        return toTokenAmount(this.getSwapData().getAmount(), this.wrapper._tokens[this.getSwapData().getToken()], this.wrapper._prices, this.pricingInfo);
     }
 
+    /**
+     * @inheritDoc
+     */
     abstract getInput(): TokenAmount<T["ChainId"], BtcToken>;
 
+    /**
+     * @inheritDoc
+     */
     getInputWithoutFee(): TokenAmount<T["ChainId"], BtcToken> {
         const input = this.getInput();
-        if(input.rawAmount==null) return toTokenAmount(null, this.inputToken, this.wrapper.prices, this.pricingInfo);
-        return toTokenAmount(input.rawAmount - this.swapFeeBtc, this.inputToken, this.wrapper.prices, this.pricingInfo);
+        if(input.rawAmount==null) return toTokenAmount(null, this.inputToken, this.wrapper._prices, this.pricingInfo);
+        return toTokenAmount(input.rawAmount - this.swapFeeBtc, this.inputToken, this.wrapper._prices, this.pricingInfo);
     }
 
-    getSecurityDeposit(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
-        return toTokenAmount(this.getSwapData().getSecurityDeposit(), this.wrapper.getNativeToken(), this.wrapper.prices, this.pricingInfo);
-    }
-
-    getTotalDeposit(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
-        return toTokenAmount(this.getSwapData().getTotalDeposit(), this.wrapper.getNativeToken(), this.wrapper.prices, this.pricingInfo);
-    }
-
+    /**
+     * @inheritDoc
+     */
     async hasEnoughForTxFees(): Promise<{
         enoughBalance: boolean,
         balance: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>,
         required: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>
     }> {
         const [balance, commitFee] = await Promise.all([
-            this.wrapper.contract.getBalance(this._getInitiator(), this.wrapper.chain.getNativeCurrencyAddress(), false),
+            this.wrapper._contract.getBalance(this._getInitiator(), this.wrapper._chain.getNativeCurrencyAddress(), false),
             this.getCommitFee()
         ]);
         const totalFee = commitFee + this.getSwapData().getTotalDeposit();
         return {
             enoughBalance: balance >= totalFee,
-            balance: toTokenAmount(balance, this.wrapper.getNativeToken(), this.wrapper.prices, this.pricingInfo),
-            required: toTokenAmount(totalFee, this.wrapper.getNativeToken(), this.wrapper.prices, this.pricingInfo)
+            balance: toTokenAmount(balance, this.wrapper._getNativeToken(), this.wrapper._prices, this.pricingInfo),
+            required: toTokenAmount(totalFee, this.wrapper._getNativeToken(), this.wrapper._prices, this.pricingInfo)
         };
+    }
+
+    /**
+     * Returns the amount of native token of the destination chain locked up during initialization of the escrow
+     *  to act as a security deposit that can be taken by the intermediary (LP) if the user doesn't go through
+     *  with the swap
+     */
+    getSecurityDeposit(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
+        return toTokenAmount(this.getSwapData().getSecurityDeposit(), this.wrapper._getNativeToken(), this.wrapper._prices, this.pricingInfo);
+    }
+
+    /**
+     * Returns the total amount of native token of the destination chain locked up during initialization of the escrow.
+     *  This covers the security deposit and the watchtower fee (if applicable), it is calculated a maximum of those
+     *  two values.
+     */
+    getTotalDeposit(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
+        return toTokenAmount(this.getSwapData().getTotalDeposit(), this.wrapper._getNativeToken(), this.wrapper._prices, this.pricingInfo);
     }
 
 
@@ -162,65 +230,66 @@ export abstract class IFromBTCSelfInitSwap<
     //// Commit
 
     /**
-     * Returns the transactions required for committing the swap on-chain, locking the tokens from the intermediary
-     *  in an HTLC or PTLC
+     * Creates the escrow on the destination smart chain side, pre-locking the tokens from the intermediary (LP)
+     *  into an escrow.
      *
-     * @param skipChecks Skip checks like making sure init signature is still valid and swap wasn't commited yet
-     *  (this is handled when swap is created (quoted), if you commit right after quoting, you can use skipChecks=true)
+     * @inheritDoc
+     *
      * @throws {Error} When in invalid state to commit the swap
      */
     async txsCommit(skipChecks?: boolean): Promise<T["TX"][]> {
         if(!this.canCommit()) throw new Error("Must be in CREATED state!");
-        if(this.data==null || this.signatureData==null) throw new Error("data or signature data is null, invalid state?");
+        if(this._data==null || this.signatureData==null) throw new Error("data or signature data is null, invalid state?");
 
         if(!this.initiated) {
             this.initiated = true;
             await this._saveAndEmit();
         }
 
-        return await this.wrapper.contract.txsInit(
-            this._getInitiator(), this.data, this.signatureData, skipChecks, this.feeRate
+        return await this.wrapper._contract.txsInit(
+            this._getInitiator(), this._data, this.signatureData, skipChecks, this.feeRate
         ).catch(e => Promise.reject(e instanceof SignatureVerificationError ? new Error("Request timed out") : e));
     }
 
     /**
-     * Commits the swap on-chain, locking the tokens from the intermediary in an HTLC or PTLC
+     * Creates the escrow on the destination smart chain side, pre-locking the tokens from the intermediary (LP)
+     *  into an escrow.
      *
-     * @param signer Signer to sign the transactions with, must be the same as used in the initialization
-     * @param abortSignal Abort signal to stop waiting for the transaction confirmation and abort
-     * @param skipChecks Skip checks like making sure init signature is still valid and swap wasn't commited yet
-     *  (this is handled when swap is created (quoted), if you commit right after quoting, you can use skipChecks=true)
+     * @inheritDoc
+     *
      * @throws {Error} If invalid signer is provided that doesn't match the swap data
      */
     abstract commit(signer: T["Signer"] | T["NativeSigner"], abortSignal?: AbortSignal, skipChecks?: boolean): Promise<string>;
-
-    abstract waitTillCommited(abortSignal?: AbortSignal): Promise<void>;
 
 
     //////////////////////////////
     //// Claim
 
-    getClaimFee(): Promise<bigint> {
-        return this.wrapper.contract.getClaimFee(this._getInitiator(), this.getSwapData());
+    /**
+     * Returns the transaction fee required for the claim transaction to settle the escrow on the destination
+     *  smart chain
+     */
+    async getClaimNetworkFee(): Promise<TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>> {
+        const swapContract: T["Contract"] = this.wrapper._contract;
+        return toTokenAmount(
+            await swapContract.getClaimFee(this._getInitiator(), this.getSwapData()),
+            this.wrapper._getNativeToken(),
+            this.wrapper._prices
+        );
     }
 
+    /**
+     * @inheritDoc
+     */
     abstract txsClaim(signer?: T["Signer"]): Promise<T["TX"][]>;
 
     /**
-     * Claims and finishes the swap
-     *
-     * @param signer Signer to sign the transactions with, can also be different to the initializer
-     * @param abortSignal Abort signal to stop waiting for transaction confirmation
+     * @inheritDoc
      */
     abstract claim(signer: T["Signer"] | T["NativeSigner"], abortSignal?: AbortSignal): Promise<string>;
 
     /**
-     * Waits till the swap is successfully claimed
-     *
-     * @param maxWaitTimeSeconds Maximum time in seconds to wait for the swap to be settled
-     * @param abortSignal AbortSignal
-     * @throws {Error} If swap is in invalid state (must be COMMIT)
-     * @returns {boolean} whether the swap was claimed in time or not
+     * @inheritDoc
      */
     abstract waitTillClaimed(maxWaitTimeSeconds?: number, abortSignal?: AbortSignal): Promise<boolean>;
 

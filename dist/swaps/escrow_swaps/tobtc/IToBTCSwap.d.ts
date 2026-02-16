@@ -7,6 +7,7 @@ import { IRefundableSwap } from "../../IRefundableSwap";
 import { FeeType } from "../../../enums/FeeType";
 import { TokenAmount } from "../../../types/TokenAmount";
 import { BtcToken, SCToken } from "../../../types/Token";
+import { SwapExecutionActionCommit } from "../../../types/SwapExecutionAction";
 export type IToBTCSwapInit<T extends SwapData> = IEscrowSelfInitSwapInit<T> & {
     signatureData?: SignatureData;
     data: T;
@@ -14,24 +15,94 @@ export type IToBTCSwapInit<T extends SwapData> = IEscrowSelfInitSwapInit<T> & {
     networkFeeBtc: bigint;
 };
 export declare function isIToBTCSwapInit<T extends SwapData>(obj: any): obj is IToBTCSwapInit<T>;
+/**
+ * State enum for escrow-based Smart chain -> Bitcoin (on-chain & lightning) swaps
+ *
+ * @category Swaps
+ */
+export declare enum ToBTCSwapState {
+    /**
+     * Intermediary (LP) was unable to process the swap and the funds were refunded on the
+     *  source chain
+     */
+    REFUNDED = -3,
+    /**
+     * Swap has expired for good and there is no way how it can be executed anymore
+     */
+    QUOTE_EXPIRED = -2,
+    /**
+     * A swap is almost expired, and it should be presented to the user as expired, though
+     *  there is still a chance that it will be processed
+     */
+    QUOTE_SOFT_EXPIRED = -1,
+    /**
+     * Swap was created, use the {@link IToBTCSwap.commit} or {@link IToBTCSwap.txsCommit} to
+     *  initiate it by creating the swap escrow on the source chain
+     */
+    CREATED = 0,
+    /**
+     * Swap escrow was initiated (committed) on the source chain, the intermediary (LP) will
+     *  now process the swap. You can wait till that happens with the {@link IToBTCSwap.waitForPayment}
+     *  function.
+     */
+    COMMITED = 1,
+    /**
+     * The intermediary (LP) has processed the transaction and sent out the funds on the destination chain,
+     *  but hasn't yet settled the escrow on the source chain.
+     */
+    SOFT_CLAIMED = 2,
+    /**
+     * Swap was successfully settled by the intermediary (LP) on the source chain
+     */
+    CLAIMED = 3,
+    /**
+     * Intermediary (LP) was unable to process the swap and the swap escrow on the source chain
+     *  is refundable, call {@link IToBTCSwap.refund} or {@link IToBTCSwap.txsRefund} to refund
+     */
+    REFUNDABLE = 4
+}
+/**
+ * Base class for escrow-based Smart chain -> Bitcoin (on-chain & lightning) swaps
+ *
+ * @category Swaps
+ */
 export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D extends IToBTCDefinition<T, IToBTCWrapper<T, D>, IToBTCSwap<T, D>> = IToBTCDefinition<T, IToBTCWrapper<T, any>, IToBTCSwap<T, any>>> extends IEscrowSelfInitSwap<T, D, ToBTCSwapState> implements IRefundableSwap<T, D, ToBTCSwapState> {
-    protected readonly networkFee: bigint;
-    protected networkFeeBtc: bigint;
+    /**
+     * @internal
+     */
     protected readonly abstract outputToken: BtcToken;
-    readonly data: T["Data"];
-    readonly signatureData?: SignatureData;
+    /**
+     * @internal
+     */
+    protected readonly networkFee: bigint;
+    /**
+     * @internal
+     */
+    protected networkFeeBtc: bigint;
+    /**
+     * @internal
+     */
+    readonly _data: T["Data"];
     protected constructor(wrapper: D["Wrapper"], serializedObject: any);
     protected constructor(wrapper: D["Wrapper"], init: IToBTCSwapInit<T["Data"]>);
+    /**
+     * @inheritDoc
+     * @internal
+     */
     protected getSwapData(): T["Data"];
+    /**
+     * @inheritDoc
+     * @internal
+     */
     protected upgradeVersion(): void;
     /**
-     * In case swapFee in BTC is not supplied it recalculates it based on swap price
-     * @protected
+     * @inheritDoc
+     * @internal
      */
     protected tryRecomputeSwapPrice(): void;
     /**
      * Returns the payment hash identifier to be sent to the LP for getStatus and getRefund
-     * @protected
+     * @internal
      */
     protected getLpIdentifier(): string;
     /**
@@ -41,31 +112,73 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
      * @param check Whether to check the passed result
      * @returns true if check passed, false if check failed with a soft error (e.g. tx not yet found in the mempool)
      * @throws {IntermediaryError} When the data returned by the intermediary isn't valid
+     *
+     * @internal
      */
     abstract _setPaymentResult(result: {
         secret?: string;
         txId?: string;
     }, check?: boolean): Promise<boolean>;
+    /**
+     * @inheritDoc
+     */
     getInputAddress(): string | null;
+    /**
+     * @inheritDoc
+     */
     getInputTxId(): string | null;
+    /**
+     * @inheritDoc
+     */
     requiresAction(): boolean;
     /**
-     * Returns whether the swap is finished and in its terminal state (this can mean successful, refunded or failed)
+     * @inheritDoc
      */
     isFinished(): boolean;
+    /**
+     * @inheritDoc
+     */
     isRefundable(): boolean;
+    /**
+     * @inheritDoc
+     */
     isQuoteExpired(): boolean;
+    /**
+     * @inheritDoc
+     */
     isQuoteSoftExpired(): boolean;
+    /**
+     * @inheritDoc
+     */
     isSuccessful(): boolean;
+    /**
+     * @inheritDoc
+     */
     isFailed(): boolean;
+    /**
+     * @inheritDoc
+     * @internal
+     */
     _getInitiator(): string;
+    /**
+     * Returns the swap fee charged by the intermediary (LP) on this swap
+     *
+     * @internal
+     */
     protected getSwapFee(): Fee<T["ChainId"], SCToken<T["ChainId"]>, BtcToken>;
     /**
-     * Returns network fee for the swap, the fee is represented in source currency & destination currency, but is
-     *  paid only once
+     * Returns network fee for on the destination chain for the swap
+     *
+     * @internal
      */
     protected getNetworkFee(): Fee<T["ChainId"], SCToken<T["ChainId"]>, BtcToken>;
+    /**
+     * @inheritDoc
+     */
     getFee(): Fee<T["ChainId"], SCToken<T["ChainId"]>, BtcToken>;
+    /**
+     * @inheritDoc
+     */
     getFeeBreakdown(): [
         {
             type: FeeType.SWAP;
@@ -76,11 +189,20 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
             fee: Fee<T["ChainId"], SCToken<T["ChainId"]>, BtcToken>;
         }
     ];
+    /**
+     * @inheritDoc
+     */
     getInputToken(): SCToken<T["ChainId"]>;
+    /**
+     * @inheritDoc
+     */
     getInput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+    /**
+     * @inheritDoc
+     */
     getInputWithoutFee(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
     /**
-     * Checks if the intiator/sender has enough balance to go through with the swap
+     * Checks if the initiator/sender on the source chain has enough balance to go through with the swap
      */
     hasEnoughBalance(): Promise<{
         enoughBalance: boolean;
@@ -88,7 +210,8 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
         required: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
     }>;
     /**
-     * Check if the initiator/sender has enough balance to cover the transaction fee for processing the swap
+     * Checks if the initiator/sender on the source chain has enough native token balance
+     *  to cover the transaction fee of initiating the swap
      */
     hasEnoughForTxFees(): Promise<{
         enoughBalance: boolean;
@@ -103,7 +226,7 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
      * @param options Optional options for the swap like feeRate, AbortSignal, and timeouts/intervals
      *
      * @returns {boolean} Whether the swap was successfully processed by the LP, in case `false` is returned
-     *  the user can refund their funds back on the source chain by calling `swap.refund()`
+     *  the user can refund their funds back on the source chain by calling {@link refund}
      */
     execute(signer: T["Signer"] | T["NativeSigner"], callbacks?: {
         onSourceTransactionSent?: (sourceTxId: string) => void;
@@ -114,41 +237,45 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
         paymentCheckIntervalSeconds?: number;
         maxWaitTillSwapProcessedSeconds?: number;
     }): Promise<boolean>;
+    /**
+     * @inheritDoc
+     * @param options.skipChecks Skip checks like making sure init signature is still valid and swap wasn't commited yet
+     *  (this is handled on swap creation, if you commit right after quoting, you can use `skipChecks=true`)
+     */
     txsExecute(options?: {
         skipChecks?: boolean;
-    }): Promise<{
-        name: "Commit";
-        description: string;
-        chain: T["ChainId"];
-        txs: T["TX"][];
-    }[]>;
+    }): Promise<[
+        SwapExecutionActionCommit<T>
+    ]>;
     /**
-     * Returns transactions for committing the swap on-chain, initiating the swap
+     * After sending the transaction manually be sure to call the {@link waitTillCommited} function
+     *  to wait till the initiation transaction is observed, processed by the SDK and state of the swap
+     *  properly updated.
      *
-     * @param skipChecks Skip checks like making sure init signature is still valid and swap wasn't commited yet
-     *  (this is handled on swap creation, if you commit right after quoting, you can use skipChecks=true)
+     * @inheritDoc
      *
      * @throws {Error} When in invalid state (not PR_CREATED)
      */
     txsCommit(skipChecks?: boolean): Promise<T["TX"][]>;
     /**
-     * Commits the swap on-chain, initiating the swap
+     * @inheritDoc
      *
-     * @param _signer Signer to sign the transactions with, must be the same as used in the initialization
-     * @param abortSignal Abort signal
-     * @param skipChecks Skip checks like making sure init signature is still valid and swap wasn't commited yet
-     *  (this is handled on swap creation, if you commit right after quoting, you can skipChecks)`
-     * @param onBeforeTxSent
      * @throws {Error} If invalid signer is provided that doesn't match the swap data
      */
     commit(_signer: T["Signer"] | T["NativeSigner"], abortSignal?: AbortSignal, skipChecks?: boolean, onBeforeTxSent?: (txId: string) => void): Promise<string>;
     /**
-     * Waits till a swap is committed, should be called after sending the commit transactions manually
+     * @inheritDoc
      *
-     * @param abortSignal   AbortSignal
-     * @throws {Error} If swap is not in the correct state (must be CREATED)
+     * @throws {Error} If swap is not in the correct state (must be {@link ToBTCSwapState.CREATED})
      */
     waitTillCommited(abortSignal?: AbortSignal): Promise<void>;
+    /**
+     * Waits till the swap is processed by the intermediary (LP)
+     *
+     * @param checkIntervalSeconds How often to poll the intermediary for status (5 seconds default)
+     * @param abortSignal Abort signal
+     * @internal
+     */
     protected waitTillIntermediarySwapProcessed(checkIntervalSeconds?: number, abortSignal?: AbortSignal): Promise<RefundAuthorizationResponse>;
     /**
      * Checks whether the swap was already processed by the LP and is either successful (requires proof which is
@@ -156,31 +283,33 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
      *  refund.
      *
      * @param save whether to save the data
-     * @returns true if swap is processed, false if the swap is still ongoing
-     * @private
+     * @returns `true` if swap is processed, `false` if the swap is still ongoing
+     *
+     * @internal
      */
     protected checkIntermediarySwapProcessed(save?: boolean): Promise<boolean>;
     /**
-     * A blocking promise resolving when swap was concluded by the intermediary,
+     * A blocking promise resolving when swap was concluded by the intermediary (LP),
      *  rejecting in case of failure
      *
      * @param maxWaitTimeSeconds Maximum time in seconds to wait for the swap to be settled, an error is thrown if the
      *  swap is taking too long to claim
-     * @param checkIntervalSeconds  How often to poll the intermediary for answer
-     * @param abortSignal           Abort signal
-     * @returns {Promise<boolean>}  Was the payment successful? If not we can refund.
+     * @param checkIntervalSeconds How often to poll the intermediary for answer
+     * @param abortSignal Abort signal
+     * @returns `true` if swap was successful, `false` if swap failed and we can refund
+     *
      * @throws {IntermediaryError} If a swap is determined expired by the intermediary, but it is actually still valid
      * @throws {SignatureVerificationError} If the swap should be cooperatively refundable but the intermediary returned
      *  invalid refund signature
-     * @throws {Error} When swap expires or if the swap has invalid state (must be COMMITED)
+     * @throws {Error} When swap expires or if the swap has invalid state (must be {@link ToBTCSwapState.COMMITED})
      */
     waitForPayment(maxWaitTimeSeconds?: number, checkIntervalSeconds?: number, abortSignal?: AbortSignal): Promise<boolean>;
     /**
      * Get the estimated smart chain transaction fee of the refund transaction
      */
-    getRefundFee(): Promise<bigint>;
+    getRefundNetworkFee(): Promise<TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>>;
     /**
-     * Returns transactions for refunding the swap if the swap is in refundable state, you can check so with isRefundable()
+     * @inheritDoc
      *
      * @throws {IntermediaryError} If intermediary returns invalid response in case cooperative refund should be used
      * @throws {SignatureVerificationError} If intermediary returned invalid cooperative refund signature
@@ -188,21 +317,22 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
      */
     txsRefund(signer?: string): Promise<T["TX"][]>;
     /**
-     * Refunds the swap if the swap is in refundable state, you can check so with isRefundable()
+     * @inheritDoc
      *
-     * @param _signer Signer to sign the transactions with, must be the same as used in the initialization
-     * @param abortSignal               Abort signal
      * @throws {Error} If invalid signer is provided that doesn't match the swap data
      */
     refund(_signer: T["Signer"] | T["NativeSigner"], abortSignal?: AbortSignal): Promise<string>;
     /**
-     * Waits till a swap is refunded, should be called after sending the refund transactions manually
+     * @inheritDoc
      *
-     * @param abortSignal   AbortSignal
-     * @throws {Error} When swap is not in a valid state (must be COMMITED)
+     * @throws {Error} When swap is not in a valid state (must be {@link ToBTCSwapState.COMMITED} or
+     *  {@link ToBTCSwapState.REFUNDABLE})
      * @throws {Error} If we tried to refund but claimer was able to claim first
      */
     waitTillRefunded(abortSignal?: AbortSignal): Promise<void>;
+    /**
+     * @inheritDoc
+     */
     serialize(): any;
     /**
      * Checks the swap's state on-chain and compares it to its internal state, updates/changes it according to on-chain
@@ -211,19 +341,29 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
      * @private
      */
     private syncStateFromChain;
-    _shouldFetchCommitStatus(): boolean;
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    _shouldFetchOnchainState(): boolean;
+    /**
+     * @inheritDoc
+     * @internal
+     */
     _shouldFetchExpiryStatus(): boolean;
+    /**
+     * @inheritDoc
+     * @internal
+     */
     _sync(save?: boolean, quoteDefinitelyExpired?: boolean, commitStatus?: SwapCommitState): Promise<boolean>;
+    /**
+     * @inheritDoc
+     * @internal
+     */
     _forciblySetOnchainState(commitStatus: SwapCommitState): Promise<boolean>;
+    /**
+     * @inheritDoc
+     * @internal
+     */
     _tick(save?: boolean): Promise<boolean>;
-}
-export declare enum ToBTCSwapState {
-    REFUNDED = -3,
-    QUOTE_EXPIRED = -2,
-    QUOTE_SOFT_EXPIRED = -1,
-    CREATED = 0,
-    COMMITED = 1,
-    SOFT_CLAIMED = 2,
-    CLAIMED = 3,
-    REFUNDABLE = 4
 }

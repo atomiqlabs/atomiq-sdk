@@ -33,7 +33,8 @@ declare const indexes: readonly [{
     readonly nullable: true;
 }];
 /**
- * Index types for swap storage
+ * Simple index types for SDK swap storage
+ *
  * @category Storage
  */
 export type UnifiedSwapStorageIndexes = typeof indexes;
@@ -51,19 +52,31 @@ declare const compositeIndexes: readonly [{
     readonly unique: false;
 }];
 /**
- * Composite index types for swap storage
+ * Composite index types for SDK swap storage
+ *
  * @category Storage
  */
 export type UnifiedSwapStorageCompositeIndexes = typeof compositeIndexes;
 /**
- * Unified swap persistence layer with caching
+ * Unified swap persistence layer for the SDK utilizing an underlying {@link IUnifiedStorage} instance
+ *  with optional in-memory caching via weak refs {@link WeakRef}
+ *
  * @category Storage
  */
 export declare class UnifiedSwapStorage<T extends ChainType> {
     readonly storage: IUnifiedStorage<UnifiedSwapStorageIndexes, UnifiedSwapStorageCompositeIndexes>;
     readonly weakRefCache: Map<string, WeakRef<ISwap<T>>>;
     readonly noWeakRefMap?: boolean;
+    /**
+     * @param storage Underlying storage persistence layer
+     * @param noWeakRefMap Whether to disable caching of the swap objects in the weak ref map, this
+     *  should be set when you need multiple different clients accessing the same swap database (such
+     *  as when running the SDK in a serverless environment like AWS or Azure)
+     */
     constructor(storage: IUnifiedStorage<UnifiedSwapStorageIndexes, UnifiedSwapStorageCompositeIndexes>, noWeakRefMap?: boolean);
+    /**
+     * Initializes the underlying storage
+     */
     init(): Promise<void>;
     /**
      * Params are specified in the following way:
@@ -74,9 +87,26 @@ export declare class UnifiedSwapStorage<T extends ChainType> {
      * @param reviver
      */
     query<S extends ISwap<T>>(params: Array<Array<QueryParams>>, reviver: (obj: any) => S | null | undefined): Promise<Array<S>>;
+    /**
+     * Saves the swap to storage, updating indexes as needed
+     *
+     * @param value Swap to save
+     */
     save<S extends ISwap<T>>(value: S): Promise<void>;
+    /**
+     * Saves multiple swaps to storage in a batch operation
+     * @param values Array of swaps to save
+     */
     saveAll<S extends ISwap<T>>(values: S[]): Promise<void>;
+    /**
+     * Removes a swap from storage
+     * @param value Swap to remove
+     */
     remove<S extends ISwap<T>>(value: S): Promise<void>;
+    /**
+     * Removes multiple swaps from storage in a batch operation
+     * @param values Array of swaps to remove
+     */
     removeAll<S extends ISwap<T>>(values: S[]): Promise<void>;
 }
 export {};

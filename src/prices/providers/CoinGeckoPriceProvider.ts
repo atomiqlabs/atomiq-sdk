@@ -17,6 +17,9 @@ export class CoinGeckoPriceProvider<T extends MultiChain> extends HttpPriceProvi
         super(coinsMap, url, httpRequestTimeout);
     }
 
+    /**
+     * @inheritDoc
+     */
     protected async fetchPrice(token: CoinType, abortSignal?: AbortSignal): Promise<bigint> {
         let response = await httpGet<CoinGeckoResponse<"sats">>(
             this.url+"/simple/price?ids="+token.coinId+"&vs_currencies=sats&precision=6",
@@ -27,6 +30,9 @@ export class CoinGeckoPriceProvider<T extends MultiChain> extends HttpPriceProvi
         return BigInt(response[token.coinId].sats*1000000);
     }
 
+    /**
+     * @inheritDoc
+     */
     protected async fetchUsdPrice(abortSignal?: AbortSignal): Promise<number> {
         let response = await httpGet<CoinGeckoResponse<"usd">>(
             this.url+"/simple/price?ids=bitcoin&vs_currencies=usd&precision=9",

@@ -2,8 +2,9 @@ import { PercentagePPM } from "./PercentagePPM";
 import { TokenAmount } from "../TokenAmount";
 import { Token } from "../Token";
 /**
- * Represents a fee in both source and destination tokens, as well as providing USD valuation helpers and
+ * Fee represented in both, source and destination tokens, as well as providing USD valuation helpers and
  *  fee composition
+ *
  * @category Pricing and LPs
  */
 export type Fee<ChainIdentifier extends string = string, TSrc extends Token<ChainIdentifier> = Token<ChainIdentifier>, TDst extends Token<ChainIdentifier> = Token<ChainIdentifier>> = {

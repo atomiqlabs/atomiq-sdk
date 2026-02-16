@@ -4,7 +4,9 @@ exports.toTokenAmount = void 0;
 const Utils_1 = require("../utils/Utils");
 /**
  * Factory function to create a TokenAmount
+ *
  * @category Tokens
+ * @internal
  */
 function toTokenAmount(amount, token, prices, pricingInfo) {
     if (amount == null)

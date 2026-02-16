@@ -47,6 +47,7 @@ const indexes = {
 };
 /**
  * Browser IndexedDB storage implementation
+ *
  * @category Storage
  */
 class IndexedDBUnifiedStorage {
@@ -130,7 +131,15 @@ class IndexedDBUnifiedStorage {
             return false;
         }
     }
-    //NOTE: Reviver also needs to update the swap to the latest version
+    /**
+     * Attempts to migrate the swap database from old implementations (either using prior version of IndexedDB or
+     *  Local Storage)
+     *
+     * NOTE: Reviver also needs to update the swap to the latest version
+     *
+     * @param storageKeys An array of tuples of storage keys used for the corresponding swap types
+     * @param reviver Swap data deserializer
+     */
     async tryMigrate(storageKeys, reviver) {
         let someMigrated = false;
         for (let storageKey of storageKeys) {
@@ -188,6 +197,9 @@ class IndexedDBUnifiedStorage {
         const result = await Promise.all(promises);
         return result.flat();
     }
+    /**
+     * @inheritDoc
+     */
     async init() {
         if (this.db == null) {
             this.db = await new Promise((resolve, reject) => {
@@ -206,11 +218,7 @@ class IndexedDBUnifiedStorage {
         }
     }
     /**
-     * Params are specified in the following way:
-     *  - [[condition1, condition2]] - returns all rows where condition1 AND condition2 is met
-     *  - [[condition1], [condition2]] - returns all rows where condition1 OR condition2 is met
-     *  - [[condition1, condition2], [condition3]] - returns all rows where (condition1 AND condition2) OR condition3 is met
-     * @param params
+     * @inheritDoc
      */
     async query(params) {
         if (params.length === 0)
@@ -219,6 +227,9 @@ class IndexedDBUnifiedStorage {
         const resultSet = new Set(results.flat()); //Deduplicate
         return Array.from(resultSet);
     }
+    /**
+     * @internal
+     */
     async querySingle(params) {
         if (params.length === 0) {
             return await this.executeTransaction((objectStore) => objectStore.getAll(), true);
@@ -250,10 +261,16 @@ class IndexedDBUnifiedStorage {
             return await this.executeTransactionWithCursor(objectStore => [objectStore.openCursor()], (val) => matches(setConditions, val));
         }
     }
+    /**
+     * @inheritDoc
+     */
     async remove(object) {
         await this.executeTransaction(store => store.delete(object.id), false)
             .catch(() => null);
     }
+    /**
+     * @inheritDoc
+     */
     async removeAll(arr) {
         if (arr.length === 0)
             return;
@@ -261,9 +278,15 @@ class IndexedDBUnifiedStorage {
             return store.delete(object.id);
         }), false);
     }
+    /**
+     * @inheritDoc
+     */
     async save(object) {
         await this.executeTransaction(store => store.put(object), false);
     }
+    /**
+     * @inheritDoc
+     */
     async saveAll(arr) {
         if (arr.length === 0)
             return;

@@ -11,14 +11,23 @@ class KrakenPriceProvider extends ExchangePriceProvider_1.ExchangePriceProvider 
     constructor(coinsMap, url = "https://api.kraken.com/0", httpRequestTimeout) {
         super(coinsMap, url, httpRequestTimeout);
     }
+    /**
+     * @inheritDoc
+     */
     async fetchPair(pair, abortSignal) {
         const response = await (0, HttpUtils_1.httpGet)(this.url + "/public/Ticker?pair=" + pair, this.httpRequestTimeout, abortSignal);
         return parseFloat(response.result[pair].c[0]);
     }
+    /**
+     * @inheritDoc
+     */
     async fetchUsdPrice(abortSignal) {
         const response = await (0, HttpUtils_1.httpGet)(this.url + "/public/Ticker?pair=XBTUSDC", this.httpRequestTimeout, abortSignal);
         return parseFloat(response.result["XBTUSDC"].c[0]) / 100000000;
     }
+    /**
+     * @inheritDoc
+     */
     async fetchPrice(token, abortSignal) {
         const pairs = token.coinId.split(";");
         const response = await (0, HttpUtils_1.httpGet)(this.url + "/public/Ticker?pair=" + pairs.map(val => val.startsWith("!") ? val.substring(1) : val).join(","), this.httpRequestTimeout, abortSignal);

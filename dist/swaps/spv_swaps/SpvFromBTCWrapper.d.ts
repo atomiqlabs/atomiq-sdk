@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import { ISwapWrapper, ISwapWrapperOptions, SwapTypeDefinition, WrapperCtorTokens } from "../ISwapWrapper";
-import { BitcoinRpcWithAddressIndex, BtcBlock, BtcRelay, ChainEvent, ChainType, RelaySynchronizer, SpvVaultClaimEvent, SpvVaultCloseEvent, SpvVaultData, SpvVaultFrontEvent, SpvWithdrawalClaimedState, SpvWithdrawalFrontedState } from "@atomiqlabs/base";
+import { BitcoinRpcWithAddressIndex, BtcBlock, BtcRelay, ChainEvent, ChainType, RelaySynchronizer, SpvVaultData, SpvWithdrawalClaimedState, SpvWithdrawalFrontedState } from "@atomiqlabs/base";
 import { SpvFromBTCSwap, SpvFromBTCSwapState } from "./SpvFromBTCSwap";
 import { BTC_NETWORK } from "@scure/btc-signer/utils";
 import { SwapType } from "../../enums/SwapType";
@@ -30,15 +30,51 @@ export type SpvFromBTCWrapperOptions = ISwapWrapperOptions & {
     maxBtcFeeOffset: number;
 };
 export type SpvFromBTCTypeDefinition<T extends ChainType> = SwapTypeDefinition<T, SpvFromBTCWrapper<T>, SpvFromBTCSwap<T>>;
+/**
+ * New spv vault (UTXO-controlled vault) based swaps for Bitcoin -> Smart chain swaps not requiring
+ *  any initiation on the destination chain, and with the added possibility for the user to receive
+ *  a native token on the destination chain as part of the swap (a "gas drop" feature).
+ *
+ * @category Swaps
+ */
 export declare class SpvFromBTCWrapper<T extends ChainType> extends ISwapWrapper<T, SpvFromBTCTypeDefinition<T>, SpvFromBTCWrapperOptions> implements IClaimableSwapWrapper<SpvFromBTCSwap<T>> {
-    readonly claimableSwapStates: SpvFromBTCSwapState[];
-    readonly TYPE = SwapType.SPV_VAULT_FROM_BTC;
-    readonly swapDeserializer: typeof SpvFromBTCSwap;
-    readonly synchronizer: RelaySynchronizer<any, T["TX"], any>;
-    readonly contract: T["SpvVaultContract"];
-    readonly btcRelay: T["BtcRelay"];
-    readonly btcRpc: BitcoinRpcWithAddressIndex<BtcBlock>;
-    readonly spvWithdrawalDataDeserializer: new (data: any) => T["SpvVaultWithdrawalData"];
+    readonly TYPE: SwapType.SPV_VAULT_FROM_BTC;
+    /**
+     * @internal
+     */
+    readonly _claimableSwapStates: SpvFromBTCSwapState[];
+    /**
+     * @internal
+     */
+    readonly _swapDeserializer: typeof SpvFromBTCSwap;
+    /**
+     * @internal
+     */
+    protected readonly btcRelay: T["BtcRelay"];
+    /**
+     * @internal
+     */
+    protected readonly tickSwapState: Array<SpvFromBTCSwap<T>["_state"]>;
+    /**
+     * @internal
+     */
+    readonly _synchronizer: RelaySynchronizer<any, T["TX"], any>;
+    /**
+     * @internal
+     */
+    readonly _contract: T["SpvVaultContract"];
+    /**
+     * @internal
+     */
+    readonly _btcRpc: BitcoinRpcWithAddressIndex<BtcBlock>;
+    /**
+     * @internal
+     */
+    readonly _spvWithdrawalDataDeserializer: new (data: any) => T["SpvVaultWithdrawalData"];
+    /**
+     * @internal
+     */
+    readonly _pendingSwapStates: Array<SpvFromBTCSwap<T>["_state"]>;
     /**
      * @param chainIdentifier
      * @param unifiedStorage Storage interface for the current environment
@@ -57,11 +93,13 @@ export declare class SpvFromBTCWrapper<T extends ChainType> extends ISwapWrapper
     constructor(chainIdentifier: string, unifiedStorage: UnifiedSwapStorage<T>, unifiedChainEvents: UnifiedSwapEventListener<T>, chain: T["ChainInterface"], contract: T["SpvVaultContract"], prices: ISwapPrice, tokens: WrapperCtorTokens, spvWithdrawalDataDeserializer: new (data: any) => T["SpvVaultWithdrawalData"], btcRelay: BtcRelay<any, T["TX"], any>, synchronizer: RelaySynchronizer<any, T["TX"], any>, btcRpc: BitcoinRpcWithAddressIndex<any>, options?: AllOptional<SpvFromBTCWrapperOptions>, events?: EventEmitter<{
         swapState: [ISwap];
     }>);
-    readonly pendingSwapStates: Array<SpvFromBTCSwap<T>["state"]>;
-    readonly tickSwapState: Array<SpvFromBTCSwap<T>["state"]>;
-    protected processEventFront(event: SpvVaultFrontEvent, swap: SpvFromBTCSwap<T>): Promise<boolean>;
-    protected processEventClaim(event: SpvVaultClaimEvent, swap: SpvFromBTCSwap<T>): Promise<boolean>;
-    protected processEventClose(event: SpvVaultCloseEvent, swap: SpvFromBTCSwap<T>): Promise<boolean>;
+    private processEventFront;
+    private processEventClaim;
+    private processEventClose;
+    /**
+     * @inheritDoc
+     * @internal
+     */
     protected processEvent(event: ChainEvent<T["Data"]>, swap: SpvFromBTCSwap<T>): Promise<void>;
     /**
      * Pre-fetches latest finalized block height of the smart chain
@@ -97,27 +135,40 @@ export declare class SpvFromBTCWrapper<T extends ChainType> extends ISwapWrapper
      */
     private verifyReturnedData;
     /**
-     * Returns a newly created swap, receiving 'amount' on chain
+     * Returns a newly created Bitcoin -> Smart chain swap using the SPV vault (UTXO-controlled vault) swap protocol,
+     *  with the passed amount. Also allows specifying additional "gas drop" native token that the receipient receives
+     *  on the destination chain in the `options` argument.
      *
-     * @param signer                Smartchain signer's address intiating the swap
-     * @param amountData            Amount of token & amount to swap
-     * @param lps                   LPs (liquidity providers) to get the quotes from
-     * @param options               Quote options
-     * @param additionalParams      Additional parameters sent to the LP when creating the swap
-     * @param abortSignal           Abort signal for aborting the process
+     * @param recipient Recipient address on the destination smart chain
+     * @param amountData Amount, token and exact input/output data for to swap
+     * @param lps An array of intermediaries (LPs) to get the quotes from
+     * @param options Optional additional quote options
+     * @param additionalParams Optional additional parameters sent to the LP when creating the swap
+     * @param abortSignal Abort signal
      */
-    create(signer: string, amountData: AmountData, lps: Intermediary[], options?: SpvFromBTCOptions, additionalParams?: Record<string, any>, abortSignal?: AbortSignal): {
+    create(recipient: string, amountData: AmountData, lps: Intermediary[], options?: SpvFromBTCOptions, additionalParams?: Record<string, any>, abortSignal?: AbortSignal): {
         quote: Promise<SpvFromBTCSwap<T>>;
         intermediary: Intermediary;
     }[];
+    /**
+     * Recovers an SPV vault (UTXO-controlled vault) based swap from smart chain on-chain data
+     *
+     * @param state State of the spv vault withdrawal recovered from on-chain data
+     * @param vault SPV vault processing the swap
+     * @param lp Intermediary (LP) used as a counterparty for the swap
+     */
     recoverFromState(state: SpvWithdrawalClaimedState | SpvWithdrawalFrontedState, vault?: SpvVaultData | null, lp?: Intermediary): Promise<SpvFromBTCSwap<T> | null>;
     /**
      * Returns a random dummy PSBT that can be used for fee estimation, the last output (the LP output) is omitted
      *  to allow for coinselection algorithm to determine maximum sendable amount there
      *
-     * @param includeGasToken   Whether to return the PSBT also with the gas token amount (increases the vSize by 8)
+     * @param includeGasToken Whether to return the PSBT also with the gas token amount (increases the vSize by 8)
      */
     getDummySwapPsbt(includeGasToken?: boolean): Transaction;
+    /**
+     * @inheritDoc
+     * @internal
+     */
     protected _checkPastSwaps(pastSwaps: SpvFromBTCSwap<T>[]): Promise<{
         changedSwaps: SpvFromBTCSwap<T>[];
         removeSwaps: SpvFromBTCSwap<T>[];

@@ -22,7 +22,7 @@ import {ISwapPrice} from "../../prices/abstract/ISwapPrice";
 import {EventEmitter} from "events";
 import {Intermediary} from "../../intermediaries/Intermediary";
 import {extendAbortController, randomBytes, throwIfUndefined} from "../../utils/Utils";
-import {toCoinselectAddressType, toOutputScript} from "../../utils/BitcoinUtils";
+import {fromOutputScript, toCoinselectAddressType, toOutputScript} from "../../utils/BitcoinUtils";
 import {IntermediaryAPI, SpvFromBTCPrepareResponseType} from "../../intermediaries/apis/IntermediaryAPI";
 import {RequestError} from "../../errors/RequestError";
 import {IntermediaryError} from "../../errors/IntermediaryError";
@@ -53,20 +53,71 @@ export type SpvFromBTCWrapperOptions = ISwapWrapperOptions & {
 
 export type SpvFromBTCTypeDefinition<T extends ChainType> = SwapTypeDefinition<T, SpvFromBTCWrapper<T>, SpvFromBTCSwap<T>>;
 
+/**
+ * New spv vault (UTXO-controlled vault) based swaps for Bitcoin -> Smart chain swaps not requiring
+ *  any initiation on the destination chain, and with the added possibility for the user to receive
+ *  a native token on the destination chain as part of the swap (a "gas drop" feature).
+ *
+ * @category Swaps
+ */
 export class SpvFromBTCWrapper<
     T extends ChainType
 > extends ISwapWrapper<T, SpvFromBTCTypeDefinition<T>, SpvFromBTCWrapperOptions> implements IClaimableSwapWrapper<SpvFromBTCSwap<T>> {
+    public readonly TYPE: SwapType.SPV_VAULT_FROM_BTC = SwapType.SPV_VAULT_FROM_BTC;
+    /**
+     * @internal
+     */
+    readonly _claimableSwapStates = [SpvFromBTCSwapState.BTC_TX_CONFIRMED];
+    /**
+     * @internal
+     */
+    readonly _swapDeserializer = SpvFromBTCSwap;
 
-    public readonly claimableSwapStates = [SpvFromBTCSwapState.BTC_TX_CONFIRMED];
-    public readonly TYPE = SwapType.SPV_VAULT_FROM_BTC;
-    public readonly swapDeserializer = SpvFromBTCSwap;
 
-    readonly synchronizer: RelaySynchronizer<any, T["TX"], any>;
-    readonly contract: T["SpvVaultContract"];
-    readonly btcRelay: T["BtcRelay"];
-    readonly btcRpc: BitcoinRpcWithAddressIndex<BtcBlock>;
+    /**
+     * @internal
+     */
+    protected readonly btcRelay: T["BtcRelay"];
+    /**
+     * @internal
+     */
+    protected readonly tickSwapState: Array<SpvFromBTCSwap<T>["_state"]> = [
+        SpvFromBTCSwapState.CREATED,
+        SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED,
+        SpvFromBTCSwapState.SIGNED,
+        SpvFromBTCSwapState.POSTED,
+        SpvFromBTCSwapState.BROADCASTED
+    ];
 
-    readonly spvWithdrawalDataDeserializer: new (data: any) => T["SpvVaultWithdrawalData"];
+
+    /**
+     * @internal
+     */
+    readonly _synchronizer: RelaySynchronizer<any, T["TX"], any>;
+    /**
+     * @internal
+     */
+    readonly _contract: T["SpvVaultContract"];
+    /**
+     * @internal
+     */
+    readonly _btcRpc: BitcoinRpcWithAddressIndex<BtcBlock>;
+    /**
+     * @internal
+     */
+    readonly _spvWithdrawalDataDeserializer: new (data: any) => T["SpvVaultWithdrawalData"];
+    /**
+     * @internal
+     */
+    readonly _pendingSwapStates: Array<SpvFromBTCSwap<T>["_state"]> = [
+        SpvFromBTCSwapState.CREATED,
+        SpvFromBTCSwapState.SIGNED,
+        SpvFromBTCSwapState.POSTED,
+        SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED,
+        SpvFromBTCSwapState.BROADCASTED,
+        SpvFromBTCSwapState.DECLINED,
+        SpvFromBTCSwapState.BTC_TX_CONFIRMED
+    ];
 
     /**
      * @param chainIdentifier
@@ -111,87 +162,74 @@ export class SpvFromBTCWrapper<
             },
             events
         );
-        this.spvWithdrawalDataDeserializer = spvWithdrawalDataDeserializer;
-        this.contract = contract;
+        this._spvWithdrawalDataDeserializer = spvWithdrawalDataDeserializer;
+        this._contract = contract;
         this.btcRelay = btcRelay;
-        this.synchronizer = synchronizer;
-        this.btcRpc = btcRpc;
+        this._synchronizer = synchronizer;
+        this._btcRpc = btcRpc;
     }
 
-    readonly pendingSwapStates: Array<SpvFromBTCSwap<T>["state"]> = [
-        SpvFromBTCSwapState.CREATED,
-        SpvFromBTCSwapState.SIGNED,
-        SpvFromBTCSwapState.POSTED,
-        SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED,
-        SpvFromBTCSwapState.BROADCASTED,
-        SpvFromBTCSwapState.DECLINED,
-        SpvFromBTCSwapState.BTC_TX_CONFIRMED
-    ];
-    readonly tickSwapState: Array<SpvFromBTCSwap<T>["state"]> = [
-        SpvFromBTCSwapState.CREATED,
-        SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED,
-        SpvFromBTCSwapState.SIGNED,
-        SpvFromBTCSwapState.POSTED,
-        SpvFromBTCSwapState.BROADCASTED
-    ];
-
-    protected async processEventFront(event: SpvVaultFrontEvent, swap: SpvFromBTCSwap<T>): Promise<boolean> {
+    private async processEventFront(event: SpvVaultFrontEvent, swap: SpvFromBTCSwap<T>): Promise<boolean> {
         if(
-            swap.state===SpvFromBTCSwapState.SIGNED || swap.state===SpvFromBTCSwapState.POSTED ||
-            swap.state===SpvFromBTCSwapState.BROADCASTED || swap.state===SpvFromBTCSwapState.DECLINED ||
-            swap.state===SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED || swap.state===SpvFromBTCSwapState.BTC_TX_CONFIRMED
+            swap._state===SpvFromBTCSwapState.SIGNED || swap._state===SpvFromBTCSwapState.POSTED ||
+            swap._state===SpvFromBTCSwapState.BROADCASTED || swap._state===SpvFromBTCSwapState.DECLINED ||
+            swap._state===SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED || swap._state===SpvFromBTCSwapState.BTC_TX_CONFIRMED
         ) {
             await swap._setBitcoinTxId(event.btcTxId).catch(e => {
                 this.logger.warn("processEventFront(): Failed to set bitcoin txId: ", e);
             });
-            swap.state = SpvFromBTCSwapState.FRONTED;
+            swap._state = SpvFromBTCSwapState.FRONTED;
             return true;
         }
         return false;
     }
 
-    protected async processEventClaim(event: SpvVaultClaimEvent, swap: SpvFromBTCSwap<T>): Promise<boolean> {
+    private async processEventClaim(event: SpvVaultClaimEvent, swap: SpvFromBTCSwap<T>): Promise<boolean> {
         if(
-            swap.state===SpvFromBTCSwapState.SIGNED || swap.state===SpvFromBTCSwapState.POSTED ||
-            swap.state===SpvFromBTCSwapState.BROADCASTED || swap.state===SpvFromBTCSwapState.DECLINED ||
-            swap.state===SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED || swap.state===SpvFromBTCSwapState.BTC_TX_CONFIRMED
+            swap._state===SpvFromBTCSwapState.SIGNED || swap._state===SpvFromBTCSwapState.POSTED ||
+            swap._state===SpvFromBTCSwapState.BROADCASTED || swap._state===SpvFromBTCSwapState.DECLINED ||
+            swap._state===SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED || swap._state===SpvFromBTCSwapState.BTC_TX_CONFIRMED
         ) {
             await swap._setBitcoinTxId(event.btcTxId).catch(e => {
                 this.logger.warn("processEventClaim(): Failed to set bitcoin txId: ", e);
             });
-            swap.state = SpvFromBTCSwapState.CLAIMED;
+            swap._state = SpvFromBTCSwapState.CLAIMED;
             return true;
         }
         return false;
     }
 
-    protected processEventClose(event: SpvVaultCloseEvent, swap: SpvFromBTCSwap<T>): Promise<boolean> {
+    private processEventClose(event: SpvVaultCloseEvent, swap: SpvFromBTCSwap<T>): Promise<boolean> {
         if(
-            swap.state===SpvFromBTCSwapState.SIGNED || swap.state===SpvFromBTCSwapState.POSTED ||
-            swap.state===SpvFromBTCSwapState.BROADCASTED || swap.state===SpvFromBTCSwapState.DECLINED ||
-            swap.state===SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED || swap.state===SpvFromBTCSwapState.BTC_TX_CONFIRMED
+            swap._state===SpvFromBTCSwapState.SIGNED || swap._state===SpvFromBTCSwapState.POSTED ||
+            swap._state===SpvFromBTCSwapState.BROADCASTED || swap._state===SpvFromBTCSwapState.DECLINED ||
+            swap._state===SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED || swap._state===SpvFromBTCSwapState.BTC_TX_CONFIRMED
         ) {
-            swap.state = SpvFromBTCSwapState.CLOSED;
+            swap._state = SpvFromBTCSwapState.CLOSED;
             return Promise.resolve(true);
         }
         return Promise.resolve(false);
     }
 
+    /**
+     * @inheritDoc
+     * @internal
+     */
     protected async processEvent(event: ChainEvent<T["Data"]>, swap: SpvFromBTCSwap<T>): Promise<void> {
         if(swap==null) return;
 
         let swapChanged: boolean = false;
         if(event instanceof SpvVaultFrontEvent) {
             swapChanged = await this.processEventFront(event, swap);
-            if(event.meta?.txId!=null && swap.frontTxId!==event.meta.txId) {
-                swap.frontTxId = event.meta.txId;
+            if(event.meta?.txId!=null && swap._frontTxId!==event.meta.txId) {
+                swap._frontTxId = event.meta.txId;
                 swapChanged ||= true;
             }
         }
         if(event instanceof SpvVaultClaimEvent) {
             swapChanged = await this.processEventClaim(event, swap);
-            if(event.meta?.txId!=null && swap.claimTxId!==event.meta.txId) {
-                swap.claimTxId = event.meta.txId;
+            if(event.meta?.txId!=null && swap._claimTxId!==event.meta.txId) {
+                swap._claimTxId = event.meta.txId;
                 swapChanged ||= true;
             }
         }
@@ -214,7 +252,7 @@ export class SpvFromBTCWrapper<
      */
     private async preFetchFinalizedBlockHeight(abortController: AbortController): Promise<number | undefined> {
         try {
-            const block = await this.chain.getFinalizedBlock();
+            const block = await this._chain.getFinalizedBlock();
             return block.height;
         } catch (e) {
             abortController.abort(e);
@@ -252,36 +290,36 @@ export class SpvFromBTCWrapper<
             ] = await Promise.all([
                 this.btcRelay.getFeePerBlock(),
                 this.btcRelay.getTipData(),
-                this.btcRpc.getTipHeight(),
-                this.contract.getClaimFee(this.chain.randomAddress()),
-                nativeTokenPricePrefetch ?? (amountData.token===this.chain.getNativeCurrencyAddress() ?
+                this._btcRpc.getTipHeight(),
+                this._contract.getClaimFee(this._chain.randomAddress()),
+                nativeTokenPricePrefetch ?? (amountData.token===this._chain.getNativeCurrencyAddress() ?
                     pricePrefetch :
-                    this.prices.preFetchPrice(this.chainIdentifier, this.chain.getNativeCurrencyAddress(), abortController.signal))
+                    this._prices.preFetchPrice(this.chainIdentifier, this._chain.getNativeCurrencyAddress(), abortController.signal))
             ]);
 
             if(btcRelayData==null) throw new Error("Btc relay doesn't seem to be initialized!");
 
             const currentBtcRelayBlock = btcRelayData.blockheight;
-            const blockDelta = Math.max(currentBtcBlock-currentBtcRelayBlock+this.options.maxConfirmations, 0);
+            const blockDelta = Math.max(currentBtcBlock-currentBtcRelayBlock+this._options.maxConfirmations, 0);
 
             const totalFeeInNativeToken = (
                 (BigInt(blockDelta) * feePerBlock) +
-                (claimFeeRate * BigInt(this.options.maxTransactionsDelta))
+                (claimFeeRate * BigInt(this._options.maxTransactionsDelta))
             ) * BigInt(Math.floor(options.feeSafetyFactor*1000000)) / 1_000_000n;
 
             let payoutAmount: bigint;
             if(amountData.exactIn) {
                 //Convert input amount in BTC to
-                const amountInNativeToken = await this.prices.getFromBtcSwapAmount(this.chainIdentifier, amountData.amount, this.chain.getNativeCurrencyAddress(), abortController.signal, nativeTokenPrice);
+                const amountInNativeToken = await this._prices.getFromBtcSwapAmount(this.chainIdentifier, amountData.amount, this._chain.getNativeCurrencyAddress(), abortController.signal, nativeTokenPrice);
                 payoutAmount = amountInNativeToken - totalFeeInNativeToken;
             } else {
-                if(amountData.token===this.chain.getNativeCurrencyAddress()) {
+                if(amountData.token===this._chain.getNativeCurrencyAddress()) {
                     //Both amounts in same currency
                     payoutAmount = amountData.amount;
                 } else {
                     //Need to convert both to native currency
-                    const btcAmount = await this.prices.getToBtcSwapAmount(this.chainIdentifier, amountData.amount, amountData.token, abortController.signal, await pricePrefetch);
-                    payoutAmount = await this.prices.getFromBtcSwapAmount(this.chainIdentifier, btcAmount, this.chain.getNativeCurrencyAddress(), abortController.signal, nativeTokenPrice);
+                    const btcAmount = await this._prices.getToBtcSwapAmount(this.chainIdentifier, amountData.amount, amountData.token, abortController.signal, await pricePrefetch);
+                    payoutAmount = await this._prices.getFromBtcSwapAmount(this.chainIdentifier, btcAmount, this._chain.getNativeCurrencyAddress(), abortController.signal, nativeTokenPrice);
                 }
             }
 
@@ -332,9 +370,9 @@ export class SpvFromBTCWrapper<
         let btcAddressScript: Uint8Array;
         //Ensure valid btc addresses returned
         try {
-            vaultScript = toOutputScript(this.options.bitcoinNetwork, resp.vaultBtcAddress);
+            vaultScript = toOutputScript(this._options.bitcoinNetwork, resp.vaultBtcAddress);
             vaultAddressType = toCoinselectAddressType(vaultScript);
-            btcAddressScript = toOutputScript(this.options.bitcoinNetwork, resp.btcAddress);
+            btcAddressScript = toOutputScript(this._options.bitcoinNetwork, resp.btcAddress);
         } catch (e) {
             throw new IntermediaryError("Invalid btc address data returned", e);
         }
@@ -373,7 +411,7 @@ export class SpvFromBTCWrapper<
                 //Fetch vault data
                 let vault: T["SpvVaultData"] | null;
                 try {
-                    vault = await this.contract.getVaultData(resp.address, resp.vaultId);
+                    vault = await this._contract.getVaultData(resp.address, resp.vaultId);
                 } catch (e) {
                     this.logger.error("Error getting spv vault (owner: "+resp.address+" vaultId: "+resp.vaultId.toString(10)+"): ", e);
                     throw new IntermediaryError("Spv swap vault not found", e);
@@ -383,7 +421,7 @@ export class SpvFromBTCWrapper<
                 //Make sure vault is opened
                 if(vault==null || !vault.isOpened()) throw new IntermediaryError("Returned spv swap vault is not opened!");
                 //Make sure the vault doesn't require insane amount of confirmations
-                if(vault.getConfirmations()>this.options.maxConfirmations) throw new IntermediaryError("SPV swap vault needs too many confirmations: "+vault.getConfirmations());
+                if(vault.getConfirmations()>this._options.maxConfirmations) throw new IntermediaryError("SPV swap vault needs too many confirmations: "+vault.getConfirmations());
                 const tokenData = vault.getTokenData();
 
                 //Amounts - make sure the amounts match
@@ -393,7 +431,7 @@ export class SpvFromBTCWrapper<
                     //Check the difference between amount adjusted due to scaling to raw amount
                     const adjustedAmount = amountData.amount / tokenData[0].multiplier * tokenData[0].multiplier;
                     const adjustmentPPM = (amountData.amount - adjustedAmount)*1_000_000n / amountData.amount;
-                    if(adjustmentPPM > this.options.maxRawAmountAdjustmentDifferencePPM)
+                    if(adjustmentPPM > this._options.maxRawAmountAdjustmentDifferencePPM)
                         throw new IntermediaryError("Invalid amount0 multiplier used, rawAmount diff too high");
                     if(resp.total !== adjustedAmount) throw new IntermediaryError("Invalid total returned");
                 }
@@ -403,7 +441,7 @@ export class SpvFromBTCWrapper<
                     //Check the difference between amount adjusted due to scaling to raw amount
                     const adjustedGasAmount = options.gasAmount / tokenData[0].multiplier * tokenData[0].multiplier;
                     const adjustmentPPM = (options.gasAmount - adjustedGasAmount)*1_000_000n / options.gasAmount;
-                    if(adjustmentPPM > this.options.maxRawAmountAdjustmentDifferencePPM)
+                    if(adjustmentPPM > this._options.maxRawAmountAdjustmentDifferencePPM)
                         throw new IntermediaryError("Invalid amount1 multiplier used, rawAmount diff too high");
                     if(resp.totalGas !== adjustedGasAmount) throw new IntermediaryError("Invalid gas total returned");
                 }
@@ -412,7 +450,7 @@ export class SpvFromBTCWrapper<
             })(),
             (async() => {
                 //Require the vault UTXO to have at least 1 confirmation
-                let btcTx = await this.btcRpc.getTransaction(txId);
+                let btcTx = await this._btcRpc.getTransaction(txId);
                 if(btcTx==null) throw new IntermediaryError("Invalid UTXO, doesn't exist (txId)");
                 abortController.signal.throwIfAborted();
                 if(btcTx.confirmations==null || btcTx.confirmations<1) throw new IntermediaryError("SPV vault UTXO not confirmed");
@@ -423,7 +461,7 @@ export class SpvFromBTCWrapper<
             })(),
             (async() => {
                 //Require vault UTXO is unspent
-                if(await this.btcRpc.isSpent(utxo)) throw new IntermediaryError("Returned spv vault UTXO is already spent", null, true);
+                if(await this._btcRpc.isSpent(utxo)) throw new IntermediaryError("Returned spv vault UTXO is already spent", null, true);
                 abortController.signal.throwIfAborted();
             })()
         ]).catch(e => {
@@ -439,17 +477,17 @@ export class SpvFromBTCWrapper<
             const [txId, voutStr] = utxo.split(":");
             //Such that 1st tx isn't fetched twice
             if(btcTx.txid!==txId) {
-                const _btcTx = await this.btcRpc.getTransaction(txId);
+                const _btcTx = await this._btcRpc.getTransaction(txId);
                 if(_btcTx==null) throw new IntermediaryError("Invalid ancestor transaction (not found)");
                 btcTx = _btcTx;
             }
-            const withdrawalData = await this.contract.getWithdrawalData(btcTx);
+            const withdrawalData = await this._contract.getWithdrawalData(btcTx);
             abortSignal.throwIfAborted();
             pendingWithdrawals.unshift(withdrawalData);
             utxo = pendingWithdrawals[0].getSpentVaultUtxo();
             this.logger.debug("verifyReturnedData(): Vault UTXO: "+vault.getUtxo()+" current utxo: "+utxo);
-            if(pendingWithdrawals.length>=this.options.maxTransactionsDelta)
-                throw new IntermediaryError("BTC <> SC state difference too deep, maximum: "+this.options.maxTransactionsDelta);
+            if(pendingWithdrawals.length>=this._options.maxTransactionsDelta)
+                throw new IntermediaryError("BTC <> SC state difference too deep, maximum: "+this._options.maxTransactionsDelta);
         }
 
         //Verify that the vault has enough balance after processing all pending withdrawals
@@ -470,7 +508,7 @@ export class SpvFromBTCWrapper<
         //Also verify that all the withdrawal txns are valid, this is an extra sanity check
         try {
             for(let withdrawal of pendingWithdrawals) {
-                await this.contract.checkWithdrawalTx(withdrawal);
+                await this._contract.checkWithdrawalTx(withdrawal);
             }
         } catch (e) {
             this.logger.error("Error calculating spv vault balance (owner: "+resp.address+" vaultId: "+resp.vaultId.toString(10)+"): ", e);
@@ -485,17 +523,19 @@ export class SpvFromBTCWrapper<
     }
 
     /**
-     * Returns a newly created swap, receiving 'amount' on chain
+     * Returns a newly created Bitcoin -> Smart chain swap using the SPV vault (UTXO-controlled vault) swap protocol,
+     *  with the passed amount. Also allows specifying additional "gas drop" native token that the receipient receives
+     *  on the destination chain in the `options` argument.
      *
-     * @param signer                Smartchain signer's address intiating the swap
-     * @param amountData            Amount of token & amount to swap
-     * @param lps                   LPs (liquidity providers) to get the quotes from
-     * @param options               Quote options
-     * @param additionalParams      Additional parameters sent to the LP when creating the swap
-     * @param abortSignal           Abort signal for aborting the process
+     * @param recipient Recipient address on the destination smart chain
+     * @param amountData Amount, token and exact input/output data for to swap
+     * @param lps An array of intermediaries (LPs) to get the quotes from
+     * @param options Optional additional quote options
+     * @param additionalParams Optional additional parameters sent to the LP when creating the swap
+     * @param abortSignal Abort signal
      */
-    create(
-        signer: string,
+    public create(
+        recipient: string,
         amountData: AmountData,
         lps: Intermediary[],
         options?: SpvFromBTCOptions,
@@ -516,14 +556,14 @@ export class SpvFromBTCWrapper<
         const pricePrefetchPromise: Promise<bigint | undefined> = this.preFetchPrice(amountData, _abortController.signal);
         const usdPricePrefetchPromise: Promise<number | undefined> = this.preFetchUsdPrice(_abortController.signal);
         const finalizedBlockHeightPrefetchPromise: Promise<number | undefined> = this.preFetchFinalizedBlockHeight(_abortController);
-        const nativeTokenAddress = this.chain.getNativeCurrencyAddress();
+        const nativeTokenAddress = this._chain.getNativeCurrencyAddress();
         const gasTokenPricePrefetchPromise: Promise<bigint | undefined> | undefined = _options.gasAmount===0n ?
             undefined :
             this.preFetchPrice({token: nativeTokenAddress}, _abortController.signal);
         const callerFeePrefetchPromise = this.preFetchCallerFeeShare(amountData, _options, pricePrefetchPromise, gasTokenPricePrefetchPromise, _abortController);
         const bitcoinFeeRatePromise: Promise<number | undefined> = _options.maxAllowedNetworkFeeRate!=Infinity ?
             Promise.resolve(_options.maxAllowedNetworkFeeRate) :
-            this.btcRpc.getFeeRate().then(x => this.options.maxBtcFeeOffset + (x*this.options.maxBtcFeeMultiplier)).catch(e => {
+            this._btcRpc.getFeeRate().then(x => this._options.maxBtcFeeOffset + (x*this._options.maxBtcFeeMultiplier)).catch(e => {
                 _abortController.abort(e);
                 return undefined;
             });
@@ -541,7 +581,7 @@ export class SpvFromBTCWrapper<
                             return await IntermediaryAPI.prepareSpvFromBTC(
                                 this.chainIdentifier, lp.url,
                                 {
-                                    address: signer,
+                                    address: recipient,
                                     amount: amountData.amount,
                                     token: amountData.token.toString(),
                                     exactOut: !amountData.exactIn,
@@ -551,7 +591,7 @@ export class SpvFromBTCWrapper<
                                     frontingFeeRate: 0n,
                                     additionalParams
                                 },
-                                this.options.postRequestTimeout, abortController.signal, retryCount>0 ? false : undefined
+                                this._options.postRequestTimeout, abortController.signal, retryCount>0 ? false : undefined
                             );
                         }, undefined, e => e instanceof RequestError, abortController.signal);
 
@@ -589,7 +629,7 @@ export class SpvFromBTCWrapper<
 
                             quoteId: resp.quoteId,
 
-                            recipient: signer,
+                            recipient,
 
                             vaultOwner: resp.address,
                             vaultId: resp.vaultId,
@@ -634,14 +674,21 @@ export class SpvFromBTCWrapper<
         });
     }
 
-    async recoverFromState(state: SpvWithdrawalClaimedState | SpvWithdrawalFrontedState, vault?: SpvVaultData | null, lp?: Intermediary): Promise<SpvFromBTCSwap<T> | null> {
+    /**
+     * Recovers an SPV vault (UTXO-controlled vault) based swap from smart chain on-chain data
+     *
+     * @param state State of the spv vault withdrawal recovered from on-chain data
+     * @param vault SPV vault processing the swap
+     * @param lp Intermediary (LP) used as a counterparty for the swap
+     */
+    public async recoverFromState(state: SpvWithdrawalClaimedState | SpvWithdrawalFrontedState, vault?: SpvVaultData | null, lp?: Intermediary): Promise<SpvFromBTCSwap<T> | null> {
         //Get the vault
-        vault ??= await this.contract.getVaultData(state.owner, state.vaultId);
+        vault ??= await this._contract.getVaultData(state.owner, state.vaultId);
         if(vault==null) return null;
         if(state.btcTxId==null) return null;
-        const btcTx = await this.btcRpc.getTransaction(state.btcTxId);
+        const btcTx = await this._btcRpc.getTransaction(state.btcTxId);
         if(btcTx==null) return null;
-        const withdrawalData = await this.contract.getWithdrawalData(btcTx)
+        const withdrawalData = await this._contract.getWithdrawalData(btcTx)
             .catch(e => {
                 this.logger.warn(`Error parsing withdrawal data for tx ${btcTx.txid}: `, e);
                 return null;
@@ -679,15 +726,11 @@ export class SpvFromBTCWrapper<
             vaultId: state.vaultId,
             vaultRequiredConfirmations: vault.getConfirmations(),
             vaultTokenMultipliers: vault.getTokenData().map(val => val.multiplier),
-            vaultBtcAddress: this.btcRpc.outputScriptToAddress==null
-                ? ""
-                : await this.btcRpc.outputScriptToAddress(withdrawalData.getNewVaultScript().toString("hex")),
+            vaultBtcAddress: fromOutputScript(this._options.bitcoinNetwork, withdrawalData.getNewVaultScript().toString("hex")),
             vaultUtxo: withdrawalData.getSpentVaultUtxo(),
             vaultUtxoValue: BigInt(withdrawalData.getNewVaultBtcAmount()),
 
-            btcDestinationAddress: this.btcRpc.outputScriptToAddress==null
-                ? ""
-                : await this.btcRpc.outputScriptToAddress(btcTx.outs[2].scriptPubKey.hex),
+            btcDestinationAddress: fromOutputScript(this._options.bitcoinNetwork, btcTx.outs[2].scriptPubKey.hex),
             btcAmount: BigInt(btcTx.outs[2].value),
             btcAmountSwap: BigInt(btcTx.outs[2].value),
             btcAmountGas: 0n,
@@ -715,23 +758,23 @@ export class SpvFromBTCWrapper<
             genesisSmartChainBlockHeight: txBlock?.blockHeight ?? 0
         };
         const quote = new SpvFromBTCSwap<T>(this, swapInit);
-        quote.data = withdrawalData;
+        quote._data = withdrawalData;
         if(txBlock!=null) {
             quote.createdAt = txBlock.blockTime*1000;
         } else if(btcTx.blockhash==null) {
             quote.createdAt = Date.now();
         } else {
-            const blockHeader = await this.btcRpc.getBlockHeader(btcTx.blockhash);
+            const blockHeader = await this._btcRpc.getBlockHeader(btcTx.blockhash);
             quote.createdAt = blockHeader==null ? Date.now() : blockHeader.getTimestamp()*1000;
         }
         quote._setInitiated();
-        if(btcTx.inputAddresses!=null) quote.senderAddress = btcTx.inputAddresses[1];
+        if(btcTx.inputAddresses!=null) quote._senderAddress = btcTx.inputAddresses[1];
         if(state.type===SpvWithdrawalStateType.FRONTED) {
-            quote.frontTxId = state.txId;
-            quote.state = SpvFromBTCSwapState.FRONTED;
+            quote._frontTxId = state.txId;
+            quote._state = SpvFromBTCSwapState.FRONTED;
         } else {
-            quote.claimTxId = state.txId;
-            quote.state = SpvFromBTCSwapState.CLAIMED;
+            quote._claimTxId = state.txId;
+            quote._state = SpvFromBTCSwapState.CLAIMED;
         }
         await quote._save();
         return quote;
@@ -741,7 +784,7 @@ export class SpvFromBTCWrapper<
      * Returns a random dummy PSBT that can be used for fee estimation, the last output (the LP output) is omitted
      *  to allow for coinselection algorithm to determine maximum sendable amount there
      *
-     * @param includeGasToken   Whether to return the PSBT also with the gas token amount (increases the vSize by 8)
+     * @param includeGasToken Whether to return the PSBT also with the gas token amount (increases the vSize by 8)
      */
     public getDummySwapPsbt(includeGasToken = false): Transaction {
         //Construct dummy swap psbt
@@ -767,8 +810,8 @@ export class SpvFromBTCWrapper<
             amount: 600n
         });
 
-        const opReturnData = this.contract.toOpReturnData(
-            this.chain.randomAddress(),
+        const opReturnData = this._contract.toOpReturnData(
+            this._chain.randomAddress(),
             includeGasToken ? [0xFFFFFFFFFFFFFFFFn, 0xFFFFFFFFFFFFFFFFn] : [0xFFFFFFFFFFFFFFFFn]
         );
 
@@ -783,6 +826,10 @@ export class SpvFromBTCWrapper<
         return psbt;
     }
 
+    /**
+     * @inheritDoc
+     * @internal
+     */
     protected async _checkPastSwaps(pastSwaps: SpvFromBTCSwap<T>[]): Promise<{
         changedSwaps: SpvFromBTCSwap<T>[];
         removeSwaps: SpvFromBTCSwap<T>[]
@@ -790,33 +837,33 @@ export class SpvFromBTCWrapper<
         const changedSwaps: Set<SpvFromBTCSwap<T>> = new Set();
         const removeSwaps: SpvFromBTCSwap<T>[] = [];
 
-        const broadcastedOrConfirmedSwaps: (SpvFromBTCSwap<T> & {data: T["SpvVaultWithdrawalData"]})[] = [];
+        const broadcastedOrConfirmedSwaps: (SpvFromBTCSwap<T> & {_data: T["SpvVaultWithdrawalData"]})[] = [];
 
         for(let pastSwap of pastSwaps) {
             let changed: boolean = false;
 
             if(
-                pastSwap.state===SpvFromBTCSwapState.SIGNED ||
-                pastSwap.state===SpvFromBTCSwapState.POSTED ||
-                pastSwap.state===SpvFromBTCSwapState.BROADCASTED ||
-                pastSwap.state===SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED ||
-                pastSwap.state===SpvFromBTCSwapState.DECLINED ||
-                pastSwap.state===SpvFromBTCSwapState.BTC_TX_CONFIRMED
+                pastSwap._state===SpvFromBTCSwapState.SIGNED ||
+                pastSwap._state===SpvFromBTCSwapState.POSTED ||
+                pastSwap._state===SpvFromBTCSwapState.BROADCASTED ||
+                pastSwap._state===SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED ||
+                pastSwap._state===SpvFromBTCSwapState.DECLINED ||
+                pastSwap._state===SpvFromBTCSwapState.BTC_TX_CONFIRMED
             ) {
                 //Check BTC transaction
                 if(await pastSwap._syncStateFromBitcoin(false)) changed ||= true;
             }
 
             if(
-                pastSwap.state===SpvFromBTCSwapState.CREATED ||
-                pastSwap.state===SpvFromBTCSwapState.SIGNED ||
-                pastSwap.state===SpvFromBTCSwapState.POSTED
+                pastSwap._state===SpvFromBTCSwapState.CREATED ||
+                pastSwap._state===SpvFromBTCSwapState.SIGNED ||
+                pastSwap._state===SpvFromBTCSwapState.POSTED
             ) {
-                if(pastSwap.expiry<Date.now()) {
-                    if(pastSwap.state===SpvFromBTCSwapState.CREATED) {
-                        pastSwap.state = SpvFromBTCSwapState.QUOTE_EXPIRED;
+                if(await pastSwap._verifyQuoteDefinitelyExpired()) {
+                    if(pastSwap._state===SpvFromBTCSwapState.CREATED) {
+                        pastSwap._state = SpvFromBTCSwapState.QUOTE_EXPIRED;
                     } else {
-                        pastSwap.state = SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED;
+                        pastSwap._state = SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED;
                     }
                     changed ||= true;
                 }
@@ -828,56 +875,53 @@ export class SpvFromBTCWrapper<
             }
             if(changed) changedSwaps.add(pastSwap);
 
-            if(pastSwap.state===SpvFromBTCSwapState.BROADCASTED || pastSwap.state===SpvFromBTCSwapState.BTC_TX_CONFIRMED) {
-                if(pastSwap.data!=null) broadcastedOrConfirmedSwaps.push(pastSwap as (SpvFromBTCSwap<T> & {data: T["SpvVaultWithdrawalData"]}));
+            if(pastSwap._state===SpvFromBTCSwapState.BROADCASTED || pastSwap._state===SpvFromBTCSwapState.BTC_TX_CONFIRMED) {
+                if(pastSwap._data!=null) broadcastedOrConfirmedSwaps.push(pastSwap as (SpvFromBTCSwap<T> & {_data: T["SpvVaultWithdrawalData"]}));
             }
         }
 
-        const checkWithdrawalStateSwaps: (SpvFromBTCSwap<T> & {data: T["SpvVaultWithdrawalData"]})[] = [];
-        const _fronts = await this.contract.getFronterAddresses(broadcastedOrConfirmedSwaps.map(val => ({
-            owner: val.vaultOwner,
-            vaultId: val.vaultId,
-            withdrawal: val.data!
+        const checkWithdrawalStateSwaps: (SpvFromBTCSwap<T> & {_data: T["SpvVaultWithdrawalData"]})[] = [];
+        const _fronts = await this._contract.getFronterAddresses(broadcastedOrConfirmedSwaps.map(val => ({
+            ...val.getSpvVaultData(),
+            withdrawal: val._data!
         })));
-        const _vaultUtxos = await this.contract.getVaultLatestUtxos(broadcastedOrConfirmedSwaps.map(val => ({
-            owner: val.vaultOwner,
-            vaultId: val.vaultId
-        })));
+        const _vaultUtxos = await this._contract.getVaultLatestUtxos(broadcastedOrConfirmedSwaps.map(val => val.getSpvVaultData()));
         for(const pastSwap of broadcastedOrConfirmedSwaps) {
-            const fronterAddress = _fronts[pastSwap.data.getTxId()];
-            const latestVaultUtxo = _vaultUtxos[pastSwap.vaultOwner]?.[pastSwap.vaultId.toString(10)];
-            if(fronterAddress===undefined) this.logger.warn(`_checkPastSwaps(): No fronter address returned for ${pastSwap.data.getTxId()}`);
-            if(latestVaultUtxo===undefined) this.logger.warn(`_checkPastSwaps(): No last vault utxo returned for ${pastSwap.data.getTxId()}`);
+            const fronterAddress = _fronts[pastSwap._data.getTxId()];
+            const vault = pastSwap.getSpvVaultData();
+            const latestVaultUtxo = _vaultUtxos[vault.owner]?.[vault.vaultId.toString(10)];
+            if(fronterAddress===undefined) this.logger.warn(`_checkPastSwaps(): No fronter address returned for ${pastSwap._data.getTxId()}`);
+            if(latestVaultUtxo===undefined) this.logger.warn(`_checkPastSwaps(): No last vault utxo returned for ${pastSwap._data.getTxId()}`);
             if(await pastSwap._shouldCheckWithdrawalState(fronterAddress, latestVaultUtxo)) checkWithdrawalStateSwaps.push(pastSwap);
         }
 
-        const withdrawalStates = await this.contract.getWithdrawalStates(
+        const withdrawalStates = await this._contract.getWithdrawalStates(
             checkWithdrawalStateSwaps.map(val => ({
-                withdrawal: val.data,
-                scStartBlockheight: val.genesisSmartChainBlockHeight
+                withdrawal: val._data,
+                scStartBlockheight: val._genesisSmartChainBlockHeight
             }))
         );
         for(const pastSwap of checkWithdrawalStateSwaps) {
-            const status = withdrawalStates[pastSwap.data.getTxId()];
+            const status = withdrawalStates[pastSwap._data.getTxId()];
             if(status==null) {
-                this.logger.warn(`_checkPastSwaps(): No withdrawal state returned for ${pastSwap.data.getTxId()}`);
+                this.logger.warn(`_checkPastSwaps(): No withdrawal state returned for ${pastSwap._data.getTxId()}`);
                 continue;
             }
-            this.logger.debug("syncStateFromChain(): status of "+pastSwap.data.btcTx.txid, status?.type);
+            this.logger.debug("syncStateFromChain(): status of "+pastSwap._data.btcTx.txid, status?.type);
             let changed = false;
             switch(status.type) {
                 case SpvWithdrawalStateType.FRONTED:
-                    pastSwap.frontTxId = status.txId;
-                    pastSwap.state = SpvFromBTCSwapState.FRONTED;
+                    pastSwap._frontTxId = status.txId;
+                    pastSwap._state = SpvFromBTCSwapState.FRONTED;
                     changed ||= true;
                     break;
                 case SpvWithdrawalStateType.CLAIMED:
-                    pastSwap.claimTxId = status.txId;
-                    pastSwap.state = SpvFromBTCSwapState.CLAIMED;
+                    pastSwap._claimTxId = status.txId;
+                    pastSwap._state = SpvFromBTCSwapState.CLAIMED;
                     changed ||= true;
                     break;
                 case SpvWithdrawalStateType.CLOSED:
-                    pastSwap.state = SpvFromBTCSwapState.CLOSED;
+                    pastSwap._state = SpvFromBTCSwapState.CLOSED;
                     changed ||= true;
                     break;
             }

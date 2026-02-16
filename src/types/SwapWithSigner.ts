@@ -3,9 +3,12 @@ import {ChainType} from "@atomiqlabs/base";
 import {IToBTCSwap} from "../swaps/escrow_swaps/tobtc/IToBTCSwap";
 import {IFromBTCSelfInitSwap} from "../swaps/escrow_swaps/frombtc/IFromBTCSelfInitSwap";
 import {FromBTCLNSwap} from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap";
+import {FromBTCLNAutoSwap} from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap";
+import {SpvFromBTCSwap} from "../swaps/spv_swaps/SpvFromBTCSwap";
 
 /**
- * Proxy type that auto-injects signer into swap methods
+ * Proxy type that auto-injects a smart chain signer into swap methods
+ *
  * @category Swaps
  */
 export type SwapWithSigner<T extends ISwap> = {
@@ -19,12 +22,13 @@ export type SwapWithSigner<T extends ISwap> = {
 
 /**
  * Wraps a swap with automatic signer injection for methods like commit, refund, and claim
+ *
  * @category Swaps
+ * @internal
  */
 export function wrapSwapWithSigner<C extends ChainType, T extends ISwap<C>>(swap: T, signer: C["Signer"]): SwapWithSigner<T> {
     return new Proxy(swap, {
         get: (target, prop, receiver) => {
-            // Override the "sayGoodbye" method
             if (prop === "commit") {
                 if(swap instanceof IToBTCSwap || swap instanceof IFromBTCSelfInitSwap) {
                     return (abortSignal?: AbortSignal, skipChecks?: boolean) =>
@@ -38,7 +42,7 @@ export function wrapSwapWithSigner<C extends ChainType, T extends ISwap<C>>(swap
                 }
             }
             if (prop === "claim") {
-                if(swap instanceof IFromBTCSelfInitSwap) {
+                if(swap instanceof IFromBTCSelfInitSwap || swap instanceof FromBTCLNAutoSwap || swap instanceof SpvFromBTCSwap) {
                     return (abortSignal?: AbortSignal) =>
                         swap.claim(signer, abortSignal);
                 }

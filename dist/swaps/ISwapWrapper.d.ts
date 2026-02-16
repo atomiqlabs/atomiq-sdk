@@ -12,6 +12,7 @@ import { SCToken } from "../types/Token";
 import { PriceInfoType } from "../types/PriceInfoType";
 /**
  * Options for swap wrapper configuration
+ *
  * @category Swaps
  */
 export type ISwapWrapperOptions = {
@@ -20,6 +21,7 @@ export type ISwapWrapperOptions = {
 };
 /**
  * Token configuration for wrapper constructors
+ *
  * @category Swaps
  */
 export type WrapperCtorTokens<T extends MultiChain = MultiChain> = {
@@ -35,6 +37,7 @@ export type WrapperCtorTokens<T extends MultiChain = MultiChain> = {
 }[];
 /**
  * Type definition linking wrapper and swap types
+ *
  * @category Swaps
  */
 export type SwapTypeDefinition<T extends ChainType, W extends ISwapWrapper<T, any>, S extends ISwap<T>> = {
@@ -42,48 +45,103 @@ export type SwapTypeDefinition<T extends ChainType, W extends ISwapWrapper<T, an
     Swap: S;
 };
 /**
- * Base abstract class for swap wrapper implementations
+ * Base abstract class for swap handler implementations
+ *
  * @category Swaps
  */
 export declare abstract class ISwapWrapper<T extends ChainType, D extends SwapTypeDefinition<T, ISwapWrapper<T, D>, ISwap<T, D>>, O extends ISwapWrapperOptions = ISwapWrapperOptions> {
+    /**
+     * Swap type
+     */
     abstract readonly TYPE: SwapType;
+    /**
+     * Function for deserializing swaps
+     * @internal
+     */
+    abstract readonly _swapDeserializer: new (wrapper: D["Wrapper"], data: any) => D["Swap"];
+    /**
+     * Logger instance
+     * @internal
+     */
     protected readonly logger: import("../utils/Logger").LoggerType;
-    abstract readonly swapDeserializer: new (wrapper: D["Wrapper"], data: any) => D["Swap"];
-    readonly unifiedStorage: UnifiedSwapStorage<T>;
-    readonly unifiedChainEvents: UnifiedSwapEventListener<T>;
+    /**
+     * Persistent storage backend for the swaps
+     * @internal
+     */
+    protected readonly unifiedStorage: UnifiedSwapStorage<T>;
+    /**
+     * Smart chain events listener for listening to and parsing of on-chain events
+     * @internal
+     */
+    protected readonly unifiedChainEvents: UnifiedSwapEventListener<T>;
+    /**
+     * States of the swaps where {@link ISwap._tick} should be called every second
+     * @internal
+     */
+    protected readonly tickSwapState?: Array<D["Swap"]["_state"]>;
+    /**
+     * In-memory mapping of pending (not initiated) swaps, utilizing weak references to automatically
+     *  free memory when swaps are dereferenced in not initiated state
+     * @internal
+     */
+    protected readonly pendingSwaps: Map<string, WeakRef<D["Swap"]>>;
+    /**
+     * Whether this wrapper is initialized (have to call {@link init} to initialize a wrapper)
+     * @internal
+     */
+    protected isInitialized: boolean;
+    /**
+     * An interval for calling tick functions on the underlying swaps
+     * @internal
+     */
+    protected tickInterval?: NodeJS.Timeout;
+    /**
+     * States of the swaps in pending (non-final state), these are checked automatically on initial swap synchronization
+     * @internal
+     */
+    abstract readonly _pendingSwapStates: Array<D["Swap"]["_state"]>;
+    /**
+     * Chain interface of the underlying smart chain
+     * @internal
+     */
+    readonly _chain: T["ChainInterface"];
+    /**
+     * Pricing API
+     * @internal
+     */
+    readonly _prices: ISwapPrice;
+    /**
+     * Wrapper options
+     * @internal
+     */
+    readonly _options: O;
+    /**
+     * Tokens indexed by their token address
+     * @internal
+     */
+    readonly _tokens: {
+        [tokenAddress: string]: SCToken<T["ChainId"]>;
+    };
+    /**
+     * Chain identifier string of this wrapper
+     */
     readonly chainIdentifier: T["ChainId"];
-    readonly chain: T["ChainInterface"];
-    readonly prices: ISwapPrice;
+    /**
+     * Event emitter emitting `"swapState"` event when swap's state changes
+     */
     readonly events: EventEmitter<{
         swapState: [D["Swap"]];
     }>;
-    readonly options: O;
-    readonly tokens: {
-        [tokenAddress: string]: SCToken<T["ChainId"]>;
-    };
-    readonly pendingSwaps: Map<string, WeakRef<D["Swap"]>>;
-    isInitialized: boolean;
-    tickInterval?: NodeJS.Timeout;
-    /**
-     * @param chainIdentifier
-     * @param unifiedStorage
-     * @param unifiedChainEvents
-     * @param chain
-     * @param prices Swap pricing handler
-     * @param tokens Chain specific token data
-     * @param options
-     * @param events Instance to use for emitting events
-     */
     constructor(chainIdentifier: T["ChainId"], unifiedStorage: UnifiedSwapStorage<T>, unifiedChainEvents: UnifiedSwapEventListener<T>, chain: T["ChainInterface"], prices: ISwapPrice, tokens: WrapperCtorTokens, options: O, events?: EventEmitter<{
         swapState: [ISwap];
     }>);
     /**
      * Pre-fetches swap price for a given swap
      *
-     * @param amountData
-     * @param abortSignal
-     * @protected
+     * @param amountData Amount data
+     * @param abortSignal Abort signal
      * @returns Price of the token in uSats (micro sats)
+     * @internal
      */
     protected preFetchPrice(amountData: {
         token: string;
@@ -91,25 +149,26 @@ export declare abstract class ISwapWrapper<T extends ChainType, D extends SwapTy
     /**
      * Pre-fetches bitcoin's USD price
      *
-     * @param abortSignal
-     * @protected
+     * @param abortSignal Abort signal
+     * @internal
      */
     protected preFetchUsdPrice(abortSignal?: AbortSignal): Promise<number | undefined>;
     /**
-     * Verifies returned  price for swaps
+     * Verifies returned price for swaps
      *
      * @param lpServiceData Service data for the service in question (TO_BTCLN, TO_BTC, etc.) of the given intermediary
-     * @param send Whether this is a send (SOL -> SC) or receive (BTC -> SC) swap
+     * @param send Whether this is a send (Smart chain -> Bitcoin) or receive (Bitcoin -> Smart chain) swap
      * @param amountSats Amount in BTC
      * @param amountToken Amount in token
      * @param token Token used in the swap
      * @param feeData Fee data as returned by the intermediary
-     * @param pricePrefetchPromise Price pre-fetch promise
-     * @param usdPricePrefetchPromise
-     * @param abortSignal
-     * @protected
+     * @param pricePrefetchPromise Optional price pre-fetch promise
+     * @param usdPricePrefetchPromise Optiona USD price pre-fetch promise
+     * @param abortSignal Abort signal
      * @returns Price info object
      * @throws {IntermediaryError} if the calculated fee is too high
+     *
+     * @internal
      */
     protected verifyReturnedPrice(lpServiceData: {
         swapBaseFee: number;
@@ -117,37 +176,87 @@ export declare abstract class ISwapWrapper<T extends ChainType, D extends SwapTy
     }, send: boolean, amountSats: bigint, amountToken: bigint, token: string, feeData: {
         networkFee?: bigint;
     }, pricePrefetchPromise?: Promise<bigint | undefined>, usdPricePrefetchPromise?: Promise<number | undefined>, abortSignal?: AbortSignal): Promise<PriceInfoType>;
-    abstract readonly pendingSwapStates: Array<D["Swap"]["state"]>;
-    abstract readonly tickSwapState?: Array<D["Swap"]["state"]>;
     /**
-     * Processes a single SC on-chain event
-     * @private
-     * @param event
-     * @param swap
+     * Processes a single smart chain on-chain event
+     *
+     * @param event Smart chain event to process
+     * @param swap A swap related to the event
+     * @internal
      */
     protected abstract processEvent?(event: ChainEvent<T["Data"]>, swap: D["Swap"]): Promise<void>;
     /**
-     * Initializes the swap wrapper, needs to be called before any other action can be taken
+     * Starts the interval calling the {@link ISwap._tick} on all the known swaps in tick-enabled states
+     * @internal
      */
-    init(noTimers?: boolean, noCheckPastSwaps?: boolean): Promise<void>;
     protected startTickInterval(): void;
+    /**
+     * Runs checks on passed swaps, syncing their state from on-chain data
+     *
+     * @param pastSwaps Swaps to check
+     * @internal
+     */
     protected _checkPastSwaps(pastSwaps: D["Swap"][]): Promise<{
         changedSwaps: D["Swap"][];
         removeSwaps: D["Swap"][];
     }>;
+    /**
+     * Initializes the swap wrapper, needs to be called before any other action can be taken
+     *
+     * @param noTimers Whether to skip scheduling a tick timer for the swaps, if the tick timer is not initiated
+     *  the swap states depending on e.g. expiry can be out of sync with the actual expiration of the swap
+     * @param noCheckPastSwaps Whether to skip checking past swaps on initialization (by default all pending swaps
+     *  are re-checked on init, and their state is synchronized from the on-chain data)
+     */
+    init(noTimers?: boolean, noCheckPastSwaps?: boolean): Promise<void>;
+    /**
+     * Un-subscribes from event listeners on the smart chain, terminates the tick interval and stops this wrapper
+     */
+    stop(): Promise<void>;
+    /**
+     * Runs checks on all the known pending swaps, syncing their state from on-chain data
+     *
+     * @param pastSwaps Optional array of past swaps to check, otherwise all relevant swaps will be fetched
+     *  from the persistent storage
+     * @param noSave Whether to skip saving the swap changes in the persistent storage
+     */
     checkPastSwaps(pastSwaps?: D["Swap"][], noSave?: boolean): Promise<{
         removeSwaps: D["Swap"][];
         changedSwaps: D["Swap"][];
     }>;
-    tick(swaps?: D["Swap"][]): Promise<void>;
-    saveSwapData(swap: D["Swap"]): Promise<void>;
-    removeSwapData(swap: D["Swap"]): Promise<void>;
     /**
-     * Un-subscribes from event listeners on Solana
+     * Invokes {@link ISwap._tick} on all the known swaps
+     *
+     * @param swaps Optional array of swaps to invoke `_tick()` on, otherwise all relevant swaps will be fetched
+     *  from the persistent storage
      */
-    stop(): Promise<void>;
+    tick(swaps?: D["Swap"][]): Promise<void>;
     /**
      * Returns the smart chain's native token used to pay for fees
+     * @internal
      */
-    getNativeToken(): SCToken<T["ChainId"]>;
+    _getNativeToken(): SCToken<T["ChainId"]>;
+    /**
+     * Saves the swap, if it is not initiated it is only saved to pending swaps
+     *
+     * @param swap Swap to save
+     *
+     * @internal
+     */
+    _saveSwapData(swap: D["Swap"]): Promise<void>;
+    /**
+     * Removes the swap from the persistent storage and pending swaps
+     *
+     * @param swap Swap to remove
+     *
+     * @internal
+     */
+    _removeSwapData(swap: D["Swap"]): Promise<void>;
+    /**
+     * Retrieves a swap by its ID from the pending swap mapping
+     *
+     * @param id
+     *
+     * @internal
+     */
+    _getPendingSwap(id: string): D["Swap"] | null;
 }

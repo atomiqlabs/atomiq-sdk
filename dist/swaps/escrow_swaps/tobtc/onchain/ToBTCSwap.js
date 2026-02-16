@@ -9,6 +9,7 @@ const Utils_1 = require("../../../../utils/Utils");
 const TokenAmount_1 = require("../../../../types/TokenAmount");
 const Token_1 = require("../../../../types/Token");
 const Logger_1 = require("../../../../utils/Logger");
+const BitcoinUtils_1 = require("../../../../utils/BitcoinUtils");
 function isToBTCSwapInit(obj) {
     return (obj.address == null || typeof (obj.address) === "string") &&
         (obj.amount == null || typeof (obj.amount) === "bigint") &&
@@ -20,7 +21,8 @@ function isToBTCSwapInit(obj) {
 }
 exports.isToBTCSwapInit = isToBTCSwapInit;
 /**
- * Smart Chain to on-chain BTC swap
+ * Escrow based (PrTLC) swap for Smart chains -> Bitcoin
+ *
  * @category Swaps
  */
 class ToBTCSwap extends IToBTCSwap_1.IToBTCSwap {
@@ -28,8 +30,11 @@ class ToBTCSwap extends IToBTCSwap_1.IToBTCSwap {
         if (isToBTCSwapInit(initOrObject) && initOrObject.url != null)
             initOrObject.url += "/tobtc";
         super(wrapper, initOrObject);
-        this.outputToken = Token_1.BitcoinTokens.BTC;
         this.TYPE = SwapType_1.SwapType.TO_BTC;
+        /**
+         * @internal
+         */
+        this.outputToken = Token_1.BitcoinTokens.BTC;
         if (isToBTCSwapInit(initOrObject)) {
             this.address = initOrObject.address;
             this.amount = initOrObject.amount;
@@ -44,19 +49,23 @@ class ToBTCSwap extends IToBTCSwap_1.IToBTCSwap {
             this.confirmationTarget = initOrObject.confirmationTarget;
             this.satsPerVByte = initOrObject.satsPerVByte;
             this.txId = initOrObject.txId;
-            this.requiredConfirmations = initOrObject.requiredConfirmations ?? this.data.getConfirmationsHint();
-            this.nonce = (0, Utils_1.toBigInt)(initOrObject.nonce) ?? this.data.getNonceHint();
+            this.requiredConfirmations = initOrObject.requiredConfirmations ?? this._data.getConfirmationsHint();
+            this.nonce = (0, Utils_1.toBigInt)(initOrObject.nonce) ?? this._data.getNonceHint();
         }
         this.logger = (0, Logger_1.getLogger)("ToBTC(" + this.getIdentifierHashString() + "): ");
         this.tryRecomputeSwapPrice();
     }
+    /**
+     * @inheritDoc
+     * @internal
+     */
     async _setPaymentResult(result, check = false) {
         if (result == null)
             return false;
         if (result.txId == null)
             throw new IntermediaryError_1.IntermediaryError("No btc txId returned!");
         if (check || this.address == null || this.amount == null || this.nonce == null || this.requiredConfirmations == null) {
-            const btcTx = await this.wrapper.btcRpc.getTransaction(result.txId);
+            const btcTx = await this.wrapper._btcRpc.getTransaction(result.txId);
             if (btcTx == null)
                 return false;
             //Extract nonce from tx
@@ -64,11 +73,11 @@ class ToBTCSwap extends IToBTCSwap_1.IToBTCSwap {
             let requiredConfirmations = this.requiredConfirmations;
             const foundVout = btcTx.outs.find(vout => {
                 if (requiredConfirmations != null) {
-                    return this.data.getClaimHash() === this.wrapper.contract.getHashForOnchain(buffer_1.Buffer.from(vout.scriptPubKey.hex, "hex"), BigInt(vout.value), requiredConfirmations, nonce).toString("hex");
+                    return this._data.getClaimHash() === this.wrapper._contract.getHashForOnchain(buffer_1.Buffer.from(vout.scriptPubKey.hex, "hex"), BigInt(vout.value), requiredConfirmations, nonce).toString("hex");
                 }
                 else {
                     for (let i = 1; i <= 20; i++) {
-                        if (this.data.getClaimHash() === this.wrapper.contract.getHashForOnchain(buffer_1.Buffer.from(vout.scriptPubKey.hex, "hex"), BigInt(vout.value), i, nonce).toString("hex")) {
+                        if (this._data.getClaimHash() === this.wrapper._contract.getHashForOnchain(buffer_1.Buffer.from(vout.scriptPubKey.hex, "hex"), BigInt(vout.value), i, nonce).toString("hex")) {
                             requiredConfirmations = i;
                             return true;
                         }
@@ -79,8 +88,7 @@ class ToBTCSwap extends IToBTCSwap_1.IToBTCSwap {
                 this.logger.warn(`_setPaymentResult(): Tried to recover data from bitcoin transaction ${result.txId} data, but wasn't able to!`);
             if (foundVout != null) {
                 this.nonce = nonce;
-                if (this.wrapper.btcRpc.outputScriptToAddress != null)
-                    this.address = await this.wrapper.btcRpc.outputScriptToAddress(foundVout.scriptPubKey.hex);
+                this.address = (0, BitcoinUtils_1.fromOutputScript)(this.wrapper._options.bitcoinNetwork, foundVout.scriptPubKey.hex);
                 this.amount = BigInt(foundVout.value);
                 this.requiredConfirmations = requiredConfirmations;
             }
@@ -94,31 +102,43 @@ class ToBTCSwap extends IToBTCSwap_1.IToBTCSwap {
     }
     //////////////////////////////
     //// Amounts & fees
+    /**
+     * @inheritDoc
+     */
     getOutputToken() {
         return Token_1.BitcoinTokens.BTC;
     }
+    /**
+     * @inheritDoc
+     */
     getOutput() {
-        return (0, TokenAmount_1.toTokenAmount)(this.amount ?? null, this.outputToken, this.wrapper.prices, this.pricingInfo);
+        return (0, TokenAmount_1.toTokenAmount)(this.amount ?? null, this.outputToken, this.wrapper._prices, this.pricingInfo);
     }
     //////////////////////////////
     //// Getters & utils
     /**
-     * Returns the bitcoin address where the BTC will be sent to
+     * @inheritDoc
      */
     getOutputAddress() {
         return this.address ?? null;
     }
+    /**
+     * @inheritDoc
+     */
     getOutputTxId() {
         return this.txId ?? null;
     }
     /**
-     * Returns fee rate of the bitcoin transaction in sats/vB
+     * Returns fee rate of the output bitcoin transaction in sats/vB as reported by the intermediary (LP)
      */
     getBitcoinFeeRate() {
         return this.satsPerVByte;
     }
     //////////////////////////////
     //// Storage
+    /**
+     * @inheritDoc
+     */
     serialize() {
         return {
             ...super.serialize(),

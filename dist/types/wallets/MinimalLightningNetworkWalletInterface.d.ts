@@ -1,5 +1,7 @@
 /**
- * A type with minimum possible required functionality to be usable with lightning network swaps
+ * A type with minimum possible required functionality to be usable with lightning network swaps, i.e.
+ *  a function to pay bolt11 lightning network invoices.
+ *
  * @category Bitcoin
  */
 export type MinimalLightningNetworkWalletInterface = {

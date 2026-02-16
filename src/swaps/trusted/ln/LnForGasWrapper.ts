@@ -9,29 +9,52 @@ import {SwapType} from "../../../enums/SwapType";
 
 export type LnForGasSwapTypeDefinition<T extends ChainType> = SwapTypeDefinition<T, LnForGasWrapper<T>, LnForGasSwap<T>>;
 
+/**
+ * Trusted swap for Bitcoin Lightning -> Smart chains, to be used for minor amounts to get gas tokens on
+ *  the destination chain, which is only needed for Solana, which still uses legacy swaps
+ *
+ * @category Swaps
+ */
 export class LnForGasWrapper<T extends ChainType> extends ISwapWrapper<T, LnForGasSwapTypeDefinition<T>> {
-    public TYPE = SwapType.TRUSTED_FROM_BTCLN;
-    public readonly swapDeserializer = LnForGasSwap;
+    public TYPE: SwapType.TRUSTED_FROM_BTCLN = SwapType.TRUSTED_FROM_BTCLN;
+    /**
+     * @internal
+     */
+    public readonly _swapDeserializer = LnForGasSwap;
 
     /**
-     * Returns a newly created swap, receiving 'amount' on lightning network
-     *
-     * @param signer
-     * @param amount            Amount you wish to receive in base units (satoshis)
-     * @param lpOrUrl           Intermediary/Counterparty swap service Intermediary object or raw url
+     * @internal
      */
-    async create(signer: string, amount: bigint, lpOrUrl: Intermediary | string): Promise<LnForGasSwap<T>> {
+    readonly _pendingSwapStates = [LnForGasSwapState.PR_CREATED];
+    /**
+     * @internal
+     */
+    protected readonly tickSwapState = undefined;
+    /**
+     * @internal
+     */
+    protected processEvent = undefined;
+
+    /**
+     * Returns a newly created trusted Lightning network -> Smart chain swap, receiving
+     *  the specified amount of native token on the destination chain.
+     *
+     * @param recipient Address of the recipient on the smart chain destination chain
+     * @param amount Amount of native token to receive in base units
+     * @param lpOrUrl Intermediary (LP) to use for the swap
+     */
+    async create(recipient: string, amount: bigint, lpOrUrl: Intermediary | string): Promise<LnForGasSwap<T>> {
         if(!this.isInitialized) throw new Error("Not initialized, call init() first!");
 
         const lpUrl = typeof(lpOrUrl)==="string" ? lpOrUrl : lpOrUrl.url;
 
-        const token = this.chain.getNativeCurrencyAddress();
+        const token = this._chain.getNativeCurrencyAddress();
 
         const resp = await TrustedIntermediaryAPI.initTrustedFromBTCLN(this.chainIdentifier, lpUrl, {
-            address: signer,
+            address: recipient,
             amount,
             token
-        }, this.options.getRequestTimeout);
+        }, this._options.getRequestTimeout);
 
         const decodedPr = bolt11Decode(resp.pr);
         if(decodedPr.millisatoshis==null) throw new Error("Invalid payment request returned, no msat amount value!");
@@ -51,7 +74,7 @@ export class LnForGasWrapper<T extends ChainType> extends ISwapWrapper<T, LnForG
         const quoteInit: LnForGasSwapInit = {
             pr: resp.pr,
             outputAmount: resp.total,
-            recipient: signer,
+            recipient,
             pricingInfo,
             url: lpUrl,
             expiry: decodedPr.timeExpireDate*1000,
@@ -64,9 +87,5 @@ export class LnForGasWrapper<T extends ChainType> extends ISwapWrapper<T, LnForG
         await quote._save();
         return quote;
     }
-
-    public readonly pendingSwapStates = [LnForGasSwapState.PR_CREATED];
-    public readonly tickSwapState = undefined;
-    protected processEvent = undefined;
 
 }

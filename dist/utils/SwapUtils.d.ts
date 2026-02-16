@@ -11,7 +11,10 @@ import { OnchainForGasSwap } from "../swaps/trusted/onchain/OnchainForGasSwap";
 import { LnForGasSwap } from "../swaps/trusted/ln/LnForGasSwap";
 import { ISwap } from "../swaps/ISwap";
 /**
- * Type mapping from SwapType enum to specific swap class implementations
+ * Type mapping from SwapType enum to specific swap class implementations, it is important
+ *  to pass the chain type generic, since different chains support different swap protocols
+ *  for some directions.
+ *
  * @category Utilities
  */
 export type SwapTypeMapping<T extends ChainType> = {
@@ -26,6 +29,58 @@ export type SwapTypeMapping<T extends ChainType> = {
 };
 /**
  * Type guard to check if a swap is of a specific swap type
+ *
  * @category Utilities
  */
 export declare function isSwapType<T extends ChainType, S extends SwapType>(swap: ISwap<T>, swapType: S): swap is SwapTypeMapping<T>[S];
+/**
+ * Helper information about various swap protocol and their features:
+ * - `requiresInputWallet`: Whether a swap requires a connected wallet on the input chain able to sign
+ *  arbitrary transaction
+ * - `requiresOutputWallet`: Whether a swap requires a connected wallet on the output chain able to sign
+ *  arbitrary transactions
+ * - `supportsGasDrop`: Whether a swap supports the "gas drop" feature, allowing to user to receive a small
+ *  amount of native token as part of the swap when swapping to smart chains
+ */
+export declare const SwapProtocolInfo: {
+    readonly 2: {
+        readonly requiresInputWallet: true;
+        readonly requiresOutputWallet: false;
+        readonly supportsGasDrop: false;
+    };
+    readonly 3: {
+        readonly requiresInputWallet: true;
+        readonly requiresOutputWallet: false;
+        readonly supportsGasDrop: false;
+    };
+    readonly 0: {
+        readonly requiresInputWallet: false;
+        readonly requiresOutputWallet: true;
+        readonly supportsGasDrop: false;
+    };
+    readonly 1: {
+        readonly requiresInputWallet: false;
+        readonly requiresOutputWallet: true;
+        readonly supportsGasDrop: false;
+    };
+    readonly 6: {
+        readonly requiresInputWallet: true;
+        readonly requiresOutputWallet: false;
+        readonly supportsGasDrop: true;
+    };
+    readonly 7: {
+        readonly requiresInputWallet: false;
+        readonly requiresOutputWallet: false;
+        readonly supportsGasDrop: true;
+    };
+    readonly 4: {
+        readonly requiresInputWallet: false;
+        readonly requiresOutputWallet: false;
+        readonly supportsGasDrop: false;
+    };
+    readonly 5: {
+        readonly requiresInputWallet: false;
+        readonly requiresOutputWallet: false;
+        readonly supportsGasDrop: false;
+    };
+};

@@ -14,17 +14,50 @@ import { BtcToken, SCToken } from "../../../../types/Token";
 import { LoggerType } from "../../../../utils/Logger";
 import { LNURLWithdraw } from "../../../../types/lnurl/LNURLWithdraw";
 /**
- * State enum for FromBTCLN swaps
+ * State enum for legacy Lightning -> Smart chain swaps
  * @category Swaps
  */
 export declare enum FromBTCLNSwapState {
+    /**
+     * Swap has failed as the user didn't settle the HTLC on the destination before expiration
+     */
     FAILED = -4,
+    /**
+     * Swap has expired for good and there is no way how it can be executed anymore
+     */
     QUOTE_EXPIRED = -3,
+    /**
+     * A swap is almost expired, and it should be presented to the user as expired, though
+     *  there is still a chance that it will be processed
+     */
     QUOTE_SOFT_EXPIRED = -2,
+    /**
+     * Swap HTLC on the destination chain has expired, it is not safe anymore to settle (claim) the
+     *  swap on the destination smart chain.
+     */
     EXPIRED = -1,
+    /**
+     * Swap quote was created, use {@link FromBTCLNSwap.getAddress} or {@link FromBTCLNSwap.getHyperlink}
+     *  to get the bolt11 lightning network invoice to pay to initiate the swap, then use the
+     *  {@link FromBTCLNSwap.waitForPayment} to wait till the lightning network payment is received
+     *  by the intermediary (LP)
+     */
     PR_CREATED = 0,
+    /**
+     * Lightning network payment has been received by the intermediary (LP), the user can now settle
+     *  the swap on the destination smart chain side with {@link FromBTCLNSwap.commitAndClaim} (if
+     *  the underlying chain supports it - check with {@link FromBTCLNSwap.canCommitAndClaimInOneShot}),
+     *  or by calling {@link FromBTCLNSwap.commit} and {@link FromBTCLNSwap.claim} separately.
+     */
     PR_PAID = 1,
+    /**
+     * Swap escrow HTLC has been created on the destination chain. Continue by claiming it with the
+     *  {@link FromBTCLNSwap.claim} or {@link FromBTCLNSwap.txsClaim} function.
+     */
     CLAIM_COMMITED = 2,
+    /**
+     * Swap successfully settled and funds received on the destination chain
+     */
     CLAIM_CLAIMED = 3
 }
 export type FromBTCLNSwapInit<T extends SwapData> = IEscrowSelfInitSwapInit<T> & {
@@ -36,32 +69,95 @@ export type FromBTCLNSwapInit<T extends SwapData> = IEscrowSelfInitSwapInit<T> &
     lnurlCallback?: string;
 };
 export declare function isFromBTCLNSwapInit<T extends SwapData>(obj: any): obj is FromBTCLNSwapInit<T>;
+/**
+ * Legacy escrow (HTLC) based swap for Bitcoin Lightning -> Smart chains, requires manual settlement
+ *  of the swap on the destination network once the lightning network payment is received by the LP.
+ *
+ * @category Swaps
+ */
 export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFromBTCSelfInitSwap<T, FromBTCLNDefinition<T>, FromBTCLNSwapState> implements IAddressSwap, IClaimableSwap<T, FromBTCLNDefinition<T>, FromBTCLNSwapState> {
-    private readonly usesClaimHashAsId;
-    protected readonly logger: LoggerType;
-    protected readonly inputToken: BtcToken<true>;
     protected readonly TYPE = SwapType.FROM_BTCLN;
-    protected readonly lnurlFailSignal: AbortController;
-    protected pr?: string;
-    protected secret?: string;
-    protected initialSwapData: T["Data"];
-    lnurl?: string;
-    lnurlK1?: string;
-    lnurlCallback?: string;
-    prPosted?: boolean;
-    protected getSwapData(): T["Data"];
+    /**
+     * @internal
+     */
+    protected readonly logger: LoggerType;
+    /**
+     * @internal
+     */
+    protected readonly inputToken: BtcToken<true>;
+    private readonly lnurlFailSignal;
+    private readonly usesClaimHashAsId;
+    private readonly initialSwapData;
+    /**
+     * In case the swap is recovered from on-chain data, the pr saved here is just a payment hash,
+     *  as it is impossible to retrieve the actual lightning network invoice paid purely from on-chain
+     *  data
+     * @private
+     */
+    private pr?;
+    private secret?;
+    private lnurl?;
+    private lnurlK1?;
+    private lnurlCallback?;
+    private prPosted?;
+    /**
+     * Sets the LNURL data for the swap
+     *
+     * @internal
+     */
+    _setLNURLData(lnurl: string, lnurlK1: string, lnurlCallback: string): void;
     constructor(wrapper: FromBTCLNWrapper<T>, init: FromBTCLNSwapInit<T["Data"]>);
     constructor(wrapper: FromBTCLNWrapper<T>, obj: any);
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    protected getSwapData(): T["Data"];
+    /**
+     * @inheritDoc
+     * @internal
+     */
     protected upgradeVersion(): void;
+    /**
+     * @inheritDoc
+     * @internal
+     */
     protected getIdentifierHash(): Buffer;
+    /**
+     * Returns the payment hash of the swap and lightning network invoice, or `null` if not known (i.e. if
+     *  the swap was recovered from on-chain data, the payment hash might not be known)
+     *
+     * @internal
+     */
     protected getPaymentHash(): Buffer | null;
+    /**
+     * @inheritDoc
+     * @internal
+     */
     protected canCommit(): boolean;
+    /**
+     * @inheritDoc
+     */
     getInputAddress(): string | null;
+    /**
+     * @inheritDoc
+     */
     getInputTxId(): string | null;
     /**
-     * Returns the lightning network BOLT11 invoice that needs to be paid as an input to the swap
+     * Returns the lightning network BOLT11 invoice that needs to be paid as an input to the swap.
+     *
+     * In case the swap is recovered from on-chain data, the address returned might be just a payment hash,
+     *  as it is impossible to retrieve the actual lightning network invoice paid purely from on-chain
+     *  data.
      */
     getAddress(): string;
+    /**
+     * In case the swap is recovered from on-chain data, the address returned might be just a payment hash,
+     *  as it is impossible to retrieve the actual lightning network invoice paid purely from on-chain
+     *  data.
+     *
+     * @inheritDoc
+     */
     getHyperlink(): string;
     /**
      * Returns the timeout time (in UNIX milliseconds) when the swap will definitelly be considered as expired
@@ -69,24 +165,62 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
      */
     getDefinitiveExpiryTime(): number;
     /**
+     * Returns timeout time (in UNIX milliseconds) when the swap htlc will expire
+     */
+    getHtlcTimeoutTime(): number | null;
+    /**
      * Returns timeout time (in UNIX milliseconds) when the LN invoice will expire
      */
     getTimeoutTime(): number;
     /**
-     * Returns timeout time (in UNIX milliseconds) when the swap htlc will expire
+     * @inheritDoc
      */
-    getHtlcTimeoutTime(): number;
     isFinished(): boolean;
+    /**
+     * @inheritDoc
+     */
     isClaimable(): boolean;
+    /**
+     * @inheritDoc
+     */
     isSuccessful(): boolean;
+    /**
+     * @inheritDoc
+     */
     isFailed(): boolean;
+    /**
+     * @inheritDoc
+     */
     isQuoteExpired(): boolean;
+    /**
+     * @inheritDoc
+     */
     isQuoteSoftExpired(): boolean;
+    /**
+     * @inheritDoc
+     * @internal
+     */
     _verifyQuoteDefinitelyExpired(): Promise<boolean>;
-    verifyQuoteValid(): Promise<boolean>;
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    _verifyQuoteValid(): Promise<boolean>;
+    /**
+     * @inheritDoc
+     */
     getInputToken(): BtcToken<true>;
+    /**
+     * @inheritDoc
+     */
     getInput(): TokenAmount<T["ChainId"], BtcToken<true>>;
+    /**
+     * @inheritDoc
+     */
     getSmartChainNetworkFee(): Promise<TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>>;
+    /**
+     * @inheritDoc
+     */
     hasEnoughForTxFees(): Promise<{
         enoughBalance: boolean;
         balance: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
@@ -117,9 +251,12 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
         delayBetweenCommitAndClaimSeconds?: number;
     }, secret?: string): Promise<void>;
     /**
-     * Returns currently required execution step to execute the swap
+     * @inheritDoc
      *
-     * @param options Optional options for the swap
+     * @param options
+     * @param options.skipChecks Skip checks like making sure init signature is still valid and swap
+     *  wasn't commited yet (this is handled on swap creation, if you commit right after quoting, you
+     *  can use `skipChecks=true`)
      * @param secret A swap secret to use for the claim transaction, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      */
@@ -128,9 +265,10 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
     }, secret?: string): Promise<{
         name: "Payment";
         description: string;
-        chain: string;
+        chain: "LIGHTNING";
         txs: {
-            address: string | undefined;
+            type: "BOLT11_PAYMENT_REQUEST";
+            address: string;
             hyperlink: string;
         }[];
     }[] | ({
@@ -148,6 +286,8 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
      * Checks whether the LP received the LN payment and we can continue by committing & claiming the HTLC on-chain
      *
      * @param save If the new swap state should be saved
+     *
+     * @internal
      */
     _checkIntermediaryPaymentReceived(save?: boolean): Promise<boolean | null>;
     /**
@@ -156,31 +296,38 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
      * @param signer Smart chain signer's address initiating the swap
      * @param data Parsed swap data as returned by the intermediary
      * @param signature Signature data as returned by the intermediary
-     * @protected
+     *
      * @throws {IntermediaryError} If the returned are not valid
      * @throws {SignatureVerificationError} If the returned signature is not valid
      * @throws {Error} If the swap is already committed on-chain
+     *
+     * @internal
      */
     protected checkIntermediaryReturnedAuthData(signer: string, data: T["Data"], signature: SignatureData): Promise<void>;
     /**
-     * Waits till an LN payment is received by the intermediary and client can continue commiting & claiming the HTLC
+     * Waits till a lightning network payment is received by the intermediary and client
+     *  can continue by initiating (committing) & settling (claiming) the HTLC by calling
+     *  either the {@link commitAndClaim} function (if the underlying chain allows commit
+     *  and claim in a single transaction - check with {@link canCommitAndClaimInOneShot}).
+     *  Or call {@link commit} and then {@link claim} separately.
+     *
+     * If this swap is using an LNURL-withdraw link as input, it automatically posts the
+     *  generated invoice to the LNURL service to pay it.
      *
      * @param onPaymentReceived Callback as for when the LP reports having received the ln payment
      * @param abortSignal Abort signal to stop waiting for payment
-     * @param checkIntervalSeconds How often to poll the intermediary for answer
+     * @param checkIntervalSeconds How often to poll the intermediary for answer (default 5 seconds)
      */
     waitForPayment(onPaymentReceived?: (txId: string) => void, checkIntervalSeconds?: number, abortSignal?: AbortSignal): Promise<boolean>;
     /**
-     * Commits the swap on-chain, locking the tokens from the intermediary in an HTLC
+     * @inheritDoc
      *
-     * @param _signer Signer to sign the transactions with, must be the same as used in the initialization
-     * @param abortSignal Abort signal to stop waiting for the transaction confirmation and abort
-     * @param skipChecks Skip checks like making sure init signature is still valid and swap wasn't commited yet
-     *  (this is handled when swap is created (quoted), if you commit right after quoting, you can use skipChecks=true)
-     * @param onBeforeTxSent
      * @throws {Error} If invalid signer is provided that doesn't match the swap data
      */
     commit(_signer: T["Signer"] | T["NativeSigner"], abortSignal?: AbortSignal, skipChecks?: boolean, onBeforeTxSent?: (txId: string) => void): Promise<string>;
+    /**
+     * @inheritDoc
+     */
     waitTillCommited(abortSignal?: AbortSignal): Promise<void>;
     /**
      * Unsafe txs claim getter without state checking!
@@ -188,51 +335,54 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
      * @param _signer
      * @param secret A swap secret to use for the claim transaction, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
-     * @private
+     *
+     * @internal
      */
     private _txsClaim;
     /**
-     * Returns transactions required for claiming the HTLC and finishing the swap by revealing the HTLC secret
-     *  (hash preimage)
+     * @inheritDoc
      *
      * @param _signer Optional signer address to use for claiming the swap, can also be different from the initializer
      * @param secret A swap secret to use for the claim transaction, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      *
-     * @throws {Error} If in invalid state (must be CLAIM_COMMITED)
+     * @throws {Error} If in invalid state (must be {@link FromBTCLNSwapState.CLAIM_COMMITED})
      */
     txsClaim(_signer?: T["Signer"] | T["NativeSigner"], secret?: string): Promise<T["TX"][]>;
     /**
-     * Claims and finishes the swap
+     * @inheritDoc
      *
-     * @param _signer Signer to sign the transactions with, can also be different to the initializer
-     * @param abortSignal Abort signal to stop waiting for transaction confirmation
+     * @param _signer
+     * @param abortSignal
+     * @param onBeforeTxSent
      * @param secret A swap secret to use for the claim transaction, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
-     *
-     * @param onBeforeTxSent
      */
     claim(_signer: T["Signer"] | T["NativeSigner"], abortSignal?: AbortSignal, onBeforeTxSent?: (txId: string) => void, secret?: string): Promise<string>;
     /**
-     * Waits till the swap is successfully claimed
+     * @inheritDoc
      *
-     * @param maxWaitTimeSeconds Maximum time in seconds to wait for the swap to be settled
-     * @param abortSignal AbortSignal
-     * @throws {Error} If swap is in invalid state (must be BTC_TX_CONFIRMED)
+     * @throws {Error} If swap is in invalid state (must be {@link FromBTCLNSwapState.CLAIM_COMMITED})
      * @throws {Error} If the LP refunded sooner than we were able to claim
      * @returns {boolean} whether the swap was claimed in time or not
      */
     waitTillClaimed(maxWaitTimeSeconds?: number, abortSignal?: AbortSignal): Promise<boolean>;
     /**
-     * Estimated transaction fee for commit & claim txs combined
+     * Estimated transaction fee for commit & claim transactions combined, required
+     *  to settle the swap on the smart chain destination side.
      */
-    getCommitAndClaimFee(): Promise<bigint>;
+    getCommitAndClaimNetworkFee(): Promise<TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>>;
+    /**
+     * Returns whether the underlying chain supports calling commit and claim in a single call,
+     *  such that you can use the {@link commitAndClaim} function. If not you have to manually
+     *  call {@link commit} first and then {@link claim}.
+     */
     canCommitAndClaimInOneShot(): boolean;
     /**
      * Returns transactions for both commit & claim operation together, such that they can be signed all at once by
-     *  the wallet. CAUTION: transactions must be sent sequentially, such that the claim (2nd) transaction is only
+     *  the wallet. **WARNING**: transactions must be sent sequentially, such that the claim (2nd) transaction is only
      *  sent after the commit (1st) transaction confirms. Failure to do so can reveal the HTLC pre-image too soon,
-     *  opening a possibility for the LP to steal funds.
+     *  opening a possibility for the LP to steal funds!
      *
      * @param skipChecks Skip checks like making sure init signature is still valid and swap wasn't commited yet
      *  (this is handled when swap is created (quoted), if you commit right after quoting, you can use skipChecks=true)
@@ -243,15 +393,18 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
      */
     txsCommitAndClaim(skipChecks?: boolean, secret?: string): Promise<T["TX"][]>;
     /**
-     * Commits and claims the swap, in a way that the transactions can be signed together by the underlying provider and
-     *  then sent sequentially
+     * Commits and claims the swap, in a way that the transactions can be signed together by the provided signer and
+     *  then automatically sent sequentially by the SDK. To check if the underlying chain supports this flow check
+     *  the {@link canCommitAndClaimInOneShot} function.
      *
      * @param _signer Signer to sign the transactions with, must be the same as used in the initialization
      * @param abortSignal Abort signal to stop waiting for the transaction confirmation and abort
      * @param skipChecks Skip checks like making sure init signature is still valid and swap wasn't commited yet
      *  (this is handled when swap is created (quoted), if you commit right after quoting, you can use skipChecks=true)
-     * @param onBeforeCommitTxSent
-     * @param onBeforeClaimTxSent
+     * @param onBeforeCommitTxSent Optional callback called before the initialization (commit) transaction is
+     *  broadcasted
+     * @param onBeforeClaimTxSent Optional callback called before the settlement (claim) transaction is
+     *  broadcasted
      * @param secret A swap secret to use for the claim transaction, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      *
@@ -260,17 +413,25 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
      */
     commitAndClaim(_signer: T["Signer"] | T["NativeSigner"], abortSignal?: AbortSignal, skipChecks?: boolean, onBeforeCommitTxSent?: (txId: string) => void, onBeforeClaimTxSent?: (txId: string) => void, secret?: string): Promise<string[]>;
     /**
-     * Is this an LNURL-withdraw swap?
+     * Whether this swap uses an LNURL-withdraw link
      */
     isLNURL(): boolean;
     /**
-     * Gets the used LNURL or null if this is not an LNURL-withdraw swap
+     * Gets the used LNURL or `null` if this is not an LNURL-withdraw swap
      */
     getLNURL(): string | null;
     /**
-     * Pay the generated lightning network invoice with LNURL-withdraw
+     * Pay the generated lightning network invoice with an LNURL-withdraw link, this
+     *  is useful when you want to display a lightning payment QR code and also want to
+     *  allow payments using LNURL-withdraw NFC cards.
+     *
+     * Note that the swap needs to be created **without** an LNURL to begin with for this function
+     *  to work. If this swap is already using an LNURL-withdraw link, this function throws.
      */
     settleWithLNURLWithdraw(lnurl: string | LNURLWithdraw): Promise<void>;
+    /**
+     * @inheritDoc
+     */
     serialize(): any;
     /**
      * Checks the swap's state on-chain and compares it to its internal state, updates/changes it according to on-chain
@@ -279,11 +440,41 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
      * @private
      */
     private syncStateFromChain;
+    /**
+     * @inheritDoc
+     * @internal
+     */
     _shouldFetchExpiryStatus(): boolean;
-    _shouldFetchCommitStatus(): boolean;
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    _shouldFetchOnchainState(): boolean;
+    /**
+     * Whether an intermediary (LP) should be contacted to get the state of this swap.
+     *
+     * @internal
+     */
     _shouldCheckIntermediary(): boolean;
+    /**
+     * @inheritDoc
+     * @internal
+     */
     _sync(save?: boolean, quoteDefinitelyExpired?: boolean, commitStatus?: SwapCommitState, skipLpCheck?: boolean): Promise<boolean>;
+    /**
+     * @inheritDoc
+     * @internal
+     */
     _forciblySetOnchainState(commitStatus: SwapCommitState): Promise<boolean>;
+    /**
+     * @inheritDoc
+     * @internal
+     */
     _tick(save?: boolean): Promise<boolean>;
+    /**
+     * Forcibly sets the swap secret pre-image from on-chain data
+     *
+     * @internal
+     */
     _setSwapSecret(secret: string): void;
 }

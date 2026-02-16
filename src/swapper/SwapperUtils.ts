@@ -16,7 +16,9 @@ import {isLNURLPay, LNURLPay} from "../types/lnurl/LNURLPay";
 import {toBitcoinWallet} from "../utils/BitcoinWalletUtils";
 
 /**
- * Utility class providing helper methods for swap operations
+ * Utility class providing helper methods for address parsing, token balances, serialization
+ *  and other miscellaneous things.
+ *
  * @category Core
  */
 export class SwapperUtils<T extends MultiChain> {
@@ -25,42 +27,48 @@ export class SwapperUtils<T extends MultiChain> {
     private readonly root: Swapper<T>;
 
     constructor(root: Swapper<T>) {
-        this.bitcoinNetwork = root.bitcoinNetwork;
+        this.bitcoinNetwork = root._btcNetwork;
         this.root = root;
     }
 
+    /**
+     * Checks whether a passed address is a valid address on the smart chain
+     *
+     * @param address Address
+     * @param chainId Smart chain identifier string to check the address for
+     */
     isValidSmartChainAddress(address: string, chainId?: ChainIds<T>): boolean {
         if(chainId!=null) {
-            if(this.root.chains[chainId]==null) throw new Error(`Unknown chain id: ${chainId}`);
-            return this.root.chains[chainId].chainInterface.isValidAddress(address);
+            if(this.root._chains[chainId]==null) throw new Error(`Unknown chain id: ${chainId}`);
+            return this.root._chains[chainId].chainInterface.isValidAddress(address);
         }
         for(let chainId of this.root.getSmartChains()) {
-            if(this.root.chains[chainId].chainInterface.isValidAddress(address)) return true;
+            if(this.root._chains[chainId].chainInterface.isValidAddress(address)) return true;
         }
         return false;
     }
 
     /**
-     * Returns true if string is a valid BOLT11 bitcoin lightning invoice
+     * Checks whether an address is a valid BOLT11 bitcoin lightning invoice
      *
-     * @param lnpr
+     * @param address Address to check
      */
-    isLightningInvoice(lnpr: string): boolean {
+    isLightningInvoice(address: string): boolean {
         try {
-            bolt11Decode(lnpr);
+            bolt11Decode(address);
             return true;
         } catch (e) {}
         return false;
     }
 
     /**
-     * Returns true if string is a valid bitcoin address
+     * Checks whether an address is a valid bitcoin address
      *
-     * @param addr
+     * @param address Address to check
      */
-    isValidBitcoinAddress(addr: string): boolean {
+    isValidBitcoinAddress(address: string): boolean {
         try {
-            Address(this.bitcoinNetwork).decode(addr);
+            Address(this.bitcoinNetwork).decode(address);
             return true;
         } catch (e) {
             return false;
@@ -68,32 +76,32 @@ export class SwapperUtils<T extends MultiChain> {
     }
 
     /**
-     * Returns true if string is a valid BOLT11 bitcoin lightning invoice WITH AMOUNT
+     * Checks whether an address is a valid BOLT11 bitcoin lightning invoice WITH AMOUNT
      *
-     * @param lnpr
+     * @param address Address to check
      */
-    isValidLightningInvoice(lnpr: string): boolean {
+    isValidLightningInvoice(address: string): boolean {
         try {
-            const parsed = bolt11Decode(lnpr);
+            const parsed = bolt11Decode(address);
             if(parsed.millisatoshis!=null) return true;
         } catch (e) {}
         return false;
     }
 
     /**
-     * Returns true if string is a valid LNURL (no checking on type is performed)
+     * Checks whether an address is a valid LNURL (no checking on type is performed)
      *
-     * @param lnurl
+     * @param address Address to check
      */
-    isValidLNURL(lnurl: string): boolean {
-        return LNURL.isLNURL(lnurl);
+    isValidLNURL(address: string): boolean {
+        return LNURL.isLNURL(address);
     }
 
     /**
      * Returns type and data about an LNURL
      *
-     * @param lnurl
-     * @param shouldRetry
+     * @param lnurl LNURL link to check, can be either `pay` or `withdraw` type
+     * @param shouldRetry Optional whether HTTP requests should retried on failure
      */
     getLNURLTypeAndData(lnurl: string, shouldRetry?: boolean): Promise<LNURLPay | LNURLWithdraw | null> {
         return LNURL.getLNURLType(lnurl, shouldRetry);
@@ -227,7 +235,7 @@ export class SwapperUtils<T extends MultiChain> {
         max?: TokenAmount
     } | null {
         for(let chainId of this.root.getSmartChains()) {
-            if(this.root.chains[chainId].chainInterface.isValidAddress(resultText)) {
+            if(this.root._chains[chainId].chainInterface.isValidAddress(resultText)) {
                 return {
                     address: resultText,
                     type: chainId,
@@ -239,12 +247,12 @@ export class SwapperUtils<T extends MultiChain> {
     }
 
     /**
-     * General parser for bitcoin addresses, LNURLs, lightning invoices, smart chain addresses, also fetches LNURL data
-     *  (hence returns Promise)
+     * General parser for bitcoin addresses, LNURLs, lightning invoices, smart chain addresses. Also fetches LNURL data
+     *  (hence async and returns Promise).
      *
      * @param addressString Address to parse
      * @throws {Error} Error in address parsing
-     * @returns Address data or null if address doesn't conform to any known format
+     * @returns Address data or `null` if address doesn't conform to any known format
      */
     async parseAddress(addressString: string): Promise<{
         address: string,
@@ -286,11 +294,11 @@ export class SwapperUtils<T extends MultiChain> {
 
     /**
      * Synchronous general parser for bitcoin addresses, LNURLs, lightning invoices, smart chain addresses, doesn't fetch
-     *  LNURL data, reports swapType: null instead to prevent returning a Promise
+     *  LNURL data, returns `swapType: null` instead to prevent returning a Promise
      *
      * @param addressString Address to parse
      * @throws {Error} Error in address parsing
-     * @returns Address data or null if address doesn't conform to any known format
+     * @returns Address data or `null` if address doesn't conform to any known format
      */
     parseAddressSync(addressString: string): {
         address: string,
@@ -330,14 +338,15 @@ export class SwapperUtils<T extends MultiChain> {
     }
 
     /**
-     * Returns a random PSBT that can be used for fee estimation, the last output (the LP output) is omitted
-     *  to allow for coinselection algorithm to determine maximum sendable amount there
+     * Returns a random PSBT that can be used for fee estimation for SPV vault (UTXO-controlled vault) based swaps
+     *  {@link SwapType.SPV_VAULT_FROM_BTC}, the last output (the LP output) is omitted to allow for coinselection
+     *  algorithm to determine maximum sendable amount there
      *
-     * @param chainIdentifier
-     * @param includeGasToken   Whether to return the PSBT also with the gas token amount (increases the vSize by 8)
+     * @param chainIdentifier Smart chain to swap to
+     * @param includeGasToken Whether to return the PSBT also with the gas token amount (increases the vSize by 8)
      */
     getRandomSpvVaultPsbt<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier, includeGasToken?: boolean): Transaction {
-        const wrapper = this.root.chains[chainIdentifier].wrappers[SwapType.SPV_VAULT_FROM_BTC];
+        const wrapper = this.root._chains[chainIdentifier].wrappers[SwapType.SPV_VAULT_FROM_BTC];
         if(wrapper==null) throw new Error("Chain doesn't support spv vault swaps!");
         return wrapper.getDummySwapPsbt(includeGasToken);
     }
@@ -345,8 +354,10 @@ export class SwapperUtils<T extends MultiChain> {
     /**
      * Returns the spendable balance of a bitcoin wallet
      *
-     * @param wallet
-     * @param targetChain
+     * @param wallet Bitcoin wallet to check the spendable balance for, can either be a simple
+     *  bitcoin address string or a wallet object
+     * @param targetChain Destination smart chain for the swap, the ensures proper spendable balance
+     *  is estimated taking into consideration different swap primitives available on different chains
      * @param options Additional options
      */
     async getBitcoinSpendableBalance(
@@ -363,9 +374,9 @@ export class SwapperUtils<T extends MultiChain> {
     }> {
         let bitcoinWallet: IBitcoinWallet;
         if(typeof(wallet)==="string") {
-            bitcoinWallet = new SingleAddressBitcoinWallet(this.root.bitcoinRpc, this.bitcoinNetwork, {address: wallet, publicKey: ""});
+            bitcoinWallet = new SingleAddressBitcoinWallet(this.root._bitcoinRpc, this.bitcoinNetwork, {address: wallet, publicKey: ""});
         } else {
-            bitcoinWallet = toBitcoinWallet(wallet, this.root.bitcoinRpc, this.bitcoinNetwork);
+            bitcoinWallet = toBitcoinWallet(wallet, this.root._bitcoinRpc, this.bitcoinNetwork);
         }
 
         let feeRate = options?.feeRate ?? await bitcoinWallet.getFeeRate();
@@ -385,14 +396,15 @@ export class SwapperUtils<T extends MultiChain> {
     }
 
     /**
-     * Returns the maximum spendable balance of the wallet, deducting the fee needed to initiate a swap for native balances
+     * Returns the maximum spendable balance of the smart chain wallet, deducting the fee needed
+     *  to initiate a swap for native balances
      */
     async getSpendableBalance<ChainIdentifier extends ChainIds<T>>(wallet: string | T[ChainIdentifier]["Signer"] | T[ChainIdentifier]["NativeSigner"], token: SCToken<ChainIdentifier>, options?: {
         feeMultiplier?: number,
         feeRate?: any
     }): Promise<TokenAmount> {
-        if(this.root.chains[token.chainId]==null) throw new Error("Invalid chain identifier! Unknown chain: "+token.chainId);
-        const {swapContract, chainInterface} = this.root.chains[token.chainId];
+        if(this.root._chains[token.chainId]==null) throw new Error("Invalid chain identifier! Unknown chain: "+token.chainId);
+        const {swapContract, chainInterface} = this.root._chains[token.chainId];
 
         let signer: string;
         if(typeof(wallet)==="string") {
@@ -433,11 +445,11 @@ export class SwapperUtils<T extends MultiChain> {
     }
 
     /**
-     * Returns the address of the native currency of the chain
+     * Returns the address of the native currency of the smart chain
      */
     getNativeToken<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier): SCToken<ChainIdentifier> {
-        if(this.root.chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
-        return this.root.tokens[chainIdentifier][this.root.chains[chainIdentifier].chainInterface.getNativeCurrencyAddress()] as SCToken<ChainIdentifier>;
+        if(this.root._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
+        return this.root._tokens[chainIdentifier][this.root._chains[chainIdentifier].chainInterface.getNativeCurrencyAddress()] as SCToken<ChainIdentifier>;
     }
 
     /**
@@ -446,8 +458,8 @@ export class SwapperUtils<T extends MultiChain> {
      * @param chainIdentifier
      */
     randomSigner<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier): T[ChainIdentifier]["Signer"] {
-        if(this.root.chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
-        return this.root.chains[chainIdentifier].chainInterface.randomSigner();
+        if(this.root._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
+        return this.root._chains[chainIdentifier].chainInterface.randomSigner();
     }
 
     /**
@@ -456,12 +468,18 @@ export class SwapperUtils<T extends MultiChain> {
      * @param chainIdentifier
      */
     randomAddress<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier): string {
-        if(this.root.chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
-        return this.root.chains[chainIdentifier].chainInterface.randomAddress();
+        if(this.root._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
+        return this.root._chains[chainIdentifier].chainInterface.randomAddress();
     }
 
     /**
      * Signs and broadcasts the supplied smart chain transaction
+     *
+     * @param chainIdentifier Smart chain identifier string
+     * @param signer Signer to use for signing the transactions
+     * @param txs An array of transactions to sign
+     * @param abortSignal Abort signal
+     * @param onBeforePublish Callback invoked before a transaction is sent (invoked for every transaction to be sent)
      */
     sendAndConfirm<ChainIdentifier extends ChainIds<T>>(
         chainIdentifier: ChainIdentifier,
@@ -470,12 +488,17 @@ export class SwapperUtils<T extends MultiChain> {
         abortSignal?: AbortSignal,
         onBeforePublish?: (txId: string, rawTx: string) => Promise<void>
     ): Promise<string[]> {
-        if(this.root.chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
-        return this.root.chains[chainIdentifier].chainInterface.sendAndConfirm(signer, txs, true, abortSignal, false, onBeforePublish);
+        if(this.root._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
+        return this.root._chains[chainIdentifier].chainInterface.sendAndConfirm(signer, txs, true, abortSignal, false, onBeforePublish);
     }
 
     /**
      * Broadcasts already signed smart chain transactions
+     *
+     * @param chainIdentifier Smart chain identifier string
+     * @param txs An array of already signed transactions
+     * @param abortSignal Abort signal
+     * @param onBeforePublish Callback invoked before a transaction is sent (invoked for every transaction to be sent)
      */
     sendSignedAndConfirm<ChainIdentifier extends ChainIds<T>>(
         chainIdentifier: ChainIdentifier,
@@ -483,28 +506,52 @@ export class SwapperUtils<T extends MultiChain> {
         abortSignal?: AbortSignal,
         onBeforePublish?: (txId: string, rawTx: string) => Promise<void>
     ): Promise<string[]> {
-        if(this.root.chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
-        return this.root.chains[chainIdentifier].chainInterface.sendSignedAndConfirm(txs, true, abortSignal, false, onBeforePublish);
+        if(this.root._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
+        return this.root._chains[chainIdentifier].chainInterface.sendSignedAndConfirm(txs, true, abortSignal, false, onBeforePublish);
     }
 
+    /**
+     * Serializes an unsigned smart chain transaction
+     *
+     * @param chainIdentifier Smart chain string identifier
+     * @param tx An unsigned transaction to serialize
+     */
     serializeUnsignedTransaction<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier, tx: T[ChainIdentifier]["TX"]): Promise<string> {
-        if(this.root.chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
-        return this.root.chains[chainIdentifier].chainInterface.serializeTx(tx);
+        if(this.root._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
+        return this.root._chains[chainIdentifier].chainInterface.serializeTx(tx);
     }
 
+    /**
+     * Deserializes an unsigned smart chain transaction
+     *
+     * @param chainIdentifier Smart chain string identifier
+     * @param tx Serialized unsigned transaction
+     */
     deserializeUnsignedTransaction<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier, tx: string): Promise<T[ChainIdentifier]["TX"]> {
-        if(this.root.chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
-        return this.root.chains[chainIdentifier].chainInterface.deserializeTx(tx);
+        if(this.root._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
+        return this.root._chains[chainIdentifier].chainInterface.deserializeTx(tx);
     }
 
+    /**
+     * Serializes a signed smart chain transaction
+     *
+     * @param chainIdentifier Smart chain string identifier
+     * @param tx A signed transaction to serialize
+     */
     serializeSignedTransaction<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier, tx: T[ChainIdentifier]["SignedTXType"]): Promise<string> {
-        if(this.root.chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
-        return this.root.chains[chainIdentifier].chainInterface.serializeSignedTx(tx);
+        if(this.root._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
+        return this.root._chains[chainIdentifier].chainInterface.serializeSignedTx(tx);
     }
 
+    /**
+     * Deserializes a signed smart chain transaction
+     *
+     * @param chainIdentifier Smart chain string identifier
+     * @param tx Serialized signed transaction
+     */
     deserializeSignedTransaction<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier, tx: string): Promise<T[ChainIdentifier]["SignedTXType"]> {
-        if(this.root.chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
-        return this.root.chains[chainIdentifier].chainInterface.deserializeSignedTx(tx);
+        if(this.root._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
+        return this.root._chains[chainIdentifier].chainInterface.deserializeSignedTx(tx);
     }
 
 }

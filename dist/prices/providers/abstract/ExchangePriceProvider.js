@@ -3,6 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ExchangePriceProvider = void 0;
 const HttpPriceProvider_1 = require("./HttpPriceProvider");
 class ExchangePriceProvider extends HttpPriceProvider_1.HttpPriceProvider {
+    /**
+     * @inheritDoc
+     */
     async fetchPrice(token, abortSignal) {
         const pairs = token.coinId.split(";");
         const prices = await Promise.all(pairs.map(pair => {

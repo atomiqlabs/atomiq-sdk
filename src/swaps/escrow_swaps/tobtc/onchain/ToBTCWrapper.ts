@@ -5,8 +5,7 @@ import {
     BitcoinRpc,
     ChainSwapType,
     ChainType,
-    SwapCommitState,
-    SwapCommitStateType
+    SwapCommitState
 } from "@atomiqlabs/base";
 import {Intermediary, SingleChainReputationType} from "../../../../intermediaries/Intermediary";
 import {ISwapPrice} from "../../../../prices/abstract/ISwapPrice";
@@ -27,9 +26,7 @@ import {ISwap} from "../../../ISwap";
 import {AmountData} from "../../../../types/AmountData";
 import {tryWithRetries} from "../../../../utils/RetryUtils";
 import {AllOptional, AllRequired} from "../../../../utils/TypeUtils";
-import {ToBTCLNSwap} from "../ln/ToBTCLNSwap";
-import {sha256} from "@noble/hashes/sha2";
-import {IToBTCSwapInit, ToBTCSwapState} from "../IToBTCSwap";
+import {ToBTCSwapState} from "../IToBTCSwap";
 
 export type ToBTCOptions = {
     confirmationTarget?: number,
@@ -49,11 +46,21 @@ export type ToBTCWrapperOptions = ISwapWrapperOptions & {
 
 export type ToBTCDefinition<T extends ChainType> = IToBTCDefinition<T, ToBTCWrapper<T>, ToBTCSwap<T>>;
 
+/**
+ * Escrow based (PrTLC) swap for Smart chains -> Bitcoin
+ *
+ * @category Swaps
+ */
 export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDefinition<T>, ToBTCWrapperOptions> {
-    public readonly TYPE = SwapType.TO_BTC;
-    public readonly swapDeserializer = ToBTCSwap;
-
-    readonly btcRpc: BitcoinRpc<any>;
+    public readonly TYPE: SwapType.TO_BTC = SwapType.TO_BTC;
+    /**
+     * @internal
+     */
+    readonly _swapDeserializer = ToBTCSwap;
+    /**
+     * @internal
+     */
+    readonly _btcRpc: BitcoinRpc<any>;
 
     /**
      * @param chainIdentifier
@@ -93,13 +100,15 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
             },
             events
         );
-        this.btcRpc = btcRpc;
+        this._btcRpc = btcRpc;
     }
 
     /**
-     * Returns randomly generated random escrow nonce to be used for to BTC on-chain swaps
-     * @private
+     * Returns randomly generated random bitcoin transaction nonce to be used for BTC on-chain swaps
+     *
      * @returns Escrow nonce
+     *
+     * @private
      */
     private getRandomNonce(): bigint {
         const firstPart = BigInt(Math.floor((Date.now()/1000)) - 700000000);
@@ -111,13 +120,15 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
      * Converts bitcoin address to its corresponding output script
      *
      * @param addr Bitcoin address to get the output script for
-     * @private
+     *
      * @returns Output script as Buffer
      * @throws {UserError} if invalid address is specified
+     *
+     * @private
      */
     private btcAddressToOutputScript(addr: string): Buffer {
         try {
-            return toOutputScript(this.options.bitcoinNetwork, addr);
+            return toOutputScript(this._options.bitcoinNetwork, addr);
         } catch (e) {
             throw new UserError("Invalid address specified");
         }
@@ -133,8 +144,10 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
      * @param options Options as passed to the swap create function
      * @param data LP's returned parsed swap data
      * @param hash Payment hash of the swap
-     * @private
+     *
      * @throws {IntermediaryError} if returned data are not correct
+     *
+     * @private
      */
     private verifyReturnedData(
         signer: string,
@@ -156,11 +169,11 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
         const maxAllowedBlockDelta: bigint = BigInt(
             options.confirmations +
             options.confirmationTarget +
-            this.options.maxExpectedOnchainSendGracePeriodBlocks
+            this._options.maxExpectedOnchainSendGracePeriodBlocks
         );
         const maxAllowedExpiryDelta: bigint = maxAllowedBlockDelta
-            * BigInt(this.options.maxExpectedOnchainSendSafetyFactor)
-            * BigInt(this.options.bitcoinBlocktime);
+            * BigInt(this._options.maxExpectedOnchainSendSafetyFactor)
+            * BigInt(this._options.bitcoinBlocktime);
         const currentTimestamp: bigint = BigInt(Math.floor(Date.now()/1000));
         const maxAllowedExpiryTimestamp: bigint = currentTimestamp + maxAllowedExpiryDelta;
 
@@ -183,19 +196,20 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
     }
 
     /**
-     * Returns quotes fetched from LPs, paying to an 'address' - a bitcoin address
+     * Returns a newly created Smart chain -> Bitcoin swap using the PrTLC based escrow swap protocol,
+     *  with the passed amount.
      *
-     * @param signer                Smart-chain signer address initiating the swap
-     * @param address               Bitcoin on-chain address you wish to pay to
-     * @param amountData            Amount of token & amount to swap
-     * @param lps                   LPs (liquidity providers) to get the quotes from
-     * @param options               Quote options
-     * @param additionalParams      Additional parameters sent to the LP when creating the swap
-     * @param abortSignal           Abort signal for aborting the process
+     * @param signer Source chain signer address initiating the swap
+     * @param recipient Recipient bitcoin on-chain address
+     * @param amountData Amount, token and exact input/output data for to swap
+     * @param lps An array of intermediaries (LPs) to get the quotes from
+     * @param options Optional additional quote options
+     * @param additionalParams Optional additional parameters sent to the LP when creating the swap
+     * @param abortSignal Abort signal
      */
     create(
         signer: string,
-        address: string,
+        recipient: string,
         amountData: AmountData,
         lps: Intermediary[],
         options?: ToBTCOptions,
@@ -212,16 +226,16 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
         };
 
         const nonce: bigint = this.getRandomNonce();
-        const outputScript: Buffer = this.btcAddressToOutputScript(address);
+        const outputScript: Buffer = this.btcAddressToOutputScript(recipient);
         const _hash: string | undefined = !amountData.exactIn ?
-            this.contract.getHashForOnchain(outputScript, amountData.amount, _options.confirmations, nonce).toString("hex") :
+            this._contract.getHashForOnchain(outputScript, amountData.amount, _options.confirmations, nonce).toString("hex") :
             undefined;
 
         const _abortController = extendAbortController(abortSignal);
         const pricePreFetchPromise: Promise<bigint | undefined> = this.preFetchPrice(amountData, _abortController.signal);
         const usdPricePrefetchPromise: Promise<number | undefined> = this.preFetchUsdPrice(_abortController.signal);
         const feeRatePromise: Promise<string | undefined> = this.preFetchFeeRate(signer, amountData, _hash, _abortController);
-        const _signDataPromise: Promise<T["PreFetchVerification"] | undefined> | undefined = this.contract.preFetchBlockDataForSignatures==null ?
+        const _signDataPromise: Promise<T["PreFetchVerification"] | undefined> | undefined = this._contract.preFetchBlockDataForSignatures==null ?
             this.preFetchSignData(Promise.resolve(true)) :
             undefined;
 
@@ -237,7 +251,7 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
                     try {
                         const {signDataPromise, resp} = await tryWithRetries(async(retryCount) => {
                             const {signDataPrefetch, response} = IntermediaryAPI.initToBTC(this.chainIdentifier, lp.url, {
-                                btcAddress: address,
+                                btcAddress: recipient,
                                 amount: amountData.amount,
                                 confirmationTarget: _options.confirmationTarget,
                                 confirmations: _options.confirmations,
@@ -247,7 +261,7 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
                                 exactIn: amountData.exactIn,
                                 feeRate: throwIfUndefined(feeRatePromise),
                                 additionalParams
-                            }, this.options.postRequestTimeout, abortController.signal, retryCount>0 ? false : undefined);
+                            }, this._options.postRequestTimeout, abortController.signal, retryCount>0 ? false : undefined);
 
                             return {
                                 signDataPromise: _signDataPromise ?? this.preFetchSignData(signDataPrefetch),
@@ -255,9 +269,9 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
                             };
                         }, undefined, RequestError, abortController.signal);
 
-                        let hash: string = _hash ?? this.contract.getHashForOnchain(outputScript, resp.amount, _options.confirmations, nonce).toString("hex");
+                        let hash: string = _hash ?? this._contract.getHashForOnchain(outputScript, resp.amount, _options.confirmations, nonce).toString("hex");
 
-                        const data: T["Data"] = new this.swapDataDeserializer(resp.data);
+                        const data: T["Data"] = new this._swapDataDeserializer(resp.data);
                         data.setOfferer(signer);
 
                         this.verifyReturnedData(signer, resp, amountData, lp, _options, data, hash);
@@ -288,7 +302,7 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
                             data,
                             networkFee: resp.networkFee,
                             networkFeeBtc,
-                            address,
+                            address: recipient,
                             amount: resp.amount,
                             confirmationTarget: _options.confirmationTarget,
                             satsPerVByte: Number(resp.satsPervByte),
@@ -307,7 +321,9 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
         });
     }
 
-
+    /**
+     * @inheritDoc
+     */
     async recoverFromSwapDataAndState(
         init: {data: T["Data"], getInitTxId: () => Promise<string>, getTxBlock: () => Promise<{blockTime: number, blockHeight: number}>},
         state: SwapCommitState,
@@ -340,39 +356,14 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
             exactIn: true
         };
         const swap = new ToBTCSwap(this, swapInit);
-        swap.commitTxId = await init.getInitTxId();
+        swap._commitTxId = await init.getInitTxId();
         const blockData = await init.getTxBlock();
         swap.createdAt = blockData.blockTime * 1000;
         swap._setInitiated();
-        swap.state = ToBTCSwapState.COMMITED;
+        swap._state = ToBTCSwapState.COMMITED;
         await swap._sync(false, false, state);
         await swap._save();
         return swap;
-
-        // switch(state.type) {
-        //     case SwapCommitStateType.PAID:
-        //         secret ??= await state.getClaimResult();
-        //         await swap._setPaymentResult({secret}, false);
-        //         swap.claimTxId = await state.getClaimTxId();
-        //         swap.state = ToBTCSwapState.CLAIMED;
-        //         break;
-        //     case SwapCommitStateType.NOT_COMMITED:
-        //     case SwapCommitStateType.EXPIRED:
-        //         if(state.getRefundTxId==null) return null;
-        //         swap.refundTxId = await state.getRefundTxId();
-        //         swap.state = ToBTCSwapState.REFUNDED;
-        //         break;
-        //     case SwapCommitStateType.COMMITED:
-        //         swap.state = ToBTCSwapState.COMMITED;
-        //         //Try to fetch refund signature
-        //         if(lp!=null) await swap._sync(false, false, state);
-        //         break;
-        //     case SwapCommitStateType.REFUNDABLE:
-        //         swap.state = ToBTCSwapState.REFUNDABLE;
-        //         break;
-        // }
-        // await swap._save();
-        // return swap;
     }
 
 }

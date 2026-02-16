@@ -10,6 +10,7 @@ export type BinanceResponse = {
 
 /**
  * Price provider using Binance exchange API
+ *
  * @category Pricing and LPs
  */
 export class BinancePriceProvider<T extends MultiChain> extends ExchangePriceProvider<T> {
@@ -18,6 +19,9 @@ export class BinancePriceProvider<T extends MultiChain> extends ExchangePricePro
         super(coinsMap, url, httpRequestTimeout);
     }
 
+    /**
+     * @inheritDoc
+     */
     protected async fetchPair(pair: string, abortSignal?: AbortSignal) {
         const response = await httpGet<BinanceResponse>(
             this.url+"/ticker/price?symbol="+pair,
@@ -28,6 +32,9 @@ export class BinancePriceProvider<T extends MultiChain> extends ExchangePricePro
         return parseFloat(response.price);
     }
 
+    /**
+     * @inheritDoc
+     */
     protected async fetchUsdPrice(abortSignal?: AbortSignal): Promise<number> {
         const response = await httpGet<BinanceResponse>(
             this.url+"/ticker/price?symbol=BTCUSDC",

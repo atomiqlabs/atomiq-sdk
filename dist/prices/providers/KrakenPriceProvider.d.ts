@@ -23,7 +23,16 @@ export type KrakenResponse = {
  */
 export declare class KrakenPriceProvider<T extends MultiChain> extends ExchangePriceProvider<T> {
     constructor(coinsMap: CtorCoinTypes<T>, url?: string, httpRequestTimeout?: number);
+    /**
+     * @inheritDoc
+     */
     protected fetchPair(pair: string, abortSignal?: AbortSignal): Promise<number>;
+    /**
+     * @inheritDoc
+     */
     protected fetchUsdPrice(abortSignal?: AbortSignal): Promise<number>;
+    /**
+     * @inheritDoc
+     */
     protected fetchPrice(token: CoinType, abortSignal?: AbortSignal): Promise<bigint>;
 }

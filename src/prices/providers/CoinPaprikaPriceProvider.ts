@@ -21,6 +21,9 @@ export class CoinPaprikaPriceProvider<T extends MultiChain> extends HttpPricePro
         super(coinsMap, url, httpRequestTimeout);
     }
 
+    /**
+     * @inheritDoc
+     */
     async fetchPrice(token: CoinType, abortSignal?: AbortSignal) {
         const response = await httpGet<CoinPaprikaResponse<"BTC">>(
             this.url+"/tickers/"+token.coinId+"?quotes=BTC",
@@ -31,6 +34,9 @@ export class CoinPaprikaPriceProvider<T extends MultiChain> extends HttpPricePro
         return BigInt(Math.floor(response.quotes.BTC.price*100000000000000));
     }
 
+    /**
+     * @inheritDoc
+     */
     protected async fetchUsdPrice(abortSignal?: AbortSignal): Promise<number> {
         const response = await httpGet<CoinPaprikaResponse<"USD">>(
             this.url+"/tickers/btc-bitcoin?quotes=USD",

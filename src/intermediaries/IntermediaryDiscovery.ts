@@ -1,6 +1,6 @@
 import {Intermediary, ServicesType} from "./Intermediary";
 import {SwapType} from "../enums/SwapType";
-import {SignatureVerificationError, SwapContract} from "@atomiqlabs/base";
+import {SwapContract} from "@atomiqlabs/base";
 import {EventEmitter} from "events";
 import {Buffer} from "buffer";
 import {bigIntMax, bigIntMin, extendAbortController} from "../utils/Utils";
@@ -10,7 +10,8 @@ import {httpGet} from "../http/HttpUtils";
 import {tryWithRetries} from "../utils/RetryUtils";
 
 /**
- * Swap handler type enum for intermediary communication
+ * Swap handler type mapping for intermediary communication
+ *
  * @category Pricing and LPs
  */
 export enum SwapHandlerType {
@@ -26,6 +27,7 @@ export enum SwapHandlerType {
 
 /**
  * Swap handler information type
+ *
  * @category Pricing and LPs
  */
 export type SwapHandlerInfoType = {
@@ -47,6 +49,7 @@ type InfoHandlerResponseEnvelope = {
 
 /**
  * Token bounds (min/max) for swaps
+ *
  * @category Pricing and LPs
  */
 export type TokenBounds = {
@@ -57,7 +60,8 @@ export type TokenBounds = {
 }
 
 /**
- * Multi-chain token bounds
+ * Multi-chain token bounds (min/max) for swaps
+ *
  * @category Pricing and LPs
  */
 export type MultichainTokenBounds = {
@@ -65,7 +69,8 @@ export type MultichainTokenBounds = {
 }
 
 /**
- * Swap bounds by type
+ * Swap bounds by swap protocol type
+ *
  * @category Pricing and LPs
  */
 export type SwapBounds = {
@@ -74,6 +79,7 @@ export type SwapBounds = {
 
 /**
  * Multi-chain swap bounds
+ *
  * @category Pricing and LPs
  */
 export type MultichainSwapBounds = {
@@ -82,7 +88,7 @@ export type MultichainSwapBounds = {
 
 /**
  * Converts SwapHandlerType (represented as string & used in REST API communication with intermediaries) to regular
- *  SwapType
+ *  {@link SwapType}
  *
  * @param swapHandlerType
  */
@@ -108,7 +114,7 @@ function swapHandlerTypeToSwapType(swapHandlerType: SwapHandlerType): SwapType {
 }
 
 /**
- * A default intermediary comparator, only takes to announced fee into consideration
+ * A default intermediary comparator, only takes the announced fee into consideration
  *
  * @param swapType
  * @param tokenAddress
@@ -147,22 +153,41 @@ const REGISTRY_URL = "https://api.github.com/repos/adambor/SolLightning-registry
 const DEFAULT_CHAIN = "SOLANA";
 
 /**
- * Discovery service for available liquidity providers/intermediaries
+ * Discovery service for available intermediaries (liquidity providers)
+ *
  * @category Pricing and LPs
  */
 export class IntermediaryDiscovery extends EventEmitter {
 
+    /**
+     * A current list of active intermediaries
+     */
     intermediaries: Intermediary[] = [];
 
+    /**
+     * Swap contracts for checking intermediary signatures
+     */
     swapContracts: {[key: string]: SwapContract};
+    /**
+     * Registry URL used as a source for the list of intermediaries, this should be a link to a
+     *  github-hosted JSON file
+     */
     registryUrl: string;
 
+    /**
+     * Timeout for the HTTP handshake (/info) requests sent to the intermediaries
+     */
     httpRequestTimeout?: number;
     /**
-     * Maximum time (in millis) to wait for other LP's responses after the first one was founds
+     * Maximum time (in millis) to wait for other intermediary's responses after the first one was founds
      */
     maxWaitForOthersTimeout?: number;
 
+    /**
+     * The intermediary URLs passed in the constructor, to be used instead of querying the registry
+     *
+     * @private
+     */
     private overrideNodeUrls?: string[];
 
     constructor(
@@ -283,9 +308,13 @@ export class IntermediaryDiscovery extends EventEmitter {
     }
 
     /**
-     * Returns the intermediary at the provided URL, either from the already fetched list of LPs or fetches the data on-demand
+     * Returns the intermediary at the provided URL, either from the already fetched list of LPs
+     *  or fetches the data on-demand, by sending the handshake HTTP request (/info) to the LP.
      *
-     * @param url
+     * Doesn't save the fetched intermediary to the list of intermediaries if it isn't already
+     *  part of the known intermediaries
+     *
+     * @param url Base URL of the intermediary, which accepts HTTP requests
      * @param abortSignal
      */
     getIntermediary(url: string, abortSignal?: AbortSignal): Promise<Intermediary | null> {
@@ -296,6 +325,7 @@ export class IntermediaryDiscovery extends EventEmitter {
 
     /**
      * Reloads the saves a list of intermediaries
+     *
      * @param abortSignal
      */
     async reloadIntermediaries(abortSignal?: AbortSignal): Promise<void> {
@@ -334,6 +364,9 @@ export class IntermediaryDiscovery extends EventEmitter {
         return this.reloadIntermediaries(abortSignal);
     }
 
+    /**
+     * Returns known swap bounds (in satoshis - BTC) by aggregating values from all known intermediaries
+     */
     getMultichainSwapBounds(): MultichainSwapBounds {
         const bounds: MultichainSwapBounds = {};
 
@@ -366,7 +399,7 @@ export class IntermediaryDiscovery extends EventEmitter {
     }
 
     /**
-     * Returns aggregate swap bounds (in sats - BTC) as indicated by the intermediaries
+     * Returns aggregate swap bounds (in satoshis - BTC) as indicated by the intermediaries
      */
     getSwapBounds(chainIdentifier: string): SwapBounds {
         const bounds: SwapBounds = {};
@@ -397,15 +430,15 @@ export class IntermediaryDiscovery extends EventEmitter {
     }
 
     /**
-     * Returns the aggregate swap minimum (in sats - BTC) for a specific swap type & token
+     * Returns the aggregate swap minimum (in satoshis - BTC) for a specific swap type & token
      *  as indicated by the intermediaries
      *
-     * @param chainIdentifier
-     * @param swapType
-     * @param token
+     * @param chainIdentifier Chain identifier of the smart chain
+     * @param swapType Swap protocol type
+     * @param tokenAddress Token address
      */
-    getSwapMinimum(chainIdentifier: string, swapType: SwapType, token: any): number | null {
-        const tokenStr = token.toString();
+    getSwapMinimum(chainIdentifier: string, swapType: SwapType, tokenAddress: string): number | null {
+        const tokenStr = tokenAddress.toString();
         return this.intermediaries.reduce<number | null>((prevMin: number | null, intermediary: Intermediary) => {
             const swapService = intermediary.services[swapType];
             if(swapService==null) return prevMin;
@@ -417,15 +450,15 @@ export class IntermediaryDiscovery extends EventEmitter {
     }
 
     /**
-     * Returns the aggregate swap maximum (in sats - BTC) for a specific swap type & token
+     * Returns the aggregate swap maximum (in satoshis - BTC) for a specific swap type & token
      *  as indicated by the intermediaries
      *
-     * @param chainIdentifier
-     * @param swapType
-     * @param token
+     * @param chainIdentifier Chain identifier of the smart chain
+     * @param swapType Swap protocol type
+     * @param tokenAddress Token address
      */
-    getSwapMaximum(chainIdentifier: string, swapType: SwapType, token: any): number | null {
-        const tokenStr = token.toString();
+    getSwapMaximum(chainIdentifier: string, swapType: SwapType, tokenAddress: string): number | null {
+        const tokenStr = tokenAddress.toString();
         return this.intermediaries.reduce<number | null>((prevMax: number | null, intermediary: Intermediary) => {
             const swapService = intermediary.services[swapType];
             if(swapService==null) return prevMax;
@@ -439,13 +472,13 @@ export class IntermediaryDiscovery extends EventEmitter {
     /**
      * Returns swap candidates for a specific swap type & token address
      *
-     * @param chainIdentifier
-     * @param swapType
-     * @param tokenAddress
+     * @param chainIdentifier Chain identifier of the smart chain
+     * @param swapType Swap protocol type
+     * @param tokenAddress Token address
      * @param amount Amount to be swapped in sats - BTC
      * @param count How many intermediaries to return at most
      */
-    getSwapCandidates(chainIdentifier: string, swapType: SwapType, tokenAddress: any, amount?: bigint, count?: number): Intermediary[] {
+    getSwapCandidates(chainIdentifier: string, swapType: SwapType, tokenAddress: string, amount?: bigint, count?: number): Intermediary[] {
         const candidates = this.intermediaries.filter(e => {
             const swapService = e.services[swapType];
             if(swapService==null) return false;

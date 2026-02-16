@@ -13,6 +13,9 @@ export abstract class ExchangePriceProvider<T extends MultiChain> extends HttpPr
      */
     protected abstract fetchPair(pair: string, abortSignal?: AbortSignal): Promise<number>;
 
+    /**
+     * @inheritDoc
+     */
     protected async fetchPrice(token: CoinType, abortSignal?: AbortSignal): Promise<bigint> {
         const pairs: string[] = token.coinId.split(";");
         const prices: number[] = await Promise.all(pairs.map(pair => {

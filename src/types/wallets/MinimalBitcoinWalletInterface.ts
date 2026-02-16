@@ -2,7 +2,8 @@ import {Transaction} from "@scure/btc-signer";
 
 /**
  * A type with minimum possible required data about a bitcoin wallet to be able to estimate fees and produce unsigned
- *  PSBTs
+ *  funded PSBTs with address's UTXOs
+ *
  * @category Bitcoin
  */
 export type MinimalBitcoinWalletInterface = {
@@ -12,6 +13,7 @@ export type MinimalBitcoinWalletInterface = {
 
 /**
  * A type with minimum possible required data about a bitcoin wallet to be able to estimate fees and sign PSBTs
+ *
  * @category Bitcoin
  */
 export type MinimalBitcoinWalletInterfaceWithSigner = MinimalBitcoinWalletInterface & {

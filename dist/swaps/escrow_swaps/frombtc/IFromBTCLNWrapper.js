@@ -8,6 +8,11 @@ const IntermediaryError_1 = require("../../../errors/IntermediaryError");
 const LNURL_1 = require("../../../lnurl/LNURL");
 const UserError_1 = require("../../../errors/UserError");
 const sha256_1 = require("@noble/hashes/sha256");
+/**
+ * Base class for wrappers of escrow-based Lightning -> Smart chain swaps
+ *
+ * @category Swaps
+ */
 class IFromBTCLNWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
     /**
      * @param chainIdentifier
@@ -27,18 +32,11 @@ class IFromBTCLNWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
         this.lnApi = lnApi;
     }
     /**
-     * Returns the swap expiry, leaving enough time for the user to claim the HTLC
+     * Generates a new 32-byte secret to be used as pre-image for lightning network invoice & HTLC swap
      *
-     * @param data Parsed swap data
-     */
-    getHtlcTimeout(data) {
-        return data.getExpiry() - 600n;
-    }
-    /**
-     * Generates a new 32-byte secret to be used as pre-image for lightning network invoice & HTLC swap\
-     *
-     * @private
      * @returns Hash pre-image & payment hash
+     *
+     * @internal
      */
     getSecretAndHash() {
         const secret = (0, Utils_1.randomBytes)(32);
@@ -48,10 +46,12 @@ class IFromBTCLNWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
     /**
      * Pre-fetches intermediary's LN node capacity, doesn't throw, instead returns null
      *
-     * @param pubkeyPromise Promise that resolves when we receive "lnPublicKey" param from the intermediary thorugh
+     * @param pubkeyPromise Promise that resolves when we receive "lnPublicKey" param from the intermediary through
      *  streaming
-     * @private
+     *
      * @returns LN Node liquidity
+     *
+     * @internal
      */
     preFetchLnCapacity(pubkeyPromise) {
         return pubkeyPromise.then(pubkey => {
@@ -68,13 +68,14 @@ class IFromBTCLNWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
      *
      * @param lp Intermediary
      * @param decodedPr Decoded bolt11 lightning network invoice
-     * @param amountIn Amount to be paid for the swap in sats
      * @param lnCapacityPrefetchPromise Pre-fetch for LN node capacity, preFetchLnCapacity()
-     * @param abortSignal
-     * @private
+     * @param abortSignal Abort signal
+     *
      * @throws {IntermediaryError} if the lightning network node doesn't have enough inbound liquidity
      * @throws {Error} if the lightning network node's inbound liquidity might be enough, but the swap would
      *  deplete more than half of the liquidity
+     *
+     * @internal
      */
     async verifyLnNodeCapacity(lp, decodedPr, lnCapacityPrefetchPromise, abortSignal) {
         if (decodedPr.payeeNodeKey == null)
@@ -84,6 +85,8 @@ class IFromBTCLNWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
         const _result = await lnCapacityPrefetchPromise ?? await this.lnApi.getLNNodeLiquidity(decodedPr.payeeNodeKey);
         if (_result === null)
             throw new IntermediaryError_1.IntermediaryError("LP's lightning node not found in the lightning network graph!");
+        if (abortSignal != null)
+            abortSignal.throwIfAborted();
         lp.lnData = _result;
         if (decodedPr.payeeNodeKey !== _result.publicKey)
             throw new IntermediaryError_1.IntermediaryError("Invalid pr returned - payee pubkey");
@@ -97,19 +100,31 @@ class IFromBTCLNWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
      * Parses and fetches lnurl withdraw params from the specified lnurl
      *
      * @param lnurl LNURL to be parsed and fetched
-     * @param abortSignal
-     * @private
+     * @param abortSignal Abort signal
+     *
      * @throws {UserError} if the LNURL is invalid or if it's not a LNURL-withdraw
+     *
+     * @internal
      */
     async getLNURLWithdraw(lnurl, abortSignal) {
         if (typeof (lnurl) !== "string")
             return lnurl;
-        const res = await LNURL_1.LNURL.getLNURL(lnurl, true, this.options.getRequestTimeout, abortSignal);
+        const res = await LNURL_1.LNURL.getLNURL(lnurl, true, this._options.getRequestTimeout, abortSignal);
         if (res == null)
             throw new UserError_1.UserError("Invalid LNURL");
         if (res.tag !== "withdrawRequest")
             throw new UserError_1.UserError("Not a LNURL-withdrawal");
         return res;
+    }
+    /**
+     * Returns the swap expiry, leaving enough time for the user to claim the HTLC
+     *
+     * @param data Parsed swap data
+     *
+     * @internal
+     */
+    _getHtlcTimeout(data) {
+        return data.getExpiry() - 600n;
     }
 }
 exports.IFromBTCLNWrapper = IFromBTCLNWrapper;

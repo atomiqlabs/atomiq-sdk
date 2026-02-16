@@ -9,6 +9,7 @@ const BitcoinUtils_1 = require("../../utils/BitcoinUtils");
 const Logger_1 = require("../../utils/Logger");
 /**
  * Identifies the address type of a Bitcoin address
+ *
  * @category Bitcoin
  */
 function identifyAddressType(address, network) {
@@ -30,7 +31,9 @@ function identifyAddressType(address, network) {
 exports.identifyAddressType = identifyAddressType;
 const logger = (0, Logger_1.getLogger)("BitcoinWallet: ");
 /**
- * Abstract base class for Bitcoin wallet implementations
+ * Abstract base class for Bitcoin wallet implementations, using bitcoin rpc with address index
+ *  as a backend for fetching balances, UTXOs, etc.
+ *
  * @category Bitcoin
  */
 class BitcoinWallet {
@@ -40,18 +43,42 @@ class BitcoinWallet {
         this.feeMultiplier = feeMultiplier;
         this.feeOverride = feeOverride;
     }
+    /**
+     * @inheritDoc
+     */
     async getFeeRate() {
         if (this.feeOverride != null) {
             return this.feeOverride;
         }
         return Math.floor((await this.rpc.getFeeRate()) * this.feeMultiplier);
     }
+    /**
+     * Internal helper function for sending a raw transaction through the underlying RPC
+     *
+     * @param rawHex Serialized bitcoin transaction in hexadecimal format
+     * @returns txId Transaction ID of the submitted bitcoin transaction
+     *
+     * @protected
+     */
     _sendTransaction(rawHex) {
         return this.rpc.sendRawTransaction(rawHex);
     }
+    /**
+     * Internal helper function for fetching the balance of the wallet given a specific bitcoin wallet address
+     *
+     * @param address
+     * @protected
+     */
     _getBalance(address) {
         return this.rpc.getAddressBalances(address);
     }
+    /**
+     * Internal helper function for fetching the UTXO set of a given wallet address
+     *
+     * @param sendingAddress
+     * @param sendingAddressType
+     * @protected
+     */
     async _getUtxoPool(sendingAddress, sendingAddressType) {
         const utxos = await this.rpc.getAddressUTXOs(sendingAddress);
         let totalSpendable = 0;
@@ -81,6 +108,14 @@ class BitcoinWallet {
         logger.debug("_getUtxoPool(): Total spendable value: " + totalSpendable + " num utxos: " + utxoPool.length);
         return utxoPool;
     }
+    /**
+     *
+     * @param sendingAccounts
+     * @param recipient
+     * @param amount
+     * @param feeRate
+     * @protected
+     */
     async _getPsbt(sendingAccounts, recipient, amount, feeRate) {
         const psbt = new btc_signer_1.Transaction({ PSBTVersion: 0 });
         psbt.addOutput({

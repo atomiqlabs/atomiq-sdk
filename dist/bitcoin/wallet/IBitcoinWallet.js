@@ -2,7 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.isIBitcoinWallet = void 0;
 /**
- * Type guard to check if an object implements IBitcoinWallet
+ * Type guard to check if an object implements {@link IBitcoinWallet}
+ *
  * @category Bitcoin
  */
 function isIBitcoinWallet(val) {

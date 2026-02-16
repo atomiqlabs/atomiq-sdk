@@ -14,10 +14,34 @@ export type OnchainForGasWrapperOptions = ISwapWrapperOptions & {
     bitcoinNetwork: BTC_NETWORK;
 };
 export type OnchainForGasSwapTypeDefinition<T extends ChainType> = SwapTypeDefinition<T, OnchainForGasWrapper<T>, OnchainForGasSwap<T>>;
+/**
+ * Trusted swap for Bitcoin -> Smart chains, to be used for minor amounts to get gas tokens on the
+ *  destination chain, which is only needed for Solana, which still uses legacy swaps
+ *
+ * @category Swaps
+ */
 export declare class OnchainForGasWrapper<T extends ChainType> extends ISwapWrapper<T, OnchainForGasSwapTypeDefinition<T>, OnchainForGasWrapperOptions> {
-    readonly TYPE = SwapType.TRUSTED_FROM_BTC;
-    readonly swapDeserializer: typeof OnchainForGasSwap;
-    readonly btcRpc: BitcoinRpcWithAddressIndex<any>;
+    readonly TYPE: SwapType.TRUSTED_FROM_BTC;
+    /**
+     * @internal
+     */
+    readonly _swapDeserializer: typeof OnchainForGasSwap;
+    /**
+     * @internal
+     */
+    readonly _pendingSwapStates: OnchainForGasSwapState[];
+    /**
+     * @internal
+     */
+    protected readonly tickSwapState: undefined;
+    /**
+     * @internal
+     */
+    protected processEvent: undefined;
+    /**
+     * @internal
+     */
+    readonly _btcRpc: BitcoinRpcWithAddressIndex<any>;
     /**
      * @param chainIdentifier
      * @param unifiedStorage Storage interface for the current environment
@@ -33,15 +57,13 @@ export declare class OnchainForGasWrapper<T extends ChainType> extends ISwapWrap
         swapState: [ISwap];
     }>);
     /**
-     * Returns a newly created swap, receiving 'amount' base units of gas token
+     * Returns a newly created trusted Bitcoin on-chain -> Smart chain swap, receiving
+     *  the specified amount of native token on the destination chain.
      *
-     * @param signer
-     * @param amount            Amount you wish to receive in base units
-     * @param lpOrUrl           Intermediary/Counterparty swap service Intermediary object or raw url
-     * @param refundAddress     Bitcoin address to receive refund on in case the counterparty cannot execute the swap
+     * @param recipient Address of the recipient on the smart chain destination chain
+     * @param amount Amount of native token to receive in base units
+     * @param lpOrUrl Intermediary (LP) to use for the swap
+     * @param refundAddress Bitcoin address to receive refund on in case the intermediary (LP) cannot execute the swap
      */
-    create(signer: string, amount: bigint, lpOrUrl: Intermediary | string, refundAddress?: string): Promise<OnchainForGasSwap<T>>;
-    readonly pendingSwapStates: OnchainForGasSwapState[];
-    readonly tickSwapState: undefined;
-    protected processEvent: undefined;
+    create(recipient: string, amount: bigint, lpOrUrl: Intermediary | string, refundAddress?: string): Promise<OnchainForGasSwap<T>>;
 }

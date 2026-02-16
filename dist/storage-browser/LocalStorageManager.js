@@ -2,15 +2,24 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.LocalStorageManager = void 0;
 /**
- * StorageManager using browser's local storage API
+ * {@link IStorageManager} implementation using browser's local storage API, this is used as general purpose
+ *  key-value storage, not used for storing swaps! See {@link IUnifiedStorage} for swap storage interface.
+ *
  * @category Storage
  */
 class LocalStorageManager {
+    /**
+     * @param storageKey The key-value store is stored as JSON serialized parameter of the Local Storage under
+     *  the specified `storageKey`
+     */
     constructor(storageKey) {
         this.rawData = {};
         this.data = {};
         this.storageKey = storageKey;
     }
+    /**
+     * @inheritDoc
+     */
     init() {
         const completedTxt = window.localStorage.getItem(this.storageKey);
         if (completedTxt != null) {
@@ -23,11 +32,17 @@ class LocalStorageManager {
         }
         return Promise.resolve();
     }
+    /**
+     * @inheritDoc
+     */
     saveData(hash, object) {
         this.data[hash] = object;
         this.rawData[hash] = object.serialize();
         return this.save();
     }
+    /**
+     * @inheritDoc
+     */
     saveDataArr(arr) {
         arr.forEach(e => {
             this.data[e.id] = e.object;
@@ -35,6 +50,9 @@ class LocalStorageManager {
         });
         return this.save();
     }
+    /**
+     * @inheritDoc
+     */
     removeData(hash) {
         if (this.rawData[hash] != null) {
             if (this.data[hash] != null)
@@ -44,6 +62,9 @@ class LocalStorageManager {
         }
         return Promise.resolve();
     }
+    /**
+     * @inheritDoc
+     */
     removeDataArr(hashArr) {
         hashArr.forEach(hash => {
             if (this.rawData[hash] != null) {
@@ -54,6 +75,9 @@ class LocalStorageManager {
         });
         return this.save();
     }
+    /**
+     * @inheritDoc
+     */
     loadData(type) {
         return Promise.resolve(Object.keys(this.rawData).map(e => {
             const deserialized = new type(this.rawData[e]);

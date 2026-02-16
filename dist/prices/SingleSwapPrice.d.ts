@@ -2,7 +2,8 @@ import { IPriceProvider } from "./abstract/IPriceProvider";
 import { ICachedSwapPrice } from "./abstract/ICachedSwapPrice";
 import { ChainIds, MultiChain } from "../swapper/Swapper";
 /**
- * Swap price API using single price source
+ * Swap price API using a single price source
+ *
  * @category Pricing and LPs
  */
 export declare class SingleSwapPrice<T extends MultiChain> extends ICachedSwapPrice<T> {
@@ -19,13 +20,15 @@ export declare class SingleSwapPrice<T extends MultiChain> extends ICachedSwapPr
      */
     protected fetchPrice<C extends ChainIds<T>>(chainIdentifier: C, token: string, abortSignal?: AbortSignal): Promise<bigint>;
     /**
-     * Returns the decimal places of the specified token, or -1 if token should be ignored, returns null if
-     *  token is not found
-     *
-     * @param chainIdentifier
-     * @param token
-     * @protected
+     * @inheritDoc
      */
     protected getDecimals<C extends ChainIds<T>>(chainIdentifier: C, token: string): number | null;
+    /**
+     * Fetches BTC price in USD
+     *
+     * @param abortSignal
+     * @protected
+     * @returns token price in uSats (micro sats)
+     */
     protected fetchUsdPrice(abortSignal?: AbortSignal): Promise<number>;
 }

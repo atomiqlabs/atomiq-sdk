@@ -25,16 +25,29 @@ const SNOWFLAKE_LIST = new Set([
     "03a6ce61fcaacd38d31d4e3ce2d506602818e3856b4b44faff1dde9642ba705976"
 ]);
 /**
- * Smart Chain to Lightning Network BTC swap
+ * Escrow based (HTLC) swap for Smart chains -> Bitcoin lightning
+ *
  * @category Swaps
  */
 class ToBTCLNSwap extends IToBTCSwap_1.IToBTCSwap {
+    /**
+     * Sets the LNURL data for the swap
+     *
+     * @internal
+     */
+    _setLNURLData(lnurl, successAction) {
+        this.lnurl = lnurl;
+        this.successAction = successAction;
+    }
     constructor(wrapper, initOrObj) {
         if (isToBTCLNSwapInit(initOrObj) && initOrObj.url != null)
             initOrObj.url += "/tobtcln";
         super(wrapper, initOrObj);
-        this.outputToken = Token_1.BitcoinTokens.BTCLN;
         this.TYPE = SwapType_1.SwapType.TO_BTCLN;
+        /**
+         * @internal
+         */
+        this.outputToken = Token_1.BitcoinTokens.BTCLN;
         if (isToBTCLNSwapInit(initOrObj)) {
             this.confidence = initOrObj.confidence;
             this.pr = initOrObj.pr;
@@ -50,12 +63,13 @@ class ToBTCLNSwap extends IToBTCSwap_1.IToBTCSwap {
             this.secret = initOrObj.secret;
             this.usesClaimHashAsId = initOrObj.usesClaimHashAsId ?? false;
         }
-        const paymentHash = this.getPaymentHash();
-        if (paymentHash != null)
-            this.paymentHash = paymentHash.toString("hex");
         this.logger = (0, Logger_1.getLogger)("ToBTCLN(" + this.getIdentifierHashString() + "): ");
         this.tryRecomputeSwapPrice();
     }
+    /**
+     * @inheritDoc
+     * @internal
+     */
     _setPaymentResult(result, check = false) {
         if (result == null)
             return Promise.resolve(false);
@@ -64,32 +78,40 @@ class ToBTCLNSwap extends IToBTCSwap_1.IToBTCSwap {
         const secretBuffer = buffer_1.Buffer.from(result.secret, "hex");
         const hash = buffer_1.Buffer.from((0, sha2_1.sha256)(secretBuffer));
         if (check) {
-            const claimHash = this.wrapper.contract.getHashForHtlc(hash);
+            const claimHash = this.wrapper._contract.getHashForHtlc(hash);
             const expectedClaimHash = buffer_1.Buffer.from(this.getClaimHash(), "hex");
             if (!claimHash.equals(expectedClaimHash))
                 throw new IntermediaryError_1.IntermediaryError("Invalid payment secret returned");
         }
         this.pr ??= hash.toString("hex");
-        this.paymentHash ??= hash.toString("hex");
         this.secret = result.secret;
         return Promise.resolve(true);
     }
     //////////////////////////////
     //// Amounts & fees
+    /**
+     * @inheritDoc
+     */
     getOutputToken() {
         return Token_1.BitcoinTokens.BTCLN;
     }
+    /**
+     * @inheritDoc
+     */
     getOutput() {
         if (this.pr == null || !this.pr.toLowerCase().startsWith("ln"))
-            return (0, TokenAmount_1.toTokenAmount)(null, this.outputToken, this.wrapper.prices, this.pricingInfo);
+            return (0, TokenAmount_1.toTokenAmount)(null, this.outputToken, this.wrapper._prices, this.pricingInfo);
         const parsedPR = (0, bolt11_1.decode)(this.pr);
         if (parsedPR.millisatoshis == null)
             throw new Error("Swap invoice has no msat amount field!");
         const amount = (BigInt(parsedPR.millisatoshis) + 999n) / 1000n;
-        return (0, TokenAmount_1.toTokenAmount)(amount, this.outputToken, this.wrapper.prices, this.pricingInfo);
+        return (0, TokenAmount_1.toTokenAmount)(amount, this.outputToken, this.wrapper._prices, this.pricingInfo);
     }
     //////////////////////////////
     //// Getters & utils
+    /**
+     * @inheritDoc
+     */
     getOutputTxId() {
         const paymentHash = this.getPaymentHash();
         if (paymentHash == null)
@@ -97,7 +119,7 @@ class ToBTCLNSwap extends IToBTCSwap_1.IToBTCSwap {
         return paymentHash.toString("hex");
     }
     /**
-     * Returns the lightning BOLT11 invoice where the BTC will be sent to
+     * @inheritDoc
      */
     getOutputAddress() {
         return this.lnurl ?? this.pr ?? null;
@@ -109,14 +131,15 @@ class ToBTCLNSwap extends IToBTCSwap_1.IToBTCSwap {
         return this.secret ?? null;
     }
     /**
-     * Returns the confidence of the intermediary that this payment will succeed
-     * Value between 0 and 1, where 0 is not likely and 1 is very likely
+     * Returns the confidence of the intermediary that this payment will succeed.
+     *
+     * @returns Decimal value between 0 and 1, where 0 is not likely and 1 is very likely
      */
     getConfidence() {
         return this.confidence;
     }
     /**
-     * Checks whether a swap is likely to fail, based on the confidence as reported by the LP
+     * Checks whether a swap is likely to fail, based on the confidence as reported by the intermediary (LP)
      */
     willLikelyFail() {
         if (this.pr == null || !this.pr.toLowerCase().startsWith("ln"))
@@ -132,8 +155,8 @@ class ToBTCLNSwap extends IToBTCSwap_1.IToBTCSwap {
         return this.confidence === 0;
     }
     /**
-     * Tries to detect if the target lightning invoice is a non-custodial mobile wallet, care must be taken
-     *  for such a wallet to be online when attempting to make a swap
+     * Tries to detect if the target lightning invoice is a non-custodial mobile wallet, extract care must be taken
+     *  for such a wallet **to be online** when attempting to make a swap sending to such a wallet
      */
     isPayingToNonCustodialWallet() {
         if (this.pr == null || !this.pr.toLowerCase().startsWith("ln"))
@@ -144,14 +167,37 @@ class ToBTCLNSwap extends IToBTCSwap_1.IToBTCSwap {
         }
         return false;
     }
+    /**
+     * @inheritDoc
+     * @internal
+     */
     getIdentifierHash() {
         const idBuffer = this.usesClaimHashAsId
             ? buffer_1.Buffer.from(this.getClaimHash(), "hex")
             : this.getPaymentHash();
-        if (this.randomNonce == null)
+        if (this._randomNonce == null)
             return idBuffer;
-        return buffer_1.Buffer.concat([idBuffer, buffer_1.Buffer.from(this.randomNonce, "hex")]);
+        return buffer_1.Buffer.concat([idBuffer, buffer_1.Buffer.from(this._randomNonce, "hex")]);
     }
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    getLpIdentifier() {
+        if (this.pr == null)
+            return this._data.getEscrowHash();
+        if (this.pr.toLowerCase().startsWith("ln")) {
+            const parsed = (0, bolt11_1.decode)(this.pr);
+            if (parsed.tagsObject.payment_hash == null)
+                throw new Error("Swap invoice has no payment hash field!");
+            return parsed.tagsObject.payment_hash;
+        }
+        return this.pr;
+    }
+    /**
+     * Returns the payment hash of the swap, i.e. a payment hash of the lightning network invoice that
+     *  is about to be paid
+     */
     getPaymentHash() {
         if (this.pr == null)
             return null;
@@ -163,45 +209,37 @@ class ToBTCLNSwap extends IToBTCSwap_1.IToBTCSwap {
         }
         return buffer_1.Buffer.from(this.pr, "hex");
     }
-    getLpIdentifier() {
-        if (this.pr == null)
-            return this.data.getEscrowHash();
-        if (this.pr.toLowerCase().startsWith("ln")) {
-            const parsed = (0, bolt11_1.decode)(this.pr);
-            if (parsed.tagsObject.payment_hash == null)
-                throw new Error("Swap invoice has no payment hash field!");
-            return parsed.tagsObject.payment_hash;
-        }
-        return this.pr;
-    }
     //////////////////////////////
     //// LNURL-pay
     /**
-     * Is this an LNURL-pay swap?
+     * Whether this is an LNURL-pay swap
      */
     isLNURL() {
         return this.lnurl != null;
     }
     /**
-     * Gets the used LNURL or null if this is not an LNURL-pay swap
+     * Gets the used LNURL-pay link or `null` if this is not an LNURL-pay swap
      */
     getLNURL() {
         return this.lnurl ?? null;
     }
     /**
-     * Checks whether this LNURL payment contains a success message
+     * Checks whether this LNURL-pay payment contains a success action
      */
     hasSuccessAction() {
         return this.successAction != null;
     }
     /**
-     * Returns the success action after a successful payment, else null
+     * Returns the success action after a successful payment, else `null`
      */
     getSuccessAction() {
         return LNURL_1.LNURL.decodeSuccessAction(this.successAction, this.secret);
     }
     //////////////////////////////
     //// Storage
+    /**
+     * @inheritDoc
+     */
     serialize() {
         return {
             ...super.serialize(),

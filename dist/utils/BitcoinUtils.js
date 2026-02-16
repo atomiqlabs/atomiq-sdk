@@ -1,9 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.parsePsbtTransaction = exports.toCoinselectAddressType = exports.toOutputScript = void 0;
+exports.parsePsbtTransaction = exports.toCoinselectAddressType = exports.toOutputScript = exports.fromOutputScript = void 0;
 const utils_1 = require("@scure/btc-signer/utils");
 const buffer_1 = require("buffer");
 const btc_signer_1 = require("@scure/btc-signer");
+function fromOutputScript(network, outputScriptHex) {
+    return (0, btc_signer_1.Address)(network).encode(btc_signer_1.OutScript.decode(buffer_1.Buffer.from(outputScriptHex, "hex")));
+}
+exports.fromOutputScript = fromOutputScript;
 function toOutputScript(network, address) {
     const outputScript = (0, btc_signer_1.Address)(network).decode(address);
     switch (outputScript.type) {

@@ -29,13 +29,39 @@ export type FromBTCWrapperOptions = ISwapWrapperOptions & {
     bitcoinBlocktime: number;
 };
 export type FromBTCDefinition<T extends ChainType> = IFromBTCSelfInitDefinition<T, FromBTCWrapper<T>, FromBTCSwap<T>>;
+/**
+ * Legacy escrow (PrTLC) based swap for Bitcoin -> Smart chains, requires manual initiation
+ *  of the swap escrow on the destination chain.
+ *
+ * @category Swaps
+ */
 export declare class FromBTCWrapper<T extends ChainType> extends IFromBTCWrapper<T, FromBTCDefinition<T>, FromBTCWrapperOptions> implements IClaimableSwapWrapper<FromBTCSwap<T>> {
-    readonly claimableSwapStates: FromBTCSwapState[];
-    readonly TYPE = SwapType.FROM_BTC;
-    readonly swapDeserializer: typeof FromBTCSwap;
-    readonly synchronizer: RelaySynchronizer<any, T["TX"], any>;
-    readonly btcRelay: BtcRelay<any, T["TX"], any>;
-    readonly btcRpc: BitcoinRpcWithAddressIndex<any>;
+    readonly TYPE: SwapType.FROM_BTC;
+    /**
+     * @internal
+     */
+    protected readonly tickSwapState: FromBTCSwapState[];
+    /**
+     * @internal
+     */
+    readonly _pendingSwapStates: FromBTCSwapState[];
+    /**
+     * @internal
+     */
+    readonly _claimableSwapStates: FromBTCSwapState[];
+    /**
+     * @internal
+     */
+    readonly _swapDeserializer: typeof FromBTCSwap;
+    /**
+     * @internal
+     */
+    readonly _synchronizer: RelaySynchronizer<any, T["TX"], any>;
+    /**
+     * @internal
+     */
+    readonly _btcRpc: BitcoinRpcWithAddressIndex<any>;
+    private readonly btcRelay;
     /**
      * @param chainIdentifier
      * @param unifiedStorage Storage interface for the current environment
@@ -54,18 +80,30 @@ export declare class FromBTCWrapper<T extends ChainType> extends IFromBTCWrapper
     constructor(chainIdentifier: string, unifiedStorage: UnifiedSwapStorage<T>, unifiedChainEvents: UnifiedSwapEventListener<T>, chain: T["ChainInterface"], contract: T["Contract"], prices: ISwapPrice, tokens: WrapperCtorTokens, swapDataDeserializer: new (data: any) => T["Data"], btcRelay: BtcRelay<any, T["TX"], any>, synchronizer: RelaySynchronizer<any, T["TX"], any>, btcRpc: BitcoinRpcWithAddressIndex<any>, options?: AllOptional<FromBTCWrapperOptions>, events?: EventEmitter<{
         swapState: [ISwap];
     }>);
-    readonly pendingSwapStates: FromBTCSwapState[];
-    readonly tickSwapState: FromBTCSwapState[];
+    /**
+     * @inheritDoc
+     * @internal
+     */
     protected processEventInitialize(swap: FromBTCSwap<T>, event: InitializeEvent<T["Data"]>): Promise<boolean>;
+    /**
+     * @inheritDoc
+     * @internal
+     */
     protected processEventClaim(swap: FromBTCSwap<T>, event: ClaimEvent<T["Data"]>): Promise<boolean>;
+    /**
+     * @inheritDoc
+     * @internal
+     */
     protected processEventRefund(swap: FromBTCSwap<T>, event: RefundEvent<T["Data"]>): Promise<boolean>;
     /**
      * Returns the swap expiry, leaving enough time for the user to send a transaction and for it to confirm
      *
-     * @param data Parsed swap data
-     * @param requiredConfirmations Confirmations required to claim the tx
+     * @param data Swap data
+     * @param requiredConfirmations Confirmations required on the bitcoin side to settle the swap
+     *
+     * @internal
      */
-    getOnchainSendTimeout(data: SwapData, requiredConfirmations: number): bigint;
+    _getOnchainSendTimeout(data: SwapData, requiredConfirmations: number): bigint;
     /**
      * Pre-fetches claimer (watchtower) bounty data for the swap. Doesn't throw, instead returns null and aborts the
      *  provided abortController
@@ -74,6 +112,7 @@ export declare class FromBTCWrapper<T extends ChainType> extends IFromBTCWrapper
      * @param amountData
      * @param options Options as passed to the swap creation function
      * @param abortController
+     *
      * @private
      */
     private preFetchClaimerBounty;
@@ -82,7 +121,8 @@ export declare class FromBTCWrapper<T extends ChainType> extends IFromBTCWrapper
      *
      * @param data Parsed swap data returned from the intermediary
      * @param options Options as passed to the swap creation function
-     * @param claimerBounty Claimer bounty data as fetched from preFetchClaimerBounty() function
+     * @param claimerBounty Claimer bounty data as fetched from {@link preFetchClaimerBounty} function
+     *
      * @private
      */
     private getClaimerBounty;
@@ -98,24 +138,30 @@ export declare class FromBTCWrapper<T extends ChainType> extends IFromBTCWrapper
      * @param sequence Required swap sequence
      * @param claimerBounty Claimer bount data as returned from the preFetchClaimerBounty() pre-fetch promise
      * @param depositToken
-     * @private
+     *
      * @throws {IntermediaryError} in case the response is invalid
+     *
+     * @private
      */
     private verifyReturnedData;
     /**
-     * Returns a newly created swap, receiving 'amount' on chain
+     * Returns a newly created legacy Bitcoin -> Smart chain swap using the PrTLC based escrow swap protocol,
+     *  with the passed amount.
      *
-     * @param signer                Smartchain signer's address intiating the swap
-     * @param amountData            Amount of token & amount to swap
-     * @param lps                   LPs (liquidity providers) to get the quotes from
-     * @param options               Quote options
-     * @param additionalParams      Additional parameters sent to the LP when creating the swap
-     * @param abortSignal           Abort signal for aborting the process
+     * @param recipient Smart chain signer's address on the destination chain
+     * @param amountData Amount, token and exact input/output data for to swap
+     * @param lps An array of intermediaries (LPs) to get the quotes from
+     * @param options Optional additional quote options
+     * @param additionalParams Optional additional parameters sent to the LP when creating the swap
+     * @param abortSignal Abort signal
      */
-    create(signer: string, amountData: AmountData, lps: Intermediary[], options?: FromBTCOptions, additionalParams?: Record<string, any>, abortSignal?: AbortSignal): {
+    create(recipient: string, amountData: AmountData, lps: Intermediary[], options?: FromBTCOptions, additionalParams?: Record<string, any>, abortSignal?: AbortSignal): {
         quote: Promise<FromBTCSwap<T>>;
         intermediary: Intermediary;
     }[];
+    /**
+     * @inheritDoc
+     */
     recoverFromSwapDataAndState(init: {
         data: T["Data"];
         getInitTxId: () => Promise<string>;

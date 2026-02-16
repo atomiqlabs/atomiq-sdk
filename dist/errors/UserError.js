@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.UserError = void 0;
 /**
  * An error on the user side, such as invalid address provided
+ *
  * @category Errors
  */
 class UserError extends Error {

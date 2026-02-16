@@ -2,7 +2,8 @@ import {FeeType} from "../../enums/FeeType";
 import {Fee} from "./Fee";
 
 /**
- * Breakdown of fees by type (swap fee vs network fee)
+ * Breakdown of fees by type (swap fee, network fee, etc.)
+ *
  * @category Pricing and LPs
  */
 export type FeeBreakdown<ChainIdentifier extends string = string> = {

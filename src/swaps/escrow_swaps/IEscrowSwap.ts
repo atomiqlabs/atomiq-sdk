@@ -22,20 +22,33 @@ export function isIEscrowSwapInit<T extends SwapData>(obj: any): obj is IEscrowS
         isISwapInit(obj);
 }
 
+/**
+ * Base class for escrow-based swaps (i.e. swaps utilizing PrTLC and HTLC primitives)
+ *
+ * @category Swaps
+ */
 export abstract class IEscrowSwap<
     T extends ChainType = ChainType,
     D extends IEscrowSwapDefinition<T, IEscrowSwapWrapper<T, D>, IEscrowSwap<T, D, S>> = IEscrowSwapDefinition<T, IEscrowSwapWrapper<T, any>, IEscrowSwap<T, any, any>>,
     S extends number = number
 > extends ISwap<T, D, S> {
-
-    data?: T["Data"];
-
+    /**
+     * @internal
+     */
+    _data?: T["Data"];
     /**
      * Transaction IDs for the swap on the smart chain side
+     * @internal
      */
-    commitTxId?: string;
-    refundTxId?: string;
-    claimTxId?: string;
+    _commitTxId?: string;
+    /**
+     * @internal
+     */
+    _refundTxId?: string;
+    /**
+     * @internal
+     */
+    _claimTxId?: string;
 
     protected constructor(wrapper: D["Wrapper"], obj: any);
     protected constructor(wrapper: D["Wrapper"], swapInit: IEscrowSwapInit<T["Data"]>);
@@ -46,16 +59,21 @@ export abstract class IEscrowSwap<
         super(wrapper, swapInitOrObj);
 
         if(isIEscrowSwapInit(swapInitOrObj)) {
-            this.data = swapInitOrObj.data;
+            this._data = swapInitOrObj.data;
         } else {
-            if(swapInitOrObj.data!=null) this.data = new wrapper.swapDataDeserializer(swapInitOrObj.data);
+            if(swapInitOrObj.data!=null) this._data = new wrapper._swapDataDeserializer(swapInitOrObj.data);
 
-            this.commitTxId = swapInitOrObj.commitTxId;
-            this.claimTxId = swapInitOrObj.claimTxId;
-            this.refundTxId = swapInitOrObj.refundTxId;
+            this._commitTxId = swapInitOrObj.commitTxId;
+            this._claimTxId = swapInitOrObj.claimTxId;
+            this._refundTxId = swapInitOrObj.refundTxId;
         }
     }
 
+    /**
+     * Returns the swap escrow data for this swap
+     *
+     * @internal
+     */
     protected abstract getSwapData(): T["Data"];
 
     //////////////////////////////
@@ -64,24 +82,32 @@ export abstract class IEscrowSwap<
     /**
      * Returns the identification hash of the swap, usually claim data hash, but can be overriden, e.g. for
      *  lightning swaps the identifier hash is used instead of claim data hash
+     *
+     * @internal
      */
     protected getIdentifierHash(): Buffer {
         const claimHashBuffer = Buffer.from(this.getClaimHash(), "hex");
-        if(this.randomNonce==null) return claimHashBuffer;
-        return Buffer.concat([claimHashBuffer, Buffer.from(this.randomNonce, "hex")]);
+        if(this._randomNonce==null) return claimHashBuffer;
+        return Buffer.concat([claimHashBuffer, Buffer.from(this._randomNonce, "hex")]);
     }
 
     /**
      * Returns the identification hash of the swap, usually claim data hash, but can be overriden, e.g. for
      *  lightning swaps the identifier hash is used instead of claim data hash
+     *
+     * @internal
      */
     protected getIdentifierHashString(): string {
         const identifierHash = this.getIdentifierHash();
         return identifierHash.toString("hex");
     }
 
+    /**
+     * @inheritDoc
+     * @internal
+     */
     _getEscrowHash(): string | null {
-        return this.data?.getEscrowHash() ?? null;
+        return this._data?.getEscrowHash() ?? null;
     }
 
     /**
@@ -92,12 +118,15 @@ export abstract class IEscrowSwap<
     }
 
     /**
-     * Returns the claim data hash - i.e. hash passed to the claim handler
+     * Returns the claim data hash specifying the claim path of the escrow - i.e. hash passed to the claim handler
      */
     getClaimHash(): string {
         return this.getSwapData().getClaimHash();
     }
 
+    /**
+     * @inheritDoc
+     */
     getId(): string {
         return this.getIdentifierHashString();
     }
@@ -111,17 +140,17 @@ export abstract class IEscrowSwap<
      *
      * @param intervalSeconds How often to check (in seconds), default to 5s
      * @param abortSignal
-     * @protected
+     * @internal
      */
     protected async watchdogWaitTillCommited(intervalSeconds?: number, abortSignal?: AbortSignal): Promise<boolean> {
-        if(this.data==null) throw new Error("Tried to await commitment but data is null, invalid state?");
+        if(this._data==null) throw new Error("Tried to await commitment but data is null, invalid state?");
 
         intervalSeconds ??= 5;
         let status: SwapCommitState = {type: SwapCommitStateType.NOT_COMMITED};
         while(status?.type===SwapCommitStateType.NOT_COMMITED) {
             await timeoutPromise(intervalSeconds*1000, abortSignal);
             try {
-                status = await this.wrapper.contract.getCommitStatus(this._getInitiator(), this.data);
+                status = await this.wrapper._contract.getCommitStatus(this._getInitiator(), this._data);
                 if(
                     status?.type===SwapCommitStateType.NOT_COMMITED &&
                     await this._verifyQuoteDefinitelyExpired()
@@ -139,19 +168,19 @@ export abstract class IEscrowSwap<
      *
      * @param intervalSeconds How often to check (in seconds), default to 5s
      * @param abortSignal
-     * @protected
+     * @internal
      */
     protected async watchdogWaitTillResult(intervalSeconds?: number, abortSignal?: AbortSignal): Promise<
         SwapPaidState | SwapExpiredState | SwapNotCommitedState
     > {
-        if(this.data==null) throw new Error("Tried to await result but data is null, invalid state?");
+        if(this._data==null) throw new Error("Tried to await result but data is null, invalid state?");
 
         intervalSeconds ??= 5;
         let status: SwapCommitState = {type: SwapCommitStateType.COMMITED};
         while(status?.type===SwapCommitStateType.COMMITED || status?.type===SwapCommitStateType.REFUNDABLE) {
             await timeoutPromise(intervalSeconds*1000, abortSignal);
             try {
-                status = await this.wrapper.contract.getCommitStatus(this._getInitiator(), this.data);
+                status = await this.wrapper._contract.getCommitStatus(this._getInitiator(), this._data);
             } catch (e) {
                 this.logger.error("watchdogWaitTillResult(): Error when fetching commit status: ", e);
             }
@@ -162,39 +191,52 @@ export abstract class IEscrowSwap<
 
 
     //////////////////////////////
-    //// Quote verification
-
-    /**
-     * Checks if the swap's quote is expired for good (i.e. the swap strictly cannot be committed on-chain anymore)
-     */
-    abstract _verifyQuoteDefinitelyExpired(): Promise<boolean>;
-
-    /**
-     * Checks if the swap's quote is still valid
-     */
-    abstract verifyQuoteValid(): Promise<boolean>;
-
-
-    //////////////////////////////
     //// Helpers for batched swap checks
 
-    abstract _shouldFetchCommitStatus(): boolean;
+    /**
+     * Whether on-chain state should be fetched for this swap
+     * @internal
+     */
+    abstract _shouldFetchOnchainState(): boolean;
 
+    /**
+     * Whether expiration status of the swap quote should be checked for this swap
+     * @internal
+     */
     abstract _shouldFetchExpiryStatus(): boolean;
 
+    /**
+     * @inheritDoc
+     *
+     * @param save Whether to save the new swap state or not
+     * @param quoteDefinitelyExpired Optionally pass whether the quote is definitely expired from a batch pre-fetch,
+     *  fetched on-demand if not provided
+     * @param commitStatus Optionally pass the quote on-chain state from a batch pre-fetch, fetched on-demand if
+     *  not provided
+     *
+     * @internal
+     */
     abstract _sync(save?: boolean, quoteDefinitelyExpired?: boolean, commitStatus?: SwapCommitState): Promise<boolean>;
 
-    _forciblySetOnchainState(commitStatus: SwapCommitState): Promise<boolean> {
-        return Promise.resolve(false);
-    }
+    /**
+     * Forcibly overrides current swap state from fetched on-chain swap state
+     *
+     * @param commitStatus Swap state fetched from the smart chain
+     *
+     * @internal
+     */
+    abstract _forciblySetOnchainState(commitStatus: SwapCommitState): Promise<boolean>;
 
+    /**
+     * @inheritDoc
+     */
     serialize(): any {
         return {
             ...super.serialize(),
-            data: this.data!=null ? this.data.serialize() : null,
-            commitTxId: this.commitTxId,
-            claimTxId: this.claimTxId,
-            refundTxId: this.refundTxId
+            data: this._data!=null ? this._data.serialize() : null,
+            commitTxId: this._commitTxId,
+            claimTxId: this._claimTxId,
+            refundTxId: this._refundTxId
         }
     };
 

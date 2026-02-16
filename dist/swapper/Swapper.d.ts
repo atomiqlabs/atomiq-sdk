@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import { ISwapPrice } from "../prices/abstract/ISwapPrice";
-import { BitcoinNetwork, BtcRelay, ChainData, ChainType, Messenger, RelaySynchronizer } from "@atomiqlabs/base";
+import { BitcoinNetwork, BitcoinRpcWithAddressIndex, BtcBlock, BtcRelay, ChainData, ChainType, LightningNetworkApi, Messenger, RelaySynchronizer } from "@atomiqlabs/base";
 import { ToBTCLNOptions, ToBTCLNWrapper } from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNWrapper";
 import { ToBTCOptions, ToBTCWrapper } from "../swaps/escrow_swaps/tobtc/onchain/ToBTCWrapper";
 import { FromBTCLNOptions, FromBTCLNWrapper } from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNWrapper";
@@ -38,7 +38,6 @@ import { BtcToken, SCToken, Token } from "../types/Token";
 import { LNURLWithdraw } from "../types/lnurl/LNURLWithdraw";
 import { LNURLPay } from "../types/lnurl/LNURLPay";
 import { NotNever } from "../utils/TypeUtils";
-import { MempoolBitcoinBlock, MempoolBitcoinRpc } from "@atomiqlabs/btc-mempool";
 import { LightningInvoiceCreateService } from "../types/wallets/LightningInvoiceCreateService";
 /**
  * Configuration options for the Swapper
@@ -86,8 +85,8 @@ type ChainSpecificData<T extends ChainType> = {
     swapContract: T["Contract"];
     spvVaultContract: T["SpvVaultContract"];
     chainInterface: T["ChainInterface"];
-    btcRelay: BtcRelay<any, T["TX"], MempoolBitcoinBlock, T["Signer"]>;
-    synchronizer: RelaySynchronizer<any, T["TX"], MempoolBitcoinBlock>;
+    btcRelay: BtcRelay<any, T["TX"], BtcBlock, T["Signer"]>;
+    synchronizer: RelaySynchronizer<any, T["TX"], BtcBlock>;
     unifiedChainEvents: UnifiedSwapEventListener<T>;
     unifiedSwapStorage: UnifiedSwapStorage<T>;
     reviver: (val: any) => ISwap<T>;
@@ -137,7 +136,7 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
      * Bitcoin RPC for fetching bitcoin chain data
      * @internal
      */
-    readonly _bitcoinRpc: MempoolBitcoinRpc;
+    readonly _bitcoinRpc: BitcoinRpcWithAddressIndex<any>;
     /**
      * Bitcoin network specification
      * @internal
@@ -173,7 +172,10 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
      * Miscellaneous utility functions
      */
     readonly Utils: SwapperUtils<T>;
-    constructor(bitcoinRpc: MempoolBitcoinRpc, chainsData: CtorMultiChainData<T>, pricing: ISwapPrice<T>, tokens: WrapperCtorTokens<T>, messenger: Messenger, options?: SwapperOptions);
+    /**
+     * @internal
+     */
+    constructor(bitcoinRpc: BitcoinRpcWithAddressIndex<any>, lightningApi: LightningNetworkApi, bitcoinSynchronizer: (btcRelay: BtcRelay<any, any, any>) => RelaySynchronizer<any, any, any>, chainsData: CtorMultiChainData<T>, pricing: ISwapPrice<T>, tokens: WrapperCtorTokens<T>, messenger: Messenger, options?: SwapperOptions);
     private _init;
     private initPromise?;
     private initialized;

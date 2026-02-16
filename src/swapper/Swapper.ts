@@ -1,10 +1,10 @@
 import {ISwapPrice} from "../prices/abstract/ISwapPrice";
 import {
-    BitcoinNetwork,
+    BitcoinNetwork, BitcoinRpc, BitcoinRpcWithAddressIndex, BtcBlock,
     BtcRelay,
     ChainData,
     ChainSwapType,
-    ChainType,
+    ChainType, LightningNetworkApi,
     Messenger,
     RelaySynchronizer
 } from "@atomiqlabs/base";
@@ -62,7 +62,6 @@ import {isLNURLWithdraw, LNURLWithdraw} from "../types/lnurl/LNURLWithdraw";
 import {isLNURLPay, LNURLPay} from "../types/lnurl/LNURLPay";
 import {tryWithRetries} from "../utils/RetryUtils";
 import {NotNever} from "../utils/TypeUtils";
-import {MempoolApi, MempoolBitcoinBlock, MempoolBitcoinRpc, MempoolBtcRelaySynchronizer} from "@atomiqlabs/btc-mempool";
 import {IEscrowSwap} from "../swaps/escrow_swaps/IEscrowSwap";
 import {LightningInvoiceCreateService, isLightningInvoiceCreateService} from "../types/wallets/LightningInvoiceCreateService";
 
@@ -116,8 +115,8 @@ type ChainSpecificData<T extends ChainType> = {
     swapContract: T["Contract"],
     spvVaultContract: T["SpvVaultContract"],
     chainInterface: T["ChainInterface"],
-    btcRelay: BtcRelay<any, T["TX"], MempoolBitcoinBlock, T["Signer"]>,
-    synchronizer: RelaySynchronizer<any, T["TX"], MempoolBitcoinBlock>,
+    btcRelay: BtcRelay<any, T["TX"], BtcBlock, T["Signer"]>,
+    synchronizer: RelaySynchronizer<any, T["TX"], BtcBlock>,
     unifiedChainEvents: UnifiedSwapEventListener<T>,
     unifiedSwapStorage: UnifiedSwapStorage<T>,
     reviver: (val: any) => ISwap<T>
@@ -182,7 +181,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
      * Bitcoin RPC for fetching bitcoin chain data
      * @internal
      */
-    readonly _bitcoinRpc: MempoolBitcoinRpc;
+    readonly _bitcoinRpc: BitcoinRpcWithAddressIndex<any>;
     /**
      * Bitcoin network specification
      * @internal
@@ -220,8 +219,13 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
      */
     readonly Utils: SwapperUtils<T>;
 
+    /**
+     * @internal
+     */
     constructor(
-        bitcoinRpc: MempoolBitcoinRpc,
+        bitcoinRpc: BitcoinRpcWithAddressIndex<any>,
+        lightningApi: LightningNetworkApi,
+        bitcoinSynchronizer: (btcRelay: BtcRelay<any, any, any>) => RelaySynchronizer<any, any, any>,
         chainsData: CtorMultiChainData<T>,
         pricing: ISwapPrice<T>,
         tokens: WrapperCtorTokens<T>,
@@ -279,7 +283,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 swapContract, chainEvents, btcRelay,
                 chainInterface, spvVaultContract, spvVaultWithdrawalDataConstructor
             } = chainData;
-            const synchronizer = new MempoolBtcRelaySynchronizer(btcRelay, bitcoinRpc);
+            const synchronizer = bitcoinSynchronizer(btcRelay);
 
             const storageHandler = swapStorage(storagePrefix + chainData.chainId);
             const unifiedSwapStorage = new UnifiedSwapStorage<T[InputKey]>(storageHandler, this.options.noSwapCache);
@@ -326,7 +330,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 pricing,
                 tokens,
                 chainData.swapDataConstructor,
-                bitcoinRpc,
+                lightningApi,
                 {
                     getRequestTimeout: this.options.getRequestTimeout,
                     postRequestTimeout: this.options.postRequestTimeout,
@@ -409,7 +413,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                     pricing,
                     tokens,
                     chainData.swapDataConstructor,
-                    bitcoinRpc,
+                    lightningApi,
                     this.messenger,
                     {
                         getRequestTimeout: this.options.getRequestTimeout,

@@ -3,7 +3,7 @@ import {
     BitcoinNetwork,
     ChainType,
     StorageObject,
-    IStorageManager, Messenger, ChainInitializer
+    IStorageManager, Messenger, ChainInitializer, BtcRelay
 } from "@atomiqlabs/base";
 import {SmartChainAssets, SmartChainAssetTickers} from "../SmartChainAssets";
 import {NostrMessenger} from "@atomiqlabs/messenger-nostr";
@@ -16,7 +16,7 @@ import {RedundantSwapPrice, RedundantSwapPriceAssets} from "../prices/RedundantS
 import {LocalStorageManager} from "../storage-browser/LocalStorageManager";
 import {SingleSwapPrice} from "../prices/SingleSwapPrice";
 import {CustomPriceFunction} from "../types/CustomPriceFunction";
-import {MempoolApi, MempoolBitcoinRpc} from "@atomiqlabs/btc-mempool";
+import {MempoolApi, MempoolBitcoinRpc, MempoolBtcRelaySynchronizer} from "@atomiqlabs/btc-mempool";
 
 //Helper types
 /**
@@ -252,6 +252,8 @@ export class SwapperFactory<T extends readonly ChainInitializer<any, ChainType, 
 
         return new Swapper<ToMultichain<T>>(
             bitcoinRpc,
+            bitcoinRpc,
+            (btcRelay: BtcRelay<any, any, any>) => new MempoolBtcRelaySynchronizer(btcRelay, bitcoinRpc),
             chains as any,
             swapPricing,
             pricingAssets,

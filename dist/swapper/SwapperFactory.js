@@ -140,7 +140,7 @@ class SwapperFactory {
                 };
             }), options.getPriceFn)) :
             RedundantSwapPrice_1.RedundantSwapPrice.createFromTokenMap(options.pricingFeeDifferencePPM ?? 10000n, pricingAssets);
-        return new Swapper_1.Swapper(bitcoinRpc, chains, swapPricing, pricingAssets, options.messenger, options);
+        return new Swapper_1.Swapper(bitcoinRpc, bitcoinRpc, (btcRelay) => new btc_mempool_1.MempoolBtcRelaySynchronizer(btcRelay, bitcoinRpc), chains, swapPricing, pricingAssets, options.messenger, options);
     }
     /**
      * Returns a new and already initialized swapper instance with the passed options. There is no need

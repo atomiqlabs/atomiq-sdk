@@ -3,6 +3,8 @@ export {
     BitcoinRpc,
     BitcoinRpcWithAddressIndex,
     BitcoinNetwork,
+    BtcHeader,
+    BtcStoredHeader,
     BtcRelay,
     ChainData,
     ChainInterface,
@@ -29,6 +31,10 @@ export {
     MempoolBitcoinRpc,
     MempoolApiError
 } from "@atomiqlabs/btc-mempool";
+
+export {
+    NostrMessenger
+} from "@atomiqlabs/messenger-nostr";
 
 export * from "./bitcoin/wallet/BitcoinWallet";
 export * from "./bitcoin/wallet/IBitcoinWallet";

@@ -131,6 +131,26 @@ export abstract class IEscrowSwap<
         return this.getIdentifierHashString();
     }
 
+    /**
+     * Returns the smart chain transaction ID of the tx that initiated the escrow
+     */
+    getEscrowInitTxId(): string | undefined {
+        return this._commitTxId;
+    }
+
+    /**
+     * Returns the smart chain transaction ID of the tx that claimed (settled) the escrow
+     */
+    getEscrowClaimTxId(): string | undefined {
+        return this._claimTxId;
+    }
+
+    /**
+     * Returns the smart chain transaction ID of the tx that refunded the escrow
+     */
+    getEscrowRefundTxId(): string | undefined {
+        return this._refundTxId;
+    }
 
     //////////////////////////////
     //// Watchdogs

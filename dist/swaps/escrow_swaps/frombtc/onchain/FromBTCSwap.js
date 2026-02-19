@@ -54,9 +54,9 @@ var FromBTCSwapState;
      */
     FromBTCSwapState[FromBTCSwapState["CLAIM_COMMITED"] = 1] = "CLAIM_COMMITED";
     /**
-     * Input bitcoin transaction was confirmed, wait for automatic settlement by the watchtower
-     *  or settle manually using the {@link FromBTCSwap.claim} or {@link FromBTCSwap.txsClaim}
-     *  function.
+     * Input bitcoin transaction was confirmed, wait for automatic settlement by the watchtowers
+     *  using the {@link FromBTCSwap.waitTillClaimed} function or settle manually using the {@link FromBTCSwap.claim}
+     *  or {@link FromBTCSwap.txsClaim} function.
      */
     FromBTCSwapState[FromBTCSwapState["BTC_TX_CONFIRMED"] = 2] = "BTC_TX_CONFIRMED";
     /**
@@ -64,6 +64,20 @@ var FromBTCSwapState;
      */
     FromBTCSwapState[FromBTCSwapState["CLAIM_CLAIMED"] = 3] = "CLAIM_CLAIMED";
 })(FromBTCSwapState = exports.FromBTCSwapState || (exports.FromBTCSwapState = {}));
+const FromBTCSwapStateDescription = {
+    [FromBTCSwapState.FAILED]: `Bitcoin swap address has expired and the intermediary (LP) has already refunded
+     its funds. No BTC should be sent anymore!`,
+    [FromBTCSwapState.EXPIRED]: `Bitcoin swap address has expired, user should not send any BTC anymore! Though
+     the intermediary (LP) hasn't refunded yet. So if there is a transaction already in-flight the swap might still succeed.`,
+    [FromBTCSwapState.QUOTE_EXPIRED]: `Swap has expired for good and there is no way how it can be executed anymore`,
+    [FromBTCSwapState.QUOTE_SOFT_EXPIRED]: `The swap is expired, though there is still a chance that it will be processed`,
+    [FromBTCSwapState.PR_CREATED]: `Swap quote was created, initiate it by creating the swap escrow on the destination smart chain`,
+    [FromBTCSwapState.CLAIM_COMMITED]: `Swap escrow was initiated (committed) on the destination chain, user can send the BTC to the
+     Bitcoin swap address.`,
+    [FromBTCSwapState.BTC_TX_CONFIRMED]: `Input bitcoin transaction was confirmed, wait for automatic settlement by the watchtower
+     or settle manually.`,
+    [FromBTCSwapState.CLAIM_CLAIMED]: `Swap successfully settled and funds received on the destination chain`
+};
 function isFromBTCSwapInit(obj) {
     return typeof (obj.data) === "object" &&
         (obj.address == null || typeof (obj.address) === "string") &&
@@ -87,6 +101,14 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
         /**
          * @internal
          */
+        this.swapStateName = (state) => FromBTCSwapState[state];
+        /**
+         * @internal
+         */
+        this.swapStateDescription = FromBTCSwapStateDescription;
+        /**
+         * @internal
+         */
         this.inputToken = Token_1.BitcoinTokens.BTC;
         if (isFromBTCSwapInit(initOrObject)) {
             this._state = FromBTCSwapState.PR_CREATED;
@@ -103,6 +125,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             this.txId = initOrObject.txId;
             this.vout = initOrObject.vout;
             this.requiredConfirmations = initOrObject.requiredConfirmations ?? this._data.getConfirmationsHint();
+            this.btcTxConfirmedAt = initOrObject.btcTxConfirmedAt;
         }
         this.tryRecomputeSwapPrice();
         this.logger = (0, Logger_1.getLogger)("FromBTC(" + this.getIdentifierHashString() + "): ");
@@ -415,6 +438,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             this.senderAddress = result.tx.inputAddresses[0];
         if (this._state !== FromBTCSwapState.CLAIM_CLAIMED &&
             this._state !== FromBTCSwapState.FAILED) {
+            this.btcTxConfirmedAt ??= Date.now();
             this._state = FromBTCSwapState.BTC_TX_CONFIRMED;
         }
         await this._saveAndEmit();
@@ -598,6 +622,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
     /**
      * @inheritDoc
      *
+     * @param options.bitcoinFeeRate Optional fee rate to use for the created Bitcoin transaction
      * @param options.bitcoinWallet Bitcoin wallet to use, when provided the function returns a funded
      *  psbt (`"FUNDED_PSBT"`), if not passed just a bitcoin receive address is returned (`"ADDRESS"`)
      * @param options.skipChecks Skip checks like making sure init signature is still valid and swap
@@ -660,6 +685,40 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             ];
         }
         throw new Error("Invalid swap state to obtain execution txns, required PR_CREATED or CLAIM_COMMITED");
+    }
+    /**
+     * @inheritDoc
+     *
+     * @param options.bitcoinFeeRate Optional fee rate to use for the created Bitcoin transaction
+     * @param options.bitcoinWallet Bitcoin wallet to use, when provided the function returns a funded
+     *  psbt (`"FUNDED_PSBT"`), if not passed just a bitcoin receive address is returned (`"ADDRESS"`)
+     * @param options.skipChecks Skip checks like making sure init signature is still valid and swap
+     *  wasn't commited yet (this is handled on swap creation, if you commit right after quoting, you
+     *  can use `skipChecks=true`)
+     * @param options.manualSettlementSmartChainSigner Optional smart chain signer to create a manual claim (settlement) transaction
+     * @param options.maxWaitTillAutomaticSettlementSeconds Maximum time to wait for an automatic settlement after
+     *  the bitcoin transaction is confirmed (defaults to 60 seconds)
+     */
+    async getCurrentActions(options) {
+        if (this._state === FromBTCSwapState.PR_CREATED || this._state === FromBTCSwapState.CLAIM_COMMITED) {
+            try {
+                return await this.txsExecute(options);
+            }
+            catch (e) { }
+        }
+        if (this.isClaimable()) {
+            if (this.btcTxConfirmedAt == null ||
+                options?.maxWaitTillAutomaticSettlementSeconds === 0 ||
+                (Date.now() - this.btcTxConfirmedAt) > (options?.maxWaitTillAutomaticSettlementSeconds ?? 60) * 1000) {
+                return [{
+                        name: "Claim",
+                        description: "Manually settle (claim) the swap on the destination smart chain",
+                        chain: this.chainIdentifier,
+                        txs: await this.txsClaim(options?.manualSettlementSmartChainSigner)
+                    }];
+            }
+        }
+        return [];
     }
     //////////////////////////////
     //// Commit
@@ -889,7 +948,8 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             requiredConfirmations: this.requiredConfirmations,
             senderAddress: this.senderAddress,
             txId: this.txId,
-            vout: this.vout
+            vout: this.vout,
+            btcTxConfirmedAt: this.btcTxConfirmedAt
         };
     }
     //////////////////////////////
@@ -992,6 +1052,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
                         save = true;
                     }
                     if (this.requiredConfirmations != null && res.confirmations >= this.requiredConfirmations) {
+                        this.btcTxConfirmedAt ??= Date.now();
                         this._state = FromBTCSwapState.BTC_TX_CONFIRMED;
                         save = true;
                     }
@@ -1037,6 +1098,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
                                     shouldSave = true;
                                 }
                                 if (this.requiredConfirmations != null && res.confirmations >= this.requiredConfirmations) {
+                                    this.btcTxConfirmedAt ??= Date.now();
                                     this._state = FromBTCSwapState.BTC_TX_CONFIRMED;
                                     if (save)
                                         await this._saveAndEmit();

@@ -23,7 +23,7 @@ import {ppmToPercentage} from "../../../types/fees/PercentagePPM";
 import {TokenAmount, toTokenAmount} from "../../../types/TokenAmount";
 import {BtcToken, SCToken} from "../../../types/Token";
 import {timeoutPromise} from "../../../utils/TimeoutUtils";
-import {SwapExecutionActionCommit} from "../../../types/SwapExecutionAction";
+import {SwapExecutionAction, SwapExecutionActionCommit} from "../../../types/SwapExecutionAction";
 
 export type IToBTCSwapInit<T extends SwapData> = IEscrowSelfInitSwapInit<T> & {
     signatureData?: SignatureData,
@@ -92,6 +92,21 @@ export enum ToBTCSwapState {
     REFUNDABLE = 4
 }
 
+const ToBTCSwapStateDescription = {
+    [ToBTCSwapState.REFUNDED]: `Intermediary (LP) was unable to process the swap and the funds were refunded on the
+     source chain`,
+    [ToBTCSwapState.QUOTE_EXPIRED]: `Swap has expired for good and there is no way how it can be executed anymore`,
+    [ToBTCSwapState.QUOTE_SOFT_EXPIRED]: `A swap is expired, though there is still a chance that it will be processed`,
+    [ToBTCSwapState.CREATED]: `Swap was created, initiate it by creating the swap escrow on the source chain`,
+    [ToBTCSwapState.COMMITED]: `Swap escrow was initiated (committed) on the source chain, the intermediary (LP) will
+     now process the swap.`,
+    [ToBTCSwapState.SOFT_CLAIMED]: `The intermediary (LP) has processed the transaction and sent out the funds on the destination chain,
+     but hasn't yet settled the escrow on the source chain.`,
+    [ToBTCSwapState.CLAIMED]: `Swap was successfully settled by the intermediary (LP) on the source chain`,
+    [ToBTCSwapState.REFUNDABLE]: `Intermediary (LP) was unable to process the swap and the swap escrow on the source chain
+     is refundable.`
+};
+
 /**
  * Base class for escrow-based Smart chain -> Bitcoin (on-chain & lightning) swaps
  *
@@ -101,6 +116,15 @@ export abstract class IToBTCSwap<
     T extends ChainType = ChainType,
     D extends IToBTCDefinition<T, IToBTCWrapper<T, D>, IToBTCSwap<T, D>> = IToBTCDefinition<T, IToBTCWrapper<T, any>, IToBTCSwap<T, any>>,
 > extends IEscrowSelfInitSwap<T, D, ToBTCSwapState> implements IRefundableSwap<T, D, ToBTCSwapState> {
+
+    /**
+     * @internal
+     */
+    protected readonly swapStateDescription = ToBTCSwapStateDescription;
+    /**
+     * @internal
+     */
+    protected readonly swapStateName = (state: number) => ToBTCSwapState[state];
     /**
      * @internal
      */
@@ -501,6 +525,7 @@ export abstract class IToBTCSwap<
 
     /**
      * @inheritDoc
+     *
      * @param options.skipChecks Skip checks like making sure init signature is still valid and swap wasn't commited yet
      *  (this is handled on swap creation, if you commit right after quoting, you can use `skipChecks=true`)
      */
@@ -521,6 +546,32 @@ export abstract class IToBTCSwap<
         ];
     }
 
+    /**
+     * @inheritDoc
+     *
+     * @param options.skipChecks Skip checks like making sure init signature is still valid and swap wasn't commited yet
+     *  (this is handled on swap creation, if you commit right after quoting, you can use `skipChecks=true`)
+     * @param options.refundSmartChainSigner Optional smart chain signer to use when creating refunds transactions
+     */
+    async getCurrentActions(options?: {
+        skipChecks?: boolean,
+        refundSmartChainSigner?: string | T["Signer"] | T["NativeSigner"]
+    }): Promise<SwapExecutionAction<T>[]> {
+        if(this._state===ToBTCSwapState.CREATED) {
+            try {
+                return await this.txsExecute(options);
+            } catch (e) {}
+        }
+        if(this.isRefundable()) {
+            return [{
+                name: "Refund" as const,
+                description: "Refund the swap after it failed to execute",
+                chain: this.chainIdentifier,
+                txs: await this.txsRefund(options?.refundSmartChainSigner)
+            }];
+        }
+        return [];
+    }
 
     //////////////////////////////
     //// Commit
@@ -777,10 +828,21 @@ export abstract class IToBTCSwap<
      * @throws {SignatureVerificationError} If intermediary returned invalid cooperative refund signature
      * @throws {Error} When state is not refundable
      */
-    async txsRefund(signer?: string): Promise<T["TX"][]> {
+    async txsRefund(_signer?: string | T["Signer"] | T["NativeSigner"]): Promise<T["TX"][]> {
         if(!this.isRefundable()) throw new Error("Must be in REFUNDABLE state or expired!");
 
-        signer ??= this._getInitiator();
+        let signer: string;
+        if(_signer!=null) {
+            if (typeof (_signer) === "string") {
+                signer = _signer;
+            } else if (isAbstractSigner(_signer)) {
+                signer = _signer.getAddress();
+            } else {
+                signer = (await this.wrapper._chain.wrapSigner(_signer)).getAddress();
+            }
+        } else {
+            signer = this._getInitiator();
+        }
 
         if(await this.wrapper._contract.isExpired(this._getInitiator(), this._data)) {
             return await this.wrapper._contract.txsRefund(signer, this._data, true, true);

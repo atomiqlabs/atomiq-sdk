@@ -71,6 +71,18 @@ export declare abstract class IEscrowSwap<T extends ChainType = ChainType, D ext
      */
     getId(): string;
     /**
+     * Returns the smart chain transaction ID of the tx that initiated the escrow
+     */
+    getEscrowInitTxId(): string | undefined;
+    /**
+     * Returns the smart chain transaction ID of the tx that claimed (settled) the escrow
+     */
+    getEscrowClaimTxId(): string | undefined;
+    /**
+     * Returns the smart chain transaction ID of the tx that refunded the escrow
+     */
+    getEscrowRefundTxId(): string | undefined;
+    /**
      * Periodically checks the chain to see whether the swap is committed
      *
      * @param intervalSeconds How often to check (in seconds), default to 5s

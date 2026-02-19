@@ -28,7 +28,7 @@ var LnForGasSwapState;
      */
     LnForGasSwapState[LnForGasSwapState["FAILED"] = -1] = "FAILED";
     /**
-     * Swap was created
+     * Swap was created, pay the provided lightning network invoice
      */
     LnForGasSwapState[LnForGasSwapState["PR_CREATED"] = 0] = "PR_CREATED";
     /**
@@ -40,6 +40,13 @@ var LnForGasSwapState;
      */
     LnForGasSwapState[LnForGasSwapState["FINISHED"] = 2] = "FINISHED";
 })(LnForGasSwapState = exports.LnForGasSwapState || (exports.LnForGasSwapState = {}));
+const LnForGasSwapStateDescription = {
+    [LnForGasSwapState.EXPIRED]: "The swap quote expired without user sending in the lightning network payment",
+    [LnForGasSwapState.FAILED]: "The swap has failed after the intermediary already received a lightning network payment on the source",
+    [LnForGasSwapState.PR_CREATED]: "Swap was created, pay the provided lightning network invoice",
+    [LnForGasSwapState.PR_PAID]: "User paid the lightning network invoice on the source",
+    [LnForGasSwapState.FINISHED]: "The swap is finished after the intermediary sent funds on the destination chain"
+};
 function isLnForGasSwapInit(obj) {
     return typeof (obj.pr) === "string" &&
         typeof (obj.outputAmount) === "bigint" &&
@@ -60,6 +67,14 @@ class LnForGasSwap extends ISwap_1.ISwap {
             initOrObj.url += "/lnforgas";
         super(wrapper, initOrObj);
         this.TYPE = SwapType_1.SwapType.TRUSTED_FROM_BTCLN;
+        /**
+         * @internal
+         */
+        this.swapStateDescription = LnForGasSwapStateDescription;
+        /**
+         * @internal
+         */
+        this.swapStateName = (state) => LnForGasSwapState[state];
         /**
          * @internal
          */
@@ -331,6 +346,17 @@ class LnForGasSwap extends ISwap_1.ISwap {
             ];
         }
         throw new Error("Invalid swap state to obtain execution txns, required PR_CREATED");
+    }
+    /**
+     * @inheritDoc
+     */
+    async getCurrentActions() {
+        try {
+            return await this.txsExecute();
+        }
+        catch (e) {
+            return [];
+        }
     }
     /**
      * Queries the intermediary (LP) node for the state of the swap

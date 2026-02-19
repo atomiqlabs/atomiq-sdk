@@ -151,12 +151,23 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
      * @param preFetches Optional pre-fetches for speeding up the quoting process (mainly used internally)
      */
     create(recipient, amountData, lps, options, additionalParams, abortSignal, preFetches) {
+        if (!this.isInitialized)
+            throw new Error("Not initialized, call init() first!");
         if (options == null)
             options = {};
         options.unsafeSkipLnNodeCheck ??= this._options.unsafeSkipLnNodeCheck;
+        if (options.paymentHash != null && options.paymentHash.length !== 32)
+            throw new UserError_1.UserError("Invalid payment hash length, must be exactly 32 bytes!");
         if (options.descriptionHash != null && options.descriptionHash.length !== 32)
             throw new UserError_1.UserError("Invalid description hash length");
-        const { secret, paymentHash } = this.getSecretAndHash();
+        let secret;
+        let paymentHash;
+        if (options?.paymentHash != null) {
+            paymentHash = options.paymentHash;
+        }
+        else {
+            ({ secret, paymentHash } = this.getSecretAndHash());
+        }
         const claimHash = this._contract.getHashForHtlc(paymentHash);
         const nativeTokenAddress = this._chain.getNativeCurrencyAddress();
         const _abortController = (0, Utils_1.extendAbortController)(abortSignal);
@@ -211,7 +222,7 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
                             feeRate: (await _preFetches.feeRatePromise),
                             initialSwapData: await this._contract.createSwapData(base_1.ChainSwapType.HTLC, lp.getAddress(this.chainIdentifier), recipient, amountData.token, resp.total, claimHash.toString("hex"), this.getRandomSequence(), BigInt(Math.floor(Date.now() / 1000)), false, true, resp.securityDeposit, 0n, nativeTokenAddress),
                             pr: resp.pr,
-                            secret: secret.toString("hex"),
+                            secret: secret?.toString("hex"),
                             exactIn: amountData.exactIn ?? true
                         });
                         await quote._save();
@@ -236,12 +247,15 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
      * @param lnurl LNURL-withdraw link to pull the funds from
      * @param amountData Amount, token and exact input/output data for to swap
      * @param lps An array of intermediaries (LPs) to get the quotes from
+     * @param options Optional additional quote options
      * @param additionalParams Optional additional parameters sent to the LP when creating the swap
      * @param abortSignal Abort signal
      */
-    async createViaLNURL(recipient, lnurl, amountData, lps, additionalParams, abortSignal) {
+    async createViaLNURL(recipient, lnurl, amountData, lps, options, additionalParams, abortSignal) {
         if (!this.isInitialized)
             throw new Error("Not initialized, call init() first!");
+        if (options?.paymentHash != null && options.paymentHash.length !== 32)
+            throw new UserError_1.UserError("Invalid payment hash length, must be exactly 32 bytes!");
         const abortController = (0, Utils_1.extendAbortController)(abortSignal);
         const preFetches = {
             pricePrefetchPromise: this.preFetchPrice(amountData, abortController.signal),
@@ -270,7 +284,7 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
                 if ((amount * 105n / 100n) > max)
                     throw new UserError_1.UserError("Amount more than LNURL-withdraw maximum");
             }
-            return this.create(recipient, amountData, lps, undefined, additionalParams, abortSignal, preFetches).map(data => {
+            return this.create(recipient, amountData, lps, options, additionalParams, abortSignal, preFetches).map(data => {
                 return {
                     quote: data.quote.then(quote => {
                         quote._setLNURLData(withdrawRequest.url, withdrawRequest.k1, withdrawRequest.callback);

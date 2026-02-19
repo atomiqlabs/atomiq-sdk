@@ -23,7 +23,7 @@ import {BitcoinTokens, BtcToken, SCToken} from "../../../types/Token";
 import {getLogger, LoggerType} from "../../../utils/Logger";
 import {timeoutPromise} from "../../../utils/TimeoutUtils";
 import {toBitcoinWallet} from "../../../utils/BitcoinWalletUtils";
-import {SwapExecutionActionBitcoin} from "../../../types/SwapExecutionAction";
+import {SwapExecutionAction, SwapExecutionActionBitcoin} from "../../../types/SwapExecutionAction";
 
 /**
  * State enum for trusted on-chain gas swaps
@@ -44,7 +44,7 @@ export enum OnchainForGasSwapState {
      */
     REFUNDED = -1,
     /**
-     * Swap was created
+     * Swap was created, send the BTC to the swap address
      */
     PR_CREATED = 0,
     /**
@@ -56,6 +56,21 @@ export enum OnchainForGasSwapState {
      */
     REFUNDABLE = 2
 }
+
+const OnchainForGasSwapStateDescription: Record<OnchainForGasSwapState, string> = {
+    [OnchainForGasSwapState.EXPIRED]:
+        "The swap quote expired without user sending in the BTC",
+    [OnchainForGasSwapState.FAILED]:
+        "The swap has failed after the intermediary already received the BTC on the source chain",
+    [OnchainForGasSwapState.REFUNDED]:
+        "Swap was refunded and BTC returned to the user's refund address",
+    [OnchainForGasSwapState.PR_CREATED]:
+        "Swap was created, send the BTC to the swap address",
+    [OnchainForGasSwapState.FINISHED]:
+        "The swap is finished after the intermediary sent funds on the destination chain",
+    [OnchainForGasSwapState.REFUNDABLE]:
+        "Swap is refundable because the intermediary cannot honor the swap request on the destination chain",
+};
 
 export type OnchainForGasSwapInit = ISwapInit & {
     paymentHash: string;
@@ -86,8 +101,18 @@ export function isOnchainForGasSwapInit(obj: any): obj is OnchainForGasSwapInit 
  *
  * @category Swaps/Trusted Gas Swaps
  */
-export class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T, OnchainForGasSwapTypeDefinition<T>> implements IAddressSwap, IBTCWalletSwap {
+export class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T, OnchainForGasSwapTypeDefinition<T>, OnchainForGasSwapState> implements IAddressSwap, IBTCWalletSwap {
     protected readonly TYPE: SwapType.TRUSTED_FROM_BTC = SwapType.TRUSTED_FROM_BTC;
+
+    /**
+     * @internal
+     */
+    protected readonly swapStateDescription = OnchainForGasSwapStateDescription;
+    /**
+     * @internal
+     */
+    protected readonly swapStateName = (state: number) => OnchainForGasSwapState[state];
+
     /**
      * @internal
      */
@@ -559,6 +584,21 @@ export class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T,
         throw new Error("Invalid swap state to obtain execution txns, required PR_CREATED or CLAIM_COMMITED");
     }
 
+    /**
+     * @inheritDoc
+     *
+     * @param options.bitcoinWallet Optional bitcoin wallet address specification to return a funded PSBT,
+     *  if not provided an address is returned instead.
+     */
+    async getCurrentActions(options?: {
+        bitcoinWallet?: MinimalBitcoinWalletInterface
+    }): Promise<SwapExecutionAction<T>[]> {
+        try {
+            return await this.txsExecute(options);
+        } catch (e) {
+            return [];
+        }
+    }
 
     //////////////////////////////
     //// Payment

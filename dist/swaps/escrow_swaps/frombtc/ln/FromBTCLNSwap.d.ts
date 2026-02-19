@@ -13,6 +13,7 @@ import { TokenAmount } from "../../../../types/TokenAmount";
 import { BtcToken, SCToken } from "../../../../types/Token";
 import { LoggerType } from "../../../../utils/Logger";
 import { LNURLWithdraw } from "../../../../types/lnurl/LNURLWithdraw";
+import { SwapExecutionAction } from "../../../../types/SwapExecutionAction";
 /**
  * State enum for legacy Lightning -> Smart chain swaps
  * @category Swaps/Legacy/Lightning → Smart chain
@@ -77,6 +78,23 @@ export declare function isFromBTCLNSwapInit<T extends SwapData>(obj: any): obj i
  */
 export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFromBTCSelfInitSwap<T, FromBTCLNDefinition<T>, FromBTCLNSwapState> implements IAddressSwap, IClaimableSwap<T, FromBTCLNDefinition<T>, FromBTCLNSwapState> {
     protected readonly TYPE = SwapType.FROM_BTCLN;
+    /**
+     * @internal
+     */
+    protected readonly swapStateName: (state: number) => string;
+    /**
+     * @internal
+     */
+    protected readonly swapStateDescription: {
+        [-4]: string;
+        [-3]: string;
+        [-2]: string;
+        [-1]: string;
+        0: string;
+        1: string;
+        2: string;
+        3: string;
+    };
     /**
      * @internal
      */
@@ -230,6 +248,18 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
     }>;
     private isValidSecretPreimage;
     /**
+     * Sets the secret preimage for the swap, in case it is not known already
+     *
+     * @param secret Secret preimage that matches the expected payment hash
+     *
+     * @throws {Error} If an invalid secret preimage is provided
+     */
+    setSecretPreimage(secret: string): void;
+    /**
+     * Returns whether the secret preimage for this swap is known
+     */
+    hasSecretPreimage(): boolean;
+    /**
      * Executes the swap with the provided bitcoin lightning network wallet or LNURL
      *
      * @param dstSigner Signer on the destination network, needs to have the same address as the one specified when
@@ -239,7 +269,7 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
      *  link, wallet is not required and the LN invoice can be paid externally as well (just pass null or undefined here)
      * @param callbacks Callbacks to track the progress of the swap
      * @param options Optional options for the swap like feeRate, AbortSignal, and timeouts/intervals
-     * @param secret A swap secret to use for the claim transaction, generally only needed if the swap
+     * @param options.secret A swap secret to use for the claim transaction, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      */
     execute(dstSigner: T["Signer"] | T["NativeSigner"], walletOrLnurlWithdraw?: MinimalLightningNetworkWalletInterface | LNURLWithdraw | string | null | undefined, callbacks?: {
@@ -249,9 +279,10 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
         onSwapSettled?: (destinationTxId: string) => void;
     }, options?: {
         abortSignal?: AbortSignal;
+        secret?: string;
         lightningTxCheckIntervalSeconds?: number;
         delayBetweenCommitAndClaimSeconds?: number;
-    }, secret?: string): Promise<void>;
+    }): Promise<void>;
     /**
      * @inheritDoc
      *
@@ -259,12 +290,13 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
      * @param options.skipChecks Skip checks like making sure init signature is still valid and swap
      *  wasn't commited yet (this is handled on swap creation, if you commit right after quoting, you
      *  can use `skipChecks=true`)
-     * @param secret A swap secret to use for the claim transaction, generally only needed if the swap
+     * @param options.secret A swap secret to use for the claim transaction, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      */
     txsExecute(options?: {
         skipChecks?: boolean;
-    }, secret?: string): Promise<{
+        secret?: string;
+    }): Promise<{
         name: "Payment";
         description: string;
         chain: "LIGHTNING";
@@ -284,6 +316,20 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
         chain: T["ChainId"];
         txs: T["TX"][];
     })[]>;
+    /**
+     * @inheritDoc
+     *
+     * @param options
+     * @param options.skipChecks Skip checks like making sure init signature is still valid and swap
+     *  wasn't commited yet (this is handled on swap creation, if you commit right after quoting, you
+     *  can use `skipChecks=true`)
+     * @param options.secret A swap secret to use for the claim transaction, generally only needed if the swap
+     *  was recovered from on-chain data, or the pre-image was generated outside the SDK
+     */
+    getCurrentActions(options?: {
+        skipChecks?: boolean;
+        secret?: string;
+    }): Promise<SwapExecutionAction<T>[]>;
     /**
      * Checks whether the LP received the LN payment and we can continue by committing & claiming the HTLC on-chain
      *

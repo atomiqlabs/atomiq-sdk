@@ -38,7 +38,7 @@ import {
     serializePriceInfoType
 } from "../../types/PriceInfoType";
 import {toBitcoinWallet} from "../../utils/BitcoinWalletUtils";
-import {SwapExecutionActionBitcoin} from "../../types/SwapExecutionAction";
+import {SwapExecutionAction, SwapExecutionActionBitcoin} from "../../types/SwapExecutionAction";
 
 /**
  * State enum for SPV vault (UTXO-controlled vault) based swaps
@@ -107,6 +107,29 @@ export enum SpvFromBTCSwapState {
      * Swap settled on the smart chain and funds received
      */
     CLAIMED = 6
+}
+
+const SpvFromBTCSwapStateDescription = {
+    [SpvFromBTCSwapState.CLOSED]: `Catastrophic failure has occurred when processing the swap on the smart chain side,
+         this implies a bug in the smart contract code or the user and intermediary deliberately
+         creating a bitcoin transaction with invalid format unparsable by the smart contract.`,
+    [SpvFromBTCSwapState.FAILED]: `Some of the bitcoin swap transaction inputs were double-spent, this means the swap
+     has failed and no BTC was sent`,
+    [SpvFromBTCSwapState.DECLINED]: `The intermediary (LP) declined to co-sign the submitted PSBT, hence the swap failed`,
+    [SpvFromBTCSwapState.QUOTE_EXPIRED]: `Swap has expired for good and there is no way how it can be executed anymore`,
+    [SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED]: `A swap is almost expired, and it should be presented to the user as expired, though
+     there is still a chance that it will be processed`,
+    [SpvFromBTCSwapState.CREATED]: `Swap was created, get the bitcoin swap PSBT that should be signed by the user's wallet
+     and then submit it back to the SDK.`,
+    [SpvFromBTCSwapState.SIGNED]: `Swap bitcoin PSBT was submitted by the client to the SDK`,
+    [SpvFromBTCSwapState.POSTED]: `Swap bitcoin PSBT sent to the intermediary (LP), waiting for the intermediary co-sign
+     it and broadcast.`,
+    [SpvFromBTCSwapState.BROADCASTED]: `Intermediary (LP) has co-signed and broadcasted the bitcoin transaction.`,
+    [SpvFromBTCSwapState.FRONTED]: `Settlement on the destination smart chain was fronted and funds were already received
+     by the user, even before the final settlement.`,
+    [SpvFromBTCSwapState.BTC_TX_CONFIRMED]: `Bitcoin transaction confirmed with necessary amount of confirmations, wait for automatic
+     settlement by the watchtower or settle manually.`,
+    [SpvFromBTCSwapState.CLAIMED]: `Swap settled on the smart chain and funds received`
 }
 
 export type SpvFromBTCSwapInit = ISwapInit & {
@@ -179,6 +202,15 @@ export class SpvFromBTCSwap<T extends ChainType>
     implements IBTCWalletSwap, ISwapWithGasDrop<T>, IClaimableSwap<T, SpvFromBTCTypeDefinition<T>, SpvFromBTCSwapState> {
 
     readonly TYPE: SwapType.SPV_VAULT_FROM_BTC = SwapType.SPV_VAULT_FROM_BTC;
+
+    /**
+     * @internal
+     */
+    protected readonly swapStateDescription = SpvFromBTCSwapStateDescription;
+    /**
+     * @internal
+     */
+    protected readonly swapStateName = (state: number) => SpvFromBTCSwapState[state];
     /**
      * @inheritDoc
      * @internal
@@ -241,6 +273,12 @@ export class SpvFromBTCSwap<T extends ChainType>
      * Minimum fee rate in sats/vB that the input bitcoin transaction needs to pay
      */
     readonly minimumBtcFeeRate: number;
+
+    /**
+     * Time at which the SDK realized the bitcoin transaction was confirmed
+     * @private
+     */
+    private btcTxConfirmedAt?: number;
 
     constructor(wrapper: SpvFromBTCWrapper<T>, init: SpvFromBTCSwapInit);
     constructor(wrapper: SpvFromBTCWrapper<T>, obj: any);
@@ -306,6 +344,7 @@ export class SpvFromBTCSwap<T extends ChainType>
             this._claimTxId = initOrObject.claimTxId;
             this._frontTxId = initOrObject.frontTxId;
             this.gasPricingInfo = deserializePriceInfoType(initOrObject.gasPricingInfo);
+            this.btcTxConfirmedAt = initOrObject.btcTxConfirmedAt;
             if(initOrObject.data!=null) this._data = new this.wrapper._spvWithdrawalDataDeserializer(initOrObject.data);
         }
         this.tryCalculateSwapFee();
@@ -1033,12 +1072,14 @@ export class SpvFromBTCSwap<T extends ChainType>
     /**
      * @inheritDoc
      *
+     * @param options.bitcoinFeeRate Optional fee rate to use for the created Bitcoin transaction
      * @param options.bitcoinWallet Optional bitcoin wallet address specification to return a funded PSBT,
      *  if not provided a raw PSBT is returned instead which necessitates the implementor to manually add
      *  inputs to the bitcoin transaction and **set the nSequence field of the 2nd input** (input 1 -
      *  indexing from 0) to the value returned in `in1sequence`
      */
     async txsExecute(options?: {
+        bitcoinFeeRate?: number,
         bitcoinWallet?: MinimalBitcoinWalletInterface,
     }): Promise<[
         SwapExecutionActionBitcoin<"RAW_PSBT" | "FUNDED_PSBT">
@@ -1053,13 +1094,54 @@ export class SpvFromBTCSwap<T extends ChainType>
                     txs: [
                         options?.bitcoinWallet==null
                             ? {...await this.getPsbt(), type: "RAW_PSBT"}
-                            : {...await this.getFundedPsbt(options.bitcoinWallet), type: "FUNDED_PSBT"}
+                            : {...await this.getFundedPsbt(options.bitcoinWallet, options?.bitcoinFeeRate), type: "FUNDED_PSBT"}
                     ]
                 }
             ];
         }
 
         throw new Error("Invalid swap state to obtain execution txns, required CREATED");
+    }
+
+
+    /**
+     * @inheritDoc
+     *
+     * @param options.bitcoinFeeRate Optional fee rate to use for the created Bitcoin transaction
+     * @param options.bitcoinWallet Optional bitcoin wallet address specification to return a funded PSBT,
+     *  if not provided a raw PSBT is returned instead which necessitates the implementor to manually add
+     *  inputs to the bitcoin transaction and **set the nSequence field of the 2nd input** (input 1 -
+     *  indexing from 0) to the value returned in `in1sequence`
+     * @param options.manualSettlementSmartChainSigner Optional smart chain signer to create a manual claim (settlement) transaction
+     * @param options.maxWaitTillAutomaticSettlementSeconds Maximum time to wait for an automatic settlement after
+     *  the bitcoin transaction is confirmed (defaults to 60 seconds)
+     */
+    async getCurrentActions(options?: {
+        bitcoinFeeRate?: number,
+        bitcoinWallet?: MinimalBitcoinWalletInterface,
+        manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"],
+        maxWaitTillAutomaticSettlementSeconds?: number
+    }): Promise<SwapExecutionAction<T>[]> {
+        if(this._state===SpvFromBTCSwapState.CREATED) {
+            try {
+                return await this.txsExecute(options);
+            } catch (e) {}
+        }
+        if(this._state===SpvFromBTCSwapState.BTC_TX_CONFIRMED) {
+            if(
+                this.btcTxConfirmedAt==null ||
+                options?.maxWaitTillAutomaticSettlementSeconds===0 ||
+                (Date.now() - this.btcTxConfirmedAt) > (options?.maxWaitTillAutomaticSettlementSeconds ?? 60)*1000
+            ) {
+                return [{
+                    name: "Claim" as const,
+                    description: "Manually settle (claim) the swap on the destination smart chain",
+                    chain: this.chainIdentifier,
+                    txs: await this.txsClaim(options?.manualSettlementSmartChainSigner)
+                }];
+            }
+        }
+        return [];
     }
 
 
@@ -1139,6 +1221,7 @@ export class SpvFromBTCSwap<T extends ChainType>
             (this._state as SpvFromBTCSwapState)!==SpvFromBTCSwapState.FRONTED &&
             (this._state as SpvFromBTCSwapState)!==SpvFromBTCSwapState.CLAIMED
         ) {
+            this.btcTxConfirmedAt ??= Date.now();
             this._state = SpvFromBTCSwapState.BTC_TX_CONFIRMED;
             save = true;
         }
@@ -1449,7 +1532,8 @@ export class SpvFromBTCSwap<T extends ChainType>
             senderAddress: this._senderAddress,
             claimTxId: this._claimTxId,
             frontTxId: this._frontTxId,
-            data: this._data?.serialize()
+            data: this._data?.serialize(),
+            btcTxConfirmedAt: this.btcTxConfirmedAt
         };
     }
 
@@ -1514,6 +1598,7 @@ export class SpvFromBTCSwap<T extends ChainType>
                     this._state!==SpvFromBTCSwapState.FRONTED &&
                     this._state!==SpvFromBTCSwapState.CLAIMED
                 ) {
+                    this.btcTxConfirmedAt ??= Date.now();
                     this._state = SpvFromBTCSwapState.BTC_TX_CONFIRMED;
                     needsSave = true;
                 }

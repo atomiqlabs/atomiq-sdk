@@ -66,6 +66,19 @@ var FromBTCLNSwapState;
      */
     FromBTCLNSwapState[FromBTCLNSwapState["CLAIM_CLAIMED"] = 3] = "CLAIM_CLAIMED";
 })(FromBTCLNSwapState = exports.FromBTCLNSwapState || (exports.FromBTCLNSwapState = {}));
+const FromBTCLNSwapStateDescription = {
+    [FromBTCLNSwapState.FAILED]: `Swap has failed as the user didn't settle the HTLC on the destination before expiration`,
+    [FromBTCLNSwapState.QUOTE_EXPIRED]: `Swap has expired for good and there is no way how it can be executed anymore`,
+    [FromBTCLNSwapState.QUOTE_SOFT_EXPIRED]: `Swap is expired, though there is still a chance that it will be processed`,
+    [FromBTCLNSwapState.EXPIRED]: `Swap HTLC on the destination chain has expired, it is not safe anymore to settle (claim) the
+     swap on the destination smart chain.`,
+    [FromBTCLNSwapState.PR_CREATED]: `Swap quote was created, pay the bolt11 lightning network invoice to initiate the swap,
+     then use the wait till the lightning network payment is received by the intermediary (LP)`,
+    [FromBTCLNSwapState.PR_PAID]: `Lightning network payment has been received by the intermediary (LP), the user can now settle
+     the swap on the destination smart chain side.`,
+    [FromBTCLNSwapState.CLAIM_COMMITED]: `Swap escrow HTLC has been created on the destination chain. Continue by claiming it.`,
+    [FromBTCLNSwapState.CLAIM_CLAIMED]: `Swap successfully settled and funds received on the destination chain`
+};
 function isFromBTCLNSwapInit(obj) {
     return (obj.pr == null || typeof obj.pr === "string") &&
         (obj.secret == null || typeof obj.secret === "string") &&
@@ -97,6 +110,14 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             initOrObject.url += "/frombtcln";
         super(wrapper, initOrObject);
         this.TYPE = SwapType_1.SwapType.FROM_BTCLN;
+        /**
+         * @internal
+         */
+        this.swapStateName = (state) => FromBTCLNSwapState[state];
+        /**
+         * @internal
+         */
+        this.swapStateDescription = FromBTCLNSwapStateDescription;
         /**
          * @internal
          */
@@ -384,6 +405,24 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
         const claimHash = this.wrapper._contract.getHashForHtlc(paymentHash).toString("hex");
         return this.getSwapData().getClaimHash() === claimHash;
     }
+    /**
+     * Sets the secret preimage for the swap, in case it is not known already
+     *
+     * @param secret Secret preimage that matches the expected payment hash
+     *
+     * @throws {Error} If an invalid secret preimage is provided
+     */
+    setSecretPreimage(secret) {
+        if (!this.isValidSecretPreimage(secret))
+            throw new Error("Invalid secret preimage provided, hash doesn't match!");
+        this.secret = secret;
+    }
+    /**
+     * Returns whether the secret preimage for this swap is known
+     */
+    hasSecretPreimage() {
+        return this.secret != null;
+    }
     //////////////////////////////
     //// Execution
     /**
@@ -396,10 +435,10 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
      *  link, wallet is not required and the LN invoice can be paid externally as well (just pass null or undefined here)
      * @param callbacks Callbacks to track the progress of the swap
      * @param options Optional options for the swap like feeRate, AbortSignal, and timeouts/intervals
-     * @param secret A swap secret to use for the claim transaction, generally only needed if the swap
+     * @param options.secret A swap secret to use for the claim transaction, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      */
-    async execute(dstSigner, walletOrLnurlWithdraw, callbacks, options, secret) {
+    async execute(dstSigner, walletOrLnurlWithdraw, callbacks, options) {
         if (this._state === FromBTCLNSwapState.FAILED)
             throw new Error("Swap failed!");
         if (this._state === FromBTCLNSwapState.EXPIRED)
@@ -431,7 +470,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
         }
         if (this._state === FromBTCLNSwapState.PR_PAID || this._state === FromBTCLNSwapState.CLAIM_COMMITED) {
             if (this.canCommitAndClaimInOneShot()) {
-                await this.commitAndClaim(dstSigner, options?.abortSignal, undefined, callbacks?.onDestinationCommitSent, callbacks?.onDestinationClaimSent, secret);
+                await this.commitAndClaim(dstSigner, options?.abortSignal, undefined, callbacks?.onDestinationCommitSent, callbacks?.onDestinationClaimSent, options?.secret);
             }
             else {
                 if (this._state === FromBTCLNSwapState.PR_PAID) {
@@ -440,7 +479,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
                         await (0, TimeoutUtils_1.timeoutPromise)(options.delayBetweenCommitAndClaimSeconds * 1000, options?.abortSignal);
                 }
                 if (this._state === FromBTCLNSwapState.CLAIM_COMMITED) {
-                    await this.claim(dstSigner, options?.abortSignal, callbacks?.onDestinationClaimSent, secret);
+                    await this.claim(dstSigner, options?.abortSignal, callbacks?.onDestinationClaimSent, options?.secret);
                 }
             }
         }
@@ -457,10 +496,10 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
      * @param options.skipChecks Skip checks like making sure init signature is still valid and swap
      *  wasn't commited yet (this is handled on swap creation, if you commit right after quoting, you
      *  can use `skipChecks=true`)
-     * @param secret A swap secret to use for the claim transaction, generally only needed if the swap
+     * @param options.secret A swap secret to use for the claim transaction, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      */
-    async txsExecute(options, secret) {
+    async txsExecute(options) {
         if (this._state === FromBTCLNSwapState.PR_CREATED) {
             if (!await this._verifyQuoteValid())
                 throw new Error("Quote already expired or close to expiry!");
@@ -483,7 +522,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             if (!await this._verifyQuoteValid())
                 throw new Error("Quote already expired or close to expiry!");
             const txsCommit = await this.txsCommit(options?.skipChecks);
-            const txsClaim = await this._txsClaim(undefined, secret);
+            const txsClaim = await this._txsClaim(undefined, options?.secret);
             return [
                 {
                     name: "Commit",
@@ -500,7 +539,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             ];
         }
         if (this._state === FromBTCLNSwapState.CLAIM_COMMITED) {
-            const txsClaim = await this.txsClaim(undefined, secret);
+            const txsClaim = await this.txsClaim(undefined, options?.secret);
             return [
                 {
                     name: "Claim",
@@ -511,6 +550,24 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             ];
         }
         throw new Error("Invalid swap state to obtain execution txns, required PR_CREATED, PR_PAID or CLAIM_COMMITED");
+    }
+    /**
+     * @inheritDoc
+     *
+     * @param options
+     * @param options.skipChecks Skip checks like making sure init signature is still valid and swap
+     *  wasn't commited yet (this is handled on swap creation, if you commit right after quoting, you
+     *  can use `skipChecks=true`)
+     * @param options.secret A swap secret to use for the claim transaction, generally only needed if the swap
+     *  was recovered from on-chain data, or the pre-image was generated outside the SDK
+     */
+    async getCurrentActions(options) {
+        try {
+            return await this.txsExecute(options);
+        }
+        catch (e) {
+            return [];
+        }
     }
     //////////////////////////////
     //// Payment

@@ -18,6 +18,7 @@ import { AmountData } from "../../../../types/AmountData";
 import { LNURLWithdrawParamsWithUrl } from "../../../../types/lnurl/LNURLWithdraw";
 import { AllOptional } from "../../../../utils/TypeUtils";
 export type FromBTCLNOptions = {
+    paymentHash?: Buffer;
     descriptionHash?: Buffer;
     unsafeSkipLnNodeCheck?: boolean;
 };
@@ -130,10 +131,11 @@ export declare class FromBTCLNWrapper<T extends ChainType> extends IFromBTCLNWra
      * @param lnurl LNURL-withdraw link to pull the funds from
      * @param amountData Amount, token and exact input/output data for to swap
      * @param lps An array of intermediaries (LPs) to get the quotes from
+     * @param options Optional additional quote options
      * @param additionalParams Optional additional parameters sent to the LP when creating the swap
      * @param abortSignal Abort signal
      */
-    createViaLNURL(recipient: string, lnurl: string | LNURLWithdrawParamsWithUrl, amountData: AmountData, lps: Intermediary[], additionalParams?: Record<string, any>, abortSignal?: AbortSignal): Promise<{
+    createViaLNURL(recipient: string, lnurl: string | LNURLWithdrawParamsWithUrl, amountData: AmountData, lps: Intermediary[], options?: FromBTCLNOptions, additionalParams?: Record<string, any>, abortSignal?: AbortSignal): Promise<{
         quote: Promise<FromBTCLNSwap<T>>;
         intermediary: Intermediary;
     }[]>;

@@ -16,18 +16,52 @@ import { BtcToken, SCToken } from "../../../../types/Token";
 import { LoggerType } from "../../../../utils/Logger";
 import { LNURLWithdraw } from "../../../../types/lnurl/LNURLWithdraw";
 import { PriceInfoType } from "../../../../types/PriceInfoType";
+import { SwapExecutionAction } from "../../../../types/SwapExecutionAction";
 /**
  * State enum for FromBTCLNAuto swaps
  * @category Swaps/Lightning → Smart chain
  */
 export declare enum FromBTCLNAutoSwapState {
+    /**
+     * Swap has failed as the user didn't settle the HTLC on the destination before expiration
+     */
     FAILED = -4,
+    /**
+     * Swap has expired for good and there is no way how it can be executed anymore
+     */
     QUOTE_EXPIRED = -3,
+    /**
+     * A swap is almost expired, and it should be presented to the user as expired, though
+     *  there is still a chance that it will be processed
+     */
     QUOTE_SOFT_EXPIRED = -2,
+    /**
+     * Swap HTLC on the destination chain has expired, it is not safe anymore to settle (claim) the
+     *  swap on the destination smart chain.
+     */
     EXPIRED = -1,
+    /**
+     * Swap quote was created, use {@link FromBTCLNAutoSwap.getAddress} or {@link FromBTCLNAutoSwap.getHyperlink}
+     *  to get the bolt11 lightning network invoice to pay to initiate the swap, then use the
+     *  {@link FromBTCLNAutoSwap.waitForPayment} to wait till the lightning network payment is received
+     *  by the intermediary (LP) and the destination HTLC escrow is created
+     */
     PR_CREATED = 0,
+    /**
+     * Lightning network payment has been received by the intermediary (LP), but the destination chain
+     *  HTLC escrow hasn't been created yet. Use {@link FromBTCLNAutoSwap.waitForPayment} to continue waiting
+     *  till the destination HTLC escrow is created.
+     */
     PR_PAID = 1,
+    /**
+     * Swap escrow HTLC has been created on the destination chain, wait for automatic settlement by the watchtowers
+     *  using the {@link FromBTCLNAutoSwap.waitTillClaimed} function or settle manually using the
+     *  {@link FromBTCLNAutoSwap.claim} or {@link FromBTCLNAutoSwap.txsClaim} function.
+     */
     CLAIM_COMMITED = 2,
+    /**
+     * Swap successfully settled and funds received on the destination chain
+     */
     CLAIM_CLAIMED = 3
 }
 export type FromBTCLNAutoSwapInit<T extends SwapData> = IEscrowSwapInit<T> & {
@@ -57,11 +91,33 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
     /**
      * @internal
      */
+    protected readonly swapStateName: (state: number) => string;
+    /**
+     * @internal
+     */
+    protected readonly swapStateDescription: {
+        [-4]: string;
+        [-3]: string;
+        [-2]: string;
+        [-1]: string;
+        0: string;
+        1: string;
+        2: string;
+        3: string;
+    };
+    /**
+     * @internal
+     */
     protected readonly logger: LoggerType;
     /**
      * @internal
      */
     protected readonly inputToken: BtcToken<true>;
+    /**
+     * Timestamp at which the HTLC was commited on the smart chain side
+     * @internal
+     */
+    _commitedAt?: number;
     private readonly lnurlFailSignal;
     private readonly usesClaimHashAsId;
     private readonly initialSwapData;
@@ -302,13 +358,25 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
     ];
     private isValidSecretPreimage;
     /**
+     * Sets the secret preimage for the swap, in case it is not known already
+     *
+     * @param secret Secret preimage that matches the expected payment hash
+     *
+     * @throws {Error} If an invalid secret preimage is provided
+     */
+    setSecretPreimage(secret: string): void;
+    /**
+     * Returns whether the secret preimage for this swap is known
+     */
+    hasSecretPreimage(): boolean;
+    /**
      * Executes the swap with the provided bitcoin lightning network wallet or LNURL
      *
      * @param walletOrLnurlWithdraw Bitcoin lightning wallet to use to pay the lightning network invoice, or an LNURL-withdraw
      *  link, wallet is not required and the LN invoice can be paid externally as well (just pass null or undefined here)
      * @param callbacks Callbacks to track the progress of the swap
-     * @param options Optional options for the swap like feeRate, AbortSignal, and timeouts/intervals
-     * @param secret A swap secret to broadcast to watchtowers, generally only needed if the swap
+     * @param options Optional options for the swap like AbortSignal, and timeouts/intervals
+     * @param options.secret A swap secret to broadcast to watchtowers, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      *
      * @returns {boolean} Whether a swap was settled automatically by swap watchtowers or requires manual claim by the
@@ -321,7 +389,8 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
         abortSignal?: AbortSignal;
         lightningTxCheckIntervalSeconds?: number;
         maxWaitTillAutomaticSettlementSeconds?: number;
-    }, secret?: string): Promise<boolean>;
+        secret?: string;
+    }): Promise<boolean>;
     /**
      * @inheritDoc
      */
@@ -335,6 +404,19 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
             hyperlink: string;
         }[];
     }[]>;
+    /**
+     *
+     * @param options.manualSettlementSmartChainSigner Optional smart chain signer to create a manual claim (settlement) transaction
+     * @param options.maxWaitTillAutomaticSettlementSeconds Maximum time to wait for an automatic settlement after
+     *  the bitcoin transaction is confirmed (defaults to 60 seconds)
+     * @param options.secret A swap secret to broadcast to watchtowers, generally only needed if the swap
+     *  was recovered from on-chain data, or the pre-image was generated outside the SDK
+     */
+    getCurrentActions(options?: {
+        manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
+        maxWaitTillAutomaticSettlementSeconds?: number;
+        secret?: string;
+    }): Promise<SwapExecutionAction<T>[]>;
     /**
      * Checks whether the LP received the LN payment
      *

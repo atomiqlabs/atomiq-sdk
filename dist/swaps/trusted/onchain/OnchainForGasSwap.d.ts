@@ -12,7 +12,7 @@ import { FeeType } from "../../../enums/FeeType";
 import { TokenAmount } from "../../../types/TokenAmount";
 import { BtcToken, SCToken } from "../../../types/Token";
 import { LoggerType } from "../../../utils/Logger";
-import { SwapExecutionActionBitcoin } from "../../../types/SwapExecutionAction";
+import { SwapExecutionAction, SwapExecutionActionBitcoin } from "../../../types/SwapExecutionAction";
 /**
  * State enum for trusted on-chain gas swaps
  *
@@ -32,7 +32,7 @@ export declare enum OnchainForGasSwapState {
      */
     REFUNDED = -1,
     /**
-     * Swap was created
+     * Swap was created, send the BTC to the swap address
      */
     PR_CREATED = 0,
     /**
@@ -61,8 +61,16 @@ export declare function isOnchainForGasSwapInit(obj: any): obj is OnchainForGasS
  *
  * @category Swaps/Trusted Gas Swaps
  */
-export declare class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T, OnchainForGasSwapTypeDefinition<T>> implements IAddressSwap, IBTCWalletSwap {
+export declare class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T, OnchainForGasSwapTypeDefinition<T>, OnchainForGasSwapState> implements IAddressSwap, IBTCWalletSwap {
     protected readonly TYPE: SwapType.TRUSTED_FROM_BTC;
+    /**
+     * @internal
+     */
+    protected readonly swapStateDescription: Record<OnchainForGasSwapState, string>;
+    /**
+     * @internal
+     */
+    protected readonly swapStateName: (state: number) => string;
     /**
      * @internal
      */
@@ -259,6 +267,15 @@ export declare class OnchainForGasSwap<T extends ChainType = ChainType> extends 
     }): Promise<[
         SwapExecutionActionBitcoin<"ADDRESS" | "FUNDED_PSBT">
     ]>;
+    /**
+     * @inheritDoc
+     *
+     * @param options.bitcoinWallet Optional bitcoin wallet address specification to return a funded PSBT,
+     *  if not provided an address is returned instead.
+     */
+    getCurrentActions(options?: {
+        bitcoinWallet?: MinimalBitcoinWalletInterface;
+    }): Promise<SwapExecutionAction<T>[]>;
     /**
      * Queries the intermediary (LP) node for the state of the swap
      *

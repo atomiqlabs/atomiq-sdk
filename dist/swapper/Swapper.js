@@ -660,8 +660,9 @@ class Swapper extends events_1.EventEmitter {
      * @param amount Amount to send in satoshis (if `exactOut=false`) or receive in token based units (if `exactOut=true`)
      * @param exactOut Whether to use a exact out instead of exact in
      * @param additionalParams Additional parameters sent to the LP when creating the swap
+     * @param options Additional options for the swap
      */
-    async createFromBTCLNSwapViaLNURL(chainIdentifier, recipient, tokenAddress, lnurl, amount, exactOut = false, additionalParams = this.options.defaultAdditionalParameters) {
+    async createFromBTCLNSwapViaLNURL(chainIdentifier, recipient, tokenAddress, lnurl, amount, exactOut = false, additionalParams = this.options.defaultAdditionalParameters, options) {
         if (this._chains[chainIdentifier] == null)
             throw new Error("Invalid chain identifier! Unknown chain: " + chainIdentifier);
         if (typeof (lnurl) === "string" && !this.Utils.isValidLNURL(lnurl))
@@ -674,7 +675,7 @@ class Swapper extends events_1.EventEmitter {
             token: tokenAddress,
             exactIn: !exactOut
         };
-        return this.createSwap(chainIdentifier, (candidates, abortSignal, chain) => chain.wrappers[SwapType_1.SwapType.FROM_BTCLN].createViaLNURL(recipient, typeof (lnurl) === "string" ? (lnurl.startsWith("lightning:") ? lnurl.substring(10) : lnurl) : lnurl.params, amountData, candidates, additionalParams, abortSignal), amountData, SwapType_1.SwapType.FROM_BTCLN);
+        return this.createSwap(chainIdentifier, (candidates, abortSignal, chain) => chain.wrappers[SwapType_1.SwapType.FROM_BTCLN].createViaLNURL(recipient, typeof (lnurl) === "string" ? (lnurl.startsWith("lightning:") ? lnurl.substring(10) : lnurl) : lnurl.params, amountData, candidates, options, additionalParams, abortSignal), amountData, SwapType_1.SwapType.FROM_BTCLN);
     }
     /**
      * Creates Bitcoin Lightning -> Smart chain ({@link SwapType.FROM_BTCLN_AUTO}) swap
@@ -821,7 +822,7 @@ class Swapper extends events_1.EventEmitter {
                             throw new Error("LNURL must be a string or LNURLWithdraw object!");
                         return this.supportsSwapType(dstToken.chainId, SwapType_1.SwapType.FROM_BTCLN_AUTO) ?
                             this.createFromBTCLNSwapNewViaLNURL(dstToken.chainId, dst, dstToken.address, src, amount, !exactIn, undefined, options) :
-                            this.createFromBTCLNSwapViaLNURL(dstToken.chainId, dst, dstToken.address, src, amount, !exactIn);
+                            this.createFromBTCLNSwapViaLNURL(dstToken.chainId, dst, dstToken.address, src, amount, !exactIn, undefined, options);
                     }
                     else {
                         return this.supportsSwapType(dstToken.chainId, SwapType_1.SwapType.FROM_BTCLN_AUTO) ?

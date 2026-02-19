@@ -31,6 +31,7 @@ import {getLogger, LoggerType} from "../../../../utils/Logger";
 import {timeoutPromise} from "../../../../utils/TimeoutUtils";
 import {isLNURLWithdraw, LNURLWithdraw, LNURLWithdrawParamsWithUrl} from "../../../../types/lnurl/LNURLWithdraw";
 import {sha256} from "@noble/hashes/sha2";
+import {SwapExecutionAction} from "../../../../types/SwapExecutionAction";
 
 /**
  * State enum for legacy Lightning -> Smart chain swaps
@@ -80,6 +81,20 @@ export enum FromBTCLNSwapState {
     CLAIM_CLAIMED = 3
 }
 
+const FromBTCLNSwapStateDescription = {
+    [FromBTCLNSwapState.FAILED]: `Swap has failed as the user didn't settle the HTLC on the destination before expiration`,
+    [FromBTCLNSwapState.QUOTE_EXPIRED]: `Swap has expired for good and there is no way how it can be executed anymore`,
+    [FromBTCLNSwapState.QUOTE_SOFT_EXPIRED]: `Swap is expired, though there is still a chance that it will be processed`,
+    [FromBTCLNSwapState.EXPIRED]: `Swap HTLC on the destination chain has expired, it is not safe anymore to settle (claim) the
+     swap on the destination smart chain.`,
+    [FromBTCLNSwapState.PR_CREATED]: `Swap quote was created, pay the bolt11 lightning network invoice to initiate the swap,
+     then use the wait till the lightning network payment is received by the intermediary (LP)`,
+    [FromBTCLNSwapState.PR_PAID]: `Lightning network payment has been received by the intermediary (LP), the user can now settle
+     the swap on the destination smart chain side.`,
+    [FromBTCLNSwapState.CLAIM_COMMITED]: `Swap escrow HTLC has been created on the destination chain. Continue by claiming it.`,
+    [FromBTCLNSwapState.CLAIM_CLAIMED]: `Swap successfully settled and funds received on the destination chain`
+};
+
 export type FromBTCLNSwapInit<T extends SwapData> = IEscrowSelfInitSwapInit<T> & {
     pr?: string,
     secret?: string,
@@ -109,6 +124,14 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
     implements IAddressSwap, IClaimableSwap<T, FromBTCLNDefinition<T>, FromBTCLNSwapState> {
 
     protected readonly TYPE = SwapType.FROM_BTCLN;
+    /**
+     * @internal
+     */
+    protected readonly swapStateName = (state: number) => FromBTCLNSwapState[state];
+    /**
+     * @internal
+     */
+    protected readonly swapStateDescription = FromBTCLNSwapStateDescription;
     /**
      * @internal
      */
@@ -468,6 +491,25 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
         return this.getSwapData().getClaimHash()===claimHash;
     }
 
+    /**
+     * Sets the secret preimage for the swap, in case it is not known already
+     *
+     * @param secret Secret preimage that matches the expected payment hash
+     *
+     * @throws {Error} If an invalid secret preimage is provided
+     */
+    setSecretPreimage(secret: string) {
+        if(!this.isValidSecretPreimage(secret)) throw new Error("Invalid secret preimage provided, hash doesn't match!");
+        this.secret = secret;
+    }
+
+    /**
+     * Returns whether the secret preimage for this swap is known
+     */
+    hasSecretPreimage(): boolean {
+        return this.secret != null;
+    }
+
 
     //////////////////////////////
     //// Execution
@@ -482,7 +524,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
      *  link, wallet is not required and the LN invoice can be paid externally as well (just pass null or undefined here)
      * @param callbacks Callbacks to track the progress of the swap
      * @param options Optional options for the swap like feeRate, AbortSignal, and timeouts/intervals
-     * @param secret A swap secret to use for the claim transaction, generally only needed if the swap
+     * @param options.secret A swap secret to use for the claim transaction, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      */
     async execute(
@@ -496,10 +538,10 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
         },
         options?: {
             abortSignal?: AbortSignal,
+            secret?: string,
             lightningTxCheckIntervalSeconds?: number,
             delayBetweenCommitAndClaimSeconds?: number
-        },
-        secret?: string
+        }
     ): Promise<void> {
         if(this._state===FromBTCLNSwapState.FAILED) throw new Error("Swap failed!");
         if(this._state===FromBTCLNSwapState.EXPIRED) throw new Error("Swap HTLC expired!");
@@ -530,14 +572,14 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
 
         if(this._state===FromBTCLNSwapState.PR_PAID || this._state===FromBTCLNSwapState.CLAIM_COMMITED) {
             if(this.canCommitAndClaimInOneShot()) {
-                await this.commitAndClaim(dstSigner, options?.abortSignal, undefined, callbacks?.onDestinationCommitSent, callbacks?.onDestinationClaimSent, secret);
+                await this.commitAndClaim(dstSigner, options?.abortSignal, undefined, callbacks?.onDestinationCommitSent, callbacks?.onDestinationClaimSent, options?.secret);
             } else {
                 if(this._state===FromBTCLNSwapState.PR_PAID) {
                     await this.commit(dstSigner, options?.abortSignal, undefined, callbacks?.onDestinationCommitSent);
                     if(options?.delayBetweenCommitAndClaimSeconds!=null) await timeoutPromise(options.delayBetweenCommitAndClaimSeconds * 1000, options?.abortSignal);
                 }
                 if(this._state===FromBTCLNSwapState.CLAIM_COMMITED) {
-                    await this.claim(dstSigner, options?.abortSignal, callbacks?.onDestinationClaimSent, secret);
+                    await this.claim(dstSigner, options?.abortSignal, callbacks?.onDestinationClaimSent, options?.secret);
                 }
             }
         }
@@ -555,10 +597,13 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
      * @param options.skipChecks Skip checks like making sure init signature is still valid and swap
      *  wasn't commited yet (this is handled on swap creation, if you commit right after quoting, you
      *  can use `skipChecks=true`)
-     * @param secret A swap secret to use for the claim transaction, generally only needed if the swap
+     * @param options.secret A swap secret to use for the claim transaction, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      */
-    async txsExecute(options?: { skipChecks?: boolean }, secret?: string) {
+    async txsExecute(options?: {
+        skipChecks?: boolean,
+        secret?: string
+    }) {
         if(this._state===FromBTCLNSwapState.PR_CREATED) {
             if(!await this._verifyQuoteValid()) throw new Error("Quote already expired or close to expiry!");
             return [
@@ -580,7 +625,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
         if(this._state===FromBTCLNSwapState.PR_PAID) {
             if(!await this._verifyQuoteValid()) throw new Error("Quote already expired or close to expiry!");
             const txsCommit = await this.txsCommit(options?.skipChecks);
-            const txsClaim = await this._txsClaim(undefined, secret);
+            const txsClaim = await this._txsClaim(undefined, options?.secret);
             return [
                 {
                     name: "Commit" as const,
@@ -598,7 +643,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
         }
 
         if(this._state===FromBTCLNSwapState.CLAIM_COMMITED) {
-            const txsClaim = await this.txsClaim(undefined, secret);
+            const txsClaim = await this.txsClaim(undefined, options?.secret);
             return [
                 {
                     name: "Claim" as const,
@@ -610,6 +655,27 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
         }
 
         throw new Error("Invalid swap state to obtain execution txns, required PR_CREATED, PR_PAID or CLAIM_COMMITED");
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @param options
+     * @param options.skipChecks Skip checks like making sure init signature is still valid and swap
+     *  wasn't commited yet (this is handled on swap creation, if you commit right after quoting, you
+     *  can use `skipChecks=true`)
+     * @param options.secret A swap secret to use for the claim transaction, generally only needed if the swap
+     *  was recovered from on-chain data, or the pre-image was generated outside the SDK
+     */
+    async getCurrentActions(options?: {
+        skipChecks?: boolean,
+        secret?: string
+    }): Promise<SwapExecutionAction<T>[]> {
+        try {
+            return await this.txsExecute(options);
+        } catch (e) {
+            return [];
+        }
     }
 
 

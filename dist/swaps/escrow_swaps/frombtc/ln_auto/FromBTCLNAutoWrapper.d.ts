@@ -18,6 +18,7 @@ import { AmountData } from "../../../../types/AmountData";
 import { LNURLWithdrawParamsWithUrl } from "../../../../types/lnurl/LNURLWithdraw";
 import { AllOptional } from "../../../../utils/TypeUtils";
 export type FromBTCLNAutoOptions = {
+    paymentHash?: Buffer;
     descriptionHash?: Buffer;
     unsafeSkipLnNodeCheck?: boolean;
     gasAmount?: bigint;

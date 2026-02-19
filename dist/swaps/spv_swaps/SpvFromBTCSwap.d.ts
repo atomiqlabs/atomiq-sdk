@@ -14,7 +14,7 @@ import { TokenAmount } from "../../types/TokenAmount";
 import { BtcToken, SCToken } from "../../types/Token";
 import { LoggerType } from "../../utils/Logger";
 import { PriceInfoType } from "../../types/PriceInfoType";
-import { SwapExecutionActionBitcoin } from "../../types/SwapExecutionAction";
+import { SwapExecutionAction, SwapExecutionActionBitcoin } from "../../types/SwapExecutionAction";
 /**
  * State enum for SPV vault (UTXO-controlled vault) based swaps
  * @category Swaps/Bitcoin → Smart chain
@@ -121,6 +121,27 @@ export declare function isSpvFromBTCSwapInit(obj: any): obj is SpvFromBTCSwapIni
 export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFromBTCTypeDefinition<T>> implements IBTCWalletSwap, ISwapWithGasDrop<T>, IClaimableSwap<T, SpvFromBTCTypeDefinition<T>, SpvFromBTCSwapState> {
     readonly TYPE: SwapType.SPV_VAULT_FROM_BTC;
     /**
+     * @internal
+     */
+    protected readonly swapStateDescription: {
+        [-5]: string;
+        [-4]: string;
+        [-3]: string;
+        [-2]: string;
+        [-1]: string;
+        0: string;
+        1: string;
+        2: string;
+        3: string;
+        4: string;
+        5: string;
+        6: string;
+    };
+    /**
+     * @internal
+     */
+    protected readonly swapStateName: (state: number) => string;
+    /**
      * @inheritDoc
      * @internal
      */
@@ -172,6 +193,11 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
      * Minimum fee rate in sats/vB that the input bitcoin transaction needs to pay
      */
     readonly minimumBtcFeeRate: number;
+    /**
+     * Time at which the SDK realized the bitcoin transaction was confirmed
+     * @private
+     */
+    private btcTxConfirmedAt?;
     constructor(wrapper: SpvFromBTCWrapper<T>, init: SpvFromBTCSwapInit);
     constructor(wrapper: SpvFromBTCWrapper<T>, obj: any);
     /**
@@ -440,16 +466,36 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
     /**
      * @inheritDoc
      *
+     * @param options.bitcoinFeeRate Optional fee rate to use for the created Bitcoin transaction
      * @param options.bitcoinWallet Optional bitcoin wallet address specification to return a funded PSBT,
      *  if not provided a raw PSBT is returned instead which necessitates the implementor to manually add
      *  inputs to the bitcoin transaction and **set the nSequence field of the 2nd input** (input 1 -
      *  indexing from 0) to the value returned in `in1sequence`
      */
     txsExecute(options?: {
+        bitcoinFeeRate?: number;
         bitcoinWallet?: MinimalBitcoinWalletInterface;
     }): Promise<[
         SwapExecutionActionBitcoin<"RAW_PSBT" | "FUNDED_PSBT">
     ]>;
+    /**
+     * @inheritDoc
+     *
+     * @param options.bitcoinFeeRate Optional fee rate to use for the created Bitcoin transaction
+     * @param options.bitcoinWallet Optional bitcoin wallet address specification to return a funded PSBT,
+     *  if not provided a raw PSBT is returned instead which necessitates the implementor to manually add
+     *  inputs to the bitcoin transaction and **set the nSequence field of the 2nd input** (input 1 -
+     *  indexing from 0) to the value returned in `in1sequence`
+     * @param options.manualSettlementSmartChainSigner Optional smart chain signer to create a manual claim (settlement) transaction
+     * @param options.maxWaitTillAutomaticSettlementSeconds Maximum time to wait for an automatic settlement after
+     *  the bitcoin transaction is confirmed (defaults to 60 seconds)
+     */
+    getCurrentActions(options?: {
+        bitcoinFeeRate?: number;
+        bitcoinWallet?: MinimalBitcoinWalletInterface;
+        manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
+        maxWaitTillAutomaticSettlementSeconds?: number;
+    }): Promise<SwapExecutionAction<T>[]>;
     /**
      * Checks whether a bitcoin payment was already made, returns the payment or null when no payment has been made.
      * @internal

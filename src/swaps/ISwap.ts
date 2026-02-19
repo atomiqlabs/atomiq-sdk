@@ -12,6 +12,7 @@ import {isSCToken, Token} from "../types/Token";
 import {SwapExecutionAction} from "../types/SwapExecutionAction";
 import {LoggerType} from "../utils/Logger";
 import {isPriceInfoType, PriceInfoType} from "../types/PriceInfoType";
+import {SwapStateInfo} from "../types/SwapStateInfo";
 
 /**
  * Initialization data for creating a swap
@@ -57,6 +58,17 @@ export abstract class ISwap<
      * Swap type
      */
     protected readonly abstract TYPE: SwapType;
+
+    /**
+     * Description for the states
+     * @internal
+     */
+    protected readonly abstract swapStateDescription: Record<S, string>;
+    /**
+     * Name of the states
+     * @internal
+     */
+    protected readonly abstract swapStateName: (state: number) => string;
     /**
      * Swap logger
      * @internal
@@ -485,6 +497,23 @@ export abstract class ISwap<
     public getState(): S {
         return this._state;
     }
+
+    /**
+     * Returns the current state of the swap along with the human-readable description of the state
+     */
+    public getStateInfo(): SwapStateInfo<S> {
+        return {
+            state: this._state,
+            name: this.swapStateName(this._state),
+            description: this.swapStateDescription[this._state]
+        }
+    }
+
+    /**
+     * Returns a state-dependent set of actions for the user to execute, or empty array if there is currently
+     *  no action required from the user to execute.
+     */
+    public abstract getCurrentActions(): Promise<SwapExecutionAction<T>[]>;
 
     //////////////////////////////
     //// Amounts & fees

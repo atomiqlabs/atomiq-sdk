@@ -7,7 +7,7 @@ import { IRefundableSwap } from "../../IRefundableSwap";
 import { FeeType } from "../../../enums/FeeType";
 import { TokenAmount } from "../../../types/TokenAmount";
 import { BtcToken, SCToken } from "../../../types/Token";
-import { SwapExecutionActionCommit } from "../../../types/SwapExecutionAction";
+import { SwapExecutionAction, SwapExecutionActionCommit } from "../../../types/SwapExecutionAction";
 export type IToBTCSwapInit<T extends SwapData> = IEscrowSelfInitSwapInit<T> & {
     signatureData?: SignatureData;
     data: T;
@@ -67,6 +67,23 @@ export declare enum ToBTCSwapState {
  * @category Swaps/Smart chain → Bitcoin
  */
 export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D extends IToBTCDefinition<T, IToBTCWrapper<T, D>, IToBTCSwap<T, D>> = IToBTCDefinition<T, IToBTCWrapper<T, any>, IToBTCSwap<T, any>>> extends IEscrowSelfInitSwap<T, D, ToBTCSwapState> implements IRefundableSwap<T, D, ToBTCSwapState> {
+    /**
+     * @internal
+     */
+    protected readonly swapStateDescription: {
+        [-3]: string;
+        [-2]: string;
+        [-1]: string;
+        0: string;
+        1: string;
+        2: string;
+        3: string;
+        4: string;
+    };
+    /**
+     * @internal
+     */
+    protected readonly swapStateName: (state: number) => string;
     /**
      * @internal
      */
@@ -239,6 +256,7 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
     }): Promise<boolean>;
     /**
      * @inheritDoc
+     *
      * @param options.skipChecks Skip checks like making sure init signature is still valid and swap wasn't commited yet
      *  (this is handled on swap creation, if you commit right after quoting, you can use `skipChecks=true`)
      */
@@ -247,6 +265,17 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
     }): Promise<[
         SwapExecutionActionCommit<T>
     ]>;
+    /**
+     * @inheritDoc
+     *
+     * @param options.skipChecks Skip checks like making sure init signature is still valid and swap wasn't commited yet
+     *  (this is handled on swap creation, if you commit right after quoting, you can use `skipChecks=true`)
+     * @param options.refundSmartChainSigner Optional smart chain signer to use when creating refunds transactions
+     */
+    getCurrentActions(options?: {
+        skipChecks?: boolean;
+        refundSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
+    }): Promise<SwapExecutionAction<T>[]>;
     /**
      * @inheritDoc
      *
@@ -311,7 +340,7 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
      * @throws {SignatureVerificationError} If intermediary returned invalid cooperative refund signature
      * @throws {Error} When state is not refundable
      */
-    txsRefund(signer?: string): Promise<T["TX"][]>;
+    txsRefund(_signer?: string | T["Signer"] | T["NativeSigner"]): Promise<T["TX"][]>;
     /**
      * @inheritDoc
      *

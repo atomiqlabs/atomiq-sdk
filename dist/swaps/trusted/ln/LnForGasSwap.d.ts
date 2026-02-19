@@ -8,7 +8,7 @@ import { FeeType } from "../../../enums/FeeType";
 import { TokenAmount } from "../../../types/TokenAmount";
 import { BtcToken, SCToken } from "../../../types/Token";
 import { LoggerType } from "../../../utils/Logger";
-import { SwapExecutionActionLightning } from "../../../types/SwapExecutionAction";
+import { SwapExecutionAction, SwapExecutionActionLightning } from "../../../types/SwapExecutionAction";
 /**
  * State enum for trusted Lightning gas swaps
  *
@@ -24,7 +24,7 @@ export declare enum LnForGasSwapState {
      */
     FAILED = -1,
     /**
-     * Swap was created
+     * Swap was created, pay the provided lightning network invoice
      */
     PR_CREATED = 0,
     /**
@@ -51,6 +51,20 @@ export declare function isLnForGasSwapInit(obj: any): obj is LnForGasSwapInit;
  */
 export declare class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnForGasSwapTypeDefinition<T>, LnForGasSwapState> implements IAddressSwap {
     protected readonly TYPE: SwapType.TRUSTED_FROM_BTCLN;
+    /**
+     * @internal
+     */
+    protected readonly swapStateDescription: {
+        [-2]: string;
+        [-1]: string;
+        0: string;
+        1: string;
+        2: string;
+    };
+    /**
+     * @internal
+     */
+    protected readonly swapStateName: (state: number) => string;
     /**
      * @internal
      */
@@ -195,6 +209,10 @@ export declare class LnForGasSwap<T extends ChainType = ChainType> extends ISwap
      * @inheritDoc
      */
     txsExecute(): Promise<[SwapExecutionActionLightning]>;
+    /**
+     * @inheritDoc
+     */
+    getCurrentActions(): Promise<SwapExecutionAction<T>[]>;
     /**
      * Queries the intermediary (LP) node for the state of the swap
      *

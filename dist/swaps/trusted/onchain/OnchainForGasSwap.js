@@ -37,7 +37,7 @@ var OnchainForGasSwapState;
      */
     OnchainForGasSwapState[OnchainForGasSwapState["REFUNDED"] = -1] = "REFUNDED";
     /**
-     * Swap was created
+     * Swap was created, send the BTC to the swap address
      */
     OnchainForGasSwapState[OnchainForGasSwapState["PR_CREATED"] = 0] = "PR_CREATED";
     /**
@@ -49,6 +49,14 @@ var OnchainForGasSwapState;
      */
     OnchainForGasSwapState[OnchainForGasSwapState["REFUNDABLE"] = 2] = "REFUNDABLE";
 })(OnchainForGasSwapState = exports.OnchainForGasSwapState || (exports.OnchainForGasSwapState = {}));
+const OnchainForGasSwapStateDescription = {
+    [OnchainForGasSwapState.EXPIRED]: "The swap quote expired without user sending in the BTC",
+    [OnchainForGasSwapState.FAILED]: "The swap has failed after the intermediary already received the BTC on the source chain",
+    [OnchainForGasSwapState.REFUNDED]: "Swap was refunded and BTC returned to the user's refund address",
+    [OnchainForGasSwapState.PR_CREATED]: "Swap was created, send the BTC to the swap address",
+    [OnchainForGasSwapState.FINISHED]: "The swap is finished after the intermediary sent funds on the destination chain",
+    [OnchainForGasSwapState.REFUNDABLE]: "Swap is refundable because the intermediary cannot honor the swap request on the destination chain",
+};
 function isOnchainForGasSwapInit(obj) {
     return typeof (obj.paymentHash) === "string" &&
         typeof (obj.sequence) === "bigint" &&
@@ -73,6 +81,14 @@ class OnchainForGasSwap extends ISwap_1.ISwap {
             initOrObj.url += "/frombtc_trusted";
         super(wrapper, initOrObj);
         this.TYPE = SwapType_1.SwapType.TRUSTED_FROM_BTC;
+        /**
+         * @internal
+         */
+        this.swapStateDescription = OnchainForGasSwapStateDescription;
+        /**
+         * @internal
+         */
+        this.swapStateName = (state) => OnchainForGasSwapState[state];
         this.wrapper = wrapper;
         if (isOnchainForGasSwapInit(initOrObj)) {
             this.paymentHash = initOrObj.paymentHash;
@@ -436,6 +452,20 @@ class OnchainForGasSwap extends ISwap_1.ISwap {
             ];
         }
         throw new Error("Invalid swap state to obtain execution txns, required PR_CREATED or CLAIM_COMMITED");
+    }
+    /**
+     * @inheritDoc
+     *
+     * @param options.bitcoinWallet Optional bitcoin wallet address specification to return a funded PSBT,
+     *  if not provided an address is returned instead.
+     */
+    async getCurrentActions(options) {
+        try {
+            return await this.txsExecute(options);
+        }
+        catch (e) {
+            return [];
+        }
     }
     //////////////////////////////
     //// Payment

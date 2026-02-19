@@ -13,7 +13,7 @@ import {TokenAmount, toTokenAmount} from "../../../types/TokenAmount";
 import {BitcoinTokens, BtcToken, SCToken} from "../../../types/Token";
 import {getLogger, LoggerType} from "../../../utils/Logger";
 import {timeoutPromise} from "../../../utils/TimeoutUtils";
-import {SwapExecutionActionLightning} from "../../../types/SwapExecutionAction";
+import {SwapExecutionAction, SwapExecutionActionLightning} from "../../../types/SwapExecutionAction";
 
 /**
  * State enum for trusted Lightning gas swaps
@@ -30,7 +30,7 @@ export enum LnForGasSwapState {
      */
     FAILED = -1,
     /**
-     * Swap was created
+     * Swap was created, pay the provided lightning network invoice
      */
     PR_CREATED = 0,
     /**
@@ -41,6 +41,19 @@ export enum LnForGasSwapState {
      * The swap is finished after the intermediary sent funds on the destination chain
      */
     FINISHED = 2
+}
+
+const LnForGasSwapStateDescription = {
+    [LnForGasSwapState.EXPIRED]:
+        "The swap quote expired without user sending in the lightning network payment",
+    [LnForGasSwapState.FAILED]:
+        "The swap has failed after the intermediary already received a lightning network payment on the source",
+    [LnForGasSwapState.PR_CREATED]:
+        "Swap was created, pay the provided lightning network invoice",
+    [LnForGasSwapState.PR_PAID]:
+        "User paid the lightning network invoice on the source",
+    [LnForGasSwapState.FINISHED]:
+        "The swap is finished after the intermediary sent funds on the destination chain"
 }
 
 export type LnForGasSwapInit = ISwapInit & {
@@ -66,6 +79,16 @@ export function isLnForGasSwapInit(obj: any): obj is LnForGasSwapInit {
  */
 export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnForGasSwapTypeDefinition<T>, LnForGasSwapState> implements IAddressSwap {
     protected readonly TYPE: SwapType.TRUSTED_FROM_BTCLN = SwapType.TRUSTED_FROM_BTCLN;
+
+    /**
+     * @internal
+     */
+    protected readonly swapStateDescription = LnForGasSwapStateDescription;
+    /**
+     * @internal
+     */
+    protected readonly swapStateName = (state: number) => LnForGasSwapState[state];
+
     /**
      * @internal
      */
@@ -395,6 +418,17 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
         }
 
         throw new Error("Invalid swap state to obtain execution txns, required PR_CREATED");
+    }
+
+    /**
+     * @inheritDoc
+     */
+    async getCurrentActions(): Promise<SwapExecutionAction<T>[]> {
+        try {
+            return await this.txsExecute();
+        } catch (e) {
+            return [];
+        }
     }
 
     /**

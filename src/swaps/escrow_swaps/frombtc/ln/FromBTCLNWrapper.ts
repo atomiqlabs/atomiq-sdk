@@ -33,6 +33,7 @@ import {AllOptional} from "../../../../utils/TypeUtils";
 import {sha256} from "@noble/hashes/sha2";
 
 export type FromBTCLNOptions = {
+    paymentHash?: Buffer,
     descriptionHash?: Buffer,
     unsafeSkipLnNodeCheck?: boolean
 };
@@ -231,13 +232,24 @@ export class FromBTCLNWrapper<
         quote: Promise<FromBTCLNSwap<T>>,
         intermediary: Intermediary
     }[] {
+        if(!this.isInitialized) throw new Error("Not initialized, call init() first!");
+
         if(options==null) options = {};
         options.unsafeSkipLnNodeCheck ??= this._options.unsafeSkipLnNodeCheck;
+
+        if(options.paymentHash!=null && options.paymentHash.length!==32)
+            throw new UserError("Invalid payment hash length, must be exactly 32 bytes!");
 
         if(options.descriptionHash!=null && options.descriptionHash.length!==32)
             throw new UserError("Invalid description hash length");
 
-        const {secret, paymentHash} = this.getSecretAndHash();
+        let secret: Buffer | undefined;
+        let paymentHash: Buffer;
+        if(options?.paymentHash!=null) {
+            paymentHash = options.paymentHash;
+        } else {
+            ({secret, paymentHash} = this.getSecretAndHash());
+        }
         const claimHash = this._contract.getHashForHtlc(paymentHash);
 
         const nativeTokenAddress = this._chain.getNativeCurrencyAddress();
@@ -311,7 +323,7 @@ export class FromBTCLNWrapper<
                                 resp.securityDeposit, 0n, nativeTokenAddress
                             ),
                             pr: resp.pr,
-                            secret: secret.toString("hex"),
+                            secret: secret?.toString("hex"),
                             exactIn: amountData.exactIn ?? true
                         } as FromBTCLNSwapInit<T["Data"]>);
                         await quote._save();
@@ -336,6 +348,7 @@ export class FromBTCLNWrapper<
      * @param lnurl LNURL-withdraw link to pull the funds from
      * @param amountData Amount, token and exact input/output data for to swap
      * @param lps An array of intermediaries (LPs) to get the quotes from
+     * @param options Optional additional quote options
      * @param additionalParams Optional additional parameters sent to the LP when creating the swap
      * @param abortSignal Abort signal
      */
@@ -344,6 +357,7 @@ export class FromBTCLNWrapper<
         lnurl: string | LNURLWithdrawParamsWithUrl,
         amountData: AmountData,
         lps: Intermediary[],
+        options?: FromBTCLNOptions,
         additionalParams?: Record<string, any>,
         abortSignal?: AbortSignal
     ): Promise<{
@@ -351,6 +365,9 @@ export class FromBTCLNWrapper<
         intermediary: Intermediary
     }[]> {
         if(!this.isInitialized) throw new Error("Not initialized, call init() first!");
+
+        if(options?.paymentHash!=null && options.paymentHash.length!==32)
+            throw new UserError("Invalid payment hash length, must be exactly 32 bytes!");
 
         const abortController = extendAbortController(abortSignal);
         const preFetches = {
@@ -383,7 +400,7 @@ export class FromBTCLNWrapper<
                 if((amount * 105n / 100n) > max) throw new UserError("Amount more than LNURL-withdraw maximum");
             }
 
-            return this.create(recipient, amountData, lps, undefined, additionalParams, abortSignal, preFetches).map(data => {
+            return this.create(recipient, amountData, lps, options, additionalParams, abortSignal, preFetches).map(data => {
                 return {
                     quote: data.quote.then(quote => {
                         quote._setLNURLData(

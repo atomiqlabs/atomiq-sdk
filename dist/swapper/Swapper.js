@@ -33,7 +33,6 @@ const Logger_1 = require("../utils/Logger");
 const LNURLWithdraw_1 = require("../types/lnurl/LNURLWithdraw");
 const LNURLPay_1 = require("../types/lnurl/LNURLPay");
 const RetryUtils_1 = require("../utils/RetryUtils");
-const btc_mempool_1 = require("@atomiqlabs/btc-mempool");
 const IEscrowSwap_1 = require("../swaps/escrow_swaps/IEscrowSwap");
 const LightningInvoiceCreateService_1 = require("../types/wallets/LightningInvoiceCreateService");
 /**
@@ -42,7 +41,10 @@ const LightningInvoiceCreateService_1 = require("../types/wallets/LightningInvoi
  * @category Core
  */
 class Swapper extends events_1.EventEmitter {
-    constructor(bitcoinRpc, chainsData, pricing, tokens, messenger, options) {
+    /**
+     * @internal
+     */
+    constructor(bitcoinRpc, lightningApi, bitcoinSynchronizer, chainsData, pricing, tokens, messenger, options) {
         super();
         this.logger = (0, Logger_1.getLogger)(this.constructor.name + ": ");
         this.initialized = false;
@@ -99,7 +101,7 @@ class Swapper extends events_1.EventEmitter {
         };
         this._chains = (0, Utils_1.objectMap)(chainsData, (chainData, key) => {
             const { swapContract, chainEvents, btcRelay, chainInterface, spvVaultContract, spvVaultWithdrawalDataConstructor } = chainData;
-            const synchronizer = new btc_mempool_1.MempoolBtcRelaySynchronizer(btcRelay, bitcoinRpc);
+            const synchronizer = bitcoinSynchronizer(btcRelay);
             const storageHandler = swapStorage(storagePrefix + chainData.chainId);
             const unifiedSwapStorage = new UnifiedSwapStorage_1.UnifiedSwapStorage(storageHandler, this.options.noSwapCache);
             const unifiedChainEvents = new UnifiedSwapEventListener_1.UnifiedSwapEventListener(unifiedSwapStorage, chainEvents);
@@ -113,7 +115,7 @@ class Swapper extends events_1.EventEmitter {
                 postRequestTimeout: this.options.postRequestTimeout,
                 bitcoinNetwork: this._btcNetwork
             });
-            wrappers[SwapType_1.SwapType.FROM_BTCLN] = new FromBTCLNWrapper_1.FromBTCLNWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, swapContract, pricing, tokens, chainData.swapDataConstructor, bitcoinRpc, {
+            wrappers[SwapType_1.SwapType.FROM_BTCLN] = new FromBTCLNWrapper_1.FromBTCLNWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, swapContract, pricing, tokens, chainData.swapDataConstructor, lightningApi, {
                 getRequestTimeout: this.options.getRequestTimeout,
                 postRequestTimeout: this.options.postRequestTimeout,
                 unsafeSkipLnNodeCheck: this.bitcoinNetwork === base_1.BitcoinNetwork.TESTNET4 || this.bitcoinNetwork === base_1.BitcoinNetwork.REGTEST
@@ -140,7 +142,7 @@ class Swapper extends events_1.EventEmitter {
                 });
             }
             if (swapContract.supportsInitWithoutClaimer) {
-                wrappers[SwapType_1.SwapType.FROM_BTCLN_AUTO] = new FromBTCLNAutoWrapper_1.FromBTCLNAutoWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, swapContract, pricing, tokens, chainData.swapDataConstructor, bitcoinRpc, this.messenger, {
+                wrappers[SwapType_1.SwapType.FROM_BTCLN_AUTO] = new FromBTCLNAutoWrapper_1.FromBTCLNAutoWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, swapContract, pricing, tokens, chainData.swapDataConstructor, lightningApi, this.messenger, {
                     getRequestTimeout: this.options.getRequestTimeout,
                     postRequestTimeout: this.options.postRequestTimeout,
                     unsafeSkipLnNodeCheck: this.bitcoinNetwork === base_1.BitcoinNetwork.TESTNET4 || this.bitcoinNetwork === base_1.BitcoinNetwork.REGTEST

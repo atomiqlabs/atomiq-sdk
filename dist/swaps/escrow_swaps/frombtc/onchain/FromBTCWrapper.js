@@ -17,7 +17,7 @@ const RetryUtils_1 = require("../../../../utils/RetryUtils");
  * Legacy escrow (PrTLC) based swap for Bitcoin -> Smart chains, requires manual initiation
  *  of the swap escrow on the destination chain.
  *
- * @category Swaps
+ * @category Swaps/Legacy/Bitcoin → Smart chain
  */
 class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
     /**

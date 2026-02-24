@@ -5,7 +5,7 @@ import {CustomPriceFunction} from "../../types/CustomPriceFunction";
 /**
  * Price provider using custom pricing function
  *
- * @category Pricing and LPs
+ * @category Pricing
  */
 export class CustomPriceProvider<T extends MultiChain> extends IPriceProvider<T> {
 

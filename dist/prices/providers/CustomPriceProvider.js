@@ -5,7 +5,7 @@ const IPriceProvider_1 = require("../abstract/IPriceProvider");
 /**
  * Price provider using custom pricing function
  *
- * @category Pricing and LPs
+ * @category Pricing
  */
 class CustomPriceProvider extends IPriceProvider_1.IPriceProvider {
     /**

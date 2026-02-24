@@ -4,7 +4,7 @@ import { PriceInfoType } from "../../types/PriceInfoType";
 /**
  * Abstract base class for swap pricing implementations
  *
- * @category Pricing and LPs
+ * @category Pricing
  */
 export declare abstract class ISwapPrice<T extends MultiChain = MultiChain> {
     maxAllowedFeeDifferencePPM: bigint;

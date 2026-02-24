@@ -49,7 +49,7 @@ export type FromBTCLNDefinition<T extends ChainType> = IFromBTCLNDefinition<T, F
  * Legacy escrow (HTLC) based swap for Bitcoin Lightning -> Smart chains, requires manual settlement
  *  of the swap on the destination network once the lightning network payment is received by the LP.
  *
- * @category Swaps
+ * @category Swaps/Legacy/Lightning → Smart chain
  */
 export class FromBTCLNWrapper<
     T extends ChainType

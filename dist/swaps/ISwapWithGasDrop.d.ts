@@ -4,13 +4,13 @@ import { SCToken } from "../types/Token";
 /**
  * Type guard to check if a swap has gas drop functionality
  *
- * @category Swaps
+ * @category Swaps/Types
  */
 export declare function isSwapWithGasDrop(swap: any): swap is ISwapWithGasDrop<any>;
 /**
  * Interface for swaps with gas drop functionality
  *
- * @category Swaps
+ * @category Swaps/Types
  */
 export interface ISwapWithGasDrop<T extends ChainType> {
     /**

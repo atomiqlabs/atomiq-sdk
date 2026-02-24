@@ -7,7 +7,7 @@ const Logger_1 = require("../utils/Logger");
 /**
  * Base abstract class for swap handler implementations
  *
- * @category Swaps
+ * @category Swaps/Base
  */
 class ISwapWrapper {
     constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, options, events) {

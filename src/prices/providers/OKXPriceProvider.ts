@@ -22,7 +22,7 @@ export type OKXResponse = {
 
 /**
  * Price provider using OKX exchange API
- * @category Pricing and LPs
+ * @category Pricing
  */
 export class OKXPriceProvider<T extends MultiChain> extends ExchangePriceProvider<T> {
 

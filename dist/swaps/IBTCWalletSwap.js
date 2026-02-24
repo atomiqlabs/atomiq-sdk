@@ -4,7 +4,7 @@ exports.isIBTCWalletSwap = void 0;
 /**
  * Type guard to check if an object is an {@link IBTCWalletSwap}
  *
- * @category Swaps
+ * @category Swaps/Types
  */
 function isIBTCWalletSwap(obj) {
     return obj != null &&

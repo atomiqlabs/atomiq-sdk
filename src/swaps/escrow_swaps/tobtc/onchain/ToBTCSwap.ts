@@ -33,7 +33,7 @@ export function isToBTCSwapInit<T extends SwapData>(obj: any): obj is ToBTCSwapI
 /**
  * Escrow based (PrTLC) swap for Smart chains -> Bitcoin
  *
- * @category Swaps
+ * @category Swaps/Smart chain → Bitcoin
  */
 export class ToBTCSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, ToBTCDefinition<T>> {
     protected readonly TYPE: SwapType.TO_BTC = SwapType.TO_BTC;

@@ -22,7 +22,7 @@ export type OnchainForGasSwapTypeDefinition<T extends ChainType> = SwapTypeDefin
  * Trusted swap for Bitcoin -> Smart chains, to be used for minor amounts to get gas tokens on the
  *  destination chain, which is only needed for Solana, which still uses legacy swaps
  *
- * @category Swaps
+ * @category Swaps/Trusted Gas Swaps
  */
 export class OnchainForGasWrapper<T extends ChainType> extends ISwapWrapper<T, OnchainForGasSwapTypeDefinition<T>, OnchainForGasWrapperOptions> {
     public readonly TYPE: SwapType.TRUSTED_FROM_BTC = SwapType.TRUSTED_FROM_BTC;

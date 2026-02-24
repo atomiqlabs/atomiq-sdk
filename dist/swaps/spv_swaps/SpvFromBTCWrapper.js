@@ -18,7 +18,7 @@ const RetryUtils_1 = require("../../utils/RetryUtils");
  *  any initiation on the destination chain, and with the added possibility for the user to receive
  *  a native token on the destination chain as part of the swap (a "gas drop" feature).
  *
- * @category Swaps
+ * @category Swaps/Bitcoin → Smart chain
  */
 class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
     /**
@@ -87,10 +87,11 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
         if (swap._state === SpvFromBTCSwap_1.SpvFromBTCSwapState.SIGNED || swap._state === SpvFromBTCSwap_1.SpvFromBTCSwapState.POSTED ||
             swap._state === SpvFromBTCSwap_1.SpvFromBTCSwapState.BROADCASTED || swap._state === SpvFromBTCSwap_1.SpvFromBTCSwapState.DECLINED ||
             swap._state === SpvFromBTCSwap_1.SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED || swap._state === SpvFromBTCSwap_1.SpvFromBTCSwapState.BTC_TX_CONFIRMED) {
+            swap._state = SpvFromBTCSwap_1.SpvFromBTCSwapState.FRONTED;
+            swap._frontTxId = event.meta?.txId;
             await swap._setBitcoinTxId(event.btcTxId).catch(e => {
                 this.logger.warn("processEventFront(): Failed to set bitcoin txId: ", e);
             });
-            swap._state = SpvFromBTCSwap_1.SpvFromBTCSwapState.FRONTED;
             return true;
         }
         return false;
@@ -98,11 +99,13 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
     async processEventClaim(event, swap) {
         if (swap._state === SpvFromBTCSwap_1.SpvFromBTCSwapState.SIGNED || swap._state === SpvFromBTCSwap_1.SpvFromBTCSwapState.POSTED ||
             swap._state === SpvFromBTCSwap_1.SpvFromBTCSwapState.BROADCASTED || swap._state === SpvFromBTCSwap_1.SpvFromBTCSwapState.DECLINED ||
-            swap._state === SpvFromBTCSwap_1.SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED || swap._state === SpvFromBTCSwap_1.SpvFromBTCSwapState.BTC_TX_CONFIRMED) {
+            swap._state === SpvFromBTCSwap_1.SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED || swap._state === SpvFromBTCSwap_1.SpvFromBTCSwapState.FRONTED ||
+            swap._state === SpvFromBTCSwap_1.SpvFromBTCSwapState.BTC_TX_CONFIRMED) {
+            swap._state = SpvFromBTCSwap_1.SpvFromBTCSwapState.CLAIMED;
+            swap._claimTxId = event.meta?.txId;
             await swap._setBitcoinTxId(event.btcTxId).catch(e => {
                 this.logger.warn("processEventClaim(): Failed to set bitcoin txId: ", e);
             });
-            swap._state = SpvFromBTCSwap_1.SpvFromBTCSwapState.CLAIMED;
             return true;
         }
         return false;

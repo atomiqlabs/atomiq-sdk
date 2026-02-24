@@ -4,7 +4,7 @@ exports.ISwapPrice = void 0;
 /**
  * Abstract base class for swap pricing implementations
  *
- * @category Pricing and LPs
+ * @category Pricing
  */
 class ISwapPrice {
     constructor(maxAllowedFeeDifferencePPM) {

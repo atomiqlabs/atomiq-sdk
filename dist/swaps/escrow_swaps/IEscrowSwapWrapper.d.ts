@@ -13,7 +13,7 @@ export type IEscrowSwapDefinition<T extends ChainType, W extends IEscrowSwapWrap
 /**
  * Base class for wrappers of escrow-based swaps (i.e. swaps utilizing PrTLC and HTLC primitives)
  *
- * @category Swaps
+ * @category Swaps/Abstract
  */
 export declare abstract class IEscrowSwapWrapper<T extends ChainType, D extends IEscrowSwapDefinition<T, IEscrowSwapWrapper<T, D>, IEscrowSwap<T, D>>, O extends ISwapWrapperOptions = ISwapWrapperOptions> extends ISwapWrapper<T, D, O> {
     readonly abstract TYPE: SwapType;

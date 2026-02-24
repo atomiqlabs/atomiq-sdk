@@ -5,7 +5,7 @@ import { PriceInfoType } from "../types/PriceInfoType";
 /**
  * Chain-specific wrapper for swap pricing
  *
- * @category Pricing and LPs
+ * @category Pricing
  */
 export declare class SwapPriceWithChain<T extends MultiChain, ChainIdentifier extends ChainIds<T>> {
     swapPrice: ISwapPrice<T>;
@@ -20,7 +20,7 @@ export declare class SwapPriceWithChain<T extends MultiChain, ChainIdentifier ex
      * @param feePPM PPM fee rate as reported by the intermediary
      * @param paidToken Amount of token to be paid to the swap
      * @param tokenAddress Token address to be paid
-     * @param abortSignal
+     * @param abortSignal Abort signal
      * @param preFetchedPrice An optional price pre-fetched with {@link preFetchPrice}
      */
     isValidAmountSend(amountSats: bigint, satsBaseFee: bigint, feePPM: bigint, paidToken: bigint, tokenAddress: string, abortSignal?: AbortSignal, preFetchedPrice?: bigint): Promise<PriceInfoType>;
@@ -32,7 +32,7 @@ export declare class SwapPriceWithChain<T extends MultiChain, ChainIdentifier ex
      * @param feePPM PPM fee rate as reported by the intermediary
      * @param receiveToken Amount of token to be received from the swap
      * @param tokenAddress Token address to be received
-     * @param abortSignal
+     * @param abortSignal Abort signal
      * @param preFetchedPrice An optional price pre-fetched with {@link preFetchPrice}
      */
     isValidAmountReceive(amountSats: bigint, satsBaseFee: bigint, feePPM: bigint, receiveToken: bigint, tokenAddress: string, abortSignal?: AbortSignal, preFetchedPrice?: bigint): Promise<PriceInfoType>;
@@ -40,11 +40,10 @@ export declare class SwapPriceWithChain<T extends MultiChain, ChainIdentifier ex
      * Pre-fetches the pricing data for a given token, such that further calls to {@link isValidAmountReceive} or
      *  {@link isValidAmountSend} are quicker and don't need to wait for the price fetch
      *
-     * @param chainIdentifier Chain identifier of the smart chain
      * @param tokenAddress Token address
-     * @param abortSignal
+     * @param abortSignal Abort signal
      */
-    preFetchPrice(token: string, abortSignal?: AbortSignal): Promise<bigint>;
+    preFetchPrice(tokenAddress: string, abortSignal?: AbortSignal): Promise<bigint>;
     /**
      * Pre-fetches the Bitcoin USD price data, such that further calls to {@link getBtcUsdValue},
      *  {@link getTokenUsdValue} or {@link getUsdValue} are quicker and don't need to wait for the price fetch

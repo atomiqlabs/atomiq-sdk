@@ -1,6 +1,6 @@
 /**
  * Pricing information for swap validation
- * @category Pricing and LPs
+ * @category Pricing
  */
 export type PriceInfoType = {
     isValid: boolean;
@@ -13,16 +13,16 @@ export type PriceInfoType = {
 };
 /**
  * Type guard for PriceInfoType
- * @category Pricing and LPs
+ * @category Pricing
  */
 export declare function isPriceInfoType(obj: any): obj is PriceInfoType;
 /**
  * Serializes PriceInfoType for storage
- * @category Pricing and LPs
+ * @category Pricing
  */
 export declare function serializePriceInfoType(obj: PriceInfoType | undefined): any;
 /**
  * Deserializes PriceInfoType from storage
- * @category Pricing and LPs
+ * @category Pricing
  */
 export declare function deserializePriceInfoType(obj: any): PriceInfoType | undefined;

@@ -18,7 +18,7 @@ import { LNURLWithdraw } from "../../../../types/lnurl/LNURLWithdraw";
 import { PriceInfoType } from "../../../../types/PriceInfoType";
 /**
  * State enum for FromBTCLNAuto swaps
- * @category Swaps
+ * @category Swaps/Lightning → Smart chain
  */
 export declare enum FromBTCLNAutoSwapState {
     FAILED = -4,
@@ -50,7 +50,7 @@ export declare function isFromBTCLNAutoSwapInit<T extends SwapData>(obj: any): o
  *  handles the claiming of HTLC, with the swap secret broadcasted over Nostr. Also adds a possibility for the user
  *  to receive a native token on the destination chain as part of the swap (a "gas drop" feature).
  *
- * @category Swaps
+ * @category Swaps/Lightning → Smart chain
  */
 export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends IEscrowSwap<T, FromBTCLNAutoDefinition<T>> implements IAddressSwap, ISwapWithGasDrop<T>, IClaimableSwap<T, FromBTCLNAutoDefinition<T>, FromBTCLNAutoSwapState> {
     protected readonly TYPE: SwapType.FROM_BTCLN_AUTO;
@@ -408,7 +408,8 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
      */
     claim(_signer: T["Signer"] | T["NativeSigner"], abortSignal?: AbortSignal, onBeforeTxSent?: (txId: string) => void, secret?: string): Promise<string>;
     /**
-     * @inheritDoc
+     * Waits till the swap is successfully settled (claimed), should be called after sending the claim (settlement)
+     *  transactions manually to wait till the SDK processes the settlement and updates the swap state accordingly.
      *
      * @param maxWaitTimeSeconds Maximum time in seconds to wait for the swap to be settled
      * @param abortSignal AbortSignal

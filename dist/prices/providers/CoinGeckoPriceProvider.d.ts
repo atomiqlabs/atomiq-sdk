@@ -8,7 +8,7 @@ export type CoinGeckoResponse<Currency extends string> = {
 };
 /**
  * Price provider using CoinGecko API
- * @category Pricing and LPs
+ * @category Pricing
  */
 export declare class CoinGeckoPriceProvider<T extends MultiChain> extends HttpPriceProvider<T> {
     constructor(coinsMap: CtorCoinTypes<T>, url?: string, httpRequestTimeout?: number);

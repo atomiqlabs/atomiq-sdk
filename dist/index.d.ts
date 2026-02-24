@@ -1,5 +1,6 @@
-export { LightningNetworkApi, BitcoinRpc, BitcoinRpcWithAddressIndex, BitcoinNetwork, BtcRelay, ChainData, ChainInterface, ChainType, CannotInitializeATAError, SignatureVerificationError, SwapDataVerificationError, TransactionRevertedError, ChainEvents, Messenger, SpvVaultContract, SpvVaultData, SpvWithdrawalTransactionData, ExecutionData, IStorageManager, StorageObject, SwapContract, SwapData, AbstractSigner } from "@atomiqlabs/base";
+export { LightningNetworkApi, BitcoinRpc, BitcoinRpcWithAddressIndex, BitcoinNetwork, BtcHeader, BtcStoredHeader, BtcRelay, ChainData, ChainInterface, ChainType, CannotInitializeATAError, SignatureVerificationError, SwapDataVerificationError, TransactionRevertedError, ChainEvents, Messenger, SpvVaultContract, SpvVaultData, SpvWithdrawalTransactionData, ExecutionData, IStorageManager, StorageObject, SwapContract, SwapData, AbstractSigner } from "@atomiqlabs/base";
 export { MempoolApi, MempoolBitcoinRpc, MempoolApiError } from "@atomiqlabs/btc-mempool";
+export { NostrMessenger } from "@atomiqlabs/messenger-nostr";
 export * from "./bitcoin/wallet/BitcoinWallet";
 export * from "./bitcoin/wallet/IBitcoinWallet";
 export * from "./bitcoin/wallet/SingleAddressBitcoinWallet";

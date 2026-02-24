@@ -9,7 +9,7 @@ import {SpvFromBTCSwap} from "../swaps/spv_swaps/SpvFromBTCSwap";
 /**
  * Proxy type that auto-injects a smart chain signer into swap methods
  *
- * @category Swaps
+ * @category Swaps/Base
  */
 export type SwapWithSigner<T extends ISwap> = {
     [K in keyof T]:

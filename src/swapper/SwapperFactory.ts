@@ -3,7 +3,7 @@ import {
     BitcoinNetwork,
     ChainType,
     StorageObject,
-    IStorageManager, Messenger, ChainInitializer
+    IStorageManager, Messenger, ChainInitializer, BtcRelay
 } from "@atomiqlabs/base";
 import {SmartChainAssets, SmartChainAssetTickers} from "../SmartChainAssets";
 import {NostrMessenger} from "@atomiqlabs/messenger-nostr";
@@ -16,7 +16,7 @@ import {RedundantSwapPrice, RedundantSwapPriceAssets} from "../prices/RedundantS
 import {LocalStorageManager} from "../storage-browser/LocalStorageManager";
 import {SingleSwapPrice} from "../prices/SingleSwapPrice";
 import {CustomPriceFunction} from "../types/CustomPriceFunction";
-import {MempoolApi, MempoolBitcoinRpc} from "@atomiqlabs/btc-mempool";
+import {MempoolApi, MempoolBitcoinRpc, MempoolBtcRelaySynchronizer} from "@atomiqlabs/btc-mempool";
 
 //Helper types
 /**
@@ -63,11 +63,35 @@ type GetAllOptions<T extends readonly ChainInitializer<any, any, any>[]> =
  * @category Core
  */
 export type TypedSwapperOptions<T extends readonly ChainInitializer<any, any, any>[]> = {
+    /**
+     * A dictionary with chain-specific settings, like RPC URLs and others
+     */
     chains: GetAllOptions<T>,
-    chainStorageCtor?: <T extends StorageObject>(name: string) => IStorageManager<T>,
+    /**
+     * A function callback to retrieve a specific named storage container for key-value persistency. If not present, the
+     *  default browser Local Storage adapter is used. When you use the SDK in non-browser based environments you need
+     *  to provide this callback such that the SDK is able to use a custom storage adapter.
+     *
+     * @param storageName Name of the container to retrieve
+     */
+    chainStorageCtor?: <T extends StorageObject>(storageName: string) => IStorageManager<T>,
+    /**
+     * Maximum allowed pricing difference between intermediary (LP) returned rate and current market rate. In
+     *  parts-per-million, e.g. 2% is written as `20000`.
+     */
     pricingFeeDifferencePPM?: bigint,
+    /**
+     * Optional pricing function to use instead of default pricing APIs. See {@link CustomPriceFunction} for details.
+     */
     getPriceFn?: CustomPriceFunction,
+    /**
+     * Mempool API instance or URLs to use, if not provided the defaults will be used for the specified bitcoin network
+     */
     mempoolApi?: MempoolApi | MempoolBitcoinRpc | string | string[],
+    /**
+     * Data propagation messenger instance to use for broadcasting data to watchtowers. By default, a Nostr-based
+     *  messenger is used.
+     */
     messenger?: Messenger,
 } & SwapperOptions;
 
@@ -252,6 +276,8 @@ export class SwapperFactory<T extends readonly ChainInitializer<any, ChainType, 
 
         return new Swapper<ToMultichain<T>>(
             bitcoinRpc,
+            bitcoinRpc,
+            (btcRelay: BtcRelay<any, any, any>) => new MempoolBtcRelaySynchronizer(btcRelay, bitcoinRpc),
             chains as any,
             swapPricing,
             pricingAssets,

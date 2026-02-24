@@ -19,7 +19,7 @@ exports.isIEscrowSelfInitSwapInit = isIEscrowSelfInitSwapInit;
  * Base class for escrow-based swaps (i.e. swaps utilizing PrTLC and HTLC primitives) where the
  *  user needs to initiate the escrow on the smart chain side
  *
- * @category Swaps
+ * @category Swaps/Abstract
  */
 class IEscrowSelfInitSwap extends IEscrowSwap_1.IEscrowSwap {
     constructor(wrapper, swapInitOrObj) {

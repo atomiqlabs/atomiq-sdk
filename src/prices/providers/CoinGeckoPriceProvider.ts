@@ -9,7 +9,7 @@ export type CoinGeckoResponse<Currency extends string> = {
 
 /**
  * Price provider using CoinGecko API
- * @category Pricing and LPs
+ * @category Pricing
  */
 export class CoinGeckoPriceProvider<T extends MultiChain> extends HttpPriceProvider<T> {
 

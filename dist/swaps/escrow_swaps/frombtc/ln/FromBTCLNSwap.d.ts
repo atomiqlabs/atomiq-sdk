@@ -15,7 +15,7 @@ import { LoggerType } from "../../../../utils/Logger";
 import { LNURLWithdraw } from "../../../../types/lnurl/LNURLWithdraw";
 /**
  * State enum for legacy Lightning -> Smart chain swaps
- * @category Swaps
+ * @category Swaps/Legacy/Lightning → Smart chain
  */
 export declare enum FromBTCLNSwapState {
     /**
@@ -73,7 +73,7 @@ export declare function isFromBTCLNSwapInit<T extends SwapData>(obj: any): obj i
  * Legacy escrow (HTLC) based swap for Bitcoin Lightning -> Smart chains, requires manual settlement
  *  of the swap on the destination network once the lightning network payment is received by the LP.
  *
- * @category Swaps
+ * @category Swaps/Legacy/Lightning → Smart chain
  */
 export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFromBTCSelfInitSwap<T, FromBTCLNDefinition<T>, FromBTCLNSwapState> implements IAddressSwap, IClaimableSwap<T, FromBTCLNDefinition<T>, FromBTCLNSwapState> {
     protected readonly TYPE = SwapType.FROM_BTCLN;
@@ -152,11 +152,13 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
      */
     getAddress(): string;
     /**
+     * A hyperlink representation of the address + amount that the user needs to sends on the source chain.
+     *  This is suitable to be displayed in a form of QR code.
+     *
+     * @remarks
      * In case the swap is recovered from on-chain data, the address returned might be just a payment hash,
      *  as it is impossible to retrieve the actual lightning network invoice paid purely from on-chain
      *  data.
-     *
-     * @inheritDoc
      */
     getHyperlink(): string;
     /**
@@ -364,7 +366,6 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
      *
      * @throws {Error} If swap is in invalid state (must be {@link FromBTCLNSwapState.CLAIM_COMMITED})
      * @throws {Error} If the LP refunded sooner than we were able to claim
-     * @returns {boolean} whether the swap was claimed in time or not
      */
     waitTillClaimed(maxWaitTimeSeconds?: number, abortSignal?: AbortSignal): Promise<boolean>;
     /**

@@ -42,7 +42,7 @@ import {SwapExecutionActionBitcoin} from "../../types/SwapExecutionAction";
 
 /**
  * State enum for SPV vault (UTXO-controlled vault) based swaps
- * @category Swaps
+ * @category Swaps/Bitcoin → Smart chain
  */
 export enum SpvFromBTCSwapState {
     /**
@@ -172,7 +172,7 @@ export function isSpvFromBTCSwapInit(obj: any): obj is SpvFromBTCSwapInit {
  *  any initiation on the destination chain, and with the added possibility for the user to receive
  *  a native token on the destination chain as part of the swap (a "gas drop" feature).
  *
- * @category Swaps
+ * @category Swaps/Bitcoin → Smart chain
  */
 export class SpvFromBTCSwap<T extends ChainType>
     extends ISwap<T, SpvFromBTCTypeDefinition<T>>
@@ -810,9 +810,16 @@ export class SpvFromBTCSwap<T extends ChainType>
     }
 
     /**
+     * Returns the PSBT that is already funded with wallet's UTXOs (runs a coin-selection algorithm to choose UTXOs to use),
+     *  also returns inputs indices that need to be signed by the wallet before submitting the PSBT back to the SDK with
+     *  {@link submitPsbt}
+     *
+     * @remarks
      * Note that when passing the `feeRate` argument, the fee must be at least {@link minimumBtcFeeRate} sats/vB.
      *
-     * @inheritDoc
+     * @param _bitcoinWallet Sender's bitcoin wallet
+     * @param feeRate Optional fee rate in sats/vB for the transaction
+     * @param additionalOutputs additional outputs to add to the PSBT - can be used to collect fees from users
      */
     async getFundedPsbt(
         _bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface,
@@ -1084,6 +1091,7 @@ export class SpvFromBTCSwap<T extends ChainType>
 
     /**
      * @inheritDoc
+     *
      * @throws {Error} if in invalid state (must be {@link SpvFromBTCSwapState.POSTED} or
      *  {@link SpvFromBTCSwapState.BROADCASTED} states)
      */
@@ -1144,9 +1152,14 @@ export class SpvFromBTCSwap<T extends ChainType>
     //// Claim
 
     /**
-     * Also possibly also syncs the bitcoin light client if necessary
+     * Returns transactions for settling (claiming) the swap if the swap requires manual settlement, you can check so
+     *  with isClaimable. After sending the transaction manually be sure to call the waitTillClaimed function to wait
+     *  till the claim transaction is observed, processed by the SDK and state of the swap properly updated.
      *
-     * @inheritDoc
+     * @remarks
+     * Might also return transactions necessary to sync the bitcoin light client.
+     *
+     * @param _signer Address of the signer to create the claim transactions for, can also be different to the recipient
      *
      * @throws {Error} If the swap is in invalid state (must be {@link SpvFromBTCSwapState.BTC_TX_CONFIRMED})
      */
@@ -1194,9 +1207,15 @@ export class SpvFromBTCSwap<T extends ChainType>
     }
 
     /**
-     * Also possibly also syncs the bitcoin light client if necessary
+     * Settles the swap by claiming the funds on the destination chain if the swap requires manual settlement, you can
+     *  check so with isClaimable.
      *
-     * @inheritDoc
+     * @remarks
+     * Might also sync the bitcoin light client during the process.
+     *
+     * @param _signer Signer to use for signing the settlement transactions, can also be different to the recipient
+     * @param abortSignal Abort signal
+     * @param onBeforeTxSent Optional callback triggered before the claim transaction is broadcasted
      *
      * @throws {Error} If the swap is in invalid state (must be {@link SpvFromBTCSwapState.BTC_TX_CONFIRMED})
      */
@@ -1273,10 +1292,17 @@ export class SpvFromBTCSwap<T extends ChainType>
     }
 
     /**
-     * This is an alias for the {@link waitTillClaimedOrFronted} function and will
-     *  also resolve if the swap has been fronted (not necessarily claimed)
+     * Waits till the swap is successfully settled (claimed), should be called after sending the claim (settlement)
+     *  transactions manually to wait till the SDK processes the settlement and updates the swap state accordingly.
      *
-     * @inheritDoc
+     * @remarks
+     * This is an alias for the {@link waitTillClaimedOrFronted} function and will also resolve if the swap has
+     *  been fronted (not necessarily claimed)
+     *
+     * @param maxWaitTimeSeconds – Maximum time in seconds to wait for the swap to be settled
+     * @param abortSignal – AbortSignal
+     *
+     * @returns Whether the swap was claimed in time or not
      */
     waitTillClaimed(maxWaitTimeSeconds?: number, abortSignal?: AbortSignal): Promise<boolean> {
         return this.waitTillClaimedOrFronted(maxWaitTimeSeconds, abortSignal);

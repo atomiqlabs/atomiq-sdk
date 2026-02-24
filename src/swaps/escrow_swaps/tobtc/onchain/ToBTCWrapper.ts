@@ -49,7 +49,7 @@ export type ToBTCDefinition<T extends ChainType> = IToBTCDefinition<T, ToBTCWrap
 /**
  * Escrow based (PrTLC) swap for Smart chains -> Bitcoin
  *
- * @category Swaps
+ * @category Swaps/Smart chain → Bitcoin
  */
 export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDefinition<T>, ToBTCWrapperOptions> {
     public readonly TYPE: SwapType.TO_BTC = SwapType.TO_BTC;

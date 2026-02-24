@@ -20,7 +20,7 @@ const LNURLWithdraw_1 = require("../../../../types/lnurl/LNURLWithdraw");
 const sha2_1 = require("@noble/hashes/sha2");
 /**
  * State enum for legacy Lightning -> Smart chain swaps
- * @category Swaps
+ * @category Swaps/Legacy/Lightning → Smart chain
  */
 var FromBTCLNSwapState;
 (function (FromBTCLNSwapState) {
@@ -79,7 +79,7 @@ exports.isFromBTCLNSwapInit = isFromBTCLNSwapInit;
  * Legacy escrow (HTLC) based swap for Bitcoin Lightning -> Smart chains, requires manual settlement
  *  of the swap on the destination network once the lightning network payment is received by the LP.
  *
- * @category Swaps
+ * @category Swaps/Legacy/Lightning → Smart chain
  */
 class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
     /**
@@ -235,11 +235,13 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
         return this.pr ?? "";
     }
     /**
+     * A hyperlink representation of the address + amount that the user needs to sends on the source chain.
+     *  This is suitable to be displayed in a form of QR code.
+     *
+     * @remarks
      * In case the swap is recovered from on-chain data, the address returned might be just a payment hash,
      *  as it is impossible to retrieve the actual lightning network invoice paid purely from on-chain
      *  data.
-     *
-     * @inheritDoc
      */
     getHyperlink() {
         return this.pr == null ? "" : "lightning:" + this.pr.toUpperCase();
@@ -809,7 +811,6 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
      *
      * @throws {Error} If swap is in invalid state (must be {@link FromBTCLNSwapState.CLAIM_COMMITED})
      * @throws {Error} If the LP refunded sooner than we were able to claim
-     * @returns {boolean} whether the swap was claimed in time or not
      */
     async waitTillClaimed(maxWaitTimeSeconds, abortSignal) {
         if (this._state === FromBTCLNSwapState.CLAIM_CLAIMED)

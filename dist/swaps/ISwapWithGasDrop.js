@@ -4,7 +4,7 @@ exports.isSwapWithGasDrop = void 0;
 /**
  * Type guard to check if a swap has gas drop functionality
  *
- * @category Swaps
+ * @category Swaps/Types
  */
 function isSwapWithGasDrop(swap) {
     return swap != null && typeof (swap.getGasDropOutput) === "function";

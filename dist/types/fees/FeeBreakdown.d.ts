@@ -3,7 +3,7 @@ import { Fee } from "./Fee";
 /**
  * Breakdown of fees by type (swap fee, network fee, etc.)
  *
- * @category Pricing and LPs
+ * @category Pricing
  */
 export type FeeBreakdown<ChainIdentifier extends string = string> = {
     type: FeeType;

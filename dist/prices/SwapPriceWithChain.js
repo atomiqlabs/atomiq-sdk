@@ -4,7 +4,7 @@ exports.SwapPriceWithChain = void 0;
 /**
  * Chain-specific wrapper for swap pricing
  *
- * @category Pricing and LPs
+ * @category Pricing
  */
 class SwapPriceWithChain {
     constructor(swapPrice, chainIdentifier) {
@@ -20,7 +20,7 @@ class SwapPriceWithChain {
      * @param feePPM PPM fee rate as reported by the intermediary
      * @param paidToken Amount of token to be paid to the swap
      * @param tokenAddress Token address to be paid
-     * @param abortSignal
+     * @param abortSignal Abort signal
      * @param preFetchedPrice An optional price pre-fetched with {@link preFetchPrice}
      */
     async isValidAmountSend(amountSats, satsBaseFee, feePPM, paidToken, tokenAddress, abortSignal, preFetchedPrice) {
@@ -34,7 +34,7 @@ class SwapPriceWithChain {
      * @param feePPM PPM fee rate as reported by the intermediary
      * @param receiveToken Amount of token to be received from the swap
      * @param tokenAddress Token address to be received
-     * @param abortSignal
+     * @param abortSignal Abort signal
      * @param preFetchedPrice An optional price pre-fetched with {@link preFetchPrice}
      */
     async isValidAmountReceive(amountSats, satsBaseFee, feePPM, receiveToken, tokenAddress, abortSignal, preFetchedPrice) {
@@ -44,12 +44,11 @@ class SwapPriceWithChain {
      * Pre-fetches the pricing data for a given token, such that further calls to {@link isValidAmountReceive} or
      *  {@link isValidAmountSend} are quicker and don't need to wait for the price fetch
      *
-     * @param chainIdentifier Chain identifier of the smart chain
      * @param tokenAddress Token address
-     * @param abortSignal
+     * @param abortSignal Abort signal
      */
-    preFetchPrice(token, abortSignal) {
-        return this.swapPrice.preFetchPrice(this.chainIdentifier, token, abortSignal);
+    preFetchPrice(tokenAddress, abortSignal) {
+        return this.swapPrice.preFetchPrice(this.chainIdentifier, tokenAddress, abortSignal);
     }
     /**
      * Pre-fetches the Bitcoin USD price data, such that further calls to {@link getBtcUsdValue},

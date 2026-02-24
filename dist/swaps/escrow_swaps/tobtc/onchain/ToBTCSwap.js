@@ -23,7 +23,7 @@ exports.isToBTCSwapInit = isToBTCSwapInit;
 /**
  * Escrow based (PrTLC) swap for Smart chains -> Bitcoin
  *
- * @category Swaps
+ * @category Swaps/Smart chain → Bitcoin
  */
 class ToBTCSwap extends IToBTCSwap_1.IToBTCSwap {
     constructor(wrapper, initOrObject) {

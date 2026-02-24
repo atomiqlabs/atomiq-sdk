@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.IPriceProvider = void 0;
 /**
  * Abstract base class for price provider implementations
- * @category Pricing and LPs
+ * @category Pricing
  */
 class IPriceProvider {
     constructor(coins) {

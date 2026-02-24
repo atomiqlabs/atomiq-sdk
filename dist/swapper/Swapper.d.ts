@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import { ISwapPrice } from "../prices/abstract/ISwapPrice";
-import { BitcoinNetwork, BtcRelay, ChainData, ChainType, Messenger, RelaySynchronizer } from "@atomiqlabs/base";
+import { BitcoinNetwork, BitcoinRpcWithAddressIndex, BtcBlock, BtcRelay, ChainData, ChainType, LightningNetworkApi, Messenger, RelaySynchronizer } from "@atomiqlabs/base";
 import { ToBTCLNOptions, ToBTCLNWrapper } from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNWrapper";
 import { ToBTCOptions, ToBTCWrapper } from "../swaps/escrow_swaps/tobtc/onchain/ToBTCWrapper";
 import { FromBTCLNOptions, FromBTCLNWrapper } from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNWrapper";
@@ -38,30 +38,100 @@ import { BtcToken, SCToken, Token } from "../types/Token";
 import { LNURLWithdraw } from "../types/lnurl/LNURLWithdraw";
 import { LNURLPay } from "../types/lnurl/LNURLPay";
 import { NotNever } from "../utils/TypeUtils";
-import { MempoolBitcoinBlock, MempoolBitcoinRpc } from "@atomiqlabs/btc-mempool";
 import { LightningInvoiceCreateService } from "../types/wallets/LightningInvoiceCreateService";
 /**
  * Configuration options for the Swapper
  * @category Core
  */
 export type SwapperOptions = {
+    /**
+     * Manual override for the intermediary (LP) URLs for the SDK to use, by default these are fetched automatically
+     * from the registry
+     */
     intermediaryUrl?: string | string[];
+    /**
+     * Registry URL for where to look for active intermediary (LP) endpoint URLs
+     */
     registryUrl?: string;
+    /**
+     * Bitcoin network to use for the swaps,
+     */
     bitcoinNetwork?: BitcoinNetwork;
+    /**
+     * Timeout (in milliseconds) for HTTP GET requests done by the SDK
+     */
     getRequestTimeout?: number;
+    /**
+     * Timeout (in milliseconds) for HTTP POST requests done by the SDK
+     */
     postRequestTimeout?: number;
+    /**
+     * Additional parameters to be sent to the intermediaries (LPs), when requesting quotes from them
+     */
     defaultAdditionalParameters?: {
         [key: string]: any;
     };
+    /**
+     * Optional name prefix to use when creating a swap storage, you can use this to create separate storage
+     *  instances that don't overlap.
+     */
     storagePrefix?: string;
+    /**
+     * Sets the default intermediary (LP) to use for the trusted gas swaps, if not set the SDK uses a default one
+     */
     defaultTrustedIntermediaryUrl?: string;
-    swapStorage?: <T extends ChainType>(chainId: T["ChainId"]) => IUnifiedStorage<UnifiedSwapStorageIndexes, UnifiedSwapStorageCompositeIndexes>;
+    /**
+     * A function callback to retrieve a specific named storage container for swap persistency. If not present, the
+     *  default IndexedDB storage adapter is used. When you use the SDK in non-browser based environments you need to
+     *  provide this callback such that the SDK is able to use a custom storage adapter.
+     *
+     * @param storageName Name of the container to retrieve
+     */
+    swapStorage?: (storageName: string) => IUnifiedStorage<UnifiedSwapStorageIndexes, UnifiedSwapStorageCompositeIndexes>;
+    /**
+     * By setting this flag, the swapper doesn't schedule automatic tick timers. To make sure the swap states are
+     * properly updated (e.g. the expired swaps properly move to the expired state), you should call the
+     *  {@link Swapper._syncSwaps} function periodically. This flag should be set when you run an environment that
+     *  doesn't support long-running timers - e.g. serverless environments like Azure Function Apps or AWS Lambda
+     */
     noTimers?: boolean;
+    /**
+     * By setting this flag, the swapper doesn't subscribe to on-chain events. To make sure the swap states are
+     *  properly updated you should call the {@link Swapper._syncSwaps} function periodically. This flag should be
+     *  set when you run an environment that doesn't support long-running timers and websocket connections - e.g.
+     *  serverless environments like Azure Function Apps or AWS Lambda
+     */
     noEvents?: boolean;
+    /**
+     * By setting this flag, the swap objects will not be cached in the SDK and instead will always be loaded from
+     *  the persistent storage. By default, the SDK uses a `WeakRef` mapping of swaps, to ensure that when the same
+     *  swap is loaded concurrently, it returns the same object reference to both, making the changes on the object
+     *  atomic. This flag should be set to `true` when running in an environment where multiple instances of the SDK
+     *  access the same swap database - e.g. serverless environments like Azure Function Apps or AWS Lambda
+     */
     noSwapCache?: boolean;
+    /**
+     * Skip checking past swaps when the swapper is initiated with {@link Swapper.init}, you can call the
+     * {@link Swapper._syncSwaps} function later, to check the swaps. By default, the SDK checks the state
+     * of all the known swaps during init.
+     */
     dontCheckPastSwaps?: boolean;
+    /**
+     * Skip fetching the LPs when the swapper is initiated with {@link Swapper.init}, this means the list of available
+     *  tokens and swap limits won't be available immediately. LPs will be fetched automatically later, when a swap
+     *  is requested
+     */
     dontFetchLPs?: boolean;
+    /**
+     * By setting this flag the SDK persists all created swaps. By default, the SDK only saves and persists swaps that
+     *  are considered initiated, i.e. when `commit()`, `execute()` or `waitTillPayment` is called (or their respective
+     *  txs... prefixed variations).
+     */
     saveUninitializedSwaps?: boolean;
+    /**
+     * Automatically checks system time on initialize, if the system time drifts too far from the actual time
+     *  (as checked from multiple server sources) it adjusts the `Date.now()` function to return proper actual time.
+     */
     automaticClockDriftCorrection?: boolean;
 };
 /**
@@ -86,8 +156,8 @@ type ChainSpecificData<T extends ChainType> = {
     swapContract: T["Contract"];
     spvVaultContract: T["SpvVaultContract"];
     chainInterface: T["ChainInterface"];
-    btcRelay: BtcRelay<any, T["TX"], MempoolBitcoinBlock, T["Signer"]>;
-    synchronizer: RelaySynchronizer<any, T["TX"], MempoolBitcoinBlock>;
+    btcRelay: BtcRelay<any, T["TX"], BtcBlock, T["Signer"]>;
+    synchronizer: RelaySynchronizer<any, T["TX"], BtcBlock>;
     unifiedChainEvents: UnifiedSwapEventListener<T>;
     unifiedSwapStorage: UnifiedSwapStorage<T>;
     reviver: (val: any) => ISwap<T>;
@@ -137,7 +207,7 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
      * Bitcoin RPC for fetching bitcoin chain data
      * @internal
      */
-    readonly _bitcoinRpc: MempoolBitcoinRpc;
+    readonly _bitcoinRpc: BitcoinRpcWithAddressIndex<any>;
     /**
      * Bitcoin network specification
      * @internal
@@ -173,7 +243,10 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
      * Miscellaneous utility functions
      */
     readonly Utils: SwapperUtils<T>;
-    constructor(bitcoinRpc: MempoolBitcoinRpc, chainsData: CtorMultiChainData<T>, pricing: ISwapPrice<T>, tokens: WrapperCtorTokens<T>, messenger: Messenger, options?: SwapperOptions);
+    /**
+     * @internal
+     */
+    constructor(bitcoinRpc: BitcoinRpcWithAddressIndex<any>, lightningApi: LightningNetworkApi, bitcoinSynchronizer: (btcRelay: BtcRelay<any, any, any>) => RelaySynchronizer<any, any, any>, chainsData: CtorMultiChainData<T>, pricing: ISwapPrice<T>, tokens: WrapperCtorTokens<T>, messenger: Messenger, options?: SwapperOptions);
     private _init;
     private initPromise?;
     private initialized;

@@ -5,7 +5,7 @@ const ExchangePriceProvider_1 = require("./abstract/ExchangePriceProvider");
 const HttpUtils_1 = require("../../http/HttpUtils");
 /**
  * Price provider using OKX exchange API
- * @category Pricing and LPs
+ * @category Pricing
  */
 class OKXPriceProvider extends ExchangePriceProvider_1.ExchangePriceProvider {
     constructor(coinsMap, url = "https://www.okx.com/api/v5", httpRequestTimeout) {

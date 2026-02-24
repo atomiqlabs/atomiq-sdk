@@ -2,7 +2,7 @@ import {toBigInt} from "../utils/Utils";
 
 /**
  * Pricing information for swap validation
- * @category Pricing and LPs
+ * @category Pricing
  */
 export type PriceInfoType = {
     isValid: boolean,
@@ -16,7 +16,7 @@ export type PriceInfoType = {
 
 /**
  * Type guard for PriceInfoType
- * @category Pricing and LPs
+ * @category Pricing
  */
 export function isPriceInfoType(obj: any): obj is PriceInfoType {
     return obj != null &&
@@ -31,7 +31,7 @@ export function isPriceInfoType(obj: any): obj is PriceInfoType {
 
 /**
  * Serializes PriceInfoType for storage
- * @category Pricing and LPs
+ * @category Pricing
  */
 export function serializePriceInfoType(obj: PriceInfoType | undefined): any {
     if (obj == null) return null;
@@ -48,7 +48,7 @@ export function serializePriceInfoType(obj: PriceInfoType | undefined): any {
 
 /**
  * Deserializes PriceInfoType from storage
- * @category Pricing and LPs
+ * @category Pricing
  */
 export function deserializePriceInfoType(obj: any): PriceInfoType | undefined {
     if (obj == null) return;

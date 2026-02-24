@@ -24,7 +24,7 @@ exports.isIToBTCSwapInit = isIToBTCSwapInit;
 /**
  * State enum for escrow-based Smart chain -> Bitcoin (on-chain & lightning) swaps
  *
- * @category Swaps
+ * @category Swaps/Smart chain → Bitcoin
  */
 var ToBTCSwapState;
 (function (ToBTCSwapState) {
@@ -71,7 +71,7 @@ var ToBTCSwapState;
 /**
  * Base class for escrow-based Smart chain -> Bitcoin (on-chain & lightning) swaps
  *
- * @category Swaps
+ * @category Swaps/Smart chain → Bitcoin
  */
 class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
     constructor(wrapper, initOrObject) {
@@ -392,13 +392,9 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
     //////////////////////////////
     //// Commit
     /**
-     * After sending the transaction manually be sure to call the {@link waitTillCommited} function
-     *  to wait till the initiation transaction is observed, processed by the SDK and state of the swap
-     *  properly updated.
-     *
      * @inheritDoc
      *
-     * @throws {Error} When in invalid state (not PR_CREATED)
+     * @throws {Error} When in invalid state (not {@link ToBTCSwapState.CREATED})
      */
     async txsCommit(skipChecks) {
         if (this._state !== ToBTCSwapState.CREATED)

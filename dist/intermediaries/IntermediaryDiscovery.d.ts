@@ -6,7 +6,7 @@ import { EventEmitter } from "events";
 /**
  * Swap handler type mapping for intermediary communication
  *
- * @category Pricing and LPs
+ * @category LPs
  */
 export declare enum SwapHandlerType {
     TO_BTC = "TO_BTC",
@@ -21,7 +21,7 @@ export declare enum SwapHandlerType {
 /**
  * Swap handler information type
  *
- * @category Pricing and LPs
+ * @category LPs
  */
 export type SwapHandlerInfoType = {
     swapFeePPM: number;
@@ -37,7 +37,7 @@ export type SwapHandlerInfoType = {
 /**
  * Token bounds (min/max) for swaps
  *
- * @category Pricing and LPs
+ * @category LPs
  */
 export type TokenBounds = {
     [token: string]: {
@@ -48,7 +48,7 @@ export type TokenBounds = {
 /**
  * Multi-chain token bounds (min/max) for swaps
  *
- * @category Pricing and LPs
+ * @category LPs
  */
 export type MultichainTokenBounds = {
     [chainId: string]: TokenBounds;
@@ -56,7 +56,7 @@ export type MultichainTokenBounds = {
 /**
  * Swap bounds by swap protocol type
  *
- * @category Pricing and LPs
+ * @category LPs
  */
 export type SwapBounds = {
     [key in SwapType]?: TokenBounds;
@@ -64,7 +64,7 @@ export type SwapBounds = {
 /**
  * Multi-chain swap bounds
  *
- * @category Pricing and LPs
+ * @category LPs
  */
 export type MultichainSwapBounds = {
     [key in SwapType]?: MultichainTokenBounds;
@@ -72,7 +72,7 @@ export type MultichainSwapBounds = {
 /**
  * Discovery service for available intermediaries (liquidity providers)
  *
- * @category Pricing and LPs
+ * @category LPs
  */
 export declare class IntermediaryDiscovery extends EventEmitter {
     /**

@@ -48,7 +48,7 @@ export function isIToBTCSwapInit<T extends SwapData>(obj: any): obj is IToBTCSwa
 /**
  * State enum for escrow-based Smart chain -> Bitcoin (on-chain & lightning) swaps
  *
- * @category Swaps
+ * @category Swaps/Smart chain → Bitcoin
  */
 export enum ToBTCSwapState {
     /**
@@ -95,7 +95,7 @@ export enum ToBTCSwapState {
 /**
  * Base class for escrow-based Smart chain -> Bitcoin (on-chain & lightning) swaps
  *
- * @category Swaps
+ * @category Swaps/Smart chain → Bitcoin
  */
 export abstract class IToBTCSwap<
     T extends ChainType = ChainType,
@@ -526,13 +526,9 @@ export abstract class IToBTCSwap<
     //// Commit
 
     /**
-     * After sending the transaction manually be sure to call the {@link waitTillCommited} function
-     *  to wait till the initiation transaction is observed, processed by the SDK and state of the swap
-     *  properly updated.
-     *
      * @inheritDoc
      *
-     * @throws {Error} When in invalid state (not PR_CREATED)
+     * @throws {Error} When in invalid state (not {@link ToBTCSwapState.CREATED})
      */
     async txsCommit(skipChecks?: boolean): Promise<T["TX"][]> {
         if(this._state!==ToBTCSwapState.CREATED) throw new Error("Must be in CREATED state!");

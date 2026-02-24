@@ -5,7 +5,7 @@ const ExchangePriceProvider_1 = require("./abstract/ExchangePriceProvider");
 const HttpUtils_1 = require("../../http/HttpUtils");
 /**
  * Price provider using Kraken exchange API
- * @category Pricing and LPs
+ * @category Pricing
  */
 class KrakenPriceProvider extends ExchangePriceProvider_1.ExchangePriceProvider {
     constructor(coinsMap, url = "https://api.kraken.com/0", httpRequestTimeout) {

@@ -4,7 +4,7 @@ exports.isLNURLPay = exports.isLNURLPayParams = void 0;
 /**
  * Type guard for {@link LNURLPayParams}
  *
- * @category Bitcoin
+ * @category Lightning
  * @internal
  */
 function isLNURLPayParams(obj) {
@@ -14,7 +14,7 @@ exports.isLNURLPayParams = isLNURLPayParams;
 /**
  * Type guard for {@link LNURLPay}
  *
- * @category Bitcoin
+ * @category Lightning
  * @internal
  */
 function isLNURLPay(value) {

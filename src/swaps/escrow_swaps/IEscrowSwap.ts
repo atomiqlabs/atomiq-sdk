@@ -25,7 +25,7 @@ export function isIEscrowSwapInit<T extends SwapData>(obj: any): obj is IEscrowS
 /**
  * Base class for escrow-based swaps (i.e. swaps utilizing PrTLC and HTLC primitives)
  *
- * @category Swaps
+ * @category Swaps/Abstract
  */
 export abstract class IEscrowSwap<
     T extends ChainType = ChainType,

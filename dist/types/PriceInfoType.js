@@ -4,7 +4,7 @@ exports.deserializePriceInfoType = exports.serializePriceInfoType = exports.isPr
 const Utils_1 = require("../utils/Utils");
 /**
  * Type guard for PriceInfoType
- * @category Pricing and LPs
+ * @category Pricing
  */
 function isPriceInfoType(obj) {
     return obj != null &&
@@ -19,7 +19,7 @@ function isPriceInfoType(obj) {
 exports.isPriceInfoType = isPriceInfoType;
 /**
  * Serializes PriceInfoType for storage
- * @category Pricing and LPs
+ * @category Pricing
  */
 function serializePriceInfoType(obj) {
     if (obj == null)
@@ -37,7 +37,7 @@ function serializePriceInfoType(obj) {
 exports.serializePriceInfoType = serializePriceInfoType;
 /**
  * Deserializes PriceInfoType from storage
- * @category Pricing and LPs
+ * @category Pricing
  */
 function deserializePriceInfoType(obj) {
     if (obj == null)

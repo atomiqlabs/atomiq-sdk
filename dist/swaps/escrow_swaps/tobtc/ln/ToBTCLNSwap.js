@@ -27,7 +27,7 @@ const SNOWFLAKE_LIST = new Set([
 /**
  * Escrow based (HTLC) swap for Smart chains -> Bitcoin lightning
  *
- * @category Swaps
+ * @category Swaps/Smart chain → Lightning
  */
 class ToBTCLNSwap extends IToBTCSwap_1.IToBTCSwap {
     /**

@@ -1,7 +1,7 @@
 /**
  * Parts-per-million fee representation with conversion helpers
  *
- * @category Pricing and LPs
+ * @category Pricing
  */
 export type PercentagePPM = {
     ppm: bigint,
@@ -13,7 +13,7 @@ export type PercentagePPM = {
 /**
  * Converts parts-per-million to percentage representation
  *
- * @category Pricing and LPs
+ * @category Pricing
  */
 export function ppmToPercentage(ppm: bigint): PercentagePPM {
     const percentage = Number(ppm) / 10_000;

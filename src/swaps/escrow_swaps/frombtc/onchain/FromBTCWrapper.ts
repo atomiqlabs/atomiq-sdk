@@ -56,7 +56,7 @@ export type FromBTCDefinition<T extends ChainType> = IFromBTCSelfInitDefinition<
  * Legacy escrow (PrTLC) based swap for Bitcoin -> Smart chains, requires manual initiation
  *  of the swap escrow on the destination chain.
  *
- * @category Swaps
+ * @category Swaps/Legacy/Bitcoin → Smart chain
  */
 export class FromBTCWrapper<
     T extends ChainType

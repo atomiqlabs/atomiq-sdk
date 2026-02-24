@@ -3,7 +3,7 @@ import { ChainType } from "@atomiqlabs/base";
 /**
  * Proxy type that auto-injects a smart chain signer into swap methods
  *
- * @category Swaps
+ * @category Swaps/Base
  */
 export type SwapWithSigner<T extends ISwap> = {
     [K in keyof T]: K extends "commit" ? (abortSignal?: AbortSignal, skipChecks?: boolean) => Promise<string> : K extends "refund" ? (abortSignal?: AbortSignal) => Promise<string> : K extends "claim" ? (abortSignal?: AbortSignal) => Promise<string> : K extends "commitAndClaim" ? (abortSignal?: AbortSignal, skipChecks?: boolean) => Promise<string> : T[K];

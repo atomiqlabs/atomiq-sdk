@@ -11,7 +11,7 @@ const PriceInfoType_1 = require("../types/PriceInfoType");
 /**
  * Type guard to check if an object is an ISwapInit
  *
- * @category Swaps
+ * @category Swaps/Base
  */
 function isISwapInit(obj) {
     return typeof obj === 'object' &&
@@ -27,7 +27,7 @@ exports.isISwapInit = isISwapInit;
 /**
  * Base abstract class for all swap types
  *
- * @category Swaps
+ * @category Swaps/Base
  */
 class ISwap {
     constructor(wrapper, swapInitOrObj) {

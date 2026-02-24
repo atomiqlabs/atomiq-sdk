@@ -7,7 +7,7 @@ import {PriceInfoType} from "../types/PriceInfoType";
 /**
  * Chain-specific wrapper for swap pricing
  *
- * @category Pricing and LPs
+ * @category Pricing
  */
 export class SwapPriceWithChain<T extends MultiChain, ChainIdentifier extends ChainIds<T>> {
 
@@ -29,7 +29,7 @@ export class SwapPriceWithChain<T extends MultiChain, ChainIdentifier extends Ch
      * @param feePPM PPM fee rate as reported by the intermediary
      * @param paidToken Amount of token to be paid to the swap
      * @param tokenAddress Token address to be paid
-     * @param abortSignal
+     * @param abortSignal Abort signal
      * @param preFetchedPrice An optional price pre-fetched with {@link preFetchPrice}
      */
     public async isValidAmountSend(
@@ -54,7 +54,7 @@ export class SwapPriceWithChain<T extends MultiChain, ChainIdentifier extends Ch
      * @param feePPM PPM fee rate as reported by the intermediary
      * @param receiveToken Amount of token to be received from the swap
      * @param tokenAddress Token address to be received
-     * @param abortSignal
+     * @param abortSignal Abort signal
      * @param preFetchedPrice An optional price pre-fetched with {@link preFetchPrice}
      */
     public async isValidAmountReceive(
@@ -75,12 +75,11 @@ export class SwapPriceWithChain<T extends MultiChain, ChainIdentifier extends Ch
      * Pre-fetches the pricing data for a given token, such that further calls to {@link isValidAmountReceive} or
      *  {@link isValidAmountSend} are quicker and don't need to wait for the price fetch
      *
-     * @param chainIdentifier Chain identifier of the smart chain
      * @param tokenAddress Token address
-     * @param abortSignal
+     * @param abortSignal Abort signal
      */
-    public preFetchPrice(token: string, abortSignal?: AbortSignal): Promise<bigint> {
-        return this.swapPrice.preFetchPrice<ChainIdentifier>(this.chainIdentifier, token, abortSignal);
+    public preFetchPrice(tokenAddress: string, abortSignal?: AbortSignal): Promise<bigint> {
+        return this.swapPrice.preFetchPrice<ChainIdentifier>(this.chainIdentifier, tokenAddress, abortSignal);
     }
 
     /**

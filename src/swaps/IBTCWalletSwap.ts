@@ -10,7 +10,7 @@ import {BtcToken} from "../types/Token";
 /**
  * Type guard to check if an object is an {@link IBTCWalletSwap}
  *
- * @category Swaps
+ * @category Swaps/Types
  */
 export function isIBTCWalletSwap(obj: any): obj is IBTCWalletSwap {
     return obj!=null &&
@@ -25,7 +25,7 @@ export function isIBTCWalletSwap(obj: any): obj is IBTCWalletSwap {
 /**
  * Interface for swaps requiring Bitcoin wallet interaction
  *
- * @category Swaps
+ * @category Swaps/Types
  */
 export interface IBTCWalletSwap {
 

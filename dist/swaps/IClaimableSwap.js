@@ -4,7 +4,7 @@ exports.isIClaimableSwap = void 0;
 /**
  * Type guard to check if an object is an {@link IClaimableSwap}
  *
- * @category Swaps
+ * @category Swaps/Types
  */
 function isIClaimableSwap(obj) {
     return obj != null &&

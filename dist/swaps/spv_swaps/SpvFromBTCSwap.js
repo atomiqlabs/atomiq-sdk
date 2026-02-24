@@ -88,26 +88,18 @@ var SpvFromBTCSwapState;
     SpvFromBTCSwapState[SpvFromBTCSwapState["CLAIMED"] = 6] = "CLAIMED";
 })(SpvFromBTCSwapState = exports.SpvFromBTCSwapState || (exports.SpvFromBTCSwapState = {}));
 const SpvFromBTCSwapStateDescription = {
-    [SpvFromBTCSwapState.CLOSED]: `Catastrophic failure has occurred when processing the swap on the smart chain side,
-         this implies a bug in the smart contract code or the user and intermediary deliberately
-         creating a bitcoin transaction with invalid format unparsable by the smart contract.`,
-    [SpvFromBTCSwapState.FAILED]: `Some of the bitcoin swap transaction inputs were double-spent, this means the swap
-     has failed and no BTC was sent`,
-    [SpvFromBTCSwapState.DECLINED]: `The intermediary (LP) declined to co-sign the submitted PSBT, hence the swap failed`,
-    [SpvFromBTCSwapState.QUOTE_EXPIRED]: `Swap has expired for good and there is no way how it can be executed anymore`,
-    [SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED]: `A swap is almost expired, and it should be presented to the user as expired, though
-     there is still a chance that it will be processed`,
-    [SpvFromBTCSwapState.CREATED]: `Swap was created, get the bitcoin swap PSBT that should be signed by the user's wallet
-     and then submit it back to the SDK.`,
-    [SpvFromBTCSwapState.SIGNED]: `Swap bitcoin PSBT was submitted by the client to the SDK`,
-    [SpvFromBTCSwapState.POSTED]: `Swap bitcoin PSBT sent to the intermediary (LP), waiting for the intermediary co-sign
-     it and broadcast.`,
-    [SpvFromBTCSwapState.BROADCASTED]: `Intermediary (LP) has co-signed and broadcasted the bitcoin transaction.`,
-    [SpvFromBTCSwapState.FRONTED]: `Settlement on the destination smart chain was fronted and funds were already received
-     by the user, even before the final settlement.`,
-    [SpvFromBTCSwapState.BTC_TX_CONFIRMED]: `Bitcoin transaction confirmed with necessary amount of confirmations, wait for automatic
-     settlement by the watchtower or settle manually.`,
-    [SpvFromBTCSwapState.CLAIMED]: `Swap settled on the smart chain and funds received`
+    [SpvFromBTCSwapState.CLOSED]: "Catastrophic failure has occurred when processing the swap on the smart chain side, this implies a bug in the smart contract code or the user and intermediary deliberately creating a bitcoin transaction with invalid format unparsable by the smart contract.",
+    [SpvFromBTCSwapState.FAILED]: "Some of the bitcoin swap transaction inputs were double-spent, this means the swap has failed and no BTC was sent",
+    [SpvFromBTCSwapState.DECLINED]: "The intermediary (LP) declined to co-sign the submitted PSBT, hence the swap failed",
+    [SpvFromBTCSwapState.QUOTE_EXPIRED]: "Swap has expired for good and there is no way how it can be executed anymore",
+    [SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED]: "A swap is almost expired, and it should be presented to the user as expired, though there is still a chance that it will be processed",
+    [SpvFromBTCSwapState.CREATED]: "Swap was created, get the bitcoin swap PSBT that should be signed by the user's wallet and then submit it back to the SDK.",
+    [SpvFromBTCSwapState.SIGNED]: "Swap bitcoin PSBT was submitted by the client to the SDK",
+    [SpvFromBTCSwapState.POSTED]: "Swap bitcoin PSBT sent to the intermediary (LP), waiting for the intermediary co-sign it and broadcast.",
+    [SpvFromBTCSwapState.BROADCASTED]: "Intermediary (LP) has co-signed and broadcasted the bitcoin transaction.",
+    [SpvFromBTCSwapState.FRONTED]: "Settlement on the destination smart chain was fronted and funds were already received by the user, even before the final settlement.",
+    [SpvFromBTCSwapState.BTC_TX_CONFIRMED]: "Bitcoin transaction confirmed with necessary amount of confirmations, wait for automatic settlement by the watchtower or settle manually.",
+    [SpvFromBTCSwapState.CLAIMED]: "Swap settled on the smart chain and funds received"
 };
 function isSpvFromBTCSwapInit(obj) {
     return typeof obj === "object" &&

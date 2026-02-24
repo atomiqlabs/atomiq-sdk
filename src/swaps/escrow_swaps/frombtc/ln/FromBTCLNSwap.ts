@@ -82,17 +82,14 @@ export enum FromBTCLNSwapState {
 }
 
 const FromBTCLNSwapStateDescription = {
-    [FromBTCLNSwapState.FAILED]: `Swap has failed as the user didn't settle the HTLC on the destination before expiration`,
-    [FromBTCLNSwapState.QUOTE_EXPIRED]: `Swap has expired for good and there is no way how it can be executed anymore`,
-    [FromBTCLNSwapState.QUOTE_SOFT_EXPIRED]: `Swap is expired, though there is still a chance that it will be processed`,
-    [FromBTCLNSwapState.EXPIRED]: `Swap HTLC on the destination chain has expired, it is not safe anymore to settle (claim) the
-     swap on the destination smart chain.`,
-    [FromBTCLNSwapState.PR_CREATED]: `Swap quote was created, pay the bolt11 lightning network invoice to initiate the swap,
-     then use the wait till the lightning network payment is received by the intermediary (LP)`,
-    [FromBTCLNSwapState.PR_PAID]: `Lightning network payment has been received by the intermediary (LP), the user can now settle
-     the swap on the destination smart chain side.`,
-    [FromBTCLNSwapState.CLAIM_COMMITED]: `Swap escrow HTLC has been created on the destination chain. Continue by claiming it.`,
-    [FromBTCLNSwapState.CLAIM_CLAIMED]: `Swap successfully settled and funds received on the destination chain`
+    [FromBTCLNSwapState.FAILED]: "Swap has failed as the user didn't settle the HTLC on the destination before expiration",
+    [FromBTCLNSwapState.QUOTE_EXPIRED]: "Swap has expired for good and there is no way how it can be executed anymore",
+    [FromBTCLNSwapState.QUOTE_SOFT_EXPIRED]: "Swap is expired, though there is still a chance that it will be processed",
+    [FromBTCLNSwapState.EXPIRED]: "Swap HTLC on the destination chain has expired, it is not safe anymore to settle (claim) the swap on the destination smart chain.",
+    [FromBTCLNSwapState.PR_CREATED]: "Swap quote was created, pay the bolt11 lightning network invoice to initiate the swap, then use the wait till the lightning network payment is received by the intermediary (LP)",
+    [FromBTCLNSwapState.PR_PAID]: "Lightning network payment has been received by the intermediary (LP), the user can now settle the swap on the destination smart chain side.",
+    [FromBTCLNSwapState.CLAIM_COMMITED]: "Swap escrow HTLC has been created on the destination chain. Continue by claiming it.",
+    [FromBTCLNSwapState.CLAIM_CLAIMED]: "Swap successfully settled and funds received on the destination chain"
 };
 
 export type FromBTCLNSwapInit<T extends SwapData> = IEscrowSelfInitSwapInit<T> & {

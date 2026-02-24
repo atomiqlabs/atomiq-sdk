@@ -50,6 +50,8 @@ function swapHandlerTypeToSwapType(swapHandlerType) {
             return SwapType_1.SwapType.SPV_VAULT_FROM_BTC;
         case SwapHandlerType.FROM_BTCLN_AUTO:
             return SwapType_1.SwapType.FROM_BTCLN_AUTO;
+        default:
+            return SwapType_1.SwapType.TRUSTED_FROM_BTCLN;
     }
 }
 /**

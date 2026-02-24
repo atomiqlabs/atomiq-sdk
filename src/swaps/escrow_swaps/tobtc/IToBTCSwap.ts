@@ -93,18 +93,14 @@ export enum ToBTCSwapState {
 }
 
 const ToBTCSwapStateDescription = {
-    [ToBTCSwapState.REFUNDED]: `Intermediary (LP) was unable to process the swap and the funds were refunded on the
-     source chain`,
-    [ToBTCSwapState.QUOTE_EXPIRED]: `Swap has expired for good and there is no way how it can be executed anymore`,
-    [ToBTCSwapState.QUOTE_SOFT_EXPIRED]: `A swap is expired, though there is still a chance that it will be processed`,
-    [ToBTCSwapState.CREATED]: `Swap was created, initiate it by creating the swap escrow on the source chain`,
-    [ToBTCSwapState.COMMITED]: `Swap escrow was initiated (committed) on the source chain, the intermediary (LP) will
-     now process the swap.`,
-    [ToBTCSwapState.SOFT_CLAIMED]: `The intermediary (LP) has processed the transaction and sent out the funds on the destination chain,
-     but hasn't yet settled the escrow on the source chain.`,
-    [ToBTCSwapState.CLAIMED]: `Swap was successfully settled by the intermediary (LP) on the source chain`,
-    [ToBTCSwapState.REFUNDABLE]: `Intermediary (LP) was unable to process the swap and the swap escrow on the source chain
-     is refundable.`
+    [ToBTCSwapState.REFUNDED]: "Intermediary (LP) was unable to process the swap and the funds were refunded on the source chain",
+    [ToBTCSwapState.QUOTE_EXPIRED]: "Swap has expired for good and there is no way how it can be executed anymore",
+    [ToBTCSwapState.QUOTE_SOFT_EXPIRED]: "A swap is expired, though there is still a chance that it will be processed",
+    [ToBTCSwapState.CREATED]: "Swap was created, initiate it by creating the swap escrow on the source chain",
+    [ToBTCSwapState.COMMITED]: "Swap escrow was initiated (committed) on the source chain, the intermediary (LP) will now process the swap.",
+    [ToBTCSwapState.SOFT_CLAIMED]: "The intermediary (LP) has processed the transaction and sent out the funds on the destination chain, but hasn't yet settled the escrow on the source chain.",
+    [ToBTCSwapState.CLAIMED]: "Swap was successfully settled by the intermediary (LP) on the source chain",
+    [ToBTCSwapState.REFUNDABLE]: "Intermediary (LP) was unable to process the swap and the swap escrow on the source chain is refundable."
 };
 
 /**

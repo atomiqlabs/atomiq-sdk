@@ -65,18 +65,14 @@ var FromBTCSwapState;
     FromBTCSwapState[FromBTCSwapState["CLAIM_CLAIMED"] = 3] = "CLAIM_CLAIMED";
 })(FromBTCSwapState = exports.FromBTCSwapState || (exports.FromBTCSwapState = {}));
 const FromBTCSwapStateDescription = {
-    [FromBTCSwapState.FAILED]: `Bitcoin swap address has expired and the intermediary (LP) has already refunded
-     its funds. No BTC should be sent anymore!`,
-    [FromBTCSwapState.EXPIRED]: `Bitcoin swap address has expired, user should not send any BTC anymore! Though
-     the intermediary (LP) hasn't refunded yet. So if there is a transaction already in-flight the swap might still succeed.`,
-    [FromBTCSwapState.QUOTE_EXPIRED]: `Swap has expired for good and there is no way how it can be executed anymore`,
-    [FromBTCSwapState.QUOTE_SOFT_EXPIRED]: `The swap is expired, though there is still a chance that it will be processed`,
-    [FromBTCSwapState.PR_CREATED]: `Swap quote was created, initiate it by creating the swap escrow on the destination smart chain`,
-    [FromBTCSwapState.CLAIM_COMMITED]: `Swap escrow was initiated (committed) on the destination chain, user can send the BTC to the
-     Bitcoin swap address.`,
-    [FromBTCSwapState.BTC_TX_CONFIRMED]: `Input bitcoin transaction was confirmed, wait for automatic settlement by the watchtower
-     or settle manually.`,
-    [FromBTCSwapState.CLAIM_CLAIMED]: `Swap successfully settled and funds received on the destination chain`
+    [FromBTCSwapState.FAILED]: "Bitcoin swap address has expired and the intermediary (LP) has already refunded its funds. No BTC should be sent anymore!",
+    [FromBTCSwapState.EXPIRED]: "Bitcoin swap address has expired, user should not send any BTC anymore! Though the intermediary (LP) hasn't refunded yet. So if there is a transaction already in-flight the swap might still succeed.",
+    [FromBTCSwapState.QUOTE_EXPIRED]: "Swap has expired for good and there is no way how it can be executed anymore",
+    [FromBTCSwapState.QUOTE_SOFT_EXPIRED]: "The swap is expired, though there is still a chance that it will be processed",
+    [FromBTCSwapState.PR_CREATED]: "Swap quote was created, initiate it by creating the swap escrow on the destination smart chain",
+    [FromBTCSwapState.CLAIM_COMMITED]: "Swap escrow was initiated (committed) on the destination chain, user can send the BTC to the Bitcoin swap address.",
+    [FromBTCSwapState.BTC_TX_CONFIRMED]: "Input bitcoin transaction was confirmed, wait for automatic settlement by the watchtower or settle manually.",
+    [FromBTCSwapState.CLAIM_CLAIMED]: "Swap successfully settled and funds received on the destination chain"
 };
 function isFromBTCSwapInit(obj) {
     return typeof (obj.data) === "object" &&

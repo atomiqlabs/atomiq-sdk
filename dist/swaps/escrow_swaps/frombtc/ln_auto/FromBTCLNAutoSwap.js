@@ -69,18 +69,14 @@ var FromBTCLNAutoSwapState;
     FromBTCLNAutoSwapState[FromBTCLNAutoSwapState["CLAIM_CLAIMED"] = 3] = "CLAIM_CLAIMED";
 })(FromBTCLNAutoSwapState = exports.FromBTCLNAutoSwapState || (exports.FromBTCLNAutoSwapState = {}));
 const FromBTCLNAutoSwapStateDescription = {
-    [FromBTCLNAutoSwapState.FAILED]: `Swap has failed as the user didn't settle the HTLC on the destination before expiration`,
-    [FromBTCLNAutoSwapState.QUOTE_EXPIRED]: `Swap has expired for good and there is no way how it can be executed anymore`,
-    [FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED]: `A swap is expired, though there is still a chance that it will be processed`,
-    [FromBTCLNAutoSwapState.EXPIRED]: `Swap HTLC on the destination chain has expired, it is not safe anymore to settle (claim) the
-     swap on the destination smart chain.`,
-    [FromBTCLNAutoSwapState.PR_CREATED]: `Swap quote was created, pay the bolt11 lightning network invoice to initiate the swap,
-     then wait till the lightning network payment is received by the intermediary (LP) and the destination HTLC escrow is created`,
-    [FromBTCLNAutoSwapState.PR_PAID]: `Lightning network payment has been received by the intermediary (LP), but the destination chain
-     HTLC escrow hasn't been created yet. Continue waiting till the destination HTLC escrow is created.`,
-    [FromBTCLNAutoSwapState.CLAIM_COMMITED]: `Swap escrow HTLC has been created on the destination chain, wait for automatic
-     settlement by the watchtowers or settle manually.`,
-    [FromBTCLNAutoSwapState.CLAIM_CLAIMED]: `Swap successfully settled and funds received on the destination chain`
+    [FromBTCLNAutoSwapState.FAILED]: "Swap has failed as the user didn't settle the HTLC on the destination before expiration",
+    [FromBTCLNAutoSwapState.QUOTE_EXPIRED]: "Swap has expired for good and there is no way how it can be executed anymore",
+    [FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED]: "A swap is expired, though there is still a chance that it will be processed",
+    [FromBTCLNAutoSwapState.EXPIRED]: "Swap HTLC on the destination chain has expired, it is not safe anymore to settle (claim) the swap on the destination smart chain.",
+    [FromBTCLNAutoSwapState.PR_CREATED]: "Swap quote was created, pay the bolt11 lightning network invoice to initiate the swap, then wait till the lightning network payment is received by the intermediary (LP) and the destination HTLC escrow is created",
+    [FromBTCLNAutoSwapState.PR_PAID]: "Lightning network payment has been received by the intermediary (LP), but the destination chain HTLC escrow hasn't been created yet. Continue waiting till the destination HTLC escrow is created.",
+    [FromBTCLNAutoSwapState.CLAIM_COMMITED]: "Swap escrow HTLC has been created on the destination chain, wait for automatic settlement by the watchtowers or settle manually.",
+    [FromBTCLNAutoSwapState.CLAIM_CLAIMED]: "Swap successfully settled and funds received on the destination chain"
 };
 function isFromBTCLNAutoSwapInit(obj) {
     return (obj.pr == null || typeof obj.pr === "string") &&

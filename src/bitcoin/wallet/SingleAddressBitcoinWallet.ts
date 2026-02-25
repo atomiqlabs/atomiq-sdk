@@ -6,7 +6,7 @@ import {identifyAddressType, BitcoinWallet} from "./BitcoinWallet";
 import {BitcoinNetwork, BitcoinRpcWithAddressIndex} from "@atomiqlabs/base";
 import {HDKey} from "@scure/bip32";
 import {entropyToMnemonic, generateMnemonic, mnemonicToSeed} from "@scure/bip39";
-import {wordlist} from "@scure/bip39/wordlists/english";
+import {wordlist} from "@scure/bip39/wordlists/english.js";
 import {sha256} from "@noble/hashes/sha2";
 
 /**

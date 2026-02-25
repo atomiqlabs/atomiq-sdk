@@ -7,7 +7,7 @@ const buffer_1 = require("buffer");
 const BitcoinWallet_1 = require("./BitcoinWallet");
 const bip32_1 = require("@scure/bip32");
 const bip39_1 = require("@scure/bip39");
-const english_1 = require("@scure/bip39/wordlists/english");
+const english_js_1 = require("@scure/bip39/wordlists/english.js");
 const sha2_1 = require("@noble/hashes/sha2");
 /**
  * Bitcoin wallet implementation deriving a single address from a WIF encoded private key
@@ -137,13 +137,13 @@ class SingleAddressBitcoinWallet extends BitcoinWallet_1.BitcoinWallet {
         if (entropy.length < 16)
             throw new Error("Requires at least 128-bit entropy (16 bytes)");
         const entropyHash = buffer_1.Buffer.from((0, sha2_1.sha256)(entropy)).subarray(0, 16);
-        return (0, bip39_1.entropyToMnemonic)(entropyHash, english_1.wordlist);
+        return (0, bip39_1.entropyToMnemonic)(entropyHash, english_js_1.wordlist);
     }
     /**
      * Generates a random 12-word long mnemonic
      */
     static generateRandomMnemonic() {
-        return (0, bip39_1.generateMnemonic)(english_1.wordlist, 128);
+        return (0, bip39_1.generateMnemonic)(english_js_1.wordlist, 128);
     }
     /**
      * Generates a WIF private key from mnemonic phrase

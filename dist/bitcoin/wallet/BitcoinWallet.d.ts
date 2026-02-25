@@ -5,7 +5,7 @@ import { BTC_NETWORK } from "@scure/btc-signer/utils";
 import { Transaction } from "@scure/btc-signer";
 import { IBitcoinWallet } from "./IBitcoinWallet";
 import { Buffer } from "buffer";
-import { BitcoinRpcWithAddressIndex } from "@atomiqlabs/base";
+import { BitcoinNetwork, BitcoinRpcWithAddressIndex } from "@atomiqlabs/base";
 /**
  * UTXO data structure for Bitcoin wallets
  *
@@ -41,7 +41,7 @@ export declare abstract class BitcoinWallet implements IBitcoinWallet {
     protected readonly network: BTC_NETWORK;
     protected feeMultiplier: number;
     protected feeOverride?: number;
-    constructor(mempoolApi: BitcoinRpcWithAddressIndex<any>, network: BTC_NETWORK, feeMultiplier?: number, feeOverride?: number);
+    constructor(mempoolApi: BitcoinRpcWithAddressIndex<any>, network: BitcoinNetwork | BTC_NETWORK, feeMultiplier?: number, feeOverride?: number);
     /**
      * @inheritDoc
      */
@@ -126,4 +126,5 @@ export declare abstract class BitcoinWallet implements IBitcoinWallet {
         feeRate: number;
         totalFee: number;
     }>;
+    static bitcoinNetworkToObject(network: BitcoinNetwork): BTC_NETWORK;
 }

@@ -1,5 +1,5 @@
 import {coinSelect, maxSendable, CoinselectAddressTypes, CoinselectTxInput} from "../coinselect2";
-import {BTC_NETWORK} from "@scure/btc-signer/utils"
+import {BTC_NETWORK, NETWORK, TEST_NETWORK} from "@scure/btc-signer/utils"
 import {p2wpkh, OutScript, Transaction, p2tr, Address} from "@scure/btc-signer";
 import {IBitcoinWallet} from "./IBitcoinWallet";
 import {Buffer} from "buffer";
@@ -7,7 +7,7 @@ import {randomBytes} from "../../utils/Utils";
 import {toCoinselectAddressType, toOutputScript} from "../../utils/BitcoinUtils";
 import {TransactionInputUpdate} from "@scure/btc-signer/psbt";
 import {getLogger} from "../../utils/Logger";
-import {BitcoinRpcWithAddressIndex} from "@atomiqlabs/base";
+import {BitcoinNetwork, BitcoinRpcWithAddressIndex} from "@atomiqlabs/base";
 
 /**
  * UTXO data structure for Bitcoin wallets
@@ -50,6 +50,16 @@ export function identifyAddressType(address: string, network: BTC_NETWORK): Coin
     }
 }
 
+const btcNetworkMapping = {
+    [BitcoinNetwork.MAINNET]: NETWORK,
+    [BitcoinNetwork.TESTNET]: TEST_NETWORK,
+    [BitcoinNetwork.TESTNET4]: TEST_NETWORK,
+    [BitcoinNetwork.REGTEST]: {
+        ...TEST_NETWORK,
+        bech32: "bcrt"
+    }
+}
+
 const logger = getLogger("BitcoinWallet: ");
 
 /**
@@ -65,9 +75,13 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
     protected feeMultiplier: number;
     protected feeOverride?: number;
 
-    constructor(mempoolApi: BitcoinRpcWithAddressIndex<any>, network: BTC_NETWORK, feeMultiplier: number = 1.25, feeOverride?: number) {
+    constructor(
+        mempoolApi: BitcoinRpcWithAddressIndex<any>,
+        network: BitcoinNetwork | BTC_NETWORK,
+        feeMultiplier: number = 1.25, feeOverride?: number
+    ) {
         this.rpc = mempoolApi;
-        this.network = network;
+        this.network = typeof(network)==="object" ? network : BitcoinWallet.bitcoinNetworkToObject(network);
         this.feeMultiplier = feeMultiplier;
         this.feeOverride = feeOverride;
     }
@@ -407,5 +421,8 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
         totalFee: number
     }>;
 
+    static bitcoinNetworkToObject(network: BitcoinNetwork): BTC_NETWORK {
+        return btcNetworkMapping[network];
+    }
 
 }

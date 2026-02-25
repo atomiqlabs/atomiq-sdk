@@ -5,13 +5,20 @@ const utils_1 = require("@scure/btc-signer/utils");
 const btc_signer_1 = require("@scure/btc-signer");
 const buffer_1 = require("buffer");
 const BitcoinWallet_1 = require("./BitcoinWallet");
+const bip32_1 = require("@scure/bip32");
+const bip39_1 = require("@scure/bip39");
+const english_1 = require("@scure/bip39/wordlists/english");
+const sha2_1 = require("@noble/hashes/sha2");
 /**
  * Bitcoin wallet implementation deriving a single address from a WIF encoded private key
  *
  * @category Bitcoin
  */
 class SingleAddressBitcoinWallet extends BitcoinWallet_1.BitcoinWallet {
-    constructor(mempoolApi, network, addressDataOrWIF, feeMultiplier = 1.25, feeOverride) {
+    constructor(mempoolApi, _network, addressDataOrWIF, feeMultiplier = 1.25, feeOverride) {
+        const network = typeof (_network) === "object"
+            ? _network
+            : BitcoinWallet_1.BitcoinWallet.bitcoinNetworkToObject(_network);
         super(mempoolApi, network, feeMultiplier, feeOverride);
         if (typeof (addressDataOrWIF) === "string") {
             try {
@@ -115,7 +122,49 @@ class SingleAddressBitcoinWallet extends BitcoinWallet_1.BitcoinWallet {
      * @returns A WIF encoded bitcoin private key
      */
     static generateRandomPrivateKey(network) {
-        return (0, btc_signer_1.WIF)(network).encode((0, utils_1.randomPrivateKeyBytes)());
+        const networkObject = network == null || typeof (network) === "object"
+            ? network
+            : BitcoinWallet_1.BitcoinWallet.bitcoinNetworkToObject(network);
+        return (0, btc_signer_1.WIF)(networkObject).encode((0, utils_1.randomPrivateKeyBytes)());
+    }
+    /**
+     * Generates a 12-word long mnemonic from any entropy source with 128-bits or more, the entropy is first hashed
+     *  using sha256, and the first 16 bytes of the hash are used to generate the mnemonic
+     *
+     * @param entropy Entropy to use for generating the mnemonic
+     */
+    static mnemonicFromEntropy(entropy) {
+        if (entropy.length < 16)
+            throw new Error("Requires at least 128-bit entropy (16 bytes)");
+        const entropyHash = buffer_1.Buffer.from((0, sha2_1.sha256)(entropy)).subarray(0, 16);
+        return (0, bip39_1.entropyToMnemonic)(entropyHash, english_1.wordlist);
+    }
+    /**
+     * Generates a random 12-word long mnemonic
+     */
+    static generateRandomMnemonic() {
+        return (0, bip39_1.generateMnemonic)(english_1.wordlist, 128);
+    }
+    /**
+     * Generates a WIF private key from mnemonic phrase
+     *
+     * @param mnemonic Mnemonic to generate the WIF key from
+     * @param network Optional bitcoin network to generate the WIF for
+     * @param derivationPath Optional custom derivation path to use for deriving the wallet
+     */
+    static async mnemonicToPrivateKey(mnemonic, network, derivationPath) {
+        const networkObject = network == null || typeof (network) === "object"
+            ? network
+            : BitcoinWallet_1.BitcoinWallet.bitcoinNetworkToObject(network);
+        derivationPath = networkObject == null || networkObject.bech32 === utils_1.NETWORK.bech32
+            ? "m/84'/0'/0'/0/0" //Mainnet
+            : "m/84'/1'/0'/0/0"; //Testnet
+        const seed = await (0, bip39_1.mnemonicToSeed)(mnemonic);
+        const hdKey = bip32_1.HDKey.fromMasterSeed(seed);
+        const privateKey = hdKey.derive(derivationPath).privateKey;
+        if (privateKey == null)
+            throw new Error("Cannot derive private key from the mnemonic!");
+        return (0, btc_signer_1.WIF)(networkObject).encode(privateKey);
     }
 }
 exports.SingleAddressBitcoinWallet = SingleAddressBitcoinWallet;

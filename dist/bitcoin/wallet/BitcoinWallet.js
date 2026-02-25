@@ -2,11 +2,13 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BitcoinWallet = exports.identifyAddressType = void 0;
 const coinselect2_1 = require("../coinselect2");
+const utils_1 = require("@scure/btc-signer/utils");
 const btc_signer_1 = require("@scure/btc-signer");
 const buffer_1 = require("buffer");
 const Utils_1 = require("../../utils/Utils");
 const BitcoinUtils_1 = require("../../utils/BitcoinUtils");
 const Logger_1 = require("../../utils/Logger");
+const base_1 = require("@atomiqlabs/base");
 /**
  * Identifies the address type of a Bitcoin address
  *
@@ -29,6 +31,15 @@ function identifyAddressType(address, network) {
     }
 }
 exports.identifyAddressType = identifyAddressType;
+const btcNetworkMapping = {
+    [base_1.BitcoinNetwork.MAINNET]: utils_1.NETWORK,
+    [base_1.BitcoinNetwork.TESTNET]: utils_1.TEST_NETWORK,
+    [base_1.BitcoinNetwork.TESTNET4]: utils_1.TEST_NETWORK,
+    [base_1.BitcoinNetwork.REGTEST]: {
+        ...utils_1.TEST_NETWORK,
+        bech32: "bcrt"
+    }
+};
 const logger = (0, Logger_1.getLogger)("BitcoinWallet: ");
 /**
  * Abstract base class for Bitcoin wallet implementations, using bitcoin rpc with address index
@@ -39,7 +50,7 @@ const logger = (0, Logger_1.getLogger)("BitcoinWallet: ");
 class BitcoinWallet {
     constructor(mempoolApi, network, feeMultiplier = 1.25, feeOverride) {
         this.rpc = mempoolApi;
-        this.network = network;
+        this.network = typeof (network) === "object" ? network : BitcoinWallet.bitcoinNetworkToObject(network);
         this.feeMultiplier = feeMultiplier;
         this.feeOverride = feeOverride;
     }
@@ -303,6 +314,9 @@ class BitcoinWallet {
             balance: BigInt(Math.floor(coinselectResult.value)),
             totalFee: coinselectResult.fee
         };
+    }
+    static bitcoinNetworkToObject(network) {
+        return btcNetworkMapping[network];
     }
 }
 exports.BitcoinWallet = BitcoinWallet;

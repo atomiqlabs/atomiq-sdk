@@ -988,6 +988,7 @@ export class SpvFromBTCWrapper<
         const successfullyUsedWallets: string[] = [];
         const swapWalletData: {[address: string]: {balance: bigint, utxos: BitcoinWalletUtxo[]}} = {};
         for(const swap of swaps) {
+            if(!swap.isInitiated() || swap.getState()!==SpvFromBTCSwapState.CREATED) continue;
             const swapWalletAddress = swap._getSwapWalletAddress();
             if(!swapWalletAddress) continue;
             if(successfullyUsedWallets.includes(swapWalletAddress)) continue;

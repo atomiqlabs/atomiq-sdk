@@ -757,6 +757,8 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
         const successfullyUsedWallets = [];
         const swapWalletData = {};
         for (const swap of swaps) {
+            if (!swap.isInitiated() || swap.getState() !== SpvFromBTCSwap_1.SpvFromBTCSwapState.CREATED)
+                continue;
             const swapWalletAddress = swap._getSwapWalletAddress();
             if (!swapWalletAddress)
                 continue;

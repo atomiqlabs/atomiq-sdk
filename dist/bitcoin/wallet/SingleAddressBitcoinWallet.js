@@ -107,6 +107,12 @@ class SingleAddressBitcoinWallet extends BitcoinWallet_1.BitcoinWallet {
         return this.address;
     }
     /**
+     * Returns the public key of the wallet
+     */
+    getPublicKey() {
+        return buffer_1.Buffer.from(this.pubkey).toString("hex");
+    }
+    /**
      * @inheritDoc
      */
     getBalance() {

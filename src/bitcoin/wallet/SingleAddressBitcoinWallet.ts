@@ -10,7 +10,6 @@ import {wordlist} from "@scure/bip39/wordlists/english.js";
 import {sha256} from "@noble/hashes/sha2";
 import {BitcoinNotEnoughBalanceError} from "../../errors/BitcoinNotEnoughBalanceError";
 import {toOutputScript} from "../../utils/BitcoinUtils";
-import { utils } from "../coinselect2/utils";
 import {BitcoinWalletUtxo} from "./IBitcoinWallet";
 
 /**
@@ -120,6 +119,13 @@ export class SingleAddressBitcoinWallet extends BitcoinWallet {
      */
     getReceiveAddress(): string {
         return this.address;
+    }
+
+    /**
+     * Returns the public key of the wallet
+     */
+    getPublicKey(): string {
+        return Buffer.from(this.pubkey).toString("hex");
     }
 
     /**

@@ -56,6 +56,10 @@ export declare class SingleAddressBitcoinWallet extends BitcoinWallet {
      */
     getReceiveAddress(): string;
     /**
+     * Returns the public key of the wallet
+     */
+    getPublicKey(): string;
+    /**
      * @inheritDoc
      */
     getBalance(): Promise<{

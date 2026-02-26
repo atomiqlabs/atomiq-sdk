@@ -114,6 +114,7 @@ export type SpvFromBTCSwapInit = ISwapInit & {
     swapWalletAddress?: string;
     swapWalletMaxNetworkFeeRate?: number;
     swapWalletType?: "prefunded" | "waitpayment";
+    swapWalletExistingUtxos?: string[];
 };
 export declare function isSpvFromBTCSwapInit(obj: any): obj is SpvFromBTCSwapInit;
 /**
@@ -176,10 +177,11 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
     private readonly executionFeeShare;
     private readonly gasPricingInfo?;
     private posted?;
-    private swapWalletWIF?;
-    private swapWalletAddress?;
-    private swapWalletMaxNetworkFeeRate?;
-    private swapWalletType?;
+    private readonly swapWalletWIF?;
+    private readonly swapWalletAddress?;
+    private readonly swapWalletMaxNetworkFeeRate?;
+    private readonly swapWalletType?;
+    private readonly swapWalletExistingUtxos?;
     /**
      * @internal
      */
@@ -260,17 +262,9 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
      */
     _getSwapWalletAddress(): string | null;
     /**
-     * Sets the wallet to be used for receiving funds on BTC and automatically
-     *
-     * @param mnemonic Mnemonic to use, either newly created one, or derived from the recoverable
-     *  entropy from the AbstractSigner
+     * Aborts the swap, meaning the swap address will not automatically trigger the swap initiation anymore
      */
-    setSwapWalletMnemonic(mnemonic: string): Promise<void>;
-    /**
-     * Removes the swap wallet from the swap, after this the swap can only be executed by co-signing a PSBT
-     *  from an external wallet
-     */
-    clearSwapWalletMnemonic(): Promise<void>;
+    abortSwap(): Promise<void>;
     /**
      * Returns whether the swap has a swap wallet address, that automatically executes the swap upon
      *  receiving BTC funds
@@ -429,6 +423,12 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
      */
     getInput(): TokenAmount<T["ChainId"], BtcToken<false>, true>;
     /**
+     * Executes a prefunded swap by funding the PSBT with exact snapshotted UTXOs, spending all of them fully.
+     *
+     * @internal
+     */
+    private _tryToPayFromPrefundedSwapWallet;
+    /**
      * @internal
      */
     _getSwapBitcoinWallet(): SingleAddressBitcoinWallet;
@@ -478,6 +478,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
      * @param _bitcoinWallet Sender's bitcoin wallet
      * @param feeRate Optional fee rate in sats/vB for the transaction
      * @param additionalOutputs additional outputs to add to the PSBT - can be used to collect fees from users
+     * @param utxos Optional fixed UTXO set to use for funding the PSBT
      */
     getFundedPsbt(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number, additionalOutputs?: ({
         amount: bigint;
@@ -485,7 +486,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
     } | {
         amount: bigint;
         address: string;
-    })[]): Promise<{
+    })[], utxos?: BitcoinWalletUtxo[]): Promise<{
         psbt: Transaction;
         psbtHex: string;
         psbtBase64: string;

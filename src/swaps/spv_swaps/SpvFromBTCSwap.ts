@@ -157,6 +157,7 @@ export type SpvFromBTCSwapInit = ISwapInit & {
     swapWalletAddress?: string;
     swapWalletMaxNetworkFeeRate?: number;
     swapWalletType?: "prefunded" | "waitpayment";
+    swapWalletExistingUtxos?: string[];
 };
 
 export function isSpvFromBTCSwapInit(obj: any): obj is SpvFromBTCSwapInit {
@@ -190,6 +191,7 @@ export function isSpvFromBTCSwapInit(obj: any): obj is SpvFromBTCSwapInit {
         (obj.swapWalletAddress==null || typeof(obj.swapWalletAddress)==="string") &&
         (obj.swapWalletMaxNetworkFeeRate==null || typeof(obj.swapWalletMaxNetworkFeeRate)==="number") &&
         (obj.swapWalletType==null || typeof(obj.swapWalletType)==="string") &&
+        (obj.swapWalletExistingUtxos==null || (Array.isArray(obj.swapWalletExistingUtxos) && obj.swapWalletExistingUtxos.reduce((prev: boolean, curr: any) => prev && typeof(curr)==="string", true))) &&
         isISwapInit(obj);
 }
 
@@ -255,10 +257,11 @@ export class SpvFromBTCSwap<T extends ChainType>
 
     private posted?: boolean;
 
-    private swapWalletWIF?: string;
-    private swapWalletAddress?: string;
-    private swapWalletMaxNetworkFeeRate?: number;
-    private swapWalletType?: "prefunded" | "waitpayment";
+    private readonly swapWalletWIF?: string;
+    private readonly swapWalletAddress?: string;
+    private readonly swapWalletMaxNetworkFeeRate?: number;
+    private readonly swapWalletType?: "prefunded" | "waitpayment";
+    private readonly swapWalletExistingUtxos?: string[];
 
     /**
      * @internal
@@ -328,6 +331,7 @@ export class SpvFromBTCSwap<T extends ChainType>
             this.swapWalletAddress = initOrObject.swapWalletAddress;
             this.swapWalletMaxNetworkFeeRate = initOrObject.swapWalletMaxNetworkFeeRate;
             this.swapWalletType = initOrObject.swapWalletType;
+            this.swapWalletExistingUtxos = initOrObject.swapWalletExistingUtxos;
             const vaultAddressType = toCoinselectAddressType(toOutputScript(this.wrapper._options.bitcoinNetwork, this.vaultBtcAddress));
             if(vaultAddressType!=="p2tr" && vaultAddressType!=="p2wpkh" && vaultAddressType!=="p2wsh")
                 throw new Error("Vault address type must be of witness type: p2tr, p2wpkh, p2wsh");
@@ -366,6 +370,7 @@ export class SpvFromBTCSwap<T extends ChainType>
             this.swapWalletAddress = initOrObject.swapWalletAddress;
             this.swapWalletMaxNetworkFeeRate = initOrObject.swapWalletMaxNetworkFeeRate;
             this.swapWalletType = initOrObject.swapWalletType;
+            this.swapWalletExistingUtxos = initOrObject.swapWalletExistingUtxos;
             if(initOrObject.data!=null) this._data = new this.wrapper._spvWithdrawalDataDeserializer(initOrObject.data);
         }
         this.tryCalculateSwapFee();
@@ -486,36 +491,11 @@ export class SpvFromBTCSwap<T extends ChainType>
     }
 
     /**
-     * Sets the wallet to be used for receiving funds on BTC and automatically
-     *
-     * @param mnemonic Mnemonic to use, either newly created one, or derived from the recoverable
-     *  entropy from the AbstractSigner
+     * Aborts the swap, meaning the swap address will not automatically trigger the swap initiation anymore
      */
-    async setSwapWalletMnemonic(mnemonic: string): Promise<void> {
-        const wif = await SingleAddressBitcoinWallet.mnemonicToPrivateKey(
-            mnemonic,
-            this.wrapper._options.bitcoinNetwork
-        );
-        const bitcoinWallet = new SingleAddressBitcoinWallet(
-            this.wrapper._btcRpc,
-            this.wrapper._options.bitcoinNetwork,
-            wif
-        );
-        this.swapWalletWIF = wif;
-        this.swapWalletAddress = bitcoinWallet.getReceiveAddress();
-        this.swapWalletType = "waitpayment";
-        await this._save();
-    }
-
-    /**
-     * Removes the swap wallet from the swap, after this the swap can only be executed by co-signing a PSBT
-     *  from an external wallet
-     */
-    async clearSwapWalletMnemonic(): Promise<void> {
-        this.swapWalletWIF = undefined;
-        this.swapWalletAddress = undefined;
-        this.swapWalletType = undefined;
-        await this._save();
+    async abortSwap(): Promise<void> {
+        if(this._state!==SpvFromBTCSwapState.CREATED) throw new Error("Can only abort swap in CREATED state!");
+        await this._saveAndEmit(SpvFromBTCSwapState.QUOTE_EXPIRED);
     }
 
     /**
@@ -888,6 +868,52 @@ export class SpvFromBTCSwap<T extends ChainType>
     //// Bitcoin tx
 
     /**
+     * Executes a prefunded swap by funding the PSBT with exact snapshotted UTXOs, spending all of them fully.
+     *
+     * @internal
+     */
+    private async _tryToPayFromPrefundedSwapWallet(): Promise<string> {
+        if(
+            this._state!==SpvFromBTCSwapState.CREATED ||
+            !this.isInitiated() ||
+            !this.hasSwapWallet() ||
+            this.swapWalletType!=="prefunded" ||
+            this.swapWalletAddress==null ||
+            this.swapWalletMaxNetworkFeeRate==null
+        ) {
+            throw new Error("Swap isn't in prefunded wallet mode!");
+        }
+        const btcWallet = this._getSwapBitcoinWallet();
+        const existingSwapWalletUtxos = this.swapWalletExistingUtxos;
+        if(existingSwapWalletUtxos==null || existingSwapWalletUtxos.length===0) {
+            throw new Error("No wallet UTXO snapshot found for prefunded swap execution");
+        }
+        const currentUtxos = await btcWallet.getUtxoPool();
+        const prefundedUtxos = currentUtxos.filter(utxo => existingSwapWalletUtxos.includes(`${utxo.txId.toLowerCase()}:${utxo.vout}`));
+        if(prefundedUtxos.length!==existingSwapWalletUtxos.length) {
+            throw new Error("Prefunded swap wallet UTXO snapshot changed, please recreate swap");
+        }
+
+        const {psbt: unfundedPsbt, in1sequence} = await this.getPsbt();
+        const {psbt, fee, feeRate} = SingleAddressBitcoinWallet.fundPsbtWithExactUtxos(unfundedPsbt, prefundedUtxos);
+        if(feeRate < this.minimumBtcFeeRate) {
+            throw new Error(
+                "Unable to process prefunded swap, resulting fee rate is below minimum allowed for the swap, " +
+                `calculated fee: ${fee.toString(10)}, calculated fee rate: ${feeRate}, minimum fee rate: ${this.minimumBtcFeeRate}`
+            );
+        }
+        psbt.updateInput(1, {sequence: in1sequence});
+
+        const signInputs: number[] = [];
+        for(let i=1;i<psbt.inputsLength;i++) {
+            signInputs.push(i);
+        }
+
+        const signedPsbt = await btcWallet.signPsbt(psbt, signInputs);
+        return await this.submitPsbt(signedPsbt);
+    }
+
+    /**
      * @internal
      */
     _getSwapBitcoinWallet(): SingleAddressBitcoinWallet {
@@ -922,9 +948,13 @@ export class SpvFromBTCSwap<T extends ChainType>
             this.swapWalletAddress, this.swapWalletMaxNetworkFeeRate, this.outputTotalGas!==0n
         );
         const requiredUTXOValue = this.btcAmount + expectedNetworkFee;
-        const foundUTXO: BitcoinWalletUtxo | undefined = utxos.find(utxo => BigInt(utxo.value)===requiredUTXOValue);
+        const existingSwapWalletUtxos = this.swapWalletExistingUtxos;
+        const availableUtxos = existingSwapWalletUtxos==null || existingSwapWalletUtxos.length===0
+            ? utxos
+            : utxos.filter(utxo => !existingSwapWalletUtxos.includes(`${utxo.txId.toLowerCase()}:${utxo.vout}`));
+        const foundUTXO: BitcoinWalletUtxo | undefined = availableUtxos.find(utxo => BigInt(utxo.value)===requiredUTXOValue);
         this.logger.debug(`_tryToPayFromSwapWallet(): Checked address UTXOs, expected network fee: ${expectedNetworkFee},`+
-            ` searched for UTXO with value: ${requiredUTXOValue}, found: `, foundUTXO);
+            ` searched for UTXO with value: ${requiredUTXOValue} (after existing snapshot filtering), found: `, foundUTXO);
 
         if(foundUTXO==null) return false;
 
@@ -933,7 +963,7 @@ export class SpvFromBTCSwap<T extends ChainType>
 
         //Try to spend that UTXO as a whole to fund the swap
         const {psbt: unfundedPsbt, in1sequence} = await this.getPsbt();
-        const {psbt, fee, feeRate} = btcWallet.fundPsbtWithExactUtxos(unfundedPsbt, [foundUTXO]);
+        const {psbt, fee, feeRate} = SingleAddressBitcoinWallet.fundPsbtWithExactUtxos(unfundedPsbt, [foundUTXO]);
         if(feeRate < this.minimumBtcFeeRate) {
             this.logger.warn(`_tryToPayFromSwapWallet(): Unable to process swap using the found UTXO, `+
                 `resulting fee rate is below minimum allowed for the swap, calculated fee: ${fee.toString(10)}`+
@@ -1075,11 +1105,13 @@ export class SpvFromBTCSwap<T extends ChainType>
      * @param _bitcoinWallet Sender's bitcoin wallet
      * @param feeRate Optional fee rate in sats/vB for the transaction
      * @param additionalOutputs additional outputs to add to the PSBT - can be used to collect fees from users
+     * @param utxos Optional fixed UTXO set to use for funding the PSBT
      */
     async getFundedPsbt(
         _bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface,
         feeRate?: number,
-        additionalOutputs?: ({amount: bigint, outputScript: Uint8Array} | {amount: bigint, address: string})[]
+        additionalOutputs?: ({amount: bigint, outputScript: Uint8Array} | {amount: bigint, address: string})[],
+        utxos?: BitcoinWalletUtxo[]
     ): Promise<{
         psbt: Transaction,
         psbtHex: string,
@@ -1099,7 +1131,7 @@ export class SpvFromBTCSwap<T extends ChainType>
                 script: (output as {outputScript: Uint8Array}).outputScript ?? toOutputScript(this.wrapper._options.bitcoinNetwork, (output as {address: string}).address)
             });
         });
-        psbt = await bitcoinWallet.fundPsbt(psbt, feeRate);
+        psbt = await bitcoinWallet.fundPsbt(psbt, feeRate, utxos);
         psbt.updateInput(1, {sequence: in1sequence});
         //Sign every input except the first one
         const signInputs: number[] = [];
@@ -1222,7 +1254,10 @@ export class SpvFromBTCSwap<T extends ChainType>
     /**
      * @inheritDoc
      */
-    async sendBitcoinTransaction(wallet: IBitcoinWallet | MinimalBitcoinWalletInterfaceWithSigner, feeRate?: number): Promise<string> {
+    async sendBitcoinTransaction(
+        wallet: IBitcoinWallet | MinimalBitcoinWalletInterfaceWithSigner,
+        feeRate?: number
+    ): Promise<string> {
         const {psbt, psbtBase64, psbtHex, signInputs} = await this.getFundedPsbt(wallet, feeRate);
         let signedPsbt: Transaction | string;
         if(isIBitcoinWallet(wallet)) {
@@ -1274,7 +1309,7 @@ export class SpvFromBTCSwap<T extends ChainType>
                 if(callbacks?.onSourceTransactionSent!=null) callbacks.onSourceTransactionSent(txId);
             } else {
                 if(this.swapWalletType==="prefunded") {
-                    await this.sendBitcoinTransaction(this._getSwapBitcoinWallet(), this.swapWalletMaxNetworkFeeRate);
+                    await this._tryToPayFromPrefundedSwapWallet();
                 } else {
                     await this.waitForPayment(options?.abortSignal);
                 }
@@ -1782,6 +1817,7 @@ export class SpvFromBTCSwap<T extends ChainType>
             swapWalletAddress: this.swapWalletAddress,
             swapWalletMaxNetworkFeeRate: this.swapWalletMaxNetworkFeeRate,
             swapWalletType: this.swapWalletType,
+            swapWalletExistingUtxos: this.swapWalletExistingUtxos,
 
             senderAddress: this._senderAddress,
             claimTxId: this._claimTxId,

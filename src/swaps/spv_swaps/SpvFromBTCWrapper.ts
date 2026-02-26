@@ -571,32 +571,52 @@ export class SpvFromBTCWrapper<
         };
     }
 
-    private async amountPrefetch(
+    private amountPrefetch(
         amountData: {token: string, exactIn: boolean, amount?: bigint},
         bitcoinFeeRatePromise: Promise<number | undefined>,
         bitcoinWallet: SingleAddressBitcoinWallet | undefined,
         includeGas: boolean,
         abortController: AbortController
-    ): Promise<bigint | undefined> {
-        try {
-            if(amountData.amount!=null) {
-                if(bitcoinWallet==null || !amountData.exactIn) return amountData.amount;
-                const bitcoinFeeRate = await throwIfUndefined(bitcoinFeeRatePromise, "Cannot fetch Bitcoin fee rate!");
-                const expectedBtcFee = this.getExpectedNetworkFee(bitcoinWallet.getReceiveAddress(), bitcoinFeeRate, includeGas);
-                return amountData.amount - expectedBtcFee;
-            } else {
-                const bitcoinFeeRate = await throwIfUndefined(bitcoinFeeRatePromise, "Cannot fetch Bitcoin fee rate!");
-                if(bitcoinWallet==null) throw new UserError("Cannot use empty amount without passing a swap address mnemonic!");
-                const spendableBalance = await bitcoinWallet.getSpendableBalance(
-                    this.getDummySwapPsbt(includeGas), bitcoinFeeRate, REQUIRED_SPV_SWAP_LP_ADDRESS_TYPE
-                );
-                if(spendableBalance.balance<=0n)
-                    throw new UserError("Wallet doesn't have enough BTC balance to cover transaction fees");
-                return spendableBalance.balance;
+    ): {
+        amountPromise: Promise<bigint | undefined>,
+        existingSwapWalletUtxosPromise: Promise<BitcoinWalletUtxo[] | undefined>
+    } {
+        const existingSwapWalletUtxosPromise = (async () => {
+            try {
+                if(bitcoinWallet==null) return undefined;
+                return await bitcoinWallet.getUtxoPool();
+            } catch (e) {
+                abortController.abort(e);
             }
-        } catch (e) {
-            abortController.abort(e);
-        }
+        })();
+
+        const amountPromise = (async () => {
+            try {
+                if(amountData.amount!=null) {
+                    if(bitcoinWallet==null || !amountData.exactIn) return amountData.amount;
+                    const bitcoinFeeRate = await throwIfUndefined(bitcoinFeeRatePromise, "Cannot fetch Bitcoin fee rate!");
+                    const expectedBtcFee = this.getExpectedNetworkFee(bitcoinWallet.getReceiveAddress(), bitcoinFeeRate, includeGas);
+                    return amountData.amount - expectedBtcFee;
+                } else {
+                    const bitcoinFeeRate = await throwIfUndefined(bitcoinFeeRatePromise, "Cannot fetch Bitcoin fee rate!");
+                    if(bitcoinWallet==null) throw new UserError("Cannot use empty amount without passing a swap address mnemonic!");
+                    const spendableBalance = await bitcoinWallet.getSpendableBalance(
+                        this.getDummySwapPsbt(includeGas), bitcoinFeeRate,
+                        REQUIRED_SPV_SWAP_LP_ADDRESS_TYPE, await throwIfUndefined(existingSwapWalletUtxosPromise)
+                    );
+                    if(spendableBalance.balance<=0n)
+                        throw new UserError("Wallet doesn't have enough BTC balance to cover transaction fees");
+                    return spendableBalance.balance;
+                }
+            } catch (e) {
+                abortController.abort(e);
+            }
+        })();
+
+        return {
+            amountPromise,
+            existingSwapWalletUtxosPromise
+        };
     }
 
     private async mnemonicToWalletAndWIF(walletMnemonic?: string) {
@@ -666,7 +686,7 @@ export class SpvFromBTCWrapper<
                     _abortController.abort(e);
                     return undefined;
                 });
-        const amountPromise = this.amountPrefetch(
+        const {amountPromise, existingSwapWalletUtxosPromise} = this.amountPrefetch(
             amountData, bitcoinFeeRatePromise, bitcoinWallet, _options.gasAmount!==0n, _abortController
         );
 
@@ -735,6 +755,8 @@ export class SpvFromBTCWrapper<
                             )
                         ]);
 
+                        const existingSwapWalletUtxos = await throwIfUndefined(existingSwapWalletUtxosPromise)
+
                         const swapInit: SpvFromBTCSwapInit = {
                             pricingInfo,
                             url: lp.url,
@@ -781,7 +803,8 @@ export class SpvFromBTCWrapper<
                             swapWalletWIF: bitcoinWalletWIF,
                             swapWalletAddress: bitcoinWallet?.getReceiveAddress(),
                             swapWalletMaxNetworkFeeRate: await throwIfUndefined(bitcoinFeeRatePromise),
-                            swapWalletType: bitcoinWalletWIF==null ? undefined : amountData.amount==null ? "prefunded" : "waitpayment"
+                            swapWalletType: bitcoinWalletWIF==null ? undefined : amountData.amount==null ? "prefunded" : "waitpayment",
+                            swapWalletExistingUtxos: existingSwapWalletUtxos.map(utxo => utxo.txId+":"+utxo.vout)
                         };
                         const quote = new SpvFromBTCSwap<T>(this, swapInit);
                         await quote._save();

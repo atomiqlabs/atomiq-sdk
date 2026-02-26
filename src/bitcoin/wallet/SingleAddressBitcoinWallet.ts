@@ -159,7 +159,7 @@ export class SingleAddressBitcoinWallet extends BitcoinWallet {
      * @param psbt PSBT to fund (add UTXOs to)
      * @param utxos UTXOs to add to the PSBT
      */
-    fundPsbtWithExactUtxos(psbt: Transaction, utxos: BitcoinWalletUtxo[]): {
+    static fundPsbtWithExactUtxos(psbt: Transaction, utxos: BitcoinWalletUtxo[]): {
         psbt: Transaction,
         fee: bigint,
         feeRate: number
@@ -170,7 +170,7 @@ export class SingleAddressBitcoinWallet extends BitcoinWallet {
                 txid: utxo.txId, index: utxo.vout,
                 witnessUtxo: {
                     amount: BigInt(utxo.value),
-                    script: toOutputScript(this.network, this.address)
+                    script: utxo.outputScript
                 },
                 sighashType: 0x01
             });

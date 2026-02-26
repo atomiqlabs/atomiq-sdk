@@ -4,7 +4,7 @@ import { SwapType } from "../../enums/SwapType";
 import { SpvFromBTCTypeDefinition, SpvFromBTCWrapper } from "./SpvFromBTCWrapper";
 import { Transaction } from "@scure/btc-signer";
 import { Fee } from "../../types/fees/Fee";
-import { IBitcoinWallet } from "../../bitcoin/wallet/IBitcoinWallet";
+import { BitcoinWalletUtxo, IBitcoinWallet } from "../../bitcoin/wallet/IBitcoinWallet";
 import { IBTCWalletSwap } from "../IBTCWalletSwap";
 import { ISwapWithGasDrop } from "../ISwapWithGasDrop";
 import { MinimalBitcoinWalletInterface, MinimalBitcoinWalletInterfaceWithSigner } from "../../types/wallets/MinimalBitcoinWalletInterface";
@@ -15,6 +15,7 @@ import { BtcToken, SCToken } from "../../types/Token";
 import { LoggerType } from "../../utils/Logger";
 import { PriceInfoType } from "../../types/PriceInfoType";
 import { SwapExecutionAction, SwapExecutionActionBitcoin } from "../../types/SwapExecutionAction";
+import { SingleAddressBitcoinWallet } from "../../bitcoin/wallet/SingleAddressBitcoinWallet";
 /**
  * State enum for SPV vault (UTXO-controlled vault) based swaps
  * @category Swaps/Bitcoin → Smart chain
@@ -109,6 +110,10 @@ export type SpvFromBTCSwapInit = ISwapInit & {
     executionFeeShare: bigint;
     genesisSmartChainBlockHeight: number;
     gasPricingInfo?: PriceInfoType;
+    swapWalletWIF?: string;
+    swapWalletAddress?: string;
+    swapWalletMaxNetworkFeeRate?: number;
+    swapWalletType?: "prefunded" | "waitpayment";
 };
 export declare function isSpvFromBTCSwapInit(obj: any): obj is SpvFromBTCSwapInit;
 /**
@@ -169,6 +174,10 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
     private readonly frontingFeeShare;
     private readonly executionFeeShare;
     private readonly gasPricingInfo?;
+    private swapWalletWIF?;
+    private swapWalletAddress?;
+    private swapWalletMaxNetworkFeeRate?;
+    private swapWalletType?;
     /**
      * @internal
      */
@@ -243,6 +252,29 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
      */
     _verifyQuoteValid(): Promise<boolean>;
     /**
+     * Returns the address of the swap wallet
+     *
+     * @internal
+     */
+    _getSwapWalletAddress(): string | null;
+    /**
+     * Sets the wallet to be used for receiving funds on BTC and automatically
+     *
+     * @param mnemonic Mnemonic to use, either newly created one, or derived from the recoverable
+     *  entropy from the AbstractSigner
+     */
+    setSwapWalletMnemonic(mnemonic: string): Promise<void>;
+    /**
+     * Removes the swap wallet from the swap, after this the swap can only be executed by co-signing a PSBT
+     *  from an external wallet
+     */
+    clearSwapWalletMnemonic(): Promise<void>;
+    /**
+     * Returns whether the swap has a swap wallet address, that automatically executes the swap upon
+     *  receiving BTC funds
+     */
+    hasSwapWallet(): boolean;
+    /**
      * @inheritDoc
      */
     getOutputAddress(): string | null;
@@ -294,6 +326,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
         vaultId: bigint;
         utxo: string;
     };
+    private getBitcoinFeeRate;
     /**
      * Returns the input BTC amount in sats without any fees
      *
@@ -334,6 +367,13 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
      */
     protected getWatchtowerFee(): Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>;
     /**
+     * Returns the fee to be paid to watchtowers on the destination chain to automatically
+     *  process and settle this swap without requiring any user interaction
+     *
+     * @internal
+     */
+    protected getSwapAddressFee(): Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>> | null;
+    /**
      * @inheritDoc
      */
     getFee(): Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>;
@@ -341,6 +381,19 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
      * @inheritDoc
      */
     getFeeBreakdown(): [
+        {
+            type: FeeType.NETWORK_INPUT;
+            fee: Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>;
+        },
+        {
+            type: FeeType.SWAP;
+            fee: Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>;
+        },
+        {
+            type: FeeType.NETWORK_OUTPUT;
+            fee: Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>;
+        }
+    ] | [
         {
             type: FeeType.SWAP;
             fee: Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>;
@@ -374,6 +427,14 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
      * @inheritDoc
      */
     getInput(): TokenAmount<T["ChainId"], BtcToken<false>, true>;
+    /**
+     * @internal
+     */
+    _getSwapBitcoinWallet(): SingleAddressBitcoinWallet;
+    /**
+     * @internal
+     */
+    _tryToPayFromSwapWallet(utxos: BitcoinWalletUtxo[]): Promise<boolean>;
     /**
      * @inheritDoc
      */
@@ -452,7 +513,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
      *  user, in case `false` is returned the user should call the {@link claim} function to settle the swap on the
      *  destination manually
      */
-    execute(wallet: IBitcoinWallet | MinimalBitcoinWalletInterfaceWithSigner, callbacks?: {
+    execute(wallet?: IBitcoinWallet | MinimalBitcoinWalletInterfaceWithSigner, callbacks?: {
         onSourceTransactionSent?: (sourceTxId: string) => void;
         onSourceTransactionConfirmationStatus?: (sourceTxId?: string, confirmations?: number, targetConfirations?: number, etaMs?: number) => void;
         onSourceTransactionConfirmed?: (sourceTxId: string) => void;
@@ -506,6 +567,12 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
         targetConfirmations: number;
         inputAddresses?: string[];
     } | null>;
+    /**
+     * When the swap wallet address is specified it waits till the address receives the necessary funds
+     *
+     * @param abortSignal Abort signal
+     */
+    waitForPayment(abortSignal?: AbortSignal): Promise<void>;
     /**
      * @inheritDoc
      *

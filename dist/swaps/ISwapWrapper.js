@@ -146,6 +146,15 @@ class ISwapWrapper {
         return { changedSwaps, removeSwaps };
     }
     /**
+     * Runs {@link ISwap._tick} on passed swaps
+     *
+     * @param swaps Swaps to run the tick for
+     * @internal
+     */
+    async _tick(swaps) {
+        await Promise.all(swaps.map(value => value._tick(true)));
+    }
+    /**
      * Initializes the swap wrapper, needs to be called before any other action can be taken
      *
      * @param noTimers Whether to skip scheduling a tick timer for the swaps, if the tick timer is not initiated
@@ -224,14 +233,14 @@ class ISwapWrapper {
     async tick(swaps) {
         if (swaps == null)
             swaps = await this.unifiedStorage.query([[{ key: "type", value: this.TYPE }, { key: "state", value: this.tickSwapState }]], (val) => new this._swapDeserializer(this, val));
+        const pendingSwaps = [];
         for (let pendingSwap of this.pendingSwaps.values()) {
             const value = pendingSwap.deref();
-            if (value != null)
-                value._tick(true);
+            if (value == null)
+                continue;
+            pendingSwaps.push(value);
         }
-        swaps.forEach(value => {
-            value._tick(true);
-        });
+        await this._tick(swaps.concat(pendingSwaps));
     }
     /**
      * Returns the smart chain's native token used to pay for fees

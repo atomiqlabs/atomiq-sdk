@@ -1,5 +1,6 @@
 import {isISwapInit, ISwap, ISwapInit} from "../ISwap";
 import {
+    BtcAddressUtxo,
     BtcTxWithBlockheight,
     ChainType,
     isAbstractSigner,
@@ -10,13 +11,13 @@ import {
     SpvWithdrawalStateType
 } from "@atomiqlabs/base";
 import {SwapType} from "../../enums/SwapType";
-import {SpvFromBTCTypeDefinition, SpvFromBTCWrapper} from "./SpvFromBTCWrapper";
+import {REQUIRED_SPV_SWAP_LP_ADDRESS_TYPE, SpvFromBTCTypeDefinition, SpvFromBTCWrapper} from "./SpvFromBTCWrapper";
 import {extendAbortController} from "../../utils/Utils";
 import {parsePsbtTransaction, toCoinselectAddressType, toOutputScript} from "../../utils/BitcoinUtils";
 import {getInputType, Transaction} from "@scure/btc-signer";
 import {Buffer} from "buffer";
 import {Fee} from "../../types/fees/Fee";
-import {IBitcoinWallet, isIBitcoinWallet} from "../../bitcoin/wallet/IBitcoinWallet";
+import {BitcoinWalletUtxo, IBitcoinWallet, isIBitcoinWallet} from "../../bitcoin/wallet/IBitcoinWallet";
 import {IntermediaryAPI} from "../../intermediaries/apis/IntermediaryAPI";
 import {IBTCWalletSwap} from "../IBTCWalletSwap";
 import {ISwapWithGasDrop} from "../ISwapWithGasDrop";
@@ -39,6 +40,8 @@ import {
 } from "../../types/PriceInfoType";
 import {toBitcoinWallet} from "../../utils/BitcoinWalletUtils";
 import {SwapExecutionAction, SwapExecutionActionBitcoin} from "../../types/SwapExecutionAction";
+import {SingleAddressBitcoinWallet} from "../../bitcoin/wallet/SingleAddressBitcoinWallet";
+import {BitcoinNotEnoughBalanceError} from "../../errors/BitcoinNotEnoughBalanceError";
 
 /**
  * State enum for SPV vault (UTXO-controlled vault) based swaps
@@ -150,6 +153,10 @@ export type SpvFromBTCSwapInit = ISwapInit & {
     executionFeeShare: bigint;
     genesisSmartChainBlockHeight: number;
     gasPricingInfo?: PriceInfoType;
+    swapWalletWIF?: string;
+    swapWalletAddress?: string;
+    swapWalletMaxNetworkFeeRate?: number;
+    swapWalletType?: "prefunded" | "waitpayment";
 };
 
 export function isSpvFromBTCSwapInit(obj: any): obj is SpvFromBTCSwapInit {
@@ -179,6 +186,10 @@ export function isSpvFromBTCSwapInit(obj: any): obj is SpvFromBTCSwapInit {
         typeof(obj.executionFeeShare)==="bigint" &&
         typeof(obj.genesisSmartChainBlockHeight)==="number" &&
         (obj.gasPricingInfo==null || isPriceInfoType(obj.gasPricingInfo)) &&
+        (obj.swapWalletWIF==null || typeof(obj.swapWalletWIF)==="string") &&
+        (obj.swapWalletAddress==null || typeof(obj.swapWalletAddress)==="string") &&
+        (obj.swapWalletMaxNetworkFeeRate==null || typeof(obj.swapWalletMaxNetworkFeeRate)==="number") &&
+        (obj.swapWalletType==null || typeof(obj.swapWalletType)==="string") &&
         isISwapInit(obj);
 }
 
@@ -239,6 +250,11 @@ export class SpvFromBTCSwap<T extends ChainType>
     private readonly executionFeeShare: bigint;
 
     private readonly gasPricingInfo?: PriceInfoType;
+
+    private swapWalletWIF?: string;
+    private swapWalletAddress?: string;
+    private swapWalletMaxNetworkFeeRate?: number;
+    private swapWalletType?: "prefunded" | "waitpayment";
 
     /**
      * @internal
@@ -304,6 +320,10 @@ export class SpvFromBTCSwap<T extends ChainType>
             this.executionFeeShare = initOrObject.executionFeeShare;
             this._genesisSmartChainBlockHeight = initOrObject.genesisSmartChainBlockHeight;
             this.gasPricingInfo = initOrObject.gasPricingInfo;
+            this.swapWalletWIF = initOrObject.swapWalletWIF;
+            this.swapWalletAddress = initOrObject.swapWalletAddress;
+            this.swapWalletMaxNetworkFeeRate = initOrObject.swapWalletMaxNetworkFeeRate;
+            this.swapWalletType = initOrObject.swapWalletType;
             const vaultAddressType = toCoinselectAddressType(toOutputScript(this.wrapper._options.bitcoinNetwork, this.vaultBtcAddress));
             if(vaultAddressType!=="p2tr" && vaultAddressType!=="p2wpkh" && vaultAddressType!=="p2wsh")
                 throw new Error("Vault address type must be of witness type: p2tr, p2wpkh, p2wsh");
@@ -337,6 +357,10 @@ export class SpvFromBTCSwap<T extends ChainType>
             this._frontTxId = initOrObject.frontTxId;
             this.gasPricingInfo = deserializePriceInfoType(initOrObject.gasPricingInfo);
             this.btcTxConfirmedAt = initOrObject.btcTxConfirmedAt;
+            this.swapWalletWIF = initOrObject.swapWalletWIF;
+            this.swapWalletAddress = initOrObject.swapWalletAddress;
+            this.swapWalletMaxNetworkFeeRate = initOrObject.swapWalletMaxNetworkFeeRate;
+            this.swapWalletType = initOrObject.swapWalletType;
             if(initOrObject.data!=null) this._data = new this.wrapper._spvWithdrawalDataDeserializer(initOrObject.data);
         }
         this.tryCalculateSwapFee();
@@ -444,6 +468,56 @@ export class SpvFromBTCSwap<T extends ChainType>
     }
 
     /**
+     * Returns the address of the swap wallet
+     *
+     * @internal
+     */
+    _getSwapWalletAddress(): string | null {
+        return this.swapWalletAddress ?? null;
+    }
+
+    /**
+     * Sets the wallet to be used for receiving funds on BTC and automatically
+     *
+     * @param mnemonic Mnemonic to use, either newly created one, or derived from the recoverable
+     *  entropy from the AbstractSigner
+     */
+    async setSwapWalletMnemonic(mnemonic: string): Promise<void> {
+        const wif = await SingleAddressBitcoinWallet.mnemonicToPrivateKey(
+            mnemonic,
+            this.wrapper._options.bitcoinNetwork
+        );
+        const bitcoinWallet = new SingleAddressBitcoinWallet(
+            this.wrapper._btcRpc,
+            this.wrapper._options.bitcoinNetwork,
+            wif
+        );
+        this.swapWalletWIF = wif;
+        this.swapWalletAddress = bitcoinWallet.getReceiveAddress();
+        this.swapWalletType = "waitpayment";
+        await this._save();
+    }
+
+    /**
+     * Removes the swap wallet from the swap, after this the swap can only be executed by co-signing a PSBT
+     *  from an external wallet
+     */
+    async clearSwapWalletMnemonic(): Promise<void> {
+        this.swapWalletWIF = undefined;
+        this.swapWalletAddress = undefined;
+        this.swapWalletType = undefined;
+        await this._save();
+    }
+
+    /**
+     * Returns whether the swap has a swap wallet address, that automatically executes the swap upon
+     *  receiving BTC funds
+     */
+    hasSwapWallet(): boolean {
+        return this.swapWalletWIF!=null;
+    }
+
+    /**
      * @inheritDoc
      */
     getOutputAddress(): string | null {
@@ -538,6 +612,13 @@ export class SpvFromBTCSwap<T extends ChainType>
 
     //////////////////////////////
     //// Amounts & fees
+
+    private getBitcoinFeeRate(feeRate?: number): number | undefined {
+        if(this.swapWalletWIF!=null) {
+            return this.swapWalletMaxNetworkFeeRate;
+        }
+        return feeRate;
+    }
 
     /**
      * Returns the input BTC amount in sats without any fees
@@ -644,20 +725,62 @@ export class SpvFromBTCSwap<T extends ChainType>
     }
 
     /**
+     * Returns the fee to be paid to watchtowers on the destination chain to automatically
+     *  process and settle this swap without requiring any user interaction
+     *
+     * @internal
+     */
+    protected getSwapAddressFee(): Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>> | null {
+        if(this.pricingInfo==null) throw new Error("No pricing info known, cannot estimate fee!");
+
+        if(
+            this.swapWalletAddress==null ||
+            this.swapWalletMaxNetworkFeeRate==null ||
+            this.swapWalletType!=="waitpayment"
+        ) return null;
+
+        const expectedNetworkFee = this.wrapper.getExpectedNetworkFee(
+            this.swapWalletAddress,
+            this.swapWalletMaxNetworkFeeRate,
+            this.outputTotalGas!==0n
+        );
+
+        const outputToken = this.wrapper._tokens[this.outputSwapToken];
+        const swapAddressFeeInOutputToken = expectedNetworkFee
+            * (10n ** BigInt(outputToken.decimals))
+            * 1_000_000n
+            / this.pricingInfo.swapPriceUSatPerToken;
+        const amountInSrcToken = toTokenAmount(expectedNetworkFee, BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo);
+        return {
+            amountInSrcToken,
+            amountInDstToken: toTokenAmount(
+                swapAddressFeeInOutputToken,
+                outputToken, this.wrapper._prices, this.pricingInfo
+            ),
+            currentUsdValue: amountInSrcToken.currentUsdValue,
+            usdValue: amountInSrcToken.usdValue,
+            pastUsdValue: amountInSrcToken.pastUsdValue
+        };
+    }
+
+    /**
      * @inheritDoc
      */
     getFee(): Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>> {
         const swapFee = this.getSwapFee();
         const watchtowerFee = this.getWatchtowerFee();
+        const swapAddressFee = this.getSwapAddressFee();
 
         const amountInSrcToken = toTokenAmount(
-          swapFee.amountInSrcToken.rawAmount + watchtowerFee.amountInSrcToken.rawAmount,
+            swapFee.amountInSrcToken.rawAmount + watchtowerFee.amountInSrcToken.rawAmount +
+            (swapAddressFee?.amountInSrcToken.rawAmount ?? 0n),
             BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo
         );
         return {
             amountInSrcToken,
             amountInDstToken: toTokenAmount(
-              swapFee.amountInDstToken.rawAmount + watchtowerFee.amountInDstToken.rawAmount,
+                swapFee.amountInDstToken.rawAmount + watchtowerFee.amountInDstToken.rawAmount +
+                (swapAddressFee?.amountInDstToken.rawAmount ?? 0n),
                 this.wrapper._tokens[this.outputSwapToken], this.wrapper._prices, this.pricingInfo
             ),
             currentUsdValue: amountInSrcToken.currentUsdValue,
@@ -670,10 +793,29 @@ export class SpvFromBTCSwap<T extends ChainType>
      * @inheritDoc
      */
     getFeeBreakdown(): [
+        {type: FeeType.NETWORK_INPUT, fee: Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>},
+        {type: FeeType.SWAP, fee: Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>},
+        {type: FeeType.NETWORK_OUTPUT, fee: Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>}
+    ] | [
         {type: FeeType.SWAP, fee: Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>},
         {type: FeeType.NETWORK_OUTPUT, fee: Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>}
     ] {
-        return [
+        const swapAddressFee = this.getSwapAddressFee();
+
+        return swapAddressFee==null ? [
+            {
+                type: FeeType.SWAP,
+                fee: this.getSwapFee()
+            },
+            {
+                type: FeeType.NETWORK_OUTPUT,
+                fee: this.getWatchtowerFee()
+            }
+        ] : [
+            {
+                type: FeeType.NETWORK_INPUT,
+                fee: swapAddressFee
+            },
             {
                 type: FeeType.SWAP,
                 fee: this.getSwapFee()
@@ -724,12 +866,92 @@ export class SpvFromBTCSwap<T extends ChainType>
      * @inheritDoc
      */
     getInput(): TokenAmount<T["ChainId"], BtcToken<false>, true> {
+        if(
+            this.swapWalletAddress!=null &&
+            this.swapWalletMaxNetworkFeeRate!=null &&
+            this.swapWalletType==="waitpayment"
+        ) {
+            const expectedNetworkFee = this.wrapper.getExpectedNetworkFee(
+                this.swapWalletAddress,
+                this.swapWalletMaxNetworkFeeRate,
+                this.outputTotalGas!==0n
+            );
+            return toTokenAmount(this.btcAmount + expectedNetworkFee, BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo);
+        }
         return toTokenAmount(this.btcAmount, BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo);
     }
 
 
     //////////////////////////////
     //// Bitcoin tx
+
+    /**
+     * @internal
+     */
+    _getSwapBitcoinWallet(): SingleAddressBitcoinWallet {
+        if(this.swapWalletWIF==null) throw new Error("Swap doesn't have swap bitcoin wallet!");
+        return new SingleAddressBitcoinWallet(
+            this.wrapper._btcRpc,
+            this.wrapper._options.bitcoinNetwork,
+            this.swapWalletWIF
+        );
+    }
+
+    /**
+     * @internal
+     */
+    async _tryToPayFromSwapWallet(utxos: BitcoinWalletUtxo[]): Promise<boolean> {
+        if(
+            this.swapWalletWIF==null ||
+            this.swapWalletAddress==null ||
+            this.swapWalletMaxNetworkFeeRate==null ||
+            this.swapWalletType!=="waitpayment"
+        ) return false;
+        if(
+            this._state!==SpvFromBTCSwapState.CREATED ||
+            !this.isInitiated() ||
+            !this.hasSwapWallet()
+        ) return false;
+
+        const btcWallet = this._getSwapBitcoinWallet();
+
+        //Check if any single UTXO can be used to pay this swap
+        const expectedNetworkFee = this.wrapper.getExpectedNetworkFee(
+            this.swapWalletAddress, this.swapWalletMaxNetworkFeeRate, this.outputTotalGas!==0n
+        );
+        const requiredUTXOValue = this.btcAmount - expectedNetworkFee;
+        const foundUTXO: BitcoinWalletUtxo | undefined = utxos.find(utxo => BigInt(utxo.value)===requiredUTXOValue);
+        this.logger.debug(`_tryToPayFromSwapWallet(): Checked address UTXOs, expected network fee: ${expectedNetworkFee},`+
+            ` searched for UTXO with value: ${requiredUTXOValue}, found: `, foundUTXO);
+
+        if(foundUTXO==null) return false;
+
+        //TODO: There might be some trouble with this approach, as it might inadvertendly consume a UTXO destined
+        // for a different swap, maybe we can only let the latest swap with a wallet be able to consume a UTXO
+
+        //Try to spend that UTXO as a whole to fund the swap
+        const {psbt: unfundedPsbt, in1sequence} = await this.getPsbt();
+        const {psbt, fee, feeRate} = btcWallet.fundPsbtWithExactUtxos(unfundedPsbt, [foundUTXO]);
+        if(feeRate < this.minimumBtcFeeRate) {
+            this.logger.warn(`_tryToPayFromSwapWallet(): Unable to process swap using the found UTXO, `+
+                `resulting fee rate is below minimum allowed for the swap, calculated fee: ${fee.toString(10)}`+
+                `, calculated fee rate: ${feeRate}, minimum fee rate: ${this.minimumBtcFeeRate}`);
+            //TODO: This might mean that the user sent in the transaction with too low of a fee
+            // we should hint to the user that the transaction he sends has to pay at least minimumBtcFeeRate!
+            return false;
+        }
+        psbt.updateInput(1, {sequence: in1sequence});
+
+        const signInputs: number[] = [];
+        for(let i=1;i<psbt.inputsLength;i++) {
+            signInputs.push(i);
+        }
+
+        const signedPsbt = await btcWallet.signPsbt(psbt, signInputs);
+        await this.submitPsbt(signedPsbt);
+
+        return true;
+    }
 
     /**
      * @inheritDoc
@@ -989,7 +1211,7 @@ export class SpvFromBTCSwap<T extends ChainType>
      */
     async estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<any, BtcToken<false>, true> | null> {
         const bitcoinWallet: IBitcoinWallet = toBitcoinWallet(_bitcoinWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
-        const txFee = await bitcoinWallet.getFundedPsbtFee((await this.getPsbt()).psbt, feeRate);
+        const txFee = await bitcoinWallet.getFundedPsbtFee((await this.getPsbt()).psbt, this.getBitcoinFeeRate(feeRate));
         if(txFee==null) return null;
         return toTokenAmount(BigInt(txFee), BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo);
     }
@@ -998,7 +1220,7 @@ export class SpvFromBTCSwap<T extends ChainType>
      * @inheritDoc
      */
     async sendBitcoinTransaction(wallet: IBitcoinWallet | MinimalBitcoinWalletInterfaceWithSigner, feeRate?: number): Promise<string> {
-        const {psbt, psbtBase64, psbtHex, signInputs} = await this.getFundedPsbt(wallet, feeRate);
+        const {psbt, psbtBase64, psbtHex, signInputs} = await this.getFundedPsbt(wallet, this.getBitcoinFeeRate(feeRate));
         let signedPsbt: Transaction | string;
         if(isIBitcoinWallet(wallet)) {
             signedPsbt = await wallet.signPsbt(psbt, signInputs);
@@ -1022,7 +1244,7 @@ export class SpvFromBTCSwap<T extends ChainType>
      *  destination manually
      */
     async execute(
-        wallet: IBitcoinWallet | MinimalBitcoinWalletInterfaceWithSigner,
+        wallet?: IBitcoinWallet | MinimalBitcoinWalletInterfaceWithSigner,
         callbacks?: {
             onSourceTransactionSent?: (sourceTxId: string) => void,
             onSourceTransactionConfirmationStatus?: (sourceTxId?: string, confirmations?: number, targetConfirations?: number, etaMs?: number) => void,
@@ -1043,8 +1265,17 @@ export class SpvFromBTCSwap<T extends ChainType>
         if(this._state===SpvFromBTCSwapState.CLAIMED || this._state===SpvFromBTCSwapState.FRONTED) throw new Error("Swap already settled or fronted!");
 
         if(this._state===SpvFromBTCSwapState.CREATED) {
-            const txId = await this.sendBitcoinTransaction(wallet, options?.feeRate);
-            if(callbacks?.onSourceTransactionSent!=null) callbacks.onSourceTransactionSent(txId);
+            if(wallet==null && !this.hasSwapWallet()) throw new Error("Executing without provided Bitcoin wallet parameter requires the swap to be created with the `walletMnemonic` option!");
+            if(wallet!=null) {
+                const txId = await this.sendBitcoinTransaction(wallet, options?.feeRate);
+                if(callbacks?.onSourceTransactionSent!=null) callbacks.onSourceTransactionSent(txId);
+            } else {
+                if(this.swapWalletType==="prefunded") {
+                    await this.sendBitcoinTransaction(this._getSwapBitcoinWallet(), this.swapWalletMaxNetworkFeeRate);
+                } else {
+                    await this.waitForPayment(options?.abortSignal);
+                }
+            }
         }
         if(this._state===SpvFromBTCSwapState.POSTED || this._state===SpvFromBTCSwapState.BROADCASTED) {
             const txId = await this.waitForBitcoinTransaction(callbacks?.onSourceTransactionConfirmationStatus, options?.btcTxCheckIntervalSeconds, options?.abortSignal);
@@ -1086,7 +1317,10 @@ export class SpvFromBTCSwap<T extends ChainType>
                     txs: [
                         options?.bitcoinWallet==null
                             ? {...await this.getPsbt(), type: "RAW_PSBT"}
-                            : {...await this.getFundedPsbt(options.bitcoinWallet, options?.bitcoinFeeRate), type: "FUNDED_PSBT"}
+                            : {
+                                ...await this.getFundedPsbt(options.bitcoinWallet, this.getBitcoinFeeRate(options?.bitcoinFeeRate)),
+                                type: "FUNDED_PSBT"
+                            }
                     ]
                 }
             ];
@@ -1161,6 +1395,25 @@ export class SpvFromBTCSwap<T extends ChainType>
             targetConfirmations: this.vaultRequiredConfirmations,
             inputAddresses: result.inputAddresses
         }
+    }
+
+    /**
+     * When the swap wallet address is specified it waits till the address receives the necessary funds
+     *
+     * @param abortSignal Abort signal
+     */
+    async waitForPayment(abortSignal?: AbortSignal) {
+        if(this._state !== SpvFromBTCSwapState.CREATED)
+            throw new Error("Must be in CREATED state!");
+        if(!this.hasSwapWallet())
+            throw new Error("Swap must have a swap address specified!");
+
+        this._setInitiated();
+        await this._saveAndEmit();
+        //TODO: Also handle errors here
+        await this.waitTillState(SpvFromBTCSwapState.CREATED, "neq", abortSignal);
+        if(this._state<SpvFromBTCSwapState.CREATED)
+            throw new Error("Failed to receive the bitcoin transaction in time!");
     }
 
     /**
@@ -1520,6 +1773,10 @@ export class SpvFromBTCSwap<T extends ChainType>
             executionFeeShare: this.executionFeeShare.toString(10),
             genesisSmartChainBlockHeight: this._genesisSmartChainBlockHeight,
             gasPricingInfo: serializePriceInfoType(this.gasPricingInfo),
+            swapWalletWIF: this.swapWalletWIF,
+            swapWalletAddress: this.swapWalletAddress,
+            swapWalletMaxNetworkFeeRate: this.swapWalletMaxNetworkFeeRate,
+            swapWalletType: this.swapWalletType,
 
             senderAddress: this._senderAddress,
             claimTxId: this._claimTxId,

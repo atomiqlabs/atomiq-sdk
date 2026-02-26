@@ -302,7 +302,7 @@ export type SpvFromBTCPrepareResponseType = RequestSchemaResult<typeof SpvFromBT
 
 export type SpvFromBTCPrepare = SwapInit & {
     address: string,
-    amount: bigint,
+    amount: Promise<bigint>,
     gasAmount: bigint,
     gasToken: string,
     exactOut: boolean,
@@ -868,7 +868,7 @@ export class IntermediaryAPI {
             exactOut: init.exactOut,
             ...init.additionalParams,
             address: init.address,
-            amount: init.amount.toString(10),
+            amount: init.amount.then(val => val.toString(10)),
             token: init.token,
             gasAmount: init.gasAmount.toString(10),
             gasToken: init.gasToken,

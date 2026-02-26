@@ -13,6 +13,7 @@ const Token_1 = require("../types/Token");
 const LNURLWithdraw_1 = require("../types/lnurl/LNURLWithdraw");
 const LNURLPay_1 = require("../types/lnurl/LNURLPay");
 const BitcoinWalletUtils_1 = require("../utils/BitcoinWalletUtils");
+const SpvFromBTCWrapper_1 = require("../swaps/spv_swaps/SpvFromBTCWrapper");
 /**
  * Utility class providing helper methods for address parsing, token balances, serialization
  *  and other miscellaneous things.
@@ -320,7 +321,7 @@ class SwapperUtils {
             feeRate = Math.max(feeRate, options.minFeeRate);
         let result;
         if (targetChain != null && this.root.supportsSwapType(targetChain, SwapType_1.SwapType.SPV_VAULT_FROM_BTC)) {
-            result = await bitcoinWallet.getSpendableBalance(this.getRandomSpvVaultPsbt(targetChain, options?.gasDrop), feeRate);
+            result = await bitcoinWallet.getSpendableBalance(this.getRandomSpvVaultPsbt(targetChain, options?.gasDrop), feeRate, SpvFromBTCWrapper_1.REQUIRED_SPV_SWAP_LP_ADDRESS_TYPE);
         }
         else {
             result = await bitcoinWallet.getSpendableBalance(undefined, feeRate);

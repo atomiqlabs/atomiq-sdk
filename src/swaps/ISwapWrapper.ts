@@ -302,6 +302,18 @@ export abstract class ISwapWrapper<
         return {changedSwaps, removeSwaps};
     }
 
+    /**
+     * Runs {@link ISwap._tick} on passed swaps
+     *
+     * @param swaps Swaps to run the tick for
+     * @internal
+     */
+    protected async _tick(swaps: D["Swap"][]): Promise<void> {
+        await Promise.all(
+            swaps.map(value => value._tick(true))
+        );
+    }
+
 
     /**
      * Initializes the swap wrapper, needs to be called before any other action can be taken
@@ -399,14 +411,14 @@ export abstract class ISwapWrapper<
             (val: any) => new this._swapDeserializer(this, val)
         );
 
+        const pendingSwaps = [];
         for(let pendingSwap of this.pendingSwaps.values()) {
             const value = pendingSwap.deref();
-            if(value != null) value._tick(true);
+            if(value==null) continue;
+            pendingSwaps.push(value);
         }
 
-        swaps.forEach(value => {
-            value._tick(true)
-        });
+        await this._tick(swaps.concat(pendingSwaps));
     }
 
     /**

@@ -9,6 +9,7 @@ const Utils_1 = require("../../utils/Utils");
 const BitcoinUtils_1 = require("../../utils/BitcoinUtils");
 const Logger_1 = require("../../utils/Logger");
 const base_1 = require("@atomiqlabs/base");
+const utils_2 = require("../coinselect2/utils");
 /**
  * Identifies the address type of a Bitcoin address
  *
@@ -120,61 +121,30 @@ class BitcoinWallet {
         return utxoPool;
     }
     /**
-     *
-     * @param sendingAccounts
-     * @param recipient
-     * @param amount
-     * @param feeRate
      * @protected
      */
-    async _getPsbt(sendingAccounts, recipient, amount, feeRate) {
+    async _getPsbt(sendingAccounts, recipient, amount, feeRate, utxoPool) {
         const psbt = new btc_signer_1.Transaction({ PSBTVersion: 0 });
         psbt.addOutput({
             amount: BigInt(amount),
             script: (0, BitcoinUtils_1.toOutputScript)(this.network, recipient)
         });
-        return this._fundPsbt(sendingAccounts, psbt, feeRate);
+        return this._fundPsbt(sendingAccounts, psbt, feeRate, utxoPool);
     }
-    async _fundPsbt(sendingAccounts, psbt, feeRate) {
+    async _fundPsbt(sendingAccounts, psbt, feeRate, utxoPool) {
         if (feeRate == null)
             feeRate = await this.getFeeRate();
-        const utxoPool = (await Promise.all(sendingAccounts.map(acc => this._getUtxoPool(acc.address, acc.addressType)))).flat();
+        utxoPool ??= (await Promise.all(sendingAccounts.map(acc => this._getUtxoPool(acc.address, acc.addressType)))).flat();
         logger.debug("_fundPsbt(): fee rate: " + feeRate + " utxo pool: ", utxoPool);
         const accountPubkeys = {};
         sendingAccounts.forEach(acc => accountPubkeys[acc.address] = acc.pubkey);
         const requiredInputs = [];
         for (let i = 0; i < psbt.inputsLength; i++) {
-            const input = psbt.getInput(i);
-            if (input.index == null || input.txid == null)
-                throw new Error("Inputs need txid & index!");
-            let amount;
-            let script;
-            if (input.witnessUtxo != null) {
-                amount = input.witnessUtxo.amount;
-                script = input.witnessUtxo.script;
-            }
-            else if (input.nonWitnessUtxo != null) {
-                amount = input.nonWitnessUtxo.outputs[input.index].amount;
-                script = input.nonWitnessUtxo.outputs[input.index].script;
-            }
-            else
-                throw new Error("Either witnessUtxo or nonWitnessUtxo has to be defined!");
-            requiredInputs.push({
-                txId: buffer_1.Buffer.from(input.txid).toString('hex'),
-                vout: input.index,
-                value: Number(amount),
-                type: (0, BitcoinUtils_1.toCoinselectAddressType)(script)
-            });
+            requiredInputs.push(BitcoinWallet.psbtInputToCoinselectInput(psbt, i));
         }
         const targets = [];
         for (let i = 0; i < psbt.outputsLength; i++) {
-            const output = psbt.getOutput(i);
-            if (output.amount == null || output.script == null)
-                throw new Error("Outputs need amount & script defined!");
-            targets.push({
-                value: Number(output.amount),
-                script: buffer_1.Buffer.from(output.script)
-            });
+            targets.push(BitcoinWallet.psbtOutputToCoinselectOutput(psbt, i));
         }
         logger.debug("_fundPsbt(): Coinselect targets: ", targets);
         let coinselectResult = (0, coinselect2_1.coinSelect)(utxoPool, targets, feeRate, sendingAccounts[0].addressType, requiredInputs);
@@ -264,9 +234,9 @@ class BitcoinWallet {
             inputAddressIndexes
         };
     }
-    async _getSpendableBalance(sendingAccounts, psbt, feeRate) {
+    async _getSpendableBalance(sendingAccounts, psbt, feeRate, outputAddressType, utxoPool) {
         feeRate ??= await this.getFeeRate();
-        const utxoPool = (await Promise.all(sendingAccounts.map(acc => this._getUtxoPool(acc.address, acc.addressType)))).flat();
+        utxoPool ??= (await Promise.all(sendingAccounts.map(acc => this._getUtxoPool(acc.address, acc.addressType)))).flat();
         const requiredInputs = [];
         if (psbt != null)
             for (let i = 0; i < psbt.inputsLength; i++) {
@@ -303,11 +273,28 @@ class BitcoinWallet {
                     script: buffer_1.Buffer.from(output.script)
                 });
             }
-        const target = btc_signer_1.OutScript.encode({
-            type: "wsh",
-            hash: (0, Utils_1.randomBytes)(32)
-        });
-        let coinselectResult = (0, coinselect2_1.maxSendable)(utxoPool, { script: buffer_1.Buffer.from(target), type: "p2wsh" }, feeRate, requiredInputs, additionalOutputs);
+        let target;
+        switch (outputAddressType) {
+            case "p2pkh":
+                target = btc_signer_1.OutScript.encode({ type: "pkh", hash: (0, Utils_1.randomBytes)(20) });
+                break;
+            case "p2sh-p2wpkh":
+                target = btc_signer_1.OutScript.encode({ type: "sh", hash: (0, Utils_1.randomBytes)(20) });
+                break;
+            case "p2wpkh":
+                target = btc_signer_1.OutScript.encode({ type: "wpkh", hash: (0, Utils_1.randomBytes)(20) });
+                break;
+            case "p2tr":
+                target = btc_signer_1.OutScript.encode({
+                    type: "tr",
+                    pubkey: buffer_1.Buffer.from("0101010101010101010101010101010101010101010101010101010101010101", "hex")
+                });
+                break;
+            default:
+                target = btc_signer_1.OutScript.encode({ type: "wsh", hash: (0, Utils_1.randomBytes)(32) });
+                break;
+        }
+        let coinselectResult = (0, coinselect2_1.maxSendable)(utxoPool, { script: buffer_1.Buffer.from(target), type: outputAddressType ?? "p2wsh" }, feeRate, requiredInputs, additionalOutputs);
         logger.debug("_getSpendableBalance(): Max spendable result: ", coinselectResult);
         return {
             feeRate: feeRate,
@@ -317,6 +304,49 @@ class BitcoinWallet {
     }
     static bitcoinNetworkToObject(network) {
         return btcNetworkMapping[network];
+    }
+    static psbtInputToCoinselectInput(psbt, vin) {
+        const input = psbt.getInput(vin);
+        if (input.index == null || input.txid == null)
+            throw new Error("Inputs need txid & index!");
+        let amount;
+        let script;
+        if (input.witnessUtxo != null) {
+            amount = input.witnessUtxo.amount;
+            script = input.witnessUtxo.script;
+        }
+        else if (input.nonWitnessUtxo != null) {
+            amount = input.nonWitnessUtxo.outputs[input.index].amount;
+            script = input.nonWitnessUtxo.outputs[input.index].script;
+        }
+        else
+            throw new Error("Either witnessUtxo or nonWitnessUtxo has to be defined!");
+        return {
+            txId: buffer_1.Buffer.from(input.txid).toString('hex'),
+            vout: input.index,
+            value: Number(amount),
+            type: (0, BitcoinUtils_1.toCoinselectAddressType)(script)
+        };
+    }
+    static psbtOutputToCoinselectOutput(psbt, vout) {
+        const output = psbt.getOutput(vout);
+        if (output.amount == null || output.script == null)
+            throw new Error("Outputs need amount & script defined!");
+        return {
+            value: Number(output.amount),
+            script: buffer_1.Buffer.from(output.script)
+        };
+    }
+    static estimatePsbtVSize(psbt) {
+        const inputs = [];
+        for (let i = 0; i < psbt.inputsLength; i++) {
+            inputs.push(BitcoinWallet.psbtInputToCoinselectInput(psbt, i));
+        }
+        const outputs = [];
+        for (let i = 0; i < psbt.outputsLength; i++) {
+            outputs.push(BitcoinWallet.psbtOutputToCoinselectOutput(psbt, i));
+        }
+        return utils_2.utils.transactionBytes(inputs, outputs);
     }
 }
 exports.BitcoinWallet = BitcoinWallet;

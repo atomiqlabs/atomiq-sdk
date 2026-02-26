@@ -9,6 +9,8 @@ const bip32_1 = require("@scure/bip32");
 const bip39_1 = require("@scure/bip39");
 const english_js_1 = require("@scure/bip39/wordlists/english.js");
 const sha2_1 = require("@noble/hashes/sha2");
+const BitcoinNotEnoughBalanceError_1 = require("../../errors/BitcoinNotEnoughBalanceError");
+const BitcoinUtils_1 = require("../../utils/BitcoinUtils");
 /**
  * Bitcoin wallet implementation deriving a single address from a WIF encoded private key
  *
@@ -52,12 +54,12 @@ class SingleAddressBitcoinWallet extends BitcoinWallet_1.BitcoinWallet {
     /**
      * @inheritDoc
      */
-    async sendTransaction(address, amount, feeRate) {
+    async sendTransaction(address, amount, feeRate, utxos) {
         if (!this.privKey)
             throw new Error("Not supported.");
-        const { psbt, fee } = await super._getPsbt(this.toBitcoinWalletAccounts(), address, Number(amount), feeRate);
+        const { psbt, fee } = await super._getPsbt(this.toBitcoinWalletAccounts(), address, Number(amount), feeRate, utxos);
         if (psbt == null)
-            throw new Error(`Not enough funds, required for fee: ${fee} sats!`);
+            throw new BitcoinNotEnoughBalanceError_1.BitcoinNotEnoughBalanceError(`Not enough funds, required for fee: ${fee} sats!`);
         psbt.sign(this.privKey);
         psbt.finalize();
         const txHex = buffer_1.Buffer.from(psbt.extract()).toString("hex");
@@ -66,10 +68,10 @@ class SingleAddressBitcoinWallet extends BitcoinWallet_1.BitcoinWallet {
     /**
      * @inheritDoc
      */
-    async fundPsbt(inputPsbt, feeRate) {
-        const { psbt } = await super._fundPsbt(this.toBitcoinWalletAccounts(), inputPsbt, feeRate);
+    async fundPsbt(inputPsbt, feeRate, utxos) {
+        const { psbt } = await super._fundPsbt(this.toBitcoinWalletAccounts(), inputPsbt, feeRate, utxos);
         if (psbt == null) {
-            throw new Error("Not enough balance!");
+            throw new BitcoinNotEnoughBalanceError_1.BitcoinNotEnoughBalanceError("Not enough balance!");
         }
         return psbt;
     }
@@ -87,15 +89,15 @@ class SingleAddressBitcoinWallet extends BitcoinWallet_1.BitcoinWallet {
     /**
      * @inheritDoc
      */
-    async getTransactionFee(address, amount, feeRate) {
-        const { fee } = await super._getPsbt(this.toBitcoinWalletAccounts(), address, Number(amount), feeRate);
+    async getTransactionFee(address, amount, feeRate, utxos) {
+        const { fee } = await super._getPsbt(this.toBitcoinWalletAccounts(), address, Number(amount), feeRate, utxos);
         return fee;
     }
     /**
      * @inheritDoc
      */
-    async getFundedPsbtFee(basePsbt, feeRate) {
-        const { fee } = await super._fundPsbt(this.toBitcoinWalletAccounts(), basePsbt, feeRate);
+    async getFundedPsbtFee(basePsbt, feeRate, utxos) {
+        const { fee } = await super._fundPsbt(this.toBitcoinWalletAccounts(), basePsbt, feeRate, utxos);
         return fee;
     }
     /**
@@ -113,8 +115,49 @@ class SingleAddressBitcoinWallet extends BitcoinWallet_1.BitcoinWallet {
     /**
      * @inheritDoc
      */
-    getSpendableBalance(psbt, feeRate) {
-        return this._getSpendableBalance([{ address: this.address, addressType: this.addressType }], psbt, feeRate);
+    getSpendableBalance(psbt, feeRate, outputAddressType, utxos) {
+        return this._getSpendableBalance([{ address: this.address, addressType: this.addressType }], psbt, feeRate, outputAddressType, utxos);
+    }
+    async getUtxoPool() {
+        return this._getUtxoPool(this.address, this.addressType);
+    }
+    /**
+     * Adds the requested UTXOs into the PSBT. Careful with this because it doesn't add change outputs automatically!
+     *
+     * @param psbt PSBT to fund (add UTXOs to)
+     * @param utxos UTXOs to add to the PSBT
+     */
+    fundPsbtWithExactUtxos(psbt, utxos) {
+        //TODO: This only works for p2wpkh addresses!
+        utxos.forEach((utxo) => {
+            psbt.addInput({
+                txid: utxo.txId, index: utxo.vout,
+                witnessUtxo: {
+                    amount: BigInt(utxo.value),
+                    script: (0, BitcoinUtils_1.toOutputScript)(this.network, this.address)
+                },
+                sighashType: 0x01
+            });
+        });
+        const fee = psbt.fee;
+        const txVSize = BitcoinWallet_1.BitcoinWallet.estimatePsbtVSize(psbt);
+        const txFeeRate = Number(fee) / txVSize;
+        let cpfpInputsVSize = 0;
+        let cpfpInputsFee = 0;
+        utxos.forEach((utxo) => {
+            if (utxo.cpfp == null)
+                return;
+            if (utxo.cpfp.txEffectiveFeeRate < txFeeRate)
+                return;
+            cpfpInputsVSize += utxo.cpfp.txVsize;
+            cpfpInputsFee += Math.ceil(utxo.cpfp.txEffectiveFeeRate * utxo.cpfp.txVsize);
+        });
+        const feeRate = (cpfpInputsFee + Number(fee)) / (txVSize + cpfpInputsVSize);
+        return {
+            psbt,
+            fee,
+            feeRate
+        };
     }
     /**
      * Generates a new random private key WIF that can be used to instantiate the bitcoin wallet instance

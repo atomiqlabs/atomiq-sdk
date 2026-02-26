@@ -200,6 +200,13 @@ export declare abstract class ISwapWrapper<T extends ChainType, D extends SwapTy
         removeSwaps: D["Swap"][];
     }>;
     /**
+     * Runs {@link ISwap._tick} on passed swaps
+     *
+     * @param swaps Swaps to run the tick for
+     * @internal
+     */
+    protected _tick(swaps: D["Swap"][]): Promise<void>;
+    /**
      * Initializes the swap wrapper, needs to be called before any other action can be taken
      *
      * @param noTimers Whether to skip scheduling a tick timer for the swaps, if the tick timer is not initiated

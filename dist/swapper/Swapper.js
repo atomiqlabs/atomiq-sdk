@@ -328,7 +328,7 @@ class Swapper extends events_1.EventEmitter {
             this.logger.warn("createSwap(): No valid intermediary found to execute the swap with, reloading intermediary database...");
             await this.intermediaryDiscovery.reloadIntermediaries();
             swapLimitsChanged = true;
-            if (!inBtc) {
+            if (!inBtc || amountData.amount == null) {
                 //Get candidates not based on the amount
                 candidates = this.intermediaryDiscovery.getSwapCandidates(chainIdentifier, swapType, amountData.token);
             }
@@ -414,10 +414,12 @@ class Swapper extends events_1.EventEmitter {
                         }
                         if (min != null && max != null) {
                             let msg = "Swap amount too high or too low! Try swapping a different amount.";
-                            if (min > amountData.amount)
-                                msg = "Swap amount too low! Try swapping a higher amount.";
-                            if (max < amountData.amount)
-                                msg = "Swap amount too high! Try swapping a lower amount.";
+                            if (amountData.amount != null) {
+                                if (min > amountData.amount)
+                                    msg = "Swap amount too low! Try swapping a higher amount.";
+                                if (max < amountData.amount)
+                                    msg = "Swap amount too high! Try swapping a lower amount.";
+                            }
                             reject(new RequestError_1.OutOfBoundsError(msg, 400, min, max));
                             return;
                         }

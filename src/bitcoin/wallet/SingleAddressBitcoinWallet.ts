@@ -3,11 +3,15 @@ import {BTC_NETWORK, NETWORK, pubECDSA, randomPrivateKeyBytes, TEST_NETWORK} fro
 import {getAddress, Transaction, WIF} from "@scure/btc-signer";
 import {Buffer} from "buffer";
 import {identifyAddressType, BitcoinWallet} from "./BitcoinWallet";
-import {BitcoinNetwork, BitcoinRpcWithAddressIndex} from "@atomiqlabs/base";
+import {BitcoinNetwork, BitcoinRpcWithAddressIndex, BtcAddressUtxo} from "@atomiqlabs/base";
 import {HDKey} from "@scure/bip32";
 import {entropyToMnemonic, generateMnemonic, mnemonicToSeed} from "@scure/bip39";
 import {wordlist} from "@scure/bip39/wordlists/english.js";
 import {sha256} from "@noble/hashes/sha2";
+import {BitcoinNotEnoughBalanceError} from "../../errors/BitcoinNotEnoughBalanceError";
+import {toOutputScript} from "../../utils/BitcoinUtils";
+import { utils } from "../coinselect2/utils";
+import {BitcoinWalletUtxo} from "./IBitcoinWallet";
 
 /**
  * Bitcoin wallet implementation deriving a single address from a WIF encoded private key
@@ -63,10 +67,10 @@ export class SingleAddressBitcoinWallet extends BitcoinWallet {
     /**
      * @inheritDoc
      */
-    async sendTransaction(address: string, amount: bigint, feeRate?: number): Promise<string> {
+    async sendTransaction(address: string, amount: bigint, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<string> {
         if(!this.privKey) throw new Error("Not supported.");
-        const {psbt, fee} = await super._getPsbt(this.toBitcoinWalletAccounts(), address, Number(amount), feeRate);
-        if(psbt==null) throw new Error(`Not enough funds, required for fee: ${fee} sats!`);
+        const {psbt, fee} = await super._getPsbt(this.toBitcoinWalletAccounts(), address, Number(amount), feeRate, utxos);
+        if(psbt==null) throw new BitcoinNotEnoughBalanceError(`Not enough funds, required for fee: ${fee} sats!`);
         psbt.sign(this.privKey);
         psbt.finalize();
         const txHex = Buffer.from(psbt.extract()).toString("hex");
@@ -76,10 +80,10 @@ export class SingleAddressBitcoinWallet extends BitcoinWallet {
     /**
      * @inheritDoc
      */
-    async fundPsbt(inputPsbt: Transaction, feeRate?: number): Promise<Transaction> {
-        const {psbt} = await super._fundPsbt(this.toBitcoinWalletAccounts(), inputPsbt, feeRate);
+    async fundPsbt(inputPsbt: Transaction, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<Transaction> {
+        const {psbt} = await super._fundPsbt(this.toBitcoinWalletAccounts(), inputPsbt, feeRate, utxos);
         if(psbt==null) {
-            throw new Error("Not enough balance!");
+            throw new BitcoinNotEnoughBalanceError("Not enough balance!");
         }
         return psbt;
     }
@@ -98,16 +102,16 @@ export class SingleAddressBitcoinWallet extends BitcoinWallet {
     /**
      * @inheritDoc
      */
-    async getTransactionFee(address: string, amount: bigint, feeRate?: number): Promise<number> {
-        const {fee} = await super._getPsbt(this.toBitcoinWalletAccounts(), address, Number(amount), feeRate);
+    async getTransactionFee(address: string, amount: bigint, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number> {
+        const {fee} = await super._getPsbt(this.toBitcoinWalletAccounts(), address, Number(amount), feeRate, utxos);
         return fee;
     }
 
     /**
      * @inheritDoc
      */
-    async getFundedPsbtFee(basePsbt: Transaction, feeRate?: number): Promise<number> {
-        const {fee} = await super._fundPsbt(this.toBitcoinWalletAccounts(), basePsbt, feeRate);
+    async getFundedPsbtFee(basePsbt: Transaction, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number> {
+        const {fee} = await super._fundPsbt(this.toBitcoinWalletAccounts(), basePsbt, feeRate, utxos);
         return fee;
     }
 
@@ -131,12 +135,60 @@ export class SingleAddressBitcoinWallet extends BitcoinWallet {
     /**
      * @inheritDoc
      */
-    getSpendableBalance(psbt?: Transaction, feeRate?: number): Promise<{
+    getSpendableBalance(psbt?: Transaction, feeRate?: number, outputAddressType?: CoinselectAddressTypes, utxos?: BitcoinWalletUtxo[]): Promise<{
         balance: bigint,
         feeRate: number,
         totalFee: number
     }> {
-        return this._getSpendableBalance([{address: this.address, addressType: this.addressType}], psbt, feeRate);
+        return this._getSpendableBalance([{address: this.address, addressType: this.addressType}], psbt, feeRate, outputAddressType, utxos);
+    }
+
+    async getUtxoPool(): Promise<BitcoinWalletUtxo[]> {
+        return this._getUtxoPool(this.address, this.addressType);
+    }
+
+    /**
+     * Adds the requested UTXOs into the PSBT. Careful with this because it doesn't add change outputs automatically!
+     *
+     * @param psbt PSBT to fund (add UTXOs to)
+     * @param utxos UTXOs to add to the PSBT
+     */
+    fundPsbtWithExactUtxos(psbt: Transaction, utxos: BitcoinWalletUtxo[]): {
+        psbt: Transaction,
+        fee: bigint,
+        feeRate: number
+    } {
+        //TODO: This only works for p2wpkh addresses!
+        utxos.forEach((utxo) => {
+            psbt.addInput({
+                txid: utxo.txId, index: utxo.vout,
+                witnessUtxo: {
+                    amount: BigInt(utxo.value),
+                    script: toOutputScript(this.network, this.address)
+                },
+                sighashType: 0x01
+            });
+        });
+        const fee = psbt.fee;
+
+        const txVSize = BitcoinWallet.estimatePsbtVSize(psbt);
+        const txFeeRate = Number(fee) / txVSize;
+        let cpfpInputsVSize = 0;
+        let cpfpInputsFee = 0;
+        utxos.forEach((utxo) => {
+            if(utxo.cpfp==null) return;
+            if(utxo.cpfp.txEffectiveFeeRate < txFeeRate) return;
+            cpfpInputsVSize += utxo.cpfp.txVsize;
+            cpfpInputsFee += Math.ceil(utxo.cpfp.txEffectiveFeeRate * utxo.cpfp.txVsize);
+        });
+
+        const feeRate = (cpfpInputsFee + Number(fee)) / (txVSize + cpfpInputsVSize)
+
+        return {
+            psbt,
+            fee,
+            feeRate
+        };
     }
 
     /**

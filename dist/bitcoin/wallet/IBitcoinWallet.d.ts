@@ -1,4 +1,25 @@
+/// <reference types="node" />
+/// <reference types="node" />
 import { Transaction } from "@scure/btc-signer";
+import { CoinselectAddressTypes } from "../coinselect2";
+/**
+ * UTXO data structure for Bitcoin wallets
+ *
+ * @category Bitcoin
+ */
+export type BitcoinWalletUtxo = {
+    vout: number;
+    txId: string;
+    value: number;
+    type: CoinselectAddressTypes;
+    outputScript: Buffer;
+    address: string;
+    cpfp?: {
+        txVsize: number;
+        txEffectiveFeeRate: number;
+    };
+    confirmed: boolean;
+};
 /**
  * Type guard to check if an object implements {@link IBitcoinWallet}
  *
@@ -18,15 +39,17 @@ export interface IBitcoinWallet {
      * @param address Destination address of the transaction
      * @param amount Amount of satoshis to send (1 BTC = 100,000,000 sats)
      * @param feeRate Optional fee rate in sats/vB to use for the transaction
+     * @param utxos Optional pre-fetched UTXOs
      */
-    sendTransaction(address: string, amount: bigint, feeRate?: number): Promise<string>;
+    sendTransaction(address: string, amount: bigint, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<string>;
     /**
      * Funds (populates the inputs) for a given PSBT from wallet's UTXO set
      *
      * @param psbt PSBT to add the inputs to
      * @param feeRate Optional fee rate in sats/vB to use for the transaction
+     * @param utxos Optional pre-fetched UTXOs
      */
-    fundPsbt(psbt: Transaction, feeRate?: number): Promise<Transaction>;
+    fundPsbt(psbt: Transaction, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<Transaction>;
     /**
      * Signs inputs in the provided PSBT
      *
@@ -44,15 +67,17 @@ export interface IBitcoinWallet {
      * @param address Destination address of the transaction
      * @param amount Amount of satoshis to send (1 BTC = 100,000,000 sats)
      * @param feeRate Optional fee rate in sats/vB to use for the transaction
+     * @param utxos Optional pre-fetched UTXOs
      */
-    getTransactionFee(address: string, amount: bigint, feeRate?: number): Promise<number>;
+    getTransactionFee(address: string, amount: bigint, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number>;
     /**
      * Estimates a total fee in satoshis for a given transaction as identified by the PSBT
      *
      * @param psbt A PSBT to which additional inputs from wallet's UTXO set will be added and fee estimated
      * @param feeRate Optional fee rate in sats/vB to use for the transaction
+     * @param utxos Optional pre-fetched UTXOs
      */
-    getFundedPsbtFee(psbt: Transaction, feeRate?: number): Promise<number>;
+    getFundedPsbtFee(psbt: Transaction, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number>;
     /**
      * Returns the bitcoin address suitable for receiving funds
      */
@@ -69,10 +94,16 @@ export interface IBitcoinWallet {
      *
      * @param psbt A PSBT to which additional inputs from wallet's UTXO set will be added and fee estimated
      * @param feeRate Optional fee rate in sats/vB to use for the transaction
+     * @param outputAddressType Expected output address type, if known
+     * @param utxos Optional pre-fetched UTXOs
      */
-    getSpendableBalance(psbt?: Transaction, feeRate?: number): Promise<{
+    getSpendableBalance(psbt?: Transaction, feeRate?: number, outputAddressType?: CoinselectAddressTypes, utxos?: BitcoinWalletUtxo[]): Promise<{
         balance: bigint;
         feeRate: number;
         totalFee: number;
     }>;
+    /**
+     * Returns a list of available UTXOs for the wallet
+     */
+    getUtxoPool?(): Promise<BitcoinWalletUtxo[]>;
 }

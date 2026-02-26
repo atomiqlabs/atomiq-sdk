@@ -335,7 +335,7 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
      * @param additionalParams Additional parameters sent to the LP when creating the swap
      * @param options Additional options for the swap
      */
-    createFromBTCSwapNew<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier, recipient: string, tokenAddress: string, amount: bigint, exactOut?: boolean, additionalParams?: Record<string, any> | undefined, options?: SpvFromBTCOptions): Promise<SpvFromBTCSwap<T[ChainIdentifier]>>;
+    createFromBTCSwapNew<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier, recipient: string, tokenAddress: string, amount?: bigint, exactOut?: boolean, additionalParams?: Record<string, any> | undefined, options?: SpvFromBTCOptions): Promise<SpvFromBTCSwap<T[ChainIdentifier]>>;
     /**
      * Creates LEGACY Bitcoin -> Smart chain ({@link SwapType.FROM_BTC}) swap
      *

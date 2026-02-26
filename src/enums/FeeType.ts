@@ -12,5 +12,9 @@ export enum FeeType {
     /**
      * Network fee to cover the transactions on the destination (output) network
      */
-    NETWORK_OUTPUT = 1
+    NETWORK_OUTPUT = 1,
+    /**
+     * Network fee to cover the transactions on the source (input) network
+     */
+    NETWORK_INPUT = 2
 }

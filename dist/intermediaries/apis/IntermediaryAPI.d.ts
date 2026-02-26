@@ -235,7 +235,7 @@ declare const SpvFromBTCPrepareResponseSchema: {
 export type SpvFromBTCPrepareResponseType = RequestSchemaResult<typeof SpvFromBTCPrepareResponseSchema>;
 export type SpvFromBTCPrepare = SwapInit & {
     address: string;
-    amount: bigint;
+    amount: Promise<bigint>;
     gasAmount: bigint;
     gasToken: string;
     exactOut: boolean;

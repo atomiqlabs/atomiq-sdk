@@ -691,7 +691,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
             quote: Promise<S>,
             intermediary: Intermediary
         }[]>,
-        amountData: AmountData,
+        amountData: {token: string, exactIn: boolean, amount?: bigint},
         swapType: SwapType,
         maxWaitTimeMS: number = 2000
     ): Promise<S> {
@@ -715,7 +715,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
             await this.intermediaryDiscovery.reloadIntermediaries();
             swapLimitsChanged = true;
 
-            if(!inBtc) {
+            if(!inBtc || amountData.amount==null) {
                 //Get candidates not based on the amount
                 candidates = this.intermediaryDiscovery.getSwapCandidates(chainIdentifier, swapType, amountData.token);
             } else {
@@ -805,8 +805,10 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                         }
                         if(min!=null && max!=null) {
                             let msg = "Swap amount too high or too low! Try swapping a different amount.";
-                            if(min > amountData.amount) msg = "Swap amount too low! Try swapping a higher amount.";
-                            if(max < amountData.amount) msg = "Swap amount too high! Try swapping a lower amount.";
+                            if(amountData.amount!=null) {
+                                if(min > amountData.amount) msg = "Swap amount too low! Try swapping a higher amount.";
+                                if(max < amountData.amount) msg = "Swap amount too high! Try swapping a lower amount.";
+                            }
                             reject(new OutOfBoundsError(msg, 400, min, max));
                             return;
                         }
@@ -1060,7 +1062,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         chainIdentifier: ChainIdentifier,
         recipient: string,
         tokenAddress: string,
-        amount: bigint,
+        amount?: bigint,
         exactOut: boolean = false,
         additionalParams: Record<string, any> | undefined = this.options.defaultAdditionalParameters,
         options?: SpvFromBTCOptions

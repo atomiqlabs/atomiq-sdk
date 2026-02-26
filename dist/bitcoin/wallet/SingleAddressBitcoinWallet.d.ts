@@ -6,6 +6,7 @@ import { Transaction } from "@scure/btc-signer";
 import { Buffer } from "buffer";
 import { BitcoinWallet } from "./BitcoinWallet";
 import { BitcoinNetwork, BitcoinRpcWithAddressIndex } from "@atomiqlabs/base";
+import { BitcoinWalletUtxo } from "./IBitcoinWallet";
 /**
  * Bitcoin wallet implementation deriving a single address from a WIF encoded private key
  *
@@ -33,11 +34,11 @@ export declare class SingleAddressBitcoinWallet extends BitcoinWallet {
     /**
      * @inheritDoc
      */
-    sendTransaction(address: string, amount: bigint, feeRate?: number): Promise<string>;
+    sendTransaction(address: string, amount: bigint, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<string>;
     /**
      * @inheritDoc
      */
-    fundPsbt(inputPsbt: Transaction, feeRate?: number): Promise<Transaction>;
+    fundPsbt(inputPsbt: Transaction, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<Transaction>;
     /**
      * @inheritDoc
      */
@@ -45,11 +46,11 @@ export declare class SingleAddressBitcoinWallet extends BitcoinWallet {
     /**
      * @inheritDoc
      */
-    getTransactionFee(address: string, amount: bigint, feeRate?: number): Promise<number>;
+    getTransactionFee(address: string, amount: bigint, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number>;
     /**
      * @inheritDoc
      */
-    getFundedPsbtFee(basePsbt: Transaction, feeRate?: number): Promise<number>;
+    getFundedPsbtFee(basePsbt: Transaction, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number>;
     /**
      * @inheritDoc
      */
@@ -64,11 +65,23 @@ export declare class SingleAddressBitcoinWallet extends BitcoinWallet {
     /**
      * @inheritDoc
      */
-    getSpendableBalance(psbt?: Transaction, feeRate?: number): Promise<{
+    getSpendableBalance(psbt?: Transaction, feeRate?: number, outputAddressType?: CoinselectAddressTypes, utxos?: BitcoinWalletUtxo[]): Promise<{
         balance: bigint;
         feeRate: number;
         totalFee: number;
     }>;
+    getUtxoPool(): Promise<BitcoinWalletUtxo[]>;
+    /**
+     * Adds the requested UTXOs into the PSBT. Careful with this because it doesn't add change outputs automatically!
+     *
+     * @param psbt PSBT to fund (add UTXOs to)
+     * @param utxos UTXOs to add to the PSBT
+     */
+    fundPsbtWithExactUtxos(psbt: Transaction, utxos: BitcoinWalletUtxo[]): {
+        psbt: Transaction;
+        fee: bigint;
+        feeRate: number;
+    };
     /**
      * Generates a new random private key WIF that can be used to instantiate the bitcoin wallet instance
      *

@@ -14,6 +14,7 @@ import {BitcoinTokens, SCToken} from "../types/Token";
 import {isLNURLWithdraw, LNURLWithdraw} from "../types/lnurl/LNURLWithdraw";
 import {isLNURLPay, LNURLPay} from "../types/lnurl/LNURLPay";
 import {toBitcoinWallet} from "../utils/BitcoinWalletUtils";
+import {REQUIRED_SPV_SWAP_LP_ADDRESS_TYPE} from "../swaps/spv_swaps/SpvFromBTCWrapper";
 
 /**
  * Utility class providing helper methods for address parsing, token balances, serialization
@@ -384,7 +385,10 @@ export class SwapperUtils<T extends MultiChain> {
 
         let result: {balance: bigint, feeRate: number, totalFee: number};
         if(targetChain!=null && this.root.supportsSwapType(targetChain, SwapType.SPV_VAULT_FROM_BTC)) {
-            result = await bitcoinWallet.getSpendableBalance(this.getRandomSpvVaultPsbt(targetChain, options?.gasDrop), feeRate);
+            result = await bitcoinWallet.getSpendableBalance(
+                this.getRandomSpvVaultPsbt(targetChain, options?.gasDrop),
+                feeRate, REQUIRED_SPV_SWAP_LP_ADDRESS_TYPE
+            );
         } else {
             result = await bitcoinWallet.getSpendableBalance(undefined, feeRate);
         }

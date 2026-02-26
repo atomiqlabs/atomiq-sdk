@@ -10,7 +10,6 @@ const bip39_1 = require("@scure/bip39");
 const english_js_1 = require("@scure/bip39/wordlists/english.js");
 const sha2_1 = require("@noble/hashes/sha2");
 const BitcoinNotEnoughBalanceError_1 = require("../../errors/BitcoinNotEnoughBalanceError");
-const BitcoinUtils_1 = require("../../utils/BitcoinUtils");
 /**
  * Bitcoin wallet implementation deriving a single address from a WIF encoded private key
  *
@@ -133,14 +132,14 @@ class SingleAddressBitcoinWallet extends BitcoinWallet_1.BitcoinWallet {
      * @param psbt PSBT to fund (add UTXOs to)
      * @param utxos UTXOs to add to the PSBT
      */
-    fundPsbtWithExactUtxos(psbt, utxos) {
+    static fundPsbtWithExactUtxos(psbt, utxos) {
         //TODO: This only works for p2wpkh addresses!
         utxos.forEach((utxo) => {
             psbt.addInput({
                 txid: utxo.txId, index: utxo.vout,
                 witnessUtxo: {
                     amount: BigInt(utxo.value),
-                    script: (0, BitcoinUtils_1.toOutputScript)(this.network, this.address)
+                    script: utxo.outputScript
                 },
                 sighashType: 0x01
             });

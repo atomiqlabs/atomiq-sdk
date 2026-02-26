@@ -1407,6 +1407,7 @@ export class SpvFromBTCSwap<T extends ChainType>
         await this.waitTillState(SpvFromBTCSwapState.CREATED, "neq", abortSignal);
         if(this._state<SpvFromBTCSwapState.CREATED)
             throw new Error("Failed to receive the bitcoin transaction in time!");
+        await this.waitTillState(SpvFromBTCSwapState.SIGNED, "neq", abortSignal);
     }
 
     /**

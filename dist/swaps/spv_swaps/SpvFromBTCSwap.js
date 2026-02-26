@@ -1064,6 +1064,7 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
         await this.waitTillState(SpvFromBTCSwapState.CREATED, "neq", abortSignal);
         if (this._state < SpvFromBTCSwapState.CREATED)
             throw new Error("Failed to receive the bitcoin transaction in time!");
+        await this.waitTillState(SpvFromBTCSwapState.SIGNED, "neq", abortSignal);
     }
     /**
      * @inheritDoc

@@ -1,32 +1,14 @@
-import {coinSelect, maxSendable, CoinselectAddressTypes, CoinselectTxInput} from "../coinselect2";
+import {coinSelect, maxSendable, CoinselectAddressTypes, CoinselectTxInput, CoinselectTxOutput} from "../coinselect2";
 import {BTC_NETWORK, NETWORK, TEST_NETWORK} from "@scure/btc-signer/utils"
 import {p2wpkh, OutScript, Transaction, p2tr, Address} from "@scure/btc-signer";
-import {IBitcoinWallet} from "./IBitcoinWallet";
+import {BitcoinWalletUtxo, IBitcoinWallet} from "./IBitcoinWallet";
 import {Buffer} from "buffer";
 import {randomBytes} from "../../utils/Utils";
 import {toCoinselectAddressType, toOutputScript} from "../../utils/BitcoinUtils";
 import {TransactionInputUpdate} from "@scure/btc-signer/psbt";
 import {getLogger} from "../../utils/Logger";
 import {BitcoinNetwork, BitcoinRpcWithAddressIndex} from "@atomiqlabs/base";
-
-/**
- * UTXO data structure for Bitcoin wallets
- *
- * @category Bitcoin
- */
-export type BitcoinWalletUtxo = {
-    vout: number,
-    txId: string,
-    value: number,
-    type: CoinselectAddressTypes,
-    outputScript: Buffer,
-    address: string,
-    cpfp?: {
-        txVsize: number,
-        txEffectiveFeeRate: number
-    },
-    confirmed: boolean
-};
+import { utils } from "../coinselect2/utils";
 
 /**
  * Identifies the address type of a Bitcoin address
@@ -164,11 +146,6 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
     }
 
     /**
-     *
-     * @param sendingAccounts
-     * @param recipient
-     * @param amount
-     * @param feeRate
      * @protected
      */
     protected async _getPsbt(
@@ -179,7 +156,8 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
         }[],
         recipient: string,
         amount: number,
-        feeRate?: number
+        feeRate?: number,
+        utxoPool?: BitcoinWalletUtxo[]
     ): Promise<{
         fee: number,
         psbt?: Transaction,
@@ -190,7 +168,7 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
             amount: BigInt(amount),
             script: toOutputScript(this.network, recipient)
         });
-        return this._fundPsbt(sendingAccounts, psbt, feeRate);
+        return this._fundPsbt(sendingAccounts, psbt, feeRate, utxoPool);
     }
 
     protected async _fundPsbt(
@@ -200,7 +178,8 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
             addressType: CoinselectAddressTypes,
         }[],
         psbt: Transaction,
-        feeRate?: number
+        feeRate?: number,
+        utxoPool?: BitcoinWalletUtxo[]
     ): Promise<{
         fee: number,
         psbt?: Transaction,
@@ -208,7 +187,7 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
     }> {
         if(feeRate==null) feeRate = await this.getFeeRate();
 
-        const utxoPool: BitcoinWalletUtxo[] = (await Promise.all(sendingAccounts.map(acc => this._getUtxoPool(acc.address, acc.addressType)))).flat();
+        utxoPool ??= (await Promise.all(sendingAccounts.map(acc => this._getUtxoPool(acc.address, acc.addressType)))).flat();
 
         logger.debug("_fundPsbt(): fee rate: "+feeRate+" utxo pool: ", utxoPool);
 
@@ -217,33 +196,12 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
 
         const requiredInputs: CoinselectTxInput[] = [];
         for(let i=0;i<psbt.inputsLength;i++) {
-            const input = psbt.getInput(i);
-            if(input.index==null || input.txid==null) throw new Error("Inputs need txid & index!");
-            let amount: bigint;
-            let script: Uint8Array;
-            if(input.witnessUtxo!=null) {
-                amount = input.witnessUtxo.amount as bigint;
-                script = input.witnessUtxo.script as Uint8Array;
-            } else if(input.nonWitnessUtxo!=null) {
-                amount = input.nonWitnessUtxo.outputs[input.index].amount;
-                script = input.nonWitnessUtxo.outputs[input.index].script;
-            } else throw new Error("Either witnessUtxo or nonWitnessUtxo has to be defined!");
-            requiredInputs.push({
-                txId: Buffer.from(input.txid).toString('hex'),
-                vout: input.index,
-                value: Number(amount),
-                type: toCoinselectAddressType(script)
-            })
+            requiredInputs.push(BitcoinWallet.psbtInputToCoinselectInput(psbt, i));
         }
 
-        const targets: {value: number, script: Buffer}[] = [];
+        const targets: CoinselectTxOutput[] = [];
         for(let i=0;i<psbt.outputsLength;i++) {
-            const output = psbt.getOutput(i);
-            if(output.amount==null || output.script==null) throw new Error("Outputs need amount & script defined!");
-            targets.push({
-                value: Number(output.amount),
-                script: Buffer.from(output.script)
-            })
+            targets.push(BitcoinWallet.psbtOutputToCoinselectOutput(psbt, i));
         }
         logger.debug("_fundPsbt(): Coinselect targets: ", targets);
 
@@ -346,7 +304,9 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
             addressType: CoinselectAddressTypes,
         }[],
         psbt?: Transaction,
-        feeRate?: number
+        feeRate?: number,
+        outputAddressType?: CoinselectAddressTypes,
+        utxoPool?: BitcoinWalletUtxo[]
     ): Promise<{
         balance: bigint,
         feeRate: number,
@@ -354,7 +314,7 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
     }> {
         feeRate ??= await this.getFeeRate();
 
-        const utxoPool: BitcoinWalletUtxo[] = (await Promise.all(sendingAccounts.map(acc => this._getUtxoPool(acc.address, acc.addressType)))).flat();
+        utxoPool ??= (await Promise.all(sendingAccounts.map(acc => this._getUtxoPool(acc.address, acc.addressType)))).flat();
 
         const requiredInputs: CoinselectTxInput[] = [];
         if(psbt!=null) for(let i=0;i<psbt.inputsLength;i++) {
@@ -387,12 +347,29 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
             })
         }
 
-        const target = OutScript.encode({
-            type: "wsh",
-            hash: randomBytes(32)
-        });
+        let target: Uint8Array;
+        switch(outputAddressType) {
+            case "p2pkh":
+                target = OutScript.encode({type: "pkh", hash: randomBytes(20)});
+                break;
+            case "p2sh-p2wpkh":
+                target = OutScript.encode({type: "sh", hash: randomBytes(20)});
+                break;
+            case "p2wpkh":
+                target = OutScript.encode({type: "wpkh", hash: randomBytes(20)});
+                break;
+            case "p2tr":
+                target = OutScript.encode({
+                    type: "tr",
+                    pubkey: Buffer.from("0101010101010101010101010101010101010101010101010101010101010101", "hex")
+                });
+                break;
+            default:
+                target = OutScript.encode({type: "wsh", hash: randomBytes(32)});
+                break;
+        }
 
-        let coinselectResult = maxSendable(utxoPool, {script: Buffer.from(target), type: "p2wsh"}, feeRate, requiredInputs, additionalOutputs);
+        let coinselectResult = maxSendable(utxoPool, {script: Buffer.from(target), type: outputAddressType ?? "p2wsh"}, feeRate, requiredInputs, additionalOutputs);
 
         logger.debug("_getSpendableBalance(): Max spendable result: ", coinselectResult);
 
@@ -403,19 +380,19 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
         }
     }
 
-    abstract sendTransaction(address: string, amount: bigint, feeRate?: number): Promise<string>;
-    abstract fundPsbt(psbt: Transaction, feeRate?: number): Promise<Transaction>;
+    abstract sendTransaction(address: string, amount: bigint, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<string>;
+    abstract fundPsbt(psbt: Transaction, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<Transaction>;
     abstract signPsbt(psbt: Transaction, signInputs: number[]): Promise<Transaction>;
 
-    abstract getTransactionFee(address: string, amount: bigint, feeRate?: number): Promise<number>;
-    abstract getFundedPsbtFee(psbt: Transaction, feeRate?: number): Promise<number>;
+    abstract getTransactionFee(address: string, amount: bigint, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number>;
+    abstract getFundedPsbtFee(psbt: Transaction, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number>;
 
     abstract getReceiveAddress(): string;
     abstract getBalance(): Promise<{
         confirmedBalance: bigint,
         unconfirmedBalance: bigint
     }>;
-    abstract getSpendableBalance(psbt?: Transaction, feeRate?: number): Promise<{
+    abstract getSpendableBalance(psbt?: Transaction, feeRate?: number, outputAddressType?: CoinselectAddressTypes, utxos?: BitcoinWalletUtxo[]): Promise<{
         balance: bigint,
         feeRate: number,
         totalFee: number
@@ -423,6 +400,47 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
 
     static bitcoinNetworkToObject(network: BitcoinNetwork): BTC_NETWORK {
         return btcNetworkMapping[network];
+    }
+
+    static psbtInputToCoinselectInput(psbt: Transaction, vin: number): CoinselectTxInput {
+        const input = psbt.getInput(vin);
+        if(input.index==null || input.txid==null) throw new Error("Inputs need txid & index!");
+        let amount: bigint;
+        let script: Uint8Array;
+        if(input.witnessUtxo!=null) {
+            amount = input.witnessUtxo.amount as bigint;
+            script = input.witnessUtxo.script as Uint8Array;
+        } else if(input.nonWitnessUtxo!=null) {
+            amount = input.nonWitnessUtxo.outputs[input.index].amount;
+            script = input.nonWitnessUtxo.outputs[input.index].script;
+        } else throw new Error("Either witnessUtxo or nonWitnessUtxo has to be defined!");
+        return {
+            txId: Buffer.from(input.txid).toString('hex'),
+            vout: input.index,
+            value: Number(amount),
+            type: toCoinselectAddressType(script)
+        };
+    }
+
+    static psbtOutputToCoinselectOutput(psbt: Transaction, vout: number): CoinselectTxOutput {
+        const output = psbt.getOutput(vout);
+        if(output.amount==null || output.script==null) throw new Error("Outputs need amount & script defined!");
+        return {
+            value: Number(output.amount),
+            script: Buffer.from(output.script)
+        };
+    }
+
+    static estimatePsbtVSize(psbt: Transaction) {
+        const inputs: CoinselectTxInput[] = [];
+        for(let i=0;i<psbt.inputsLength;i++) {
+            inputs.push(BitcoinWallet.psbtInputToCoinselectInput(psbt, i));
+        }
+        const outputs: CoinselectTxOutput[] = [];
+        for(let i=0;i<psbt.outputsLength;i++) {
+            outputs.push(BitcoinWallet.psbtOutputToCoinselectOutput(psbt, i));
+        }
+        return utils.transactionBytes(inputs, outputs);
     }
 
 }

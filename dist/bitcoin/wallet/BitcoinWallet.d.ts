@@ -1,29 +1,8 @@
-/// <reference types="node" />
-/// <reference types="node" />
-import { CoinselectAddressTypes } from "../coinselect2";
+import { CoinselectAddressTypes, CoinselectTxInput, CoinselectTxOutput } from "../coinselect2";
 import { BTC_NETWORK } from "@scure/btc-signer/utils";
 import { Transaction } from "@scure/btc-signer";
-import { IBitcoinWallet } from "./IBitcoinWallet";
-import { Buffer } from "buffer";
+import { BitcoinWalletUtxo, IBitcoinWallet } from "./IBitcoinWallet";
 import { BitcoinNetwork, BitcoinRpcWithAddressIndex } from "@atomiqlabs/base";
-/**
- * UTXO data structure for Bitcoin wallets
- *
- * @category Bitcoin
- */
-export type BitcoinWalletUtxo = {
-    vout: number;
-    txId: string;
-    value: number;
-    type: CoinselectAddressTypes;
-    outputScript: Buffer;
-    address: string;
-    cpfp?: {
-        txVsize: number;
-        txEffectiveFeeRate: number;
-    };
-    confirmed: boolean;
-};
 /**
  * Identifies the address type of a Bitcoin address
  *
@@ -74,18 +53,13 @@ export declare abstract class BitcoinWallet implements IBitcoinWallet {
      */
     protected _getUtxoPool(sendingAddress: string, sendingAddressType: CoinselectAddressTypes): Promise<BitcoinWalletUtxo[]>;
     /**
-     *
-     * @param sendingAccounts
-     * @param recipient
-     * @param amount
-     * @param feeRate
      * @protected
      */
     protected _getPsbt(sendingAccounts: {
         pubkey: string;
         address: string;
         addressType: CoinselectAddressTypes;
-    }[], recipient: string, amount: number, feeRate?: number): Promise<{
+    }[], recipient: string, amount: number, feeRate?: number, utxoPool?: BitcoinWalletUtxo[]): Promise<{
         fee: number;
         psbt?: Transaction;
         inputAddressIndexes?: {
@@ -96,7 +70,7 @@ export declare abstract class BitcoinWallet implements IBitcoinWallet {
         pubkey: string;
         address: string;
         addressType: CoinselectAddressTypes;
-    }[], psbt: Transaction, feeRate?: number): Promise<{
+    }[], psbt: Transaction, feeRate?: number, utxoPool?: BitcoinWalletUtxo[]): Promise<{
         fee: number;
         psbt?: Transaction;
         inputAddressIndexes?: {
@@ -106,25 +80,28 @@ export declare abstract class BitcoinWallet implements IBitcoinWallet {
     protected _getSpendableBalance(sendingAccounts: {
         address: string;
         addressType: CoinselectAddressTypes;
-    }[], psbt?: Transaction, feeRate?: number): Promise<{
+    }[], psbt?: Transaction, feeRate?: number, outputAddressType?: CoinselectAddressTypes, utxoPool?: BitcoinWalletUtxo[]): Promise<{
         balance: bigint;
         feeRate: number;
         totalFee: number;
     }>;
-    abstract sendTransaction(address: string, amount: bigint, feeRate?: number): Promise<string>;
-    abstract fundPsbt(psbt: Transaction, feeRate?: number): Promise<Transaction>;
+    abstract sendTransaction(address: string, amount: bigint, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<string>;
+    abstract fundPsbt(psbt: Transaction, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<Transaction>;
     abstract signPsbt(psbt: Transaction, signInputs: number[]): Promise<Transaction>;
-    abstract getTransactionFee(address: string, amount: bigint, feeRate?: number): Promise<number>;
-    abstract getFundedPsbtFee(psbt: Transaction, feeRate?: number): Promise<number>;
+    abstract getTransactionFee(address: string, amount: bigint, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number>;
+    abstract getFundedPsbtFee(psbt: Transaction, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number>;
     abstract getReceiveAddress(): string;
     abstract getBalance(): Promise<{
         confirmedBalance: bigint;
         unconfirmedBalance: bigint;
     }>;
-    abstract getSpendableBalance(psbt?: Transaction, feeRate?: number): Promise<{
+    abstract getSpendableBalance(psbt?: Transaction, feeRate?: number, outputAddressType?: CoinselectAddressTypes, utxos?: BitcoinWalletUtxo[]): Promise<{
         balance: bigint;
         feeRate: number;
         totalFee: number;
     }>;
     static bitcoinNetworkToObject(network: BitcoinNetwork): BTC_NETWORK;
+    static psbtInputToCoinselectInput(psbt: Transaction, vin: number): CoinselectTxInput;
+    static psbtOutputToCoinselectOutput(psbt: Transaction, vout: number): CoinselectTxOutput;
+    static estimatePsbtVSize(psbt: Transaction): number;
 }

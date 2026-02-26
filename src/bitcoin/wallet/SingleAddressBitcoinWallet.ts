@@ -112,6 +112,13 @@ export class SingleAddressBitcoinWallet extends BitcoinWallet {
     }
 
     /**
+     * Returns the public key of the wallet
+     */
+    getPublicKey(): string {
+        return Buffer.from(this.pubkey).toString("hex");
+    }
+
+    /**
      * @inheritDoc
      */
     getBalance(): Promise<{

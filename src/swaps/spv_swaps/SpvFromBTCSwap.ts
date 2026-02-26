@@ -193,6 +193,8 @@ export class SpvFromBTCSwap<T extends ChainType>
     extends ISwap<T, SpvFromBTCTypeDefinition<T>>
     implements IBTCWalletSwap, ISwapWithGasDrop<T>, IClaimableSwap<T, SpvFromBTCTypeDefinition<T>, SpvFromBTCSwapState> {
 
+    protected readonly currentVersion: number = 2;
+
     readonly TYPE: SwapType.SPV_VAULT_FROM_BTC = SwapType.SPV_VAULT_FROM_BTC;
 
     /**
@@ -239,6 +241,8 @@ export class SpvFromBTCSwap<T extends ChainType>
     private readonly executionFeeShare: bigint;
 
     private readonly gasPricingInfo?: PriceInfoType;
+
+    private posted?: boolean;
 
     /**
      * @internal
@@ -337,6 +341,7 @@ export class SpvFromBTCSwap<T extends ChainType>
             this._frontTxId = initOrObject.frontTxId;
             this.gasPricingInfo = deserializePriceInfoType(initOrObject.gasPricingInfo);
             this.btcTxConfirmedAt = initOrObject.btcTxConfirmedAt;
+            this.posted = initOrObject.posted;
             if(initOrObject.data!=null) this._data = new this.wrapper._spvWithdrawalDataDeserializer(initOrObject.data);
         }
         this.tryCalculateSwapFee();
@@ -347,7 +352,11 @@ export class SpvFromBTCSwap<T extends ChainType>
      * @inheritDoc
      * @internal
      */
-    protected upgradeVersion() { /*NOOP*/ }
+    protected upgradeVersion() {
+        if(this.version===1) {
+            this.posted = this.initiated;
+        }
+    }
 
     /**
      * @inheritDoc
@@ -973,6 +982,7 @@ export class SpvFromBTCSwap<T extends ChainType>
 
         this._data = data;
         this.initiated = true;
+        this.posted = true;
         await this._saveAndEmit(SpvFromBTCSwapState.SIGNED);
 
         try {
@@ -1186,7 +1196,7 @@ export class SpvFromBTCSwap<T extends ChainType>
         if(
             this._state!==SpvFromBTCSwapState.POSTED &&
             this._state!==SpvFromBTCSwapState.BROADCASTED &&
-            !(this._state===SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED && this.initiated)
+            !(this._state===SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED && this.posted)
         ) throw new Error("Must be in POSTED or BROADCASTED state!");
         if(this._data==null) throw new Error("Expected swap to have withdrawal data filled!");
 
@@ -1529,6 +1539,7 @@ export class SpvFromBTCSwap<T extends ChainType>
             executionFeeShare: this.executionFeeShare.toString(10),
             genesisSmartChainBlockHeight: this._genesisSmartChainBlockHeight,
             gasPricingInfo: serializePriceInfoType(this.gasPricingInfo),
+            posted: this.posted,
 
             senderAddress: this._senderAddress,
             claimTxId: this._claimTxId,
@@ -1704,7 +1715,7 @@ export class SpvFromBTCSwap<T extends ChainType>
             }
         }
 
-        if(this._state===SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED && !this.initiated) {
+        if(this._state===SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED && !this.posted) {
             if(this.expiry<Date.now()) {
                 this._state = SpvFromBTCSwapState.QUOTE_EXPIRED;
                 if(save) await this._saveAndEmit();

@@ -119,6 +119,7 @@ export declare function isSpvFromBTCSwapInit(obj: any): obj is SpvFromBTCSwapIni
  * @category Swaps/Bitcoin → Smart chain
  */
 export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFromBTCTypeDefinition<T>> implements IBTCWalletSwap, ISwapWithGasDrop<T>, IClaimableSwap<T, SpvFromBTCTypeDefinition<T>, SpvFromBTCSwapState> {
+    protected readonly currentVersion: number;
     readonly TYPE: SwapType.SPV_VAULT_FROM_BTC;
     /**
      * @internal
@@ -169,6 +170,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
     private readonly frontingFeeShare;
     private readonly executionFeeShare;
     private readonly gasPricingInfo?;
+    private posted?;
     /**
      * @internal
      */

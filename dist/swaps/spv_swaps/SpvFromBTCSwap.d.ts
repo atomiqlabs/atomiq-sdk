@@ -326,7 +326,6 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
         vaultId: bigint;
         utxo: string;
     };
-    private getBitcoinFeeRate;
     /**
      * Returns the input BTC amount in sats without any fees
      *

@@ -613,13 +613,6 @@ export class SpvFromBTCSwap<T extends ChainType>
     //////////////////////////////
     //// Amounts & fees
 
-    private getBitcoinFeeRate(feeRate?: number): number | undefined {
-        if(this.swapWalletWIF!=null) {
-            return this.swapWalletMaxNetworkFeeRate;
-        }
-        return feeRate;
-    }
-
     /**
      * Returns the input BTC amount in sats without any fees
      *
@@ -1211,7 +1204,7 @@ export class SpvFromBTCSwap<T extends ChainType>
      */
     async estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<any, BtcToken<false>, true> | null> {
         const bitcoinWallet: IBitcoinWallet = toBitcoinWallet(_bitcoinWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
-        const txFee = await bitcoinWallet.getFundedPsbtFee((await this.getPsbt()).psbt, this.getBitcoinFeeRate(feeRate));
+        const txFee = await bitcoinWallet.getFundedPsbtFee((await this.getPsbt()).psbt, feeRate);
         if(txFee==null) return null;
         return toTokenAmount(BigInt(txFee), BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo);
     }
@@ -1220,7 +1213,7 @@ export class SpvFromBTCSwap<T extends ChainType>
      * @inheritDoc
      */
     async sendBitcoinTransaction(wallet: IBitcoinWallet | MinimalBitcoinWalletInterfaceWithSigner, feeRate?: number): Promise<string> {
-        const {psbt, psbtBase64, psbtHex, signInputs} = await this.getFundedPsbt(wallet, this.getBitcoinFeeRate(feeRate));
+        const {psbt, psbtBase64, psbtHex, signInputs} = await this.getFundedPsbt(wallet, feeRate);
         let signedPsbt: Transaction | string;
         if(isIBitcoinWallet(wallet)) {
             signedPsbt = await wallet.signPsbt(psbt, signInputs);
@@ -1318,7 +1311,7 @@ export class SpvFromBTCSwap<T extends ChainType>
                         options?.bitcoinWallet==null
                             ? {...await this.getPsbt(), type: "RAW_PSBT"}
                             : {
-                                ...await this.getFundedPsbt(options.bitcoinWallet, this.getBitcoinFeeRate(options?.bitcoinFeeRate)),
+                                ...await this.getFundedPsbt(options.bitcoinWallet, options?.bitcoinFeeRate),
                                 type: "FUNDED_PSBT"
                             }
                     ]

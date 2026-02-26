@@ -912,7 +912,7 @@ export class SpvFromBTCSwap<T extends ChainType>
         const expectedNetworkFee = this.wrapper.getExpectedNetworkFee(
             this.swapWalletAddress, this.swapWalletMaxNetworkFeeRate, this.outputTotalGas!==0n
         );
-        const requiredUTXOValue = this.btcAmount - expectedNetworkFee;
+        const requiredUTXOValue = this.btcAmount + expectedNetworkFee;
         const foundUTXO: BitcoinWalletUtxo | undefined = utxos.find(utxo => BigInt(utxo.value)===requiredUTXOValue);
         this.logger.debug(`_tryToPayFromSwapWallet(): Checked address UTXOs, expected network fee: ${expectedNetworkFee},`+
             ` searched for UTXO with value: ${requiredUTXOValue}, found: `, foundUTXO);

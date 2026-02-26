@@ -653,7 +653,7 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
         const btcWallet = this._getSwapBitcoinWallet();
         //Check if any single UTXO can be used to pay this swap
         const expectedNetworkFee = this.wrapper.getExpectedNetworkFee(this.swapWalletAddress, this.swapWalletMaxNetworkFeeRate, this.outputTotalGas !== 0n);
-        const requiredUTXOValue = this.btcAmount - expectedNetworkFee;
+        const requiredUTXOValue = this.btcAmount + expectedNetworkFee;
         const foundUTXO = utxos.find(utxo => BigInt(utxo.value) === requiredUTXOValue);
         this.logger.debug(`_tryToPayFromSwapWallet(): Checked address UTXOs, expected network fee: ${expectedNetworkFee},` +
             ` searched for UTXO with value: ${requiredUTXOValue}, found: `, foundUTXO);

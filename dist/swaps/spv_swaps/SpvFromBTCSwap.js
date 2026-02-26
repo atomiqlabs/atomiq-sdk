@@ -493,7 +493,8 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
             * 1000000n
             / this.pricingInfo.swapPriceUSatPerToken
             / 100000n;
-        const feeBtc = this.getInputAmountWithoutFee() * (totalFeeShare + this.executionFeeShare) / 100000n;
+        // const feeBtc = this.getInputAmountWithoutFee() * (totalFeeShare + this.executionFeeShare) / 100_000n;
+        const feeBtc = this.btcAmount - (this.swapFeeBtc + this.gasSwapFeeBtc) - this.getInputAmountWithoutFee();
         const amountInSrcToken = (0, TokenAmount_1.toTokenAmount)(feeBtc, Token_1.BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo);
         return {
             amountInSrcToken,

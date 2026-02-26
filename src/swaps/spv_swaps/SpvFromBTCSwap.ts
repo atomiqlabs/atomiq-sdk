@@ -692,7 +692,8 @@ export class SpvFromBTCSwap<T extends ChainType>
             * 1_000_000n
             / this.pricingInfo.swapPriceUSatPerToken
             / 100_000n;
-        const feeBtc = this.getInputAmountWithoutFee() * (totalFeeShare + this.executionFeeShare) / 100_000n;
+        // const feeBtc = this.getInputAmountWithoutFee() * (totalFeeShare + this.executionFeeShare) / 100_000n;
+        const feeBtc = this.btcAmount - (this.swapFeeBtc + this.gasSwapFeeBtc) - this.getInputAmountWithoutFee();
         const amountInSrcToken = toTokenAmount(feeBtc, BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo);
         return {
             amountInSrcToken,

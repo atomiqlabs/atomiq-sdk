@@ -339,6 +339,18 @@ export abstract class ISwapWrapper<
         return {changedSwaps, removeSwaps};
     }
 
+    /**
+     * Runs {@link ISwap._tick} on passed swaps
+     *
+     * @param swaps Swaps to run the tick for
+     * @internal
+     */
+    protected async _tick(swaps: D["Swap"][]): Promise<void> {
+        await Promise.all(
+            swaps.map(value => value._tick(true))
+        );
+    }
+
 
     /**
      * Initializes the swap wrapper, needs to be called before any other action can be taken
@@ -456,32 +468,19 @@ export abstract class ISwapWrapper<
 
         const parallelTicks = this._options.maxParallelSwapTicks ?? DEFAULT_MAX_PARALLEL_SWAP_TICKS;
 
-        let promises: Promise<any>[] = [];
+        const pendingSwaps = [];
         for(let pendingSwap of this.pendingSwaps.values()) {
             const value = pendingSwap.deref();
-            if(value != null) promises.push(value._tick(true).catch(e => {
-                this.logger.warn(`tick(): Error ticking swap ${value.getId()}: `, e);
-            }));
-            if(promises.length >= parallelTicks) {
-                await Promise.all(promises);
-                abortSignal?.throwIfAborted();
-                promises = [];
-            }
+            if(value==null) continue;
+            pendingSwaps.push(value);
         }
 
-        for(let value of swaps) {
-            promises.push(value._tick(true).catch(e => {
-                this.logger.warn(`tick(): Error ticking swap ${value.getId()}: `, e);
-            }));
-            if(promises.length >= parallelTicks) {
-                await Promise.all(promises);
-                abortSignal?.throwIfAborted();
-                promises = [];
-            }
-        }
+        const allSwaps = swaps.concat(pendingSwaps);
 
-        if(promises.length>0) await Promise.all(promises);
-        abortSignal?.throwIfAborted();
+        for(let i=0; i<allSwaps.length; i+=parallelTicks) {
+            await this._tick(allSwaps.slice(i, i+parallelTicks));
+            abortSignal?.throwIfAborted();
+        }
     }
 
     /**

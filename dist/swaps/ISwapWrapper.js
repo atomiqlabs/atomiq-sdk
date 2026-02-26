@@ -176,6 +176,15 @@ class ISwapWrapper {
         return { changedSwaps, removeSwaps };
     }
     /**
+     * Runs {@link ISwap._tick} on passed swaps
+     *
+     * @param swaps Swaps to run the tick for
+     * @internal
+     */
+    async _tick(swaps) {
+        await Promise.all(swaps.map(value => value._tick(true)));
+    }
+    /**
      * Initializes the swap wrapper, needs to be called before any other action can be taken
      *
      * @param noTimers Whether to skip scheduling a tick timer for the swaps, if the tick timer is not initiated
@@ -272,32 +281,18 @@ class ISwapWrapper {
             swaps = await this.unifiedStorage.query([[{ key: "type", value: this.TYPE }, { key: "state", value: this.tickSwapState }]], (val) => new this._swapDeserializer(this, val));
         abortSignal?.throwIfAborted();
         const parallelTicks = this._options.maxParallelSwapTicks ?? exports.DEFAULT_MAX_PARALLEL_SWAP_TICKS;
-        let promises = [];
+        const pendingSwaps = [];
         for (let pendingSwap of this.pendingSwaps.values()) {
             const value = pendingSwap.deref();
-            if (value != null)
-                promises.push(value._tick(true).catch(e => {
-                    this.logger.warn(`tick(): Error ticking swap ${value.getId()}: `, e);
-                }));
-            if (promises.length >= parallelTicks) {
-                await Promise.all(promises);
-                abortSignal?.throwIfAborted();
-                promises = [];
-            }
+            if (value == null)
+                continue;
+            pendingSwaps.push(value);
         }
-        for (let value of swaps) {
-            promises.push(value._tick(true).catch(e => {
-                this.logger.warn(`tick(): Error ticking swap ${value.getId()}: `, e);
-            }));
-            if (promises.length >= parallelTicks) {
-                await Promise.all(promises);
-                abortSignal?.throwIfAborted();
-                promises = [];
-            }
+        const allSwaps = swaps.concat(pendingSwaps);
+        for (let i = 0; i < allSwaps.length; i += parallelTicks) {
+            await this._tick(allSwaps.slice(i, i + parallelTicks));
+            abortSignal?.throwIfAborted();
         }
-        if (promises.length > 0)
-            await Promise.all(promises);
-        abortSignal?.throwIfAborted();
     }
     /**
      * Returns the smart chain's native token used to pay for fees

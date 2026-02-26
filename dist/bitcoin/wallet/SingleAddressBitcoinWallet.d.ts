@@ -81,7 +81,7 @@ export declare class SingleAddressBitcoinWallet extends BitcoinWallet {
      * @param psbt PSBT to fund (add UTXOs to)
      * @param utxos UTXOs to add to the PSBT
      */
-    fundPsbtWithExactUtxos(psbt: Transaction, utxos: BitcoinWalletUtxo[]): {
+    static fundPsbtWithExactUtxos(psbt: Transaction, utxos: BitcoinWalletUtxo[]): {
         psbt: Transaction;
         fee: bigint;
         feeRate: number;

@@ -430,12 +430,6 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
     }
     //////////////////////////////
     //// Amounts & fees
-    getBitcoinFeeRate(feeRate) {
-        if (this.swapWalletWIF != null) {
-            return this.swapWalletMaxNetworkFeeRate;
-        }
-        return feeRate;
-    }
     /**
      * Returns the input BTC amount in sats without any fees
      *
@@ -903,7 +897,7 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
      */
     async estimateBitcoinFee(_bitcoinWallet, feeRate) {
         const bitcoinWallet = (0, BitcoinWalletUtils_1.toBitcoinWallet)(_bitcoinWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
-        const txFee = await bitcoinWallet.getFundedPsbtFee((await this.getPsbt()).psbt, this.getBitcoinFeeRate(feeRate));
+        const txFee = await bitcoinWallet.getFundedPsbtFee((await this.getPsbt()).psbt, feeRate);
         if (txFee == null)
             return null;
         return (0, TokenAmount_1.toTokenAmount)(BigInt(txFee), Token_1.BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo);
@@ -912,7 +906,7 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
      * @inheritDoc
      */
     async sendBitcoinTransaction(wallet, feeRate) {
-        const { psbt, psbtBase64, psbtHex, signInputs } = await this.getFundedPsbt(wallet, this.getBitcoinFeeRate(feeRate));
+        const { psbt, psbtBase64, psbtHex, signInputs } = await this.getFundedPsbt(wallet, feeRate);
         let signedPsbt;
         if ((0, IBitcoinWallet_1.isIBitcoinWallet)(wallet)) {
             signedPsbt = await wallet.signPsbt(psbt, signInputs);
@@ -1001,7 +995,7 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
                         options?.bitcoinWallet == null
                             ? { ...await this.getPsbt(), type: "RAW_PSBT" }
                             : {
-                                ...await this.getFundedPsbt(options.bitcoinWallet, this.getBitcoinFeeRate(options?.bitcoinFeeRate)),
+                                ...await this.getFundedPsbt(options.bitcoinWallet, options?.bitcoinFeeRate),
                                 type: "FUNDED_PSBT"
                             }
                     ]

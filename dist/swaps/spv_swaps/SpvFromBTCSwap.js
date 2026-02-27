@@ -517,7 +517,7 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
             throw new Error("No pricing info known, cannot estimate fee!");
         if (this.swapWalletAddress == null ||
             this.swapWalletMaxNetworkFeeRate == null ||
-            this.swapWalletType !== "waitpayment")
+            this.swapWalletType == null)
             return null;
         const expectedNetworkFee = this.wrapper.getExpectedNetworkFee(this.swapWalletAddress, this.swapWalletMaxNetworkFeeRate, this.outputTotalGas !== 0n);
         const outputToken = this.wrapper._tokens[this.outputSwapToken];
@@ -631,9 +631,9 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
      * @internal
      */
     async _tryToPayFromPrefundedSwapWallet() {
-        if (this._state !== SpvFromBTCSwapState.CREATED ||
-            !this.isInitiated() ||
-            !this.hasSwapWallet() ||
+        if (this._state !== SpvFromBTCSwapState.CREATED)
+            throw new Error("Invalid swap state, must be in CREATED state!");
+        if (!this.hasSwapWallet() ||
             this.swapWalletType !== "prefunded" ||
             this.swapWalletAddress == null ||
             this.swapWalletMaxNetworkFeeRate == null) {

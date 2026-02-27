@@ -723,7 +723,7 @@ export class SpvFromBTCSwap<T extends ChainType>
         if(
             this.swapWalletAddress==null ||
             this.swapWalletMaxNetworkFeeRate==null ||
-            this.swapWalletType!=="waitpayment"
+            this.swapWalletType==null
         ) return null;
 
         const expectedNetworkFee = this.wrapper.getExpectedNetworkFee(
@@ -878,9 +878,9 @@ export class SpvFromBTCSwap<T extends ChainType>
      * @internal
      */
     private async _tryToPayFromPrefundedSwapWallet(): Promise<string> {
+        if(this._state!==SpvFromBTCSwapState.CREATED)
+            throw new Error("Invalid swap state, must be in CREATED state!");
         if(
-            this._state!==SpvFromBTCSwapState.CREATED ||
-            !this.isInitiated() ||
             !this.hasSwapWallet() ||
             this.swapWalletType!=="prefunded" ||
             this.swapWalletAddress==null ||
@@ -888,6 +888,7 @@ export class SpvFromBTCSwap<T extends ChainType>
         ) {
             throw new Error("Swap isn't in prefunded wallet mode!");
         }
+
         const btcWallet = this._getSwapBitcoinWallet();
         const existingSwapWalletUtxos = this.swapWalletExistingUtxos;
         if(existingSwapWalletUtxos==null || existingSwapWalletUtxos.length===0) {

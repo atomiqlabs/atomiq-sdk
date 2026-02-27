@@ -154,7 +154,7 @@ export class ToBTCSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, To
     /**
      * @inheritDoc
      */
-    getOutput(): TokenAmount<T["ChainId"], BtcToken<false>> {
+    getOutput(): TokenAmount<BtcToken<false>> {
         return toTokenAmount(this.amount ?? null, this.outputToken, this.wrapper._prices, this.pricingInfo);
     }
 

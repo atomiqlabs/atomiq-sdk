@@ -53,7 +53,7 @@ export declare class ToBTCSwap<T extends ChainType = ChainType> extends IToBTCSw
     /**
      * @inheritDoc
      */
-    getOutput(): TokenAmount<T["ChainId"], BtcToken<false>>;
+    getOutput(): TokenAmount<BtcToken<false>>;
     /**
      * @inheritDoc
      */

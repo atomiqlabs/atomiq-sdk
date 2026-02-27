@@ -6,7 +6,7 @@ import { PriceInfoType } from "./PriceInfoType";
  *
  * @category Tokens
  */
-export type TokenAmount<ChainIdentifier extends string = string, T extends Token<ChainIdentifier> = Token<ChainIdentifier>, Known extends boolean = boolean> = {
+export type TokenAmount<T extends Token = Token, Known extends boolean = boolean> = {
     /**
      * Raw amount in base units represented as bigint, might be `undefined` when the amount is unknown
      */
@@ -66,4 +66,4 @@ export type TokenAmount<ChainIdentifier extends string = string, T extends Token
  * @category Tokens
  * @internal
  */
-export declare function toTokenAmount<ChainIdentifier extends string = string, T extends Token<ChainIdentifier> = Token<ChainIdentifier>, Known extends boolean = boolean>(amount: Known extends true ? bigint : null, token: T, prices: ISwapPrice, pricingInfo?: PriceInfoType): TokenAmount<ChainIdentifier, T, Known>;
+export declare function toTokenAmount<T extends Token = Token, Known extends boolean = boolean>(amount: Known extends true ? bigint : null, token: T, prices: ISwapPrice, pricingInfo?: PriceInfoType): TokenAmount<T, Known>;

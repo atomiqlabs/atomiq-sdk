@@ -11,11 +11,11 @@ export type Fee<ChainIdentifier extends string = string, TSrc extends Token<Chai
     /**
      * Fee value equivalent in source token
      */
-    amountInSrcToken: TokenAmount<ChainIdentifier, TSrc, true>;
+    amountInSrcToken: TokenAmount<TSrc, true>;
     /**
      * Fee value equivalent in destination token
      */
-    amountInDstToken: TokenAmount<ChainIdentifier, TDst, true>;
+    amountInDstToken: TokenAmount<TDst, true>;
     /**
      * Fetches the current USD value of the fee
      *
@@ -44,7 +44,7 @@ export type Fee<ChainIdentifier extends string = string, TSrc extends Token<Chai
      *  base_fee + amount * percentage_fee
      */
     composition?: {
-        base: TokenAmount<ChainIdentifier>;
+        base: TokenAmount;
         percentage: PercentagePPM;
     };
 };

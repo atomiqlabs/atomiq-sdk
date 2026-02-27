@@ -105,6 +105,8 @@ class ISwap {
      * @internal
      */
     waitTillState(targetState, type = "eq", abortSignal) {
+        //TODO: This doesn't hold strong reference to the swap, hence if no other strong reference to the
+        // swap exists, it will just never resolve!
         return new Promise((resolve, reject) => {
             let listener;
             listener = () => {

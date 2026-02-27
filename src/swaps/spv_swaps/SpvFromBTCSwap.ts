@@ -1,6 +1,5 @@
 import {isISwapInit, ISwap, ISwapInit} from "../ISwap";
 import {
-    BtcAddressUtxo,
     BtcTxWithBlockheight,
     ChainType,
     isAbstractSigner,
@@ -11,7 +10,7 @@ import {
     SpvWithdrawalStateType
 } from "@atomiqlabs/base";
 import {SwapType} from "../../enums/SwapType";
-import {REQUIRED_SPV_SWAP_LP_ADDRESS_TYPE, SpvFromBTCTypeDefinition, SpvFromBTCWrapper} from "./SpvFromBTCWrapper";
+import {SpvFromBTCTypeDefinition, SpvFromBTCWrapper} from "./SpvFromBTCWrapper";
 import {extendAbortController} from "../../utils/Utils";
 import {parsePsbtTransaction, toCoinselectAddressType, toOutputScript} from "../../utils/BitcoinUtils";
 import {getInputType, Transaction} from "@scure/btc-signer";
@@ -41,7 +40,6 @@ import {
 import {toBitcoinWallet} from "../../utils/BitcoinWalletUtils";
 import {SwapExecutionAction, SwapExecutionActionBitcoin} from "../../types/SwapExecutionAction";
 import {SingleAddressBitcoinWallet} from "../../bitcoin/wallet/SingleAddressBitcoinWallet";
-import {BitcoinNotEnoughBalanceError} from "../../errors/BitcoinNotEnoughBalanceError";
 
 /**
  * State enum for SPV vault (UTXO-controlled vault) based swaps
@@ -637,7 +635,7 @@ export class SpvFromBTCSwap<T extends ChainType>
      *
      * @internal
      */
-    protected getOutputWithoutFee(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
+    protected getOutputWithoutFee(): TokenAmount<SCToken<T["ChainId"]>, true> {
         return toTokenAmount(
             (this.outputTotalSwap * (100_000n + this.callerFeeShare + this.frontingFeeShare + this.executionFeeShare) / 100_000n) + (this.swapFee ?? 0n),
             this.wrapper._tokens[this.outputSwapToken], this.wrapper._prices, this.pricingInfo
@@ -821,21 +819,21 @@ export class SpvFromBTCSwap<T extends ChainType>
     /**
      * @inheritDoc
      */
-    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
+    getOutput(): TokenAmount<SCToken<T["ChainId"]>, true> {
         return toTokenAmount(this.outputTotalSwap, this.wrapper._tokens[this.outputSwapToken], this.wrapper._prices, this.pricingInfo);
     }
 
     /**
      * @inheritDoc
      */
-    getGasDropOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
+    getGasDropOutput(): TokenAmount<SCToken<T["ChainId"]>, true> {
         return toTokenAmount(this.outputTotalGas, this.wrapper._tokens[this.outputGasToken], this.wrapper._prices, this.gasPricingInfo);
     }
 
     /**
      * @inheritDoc
      */
-    getInputWithoutFee(): TokenAmount<T["ChainId"], BtcToken<false>, true> {
+    getInputWithoutFee(): TokenAmount<BtcToken<false>, true> {
         return toTokenAmount(this.getInputAmountWithoutFee(), BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo);
     }
 
@@ -849,7 +847,7 @@ export class SpvFromBTCSwap<T extends ChainType>
     /**
      * @inheritDoc
      */
-    getInput(): TokenAmount<T["ChainId"], BtcToken<false>, true> {
+    getInput(): TokenAmount<BtcToken<false>, true> {
         if(
             this.swapWalletAddress!=null &&
             this.swapWalletMaxNetworkFeeRate!=null &&
@@ -1246,7 +1244,7 @@ export class SpvFromBTCSwap<T extends ChainType>
     /**
      * @inheritDoc
      */
-    async estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<any, BtcToken<false>, true> | null> {
+    async estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<BtcToken<false>, true> | null> {
         const bitcoinWallet: IBitcoinWallet = toBitcoinWallet(_bitcoinWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
         const txFee = await bitcoinWallet.getFundedPsbtFee((await this.getPsbt()).psbt, feeRate);
         if(txFee==null) return null;
@@ -1295,6 +1293,7 @@ export class SpvFromBTCSwap<T extends ChainType>
             feeRate?: number,
             abortSignal?: AbortSignal,
             btcTxCheckIntervalSeconds?: number,
+            btcWalletCheckIntervalSeconds?: number,
             maxWaitTillAutomaticSettlementSeconds?: number
         }
     ): Promise<boolean> {
@@ -1313,7 +1312,7 @@ export class SpvFromBTCSwap<T extends ChainType>
                 if(this.swapWalletType==="prefunded") {
                     await this._tryToPayFromPrefundedSwapWallet();
                 } else {
-                    await this.waitForPayment(options?.abortSignal);
+                    await this.waitForPayment(options?.btcWalletCheckIntervalSeconds, options?.abortSignal);
                 }
             }
         }
@@ -1438,23 +1437,35 @@ export class SpvFromBTCSwap<T extends ChainType>
     }
 
     /**
-     * When the swap wallet address is specified it waits till the address receives the necessary funds
+     * When the swap wallet address is specified, polls the swap wallet address until it receives the
+     * necessary funds and the swap transaction is submitted, then waits till the LP co-signs.
      *
+     * @param checkIntervalSeconds How often to poll the wallet for incoming UTXOs (default 5 seconds)
      * @param abortSignal Abort signal
      */
-    async waitForPayment(abortSignal?: AbortSignal) {
+    async waitForPayment(checkIntervalSeconds?: number, abortSignal?: AbortSignal) {
+        checkIntervalSeconds ??= 5;
         if(this._state !== SpvFromBTCSwapState.CREATED)
             throw new Error("Must be in CREATED state!");
         if(!this.hasSwapWallet())
             throw new Error("Swap must have a swap address specified!");
+        if(this.swapWalletType==="waitpayment")
+            throw new Error("To wait for payment the swap needs to be of the `waitpayment` type!");
 
-        this._setInitiated();
-        await this._saveAndEmit();
-        //TODO: Also handle errors here
-        await this.waitTillState(SpvFromBTCSwapState.CREATED, "neq", abortSignal);
-        if(this._state<SpvFromBTCSwapState.CREATED)
+        if(!this.isInitiated()) {
+            this._setInitiated();
+            await this._saveAndEmit();
+        }
+
+        const btcWallet = this._getSwapBitcoinWallet();
+        while(this._state === SpvFromBTCSwapState.CREATED) {
+            await timeoutPromise(checkIntervalSeconds * 1000, abortSignal);
+            const utxos = await btcWallet.getUtxoPool();
+            if(await this._tryToPayFromSwapWallet(utxos)) break;
+        }
+
+        if(this._state < SpvFromBTCSwapState.CREATED)
             throw new Error("Failed to receive the bitcoin transaction in time!");
-        await this.waitTillState(SpvFromBTCSwapState.SIGNED, "neq", abortSignal);
     }
 
     /**

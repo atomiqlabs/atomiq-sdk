@@ -213,18 +213,18 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
     /**
      * @inheritDoc
      */
-    getInput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+    getInput(): TokenAmount<SCToken<T["ChainId"]>, true>;
     /**
      * @inheritDoc
      */
-    getInputWithoutFee(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+    getInputWithoutFee(): TokenAmount<SCToken<T["ChainId"]>, true>;
     /**
      * Checks if the initiator/sender on the source chain has enough balance to go through with the swap
      */
     hasEnoughBalance(): Promise<{
         enoughBalance: boolean;
-        balance: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
-        required: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+        balance: TokenAmount<SCToken<T["ChainId"]>, true>;
+        required: TokenAmount<SCToken<T["ChainId"]>, true>;
     }>;
     /**
      * Checks if the initiator/sender on the source chain has enough native token balance
@@ -232,8 +232,8 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
      */
     hasEnoughForTxFees(): Promise<{
         enoughBalance: boolean;
-        balance: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
-        required: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+        balance: TokenAmount<SCToken<T["ChainId"]>, true>;
+        required: TokenAmount<SCToken<T["ChainId"]>, true>;
     }>;
     /**
      * Executes the swap with the provided smart chain wallet/signer
@@ -332,7 +332,7 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
     /**
      * Get the estimated smart chain transaction fee of the refund transaction
      */
-    getRefundNetworkFee(): Promise<TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>>;
+    getRefundNetworkFee(): Promise<TokenAmount<SCToken<T["ChainId"]>, true>>;
     /**
      * @inheritDoc
      *

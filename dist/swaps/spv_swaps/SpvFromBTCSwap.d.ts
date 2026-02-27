@@ -347,7 +347,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
      *
      * @internal
      */
-    protected getOutputWithoutFee(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+    protected getOutputWithoutFee(): TokenAmount<SCToken<T["ChainId"]>, true>;
     /**
      * Returns the swap fee charged by the intermediary (LP) on this swap
      *
@@ -405,15 +405,15 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
     /**
      * @inheritDoc
      */
-    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+    getOutput(): TokenAmount<SCToken<T["ChainId"]>, true>;
     /**
      * @inheritDoc
      */
-    getGasDropOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+    getGasDropOutput(): TokenAmount<SCToken<T["ChainId"]>, true>;
     /**
      * @inheritDoc
      */
-    getInputWithoutFee(): TokenAmount<T["ChainId"], BtcToken<false>, true>;
+    getInputWithoutFee(): TokenAmount<BtcToken<false>, true>;
     /**
      * @inheritDoc
      */
@@ -421,7 +421,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
     /**
      * @inheritDoc
      */
-    getInput(): TokenAmount<T["ChainId"], BtcToken<false>, true>;
+    getInput(): TokenAmount<BtcToken<false>, true>;
     /**
      * Executes a prefunded swap by funding the PSBT with exact snapshotted UTXOs, spending all of them fully.
      *
@@ -499,7 +499,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
     /**
      * @inheritDoc
      */
-    estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<any, BtcToken<false>, true> | null>;
+    estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<BtcToken<false>, true> | null>;
     /**
      * @inheritDoc
      */
@@ -524,6 +524,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
         feeRate?: number;
         abortSignal?: AbortSignal;
         btcTxCheckIntervalSeconds?: number;
+        btcWalletCheckIntervalSeconds?: number;
         maxWaitTillAutomaticSettlementSeconds?: number;
     }): Promise<boolean>;
     /**
@@ -570,11 +571,13 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
         inputAddresses?: string[];
     } | null>;
     /**
-     * When the swap wallet address is specified it waits till the address receives the necessary funds
+     * When the swap wallet address is specified, polls the swap wallet address until it receives the
+     * necessary funds and the swap transaction is submitted, then waits till the LP co-signs.
      *
+     * @param checkIntervalSeconds How often to poll the wallet for incoming UTXOs (default 5 seconds)
      * @param abortSignal Abort signal
      */
-    waitForPayment(abortSignal?: AbortSignal): Promise<void>;
+    waitForPayment(checkIntervalSeconds?: number, abortSignal?: AbortSignal): Promise<void>;
     /**
      * @inheritDoc
      *

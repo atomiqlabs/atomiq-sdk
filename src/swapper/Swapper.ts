@@ -2139,8 +2139,8 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
      * @param dstToken Destination token
      */
     getSwapLimits<C extends ChainIds<T>, A extends Token<C>, B extends Token<C>>(srcToken: A, dstToken: B): {
-        input: {min: TokenAmount<string, A>, max?: TokenAmount<string, A>},
-        output: {min: TokenAmount<string, B>, max?: TokenAmount<string, B>}
+        input: {min: TokenAmount<A>, max?: TokenAmount<A>},
+        output: {min: TokenAmount<B>, max?: TokenAmount<B>}
     } {
         const swapType = this.getSwapType(srcToken, dstToken);
         const scToken = isSCToken(srcToken) ? srcToken : isSCToken(dstToken) ? dstToken : null;

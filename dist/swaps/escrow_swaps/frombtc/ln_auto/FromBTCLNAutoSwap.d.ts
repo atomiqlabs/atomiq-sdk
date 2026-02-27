@@ -309,11 +309,11 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
     /**
      * @inheritDoc
      */
-    getInput(): TokenAmount<T["ChainId"], BtcToken<true>>;
+    getInput(): TokenAmount<BtcToken<true>>;
     /**
      * @inheritDoc
      */
-    getInputWithoutFee(): TokenAmount<T["ChainId"], BtcToken<true>>;
+    getInputWithoutFee(): TokenAmount<BtcToken<true>>;
     /**
      * @inheritDoc
      */
@@ -321,11 +321,11 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
     /**
      * @inheritDoc
      */
-    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+    getOutput(): TokenAmount<SCToken<T["ChainId"]>, true>;
     /**
      * @inheritDoc
      */
-    getGasDropOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+    getGasDropOutput(): TokenAmount<SCToken<T["ChainId"]>, true>;
     /**
      * Returns the swap fee charged by the intermediary (LP) on this swap
      *

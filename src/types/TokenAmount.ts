@@ -9,8 +9,7 @@ import {toDecimal} from "../utils/Utils";
  * @category Tokens
  */
 export type TokenAmount<
-    ChainIdentifier extends string = string,
-    T extends Token<ChainIdentifier> = Token<ChainIdentifier>,
+    T extends Token = Token,
     Known extends boolean = boolean
 > = {
     /**
@@ -74,15 +73,14 @@ export type TokenAmount<
  * @internal
  */
 export function toTokenAmount<
-    ChainIdentifier extends string = string,
-    T extends Token<ChainIdentifier> = Token<ChainIdentifier>,
+    T extends Token = Token,
     Known extends boolean = boolean
 >(
     amount: Known extends true ? bigint : null,
     token: T,
     prices: ISwapPrice,
     pricingInfo?: PriceInfoType
-): TokenAmount<ChainIdentifier, T, Known> {
+): TokenAmount<T, Known> {
     if (amount == null) return {
         rawAmount: undefined,
         amount: "",
@@ -93,7 +91,7 @@ export function toTokenAmount<
         usdValue: () => Promise.resolve(NaN),
         toString: () => "??? " + token.ticker,
         isUnknown: true
-    } as TokenAmount<ChainIdentifier, T>;
+    } as TokenAmount<T>;
     const amountStr = toDecimal(amount, token.decimals, undefined, token.displayDecimals);
     const _amount = parseFloat(amountStr);
 
@@ -131,5 +129,5 @@ export function toTokenAmount<
         },
         toString: () => amountStr + " " + token.ticker,
         isUnknown: false
-    } as TokenAmount<ChainIdentifier, T>;
+    } as TokenAmount<T>;
 }

@@ -348,7 +348,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
     /**
      * @inheritDoc
      */
-    getInput(): TokenAmount<T["ChainId"], BtcToken<false>> {
+    getInput(): TokenAmount<BtcToken<false>> {
         return toTokenAmount(this.amount ?? null, this.inputToken, this.wrapper._prices);
     }
 
@@ -357,7 +357,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
      *  this amount is pre-funded by the user on the destination chain when the swap escrow
      *  is initiated. For total pre-funded deposit amount see {@link getTotalDeposit}.
      */
-    getClaimerBounty(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
+    getClaimerBounty(): TokenAmount<SCToken<T["ChainId"]>, true> {
         return toTokenAmount(this._data.getClaimerBounty(), this.wrapper._tokens[this._data.getDepositToken()], this.wrapper._prices);
     }
 
@@ -653,7 +653,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
     /**
      * @inheritDoc
      */
-    async estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<any, BtcToken<false>, true> | null> {
+    async estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<BtcToken<false>, true> | null> {
         if(this.address==null || this.amount==null) return null;
         const bitcoinWallet: IBitcoinWallet = toBitcoinWallet(_bitcoinWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
         const txFee = await bitcoinWallet.getTransactionFee(this.address, this.amount, feeRate);

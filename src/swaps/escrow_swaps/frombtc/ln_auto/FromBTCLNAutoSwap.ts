@@ -579,14 +579,14 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
     /**
      * @inheritDoc
      */
-    getInput(): TokenAmount<T["ChainId"], BtcToken<true>> {
+    getInput(): TokenAmount<BtcToken<true>> {
         return toTokenAmount(this.getLightningInvoiceSats(), this.inputToken, this.wrapper._prices, this.pricingInfo);
     }
 
     /**
      * @inheritDoc
      */
-    getInputWithoutFee(): TokenAmount<T["ChainId"], BtcToken<true>> {
+    getInputWithoutFee(): TokenAmount<BtcToken<true>> {
         return toTokenAmount(this.getInputAmountWithoutFee(), this.inputToken, this.wrapper._prices, this.pricingInfo);
     }
 
@@ -600,14 +600,14 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
     /**
      * @inheritDoc
      */
-    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
+    getOutput(): TokenAmount<SCToken<T["ChainId"]>, true> {
         return toTokenAmount(this.getSwapData().getAmount(), this.wrapper._tokens[this.getSwapData().getToken()], this.wrapper._prices, this.pricingInfo);
     }
 
     /**
      * @inheritDoc
      */
-    getGasDropOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
+    getGasDropOutput(): TokenAmount<SCToken<T["ChainId"]>, true> {
         return toTokenAmount(
             this.getSwapData().getSecurityDeposit() - this.getSwapData().getClaimerBounty(),
             this.wrapper._tokens[this.getSwapData().getDepositToken()], this.wrapper._prices, this.gasPricingInfo

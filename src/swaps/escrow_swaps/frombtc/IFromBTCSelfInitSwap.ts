@@ -169,19 +169,19 @@ export abstract class IFromBTCSelfInitSwap<
     /**
      * @inheritDoc
      */
-    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
+    getOutput(): TokenAmount<SCToken<T["ChainId"]>, true> {
         return toTokenAmount(this.getSwapData().getAmount(), this.wrapper._tokens[this.getSwapData().getToken()], this.wrapper._prices, this.pricingInfo);
     }
 
     /**
      * @inheritDoc
      */
-    abstract getInput(): TokenAmount<T["ChainId"], BtcToken>;
+    abstract getInput(): TokenAmount<BtcToken>;
 
     /**
      * @inheritDoc
      */
-    getInputWithoutFee(): TokenAmount<T["ChainId"], BtcToken> {
+    getInputWithoutFee(): TokenAmount<BtcToken> {
         const input = this.getInput();
         if(input.rawAmount==null) return toTokenAmount(null, this.inputToken, this.wrapper._prices, this.pricingInfo);
         return toTokenAmount(input.rawAmount - this.swapFeeBtc, this.inputToken, this.wrapper._prices, this.pricingInfo);
@@ -192,8 +192,8 @@ export abstract class IFromBTCSelfInitSwap<
      */
     async hasEnoughForTxFees(): Promise<{
         enoughBalance: boolean,
-        balance: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>,
-        required: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>
+        balance: TokenAmount<SCToken<T["ChainId"]>, true>,
+        required: TokenAmount<SCToken<T["ChainId"]>, true>
     }> {
         const [balance, commitFee] = await Promise.all([
             this.wrapper._contract.getBalance(this._getInitiator(), this.wrapper._chain.getNativeCurrencyAddress(), false),
@@ -212,7 +212,7 @@ export abstract class IFromBTCSelfInitSwap<
      *  to act as a security deposit that can be taken by the intermediary (LP) if the user doesn't go through
      *  with the swap
      */
-    getSecurityDeposit(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
+    getSecurityDeposit(): TokenAmount<SCToken<T["ChainId"]>, true> {
         return toTokenAmount(this.getSwapData().getSecurityDeposit(), this.wrapper._getNativeToken(), this.wrapper._prices, this.pricingInfo);
     }
 
@@ -221,7 +221,7 @@ export abstract class IFromBTCSelfInitSwap<
      *  This covers the security deposit and the watchtower fee (if applicable), it is calculated a maximum of those
      *  two values.
      */
-    getTotalDeposit(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
+    getTotalDeposit(): TokenAmount<SCToken<T["ChainId"]>, true> {
         return toTokenAmount(this.getSwapData().getTotalDeposit(), this.wrapper._getNativeToken(), this.wrapper._prices, this.pricingInfo);
     }
 
@@ -273,7 +273,7 @@ export abstract class IFromBTCSelfInitSwap<
      * Returns the transaction fee required for the claim transaction to settle the escrow on the destination
      *  smart chain
      */
-    async getClaimNetworkFee(): Promise<TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>> {
+    async getClaimNetworkFee(): Promise<TokenAmount<SCToken<T["ChainId"]>, true>> {
         const swapContract: T["Contract"] = this.wrapper._contract;
         return toTokenAmount(
             await swapContract.getClaimFee(this._getInitiator(), this.getSwapData()),

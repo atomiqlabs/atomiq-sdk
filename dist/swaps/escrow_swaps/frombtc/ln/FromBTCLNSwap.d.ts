@@ -233,18 +233,18 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
     /**
      * @inheritDoc
      */
-    getInput(): TokenAmount<T["ChainId"], BtcToken<true>>;
+    getInput(): TokenAmount<BtcToken<true>>;
     /**
      * @inheritDoc
      */
-    getSmartChainNetworkFee(): Promise<TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>>;
+    getSmartChainNetworkFee(): Promise<TokenAmount<SCToken<T["ChainId"]>, true>>;
     /**
      * @inheritDoc
      */
     hasEnoughForTxFees(): Promise<{
         enoughBalance: boolean;
-        balance: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
-        required: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+        balance: TokenAmount<SCToken<T["ChainId"]>, true>;
+        required: TokenAmount<SCToken<T["ChainId"]>, true>;
     }>;
     private isValidSecretPreimage;
     /**
@@ -418,7 +418,7 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
      * Estimated transaction fee for commit & claim transactions combined, required
      *  to settle the swap on the smart chain destination side.
      */
-    getCommitAndClaimNetworkFee(): Promise<TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>>;
+    getCommitAndClaimNetworkFee(): Promise<TokenAmount<SCToken<T["ChainId"]>, true>>;
     /**
      * Returns whether the underlying chain supports calling commit and claim in a single call,
      *  such that you can use the {@link commitAndClaim} function. If not you have to manually

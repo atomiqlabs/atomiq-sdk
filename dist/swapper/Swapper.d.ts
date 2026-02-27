@@ -650,12 +650,12 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
      */
     getSwapLimits<C extends ChainIds<T>, A extends Token<C>, B extends Token<C>>(srcToken: A, dstToken: B): {
         input: {
-            min: TokenAmount<string, A>;
-            max?: TokenAmount<string, A>;
+            min: TokenAmount<A>;
+            max?: TokenAmount<A>;
         };
         output: {
-            min: TokenAmount<string, B>;
-            max?: TokenAmount<string, B>;
+            min: TokenAmount<B>;
+            max?: TokenAmount<B>;
         };
     };
     /**

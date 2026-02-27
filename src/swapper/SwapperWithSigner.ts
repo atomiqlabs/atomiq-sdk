@@ -489,8 +489,8 @@ export class SwapperWithSigner<T extends MultiChain, ChainIdentifier extends Cha
      * @param dstToken Destination token
      */
     getSwapLimits<A extends Token<ChainIdentifier>, B extends Token<ChainIdentifier>>(srcToken: A, dstToken: B): {
-        input: {min: TokenAmount<string, A>, max?: TokenAmount<string, A>},
-        output: {min: TokenAmount<string, B>, max?: TokenAmount<string, B>}
+        input: {min: TokenAmount<A>, max?: TokenAmount<A>},
+        output: {min: TokenAmount<B>, max?: TokenAmount<B>}
     } {
         return this.swapper.getSwapLimits<A, B>(srcToken, dstToken);
     }

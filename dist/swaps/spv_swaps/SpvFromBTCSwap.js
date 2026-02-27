@@ -984,7 +984,7 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
                     await this._tryToPayFromPrefundedSwapWallet();
                 }
                 else {
-                    await this.waitForPayment(options?.abortSignal);
+                    await this.waitForPayment(options?.btcWalletCheckIntervalSeconds, options?.abortSignal);
                 }
             }
         }
@@ -1088,22 +1088,33 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
         };
     }
     /**
-     * When the swap wallet address is specified it waits till the address receives the necessary funds
+     * When the swap wallet address is specified, polls the swap wallet address until it receives the
+     * necessary funds and the swap transaction is submitted, then waits till the LP co-signs.
      *
+     * @param checkIntervalSeconds How often to poll the wallet for incoming UTXOs (default 5 seconds)
      * @param abortSignal Abort signal
      */
-    async waitForPayment(abortSignal) {
+    async waitForPayment(checkIntervalSeconds, abortSignal) {
+        checkIntervalSeconds ??= 5;
         if (this._state !== SpvFromBTCSwapState.CREATED)
             throw new Error("Must be in CREATED state!");
         if (!this.hasSwapWallet())
             throw new Error("Swap must have a swap address specified!");
-        this._setInitiated();
-        await this._saveAndEmit();
-        //TODO: Also handle errors here
-        await this.waitTillState(SpvFromBTCSwapState.CREATED, "neq", abortSignal);
+        if (this.swapWalletType === "waitpayment")
+            throw new Error("To wait for payment the swap needs to be of the `waitpayment` type!");
+        if (!this.isInitiated()) {
+            this._setInitiated();
+            await this._saveAndEmit();
+        }
+        const btcWallet = this._getSwapBitcoinWallet();
+        while (this._state === SpvFromBTCSwapState.CREATED) {
+            await (0, TimeoutUtils_1.timeoutPromise)(checkIntervalSeconds * 1000, abortSignal);
+            const utxos = await btcWallet.getUtxoPool();
+            if (await this._tryToPayFromSwapWallet(utxos))
+                break;
+        }
         if (this._state < SpvFromBTCSwapState.CREATED)
             throw new Error("Failed to receive the bitcoin transaction in time!");
-        await this.waitTillState(SpvFromBTCSwapState.SIGNED, "neq", abortSignal);
     }
     /**
      * @inheritDoc

@@ -354,7 +354,7 @@ export class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T,
     /**
      * @inheritDoc
      */
-    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
+    getOutput(): TokenAmount<SCToken<T["ChainId"]>, true> {
         return toTokenAmount(
             this.outputAmount, this.wrapper._tokens[this.wrapper._chain.getNativeCurrencyAddress()],
             this.wrapper._prices, this.pricingInfo
@@ -371,14 +371,14 @@ export class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T,
     /**
      * @inheritDoc
      */
-    getInput(): TokenAmount<T["ChainId"], BtcToken<false>, true> {
+    getInput(): TokenAmount<BtcToken<false>, true> {
         return toTokenAmount(this.inputAmount, BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo);
     }
 
     /**
      * @inheritDoc
      */
-    getInputWithoutFee(): TokenAmount<T["ChainId"], BtcToken<false>, true> {
+    getInputWithoutFee(): TokenAmount<BtcToken<false>, true> {
         return toTokenAmount(
             this.inputAmount - (this.swapFeeBtc ?? 0n), BitcoinTokens.BTC,
             this.wrapper._prices, this.pricingInfo
@@ -518,7 +518,7 @@ export class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T,
     /**
      * @inheritDoc
      */
-    async estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<any, BtcToken<false>, true> | null> {
+    async estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<BtcToken<false>, true> | null> {
         const bitcoinWallet: IBitcoinWallet = toBitcoinWallet(_bitcoinWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
         const txFee = await bitcoinWallet.getTransactionFee(this.address, this.inputAmount, feeRate);
         if(txFee==null) return null;

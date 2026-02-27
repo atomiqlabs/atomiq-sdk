@@ -21,5 +21,5 @@ export interface ISwapWithGasDrop<T extends ChainType> {
      * Returns the output of the "gas drop", additional native token received by the user on
      *  the destination chain
      */
-    getGasDropOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>>;
+    getGasDropOutput(): TokenAmount<SCToken<T["ChainId"]>>;
 }

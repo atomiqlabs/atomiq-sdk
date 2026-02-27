@@ -91,35 +91,35 @@ export declare abstract class IFromBTCSelfInitSwap<T extends ChainType = ChainTy
     /**
      * @inheritDoc
      */
-    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+    getOutput(): TokenAmount<SCToken<T["ChainId"]>, true>;
     /**
      * @inheritDoc
      */
-    abstract getInput(): TokenAmount<T["ChainId"], BtcToken>;
+    abstract getInput(): TokenAmount<BtcToken>;
     /**
      * @inheritDoc
      */
-    getInputWithoutFee(): TokenAmount<T["ChainId"], BtcToken>;
+    getInputWithoutFee(): TokenAmount<BtcToken>;
     /**
      * @inheritDoc
      */
     hasEnoughForTxFees(): Promise<{
         enoughBalance: boolean;
-        balance: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
-        required: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+        balance: TokenAmount<SCToken<T["ChainId"]>, true>;
+        required: TokenAmount<SCToken<T["ChainId"]>, true>;
     }>;
     /**
      * Returns the amount of native token of the destination chain locked up during initialization of the escrow
      *  to act as a security deposit that can be taken by the intermediary (LP) if the user doesn't go through
      *  with the swap
      */
-    getSecurityDeposit(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+    getSecurityDeposit(): TokenAmount<SCToken<T["ChainId"]>, true>;
     /**
      * Returns the total amount of native token of the destination chain locked up during initialization of the escrow.
      *  This covers the security deposit and the watchtower fee (if applicable), it is calculated a maximum of those
      *  two values.
      */
-    getTotalDeposit(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+    getTotalDeposit(): TokenAmount<SCToken<T["ChainId"]>, true>;
     /**
      * Returns transactions for initiating (committing) the escrow on the destination smart chain side, pre-locking the
      *  tokens from the intermediary (LP) into an escrow.
@@ -146,7 +146,7 @@ export declare abstract class IFromBTCSelfInitSwap<T extends ChainType = ChainTy
      * Returns the transaction fee required for the claim transaction to settle the escrow on the destination
      *  smart chain
      */
-    getClaimNetworkFee(): Promise<TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>>;
+    getClaimNetworkFee(): Promise<TokenAmount<SCToken<T["ChainId"]>, true>>;
     /**
      * @inheritDoc
      */

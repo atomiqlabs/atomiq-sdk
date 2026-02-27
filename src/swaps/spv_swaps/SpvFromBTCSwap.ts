@@ -355,6 +355,7 @@ export class SpvFromBTCSwap<T extends ChainType>
     protected upgradeVersion() {
         if(this.version===1) {
             this.posted = this.initiated;
+            this.version = 2;
         }
     }
 

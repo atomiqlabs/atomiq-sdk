@@ -1015,8 +1015,11 @@ export class SpvFromBTCWrapper<
             }
             if(walletData.balance<=0n) continue;
 
-            if(!await swap._tryToPayFromSwapWallet(walletData.utxos)) continue;
-            successfullyUsedWallets.push(swapWalletAddress);
+            try {
+                if(await swap._tryToPayFromSwapWallet(walletData.utxos)) successfullyUsedWallets.push(swapWalletAddress);
+            } catch (e: any) {
+                this.logger.debug(`checkSwapWalletSwaps(): Tried to process ${swap.getId()}, but invalid wallet UTXO was found! Reason: ${e.toString()}`);
+            }
         }
     }
 

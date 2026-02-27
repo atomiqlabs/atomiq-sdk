@@ -9,6 +9,8 @@ export * from "./enums/FeeType";
 export * from "./enums/SwapAmountType";
 export * from "./enums/SwapDirection";
 export * from "./enums/SwapType";
+export * from "./errors/BitcoinNotEnoughBalanceError";
+export * from "./errors/SpvSwapWalletPaymentError";
 export * from "./errors/IntermediaryError";
 export * from "./errors/RequestError";
 export * from "./errors/UserError";

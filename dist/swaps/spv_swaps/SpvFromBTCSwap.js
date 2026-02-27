@@ -19,6 +19,7 @@ const TimeoutUtils_1 = require("../../utils/TimeoutUtils");
 const PriceInfoType_1 = require("../../types/PriceInfoType");
 const BitcoinWalletUtils_1 = require("../../utils/BitcoinWalletUtils");
 const SingleAddressBitcoinWallet_1 = require("../../bitcoin/wallet/SingleAddressBitcoinWallet");
+const SpvSwapWalletPaymentError_1 = require("../../errors/SpvSwapWalletPaymentError");
 /**
  * State enum for SPV vault (UTXO-controlled vault) based swaps
  * @category Swaps/Bitcoin → Smart chain
@@ -694,20 +695,27 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
         const foundUTXO = availableUtxos.find(utxo => BigInt(utxo.value) === requiredUTXOValue);
         this.logger.debug(`_tryToPayFromSwapWallet(): Checked address UTXOs, expected network fee: ${expectedNetworkFee},` +
             ` searched for UTXO with value: ${requiredUTXOValue} (after existing snapshot filtering), found: `, foundUTXO);
-        if (foundUTXO == null)
+        if (foundUTXO == null) {
+            if (availableUtxos.length > 0) {
+                const utxo = availableUtxos[0];
+                const utxoValue = BigInt(utxo.value);
+                const requiredTokenAmount = (0, TokenAmount_1.toTokenAmount)(requiredUTXOValue, Token_1.BitcoinTokens.BTC, this.wrapper._prices);
+                const utxoTokenAmount = (0, TokenAmount_1.toTokenAmount)(utxoValue, Token_1.BitcoinTokens.BTC, this.wrapper._prices);
+                if (utxoValue < requiredUTXOValue)
+                    throw new SpvSwapWalletPaymentError_1.SpvSwapWalletUnderpayError(requiredTokenAmount, utxoTokenAmount, `Received amount of ${utxoTokenAmount.toString()} is lower than the expected ${requiredTokenAmount.toString()},` +
+                        ` please request a new quote for the adjusted available amount!`);
+                if (utxoValue > requiredUTXOValue)
+                    throw new SpvSwapWalletPaymentError_1.SpvSwapWalletOverpayError(requiredTokenAmount, utxoTokenAmount, `Received amount of ${utxoTokenAmount.toString()} is higher than the expected ${requiredTokenAmount.toString()},` +
+                        ` please request a new quote for the adjusted available amount!`);
+            }
             return false;
-        //TODO: There might be some trouble with this approach, as it might inadvertendly consume a UTXO destined
-        // for a different swap, maybe we can only let the latest swap with a wallet be able to consume a UTXO
+        }
         //Try to spend that UTXO as a whole to fund the swap
         const { psbt: unfundedPsbt, in1sequence } = await this.getPsbt();
         const { psbt, fee, feeRate } = SingleAddressBitcoinWallet_1.SingleAddressBitcoinWallet.fundPsbtWithExactUtxos(unfundedPsbt, [foundUTXO]);
         if (feeRate < this.minimumBtcFeeRate) {
-            this.logger.warn(`_tryToPayFromSwapWallet(): Unable to process swap using the found UTXO, ` +
-                `resulting fee rate is below minimum allowed for the swap, calculated fee: ${fee.toString(10)}` +
-                `, calculated fee rate: ${feeRate}, minimum fee rate: ${this.minimumBtcFeeRate}`);
-            //TODO: This might mean that the user sent in the transaction with too low of a fee
-            // we should hint to the user that the transaction he sends has to pay at least minimumBtcFeeRate!
-            return false;
+            throw new SpvSwapWalletPaymentError_1.SpvSwapWalletNetworkFeeError(this.minimumBtcFeeRate, foundUTXO.cpfp?.txEffectiveFeeRate, `Received transaction paying too little fee (in sats/vB), expected the transaction to pay at least` +
+                ` ${this.minimumBtcFeeRate.toFixed(2)} sats/vB, but it only paid ${foundUTXO.cpfp?.txEffectiveFeeRate?.toFixed(2)} sats/vB!`);
         }
         psbt.updateInput(1, { sequence: in1sequence });
         const signInputs = [];

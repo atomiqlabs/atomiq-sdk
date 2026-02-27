@@ -132,12 +132,19 @@ function transactionBytes (
     return Math.ceil(size);
 }
 
-function uintOrNaN(v: number): number {
+function numberOrNaN(v: number): number {
   if (typeof v !== 'number') return NaN;
   if (!isFinite(v)) return NaN;
-  if (Math.floor(v) !== v) return NaN;
   if (v < 0) return NaN;
   return v;
+}
+
+function uintOrNaN(v: number): number {
+    if (typeof v !== 'number') return NaN;
+    if (!isFinite(v)) return NaN;
+    if (Math.floor(v) !== v) return NaN;
+    if (v < 0) return NaN;
+    return v;
 }
 
 function sumForgiving(range: {value: number}[]): number {
@@ -145,7 +152,7 @@ function sumForgiving(range: {value: number}[]): number {
 }
 
 function sumOrNaN(range: {value: number}[]): number {
-  return range.reduce((a, x)  => a + uintOrNaN(x.value), 0);
+  return range.reduce((a, x)  => a + numberOrNaN(x.value), 0);
 }
 
 function finalize(
@@ -191,5 +198,6 @@ export const utils = {
   sumOrNaN: sumOrNaN,
   sumForgiving: sumForgiving,
   transactionBytes: transactionBytes,
+  numberOrNaN: numberOrNaN,
   uintOrNaN: uintOrNaN
 };

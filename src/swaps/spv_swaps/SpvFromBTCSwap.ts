@@ -856,7 +856,7 @@ export class SpvFromBTCSwap<T extends ChainType>
         if(
             this.swapWalletAddress!=null &&
             this.swapWalletMaxNetworkFeeRate!=null &&
-            this.swapWalletType==="waitpayment"
+            this.swapWalletType!=null
         ) {
             const expectedNetworkFee = this.wrapper.getExpectedNetworkFee(
                 this.swapWalletAddress,

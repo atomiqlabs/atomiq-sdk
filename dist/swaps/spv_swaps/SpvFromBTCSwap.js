@@ -617,7 +617,7 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
     getInput() {
         if (this.swapWalletAddress != null &&
             this.swapWalletMaxNetworkFeeRate != null &&
-            this.swapWalletType === "waitpayment") {
+            this.swapWalletType != null) {
             const expectedNetworkFee = this.wrapper.getExpectedNetworkFee(this.swapWalletAddress, this.swapWalletMaxNetworkFeeRate, this.outputTotalGas !== 0n);
             return (0, TokenAmount_1.toTokenAmount)(this.btcAmount + expectedNetworkFee, Token_1.BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo);
         }

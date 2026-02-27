@@ -1136,7 +1136,7 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
         if (res.type === base_1.SpvWithdrawalStateType.CLAIMED) {
             if (this._state !== SpvFromBTCSwapState.CLAIMED) {
                 this._claimTxId = res.txId;
-                await this._saveAndEmit(SpvFromBTCSwapState.FRONTED);
+                await this._saveAndEmit(SpvFromBTCSwapState.CLAIMED);
             }
         }
         if (res.type === base_1.SpvWithdrawalStateType.CLOSED) {

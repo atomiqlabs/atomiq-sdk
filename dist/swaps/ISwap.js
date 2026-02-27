@@ -107,8 +107,8 @@ class ISwap {
     waitTillState(targetState, type = "eq", abortSignal) {
         return new Promise((resolve, reject) => {
             let listener;
-            listener = (swap) => {
-                if (type === "eq" ? swap._state === targetState : type === "gte" ? swap._state >= targetState : swap._state != targetState) {
+            listener = () => {
+                if (type === "eq" ? this._state === targetState : type === "gte" ? this._state >= targetState : this._state != targetState) {
                     resolve();
                     this.events.removeListener("swapState", listener);
                 }

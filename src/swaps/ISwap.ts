@@ -227,9 +227,9 @@ export abstract class ISwap<
      */
     protected waitTillState(targetState: S, type: "eq" | "gte" | "neq" = "eq", abortSignal?: AbortSignal): Promise<void> {
         return new Promise((resolve, reject) => {
-            let listener: (swap: D["Swap"]) => void;
-            listener = (swap) => {
-                if(type==="eq" ? swap._state===targetState : type==="gte" ? swap._state>=targetState : swap._state!=targetState) {
+            let listener: () => void;
+            listener = () => {
+                if(type==="eq" ? this._state===targetState : type==="gte" ? this._state>=targetState : this._state!=targetState) {
                     resolve();
                     this.events.removeListener("swapState", listener);
                 }

@@ -73,6 +73,15 @@ function transactionBytes(inputs, outputs, changeType) {
     }
     return Math.ceil(size);
 }
+function numberOrNaN(v) {
+    if (typeof v !== 'number')
+        return NaN;
+    if (!isFinite(v))
+        return NaN;
+    if (v < 0)
+        return NaN;
+    return v;
+}
 function uintOrNaN(v) {
     if (typeof v !== 'number')
         return NaN;
@@ -88,7 +97,7 @@ function sumForgiving(range) {
     return range.reduce((a, x) => a + (isFinite(x.value) ? x.value : 0), 0);
 }
 function sumOrNaN(range) {
-    return range.reduce((a, x) => a + uintOrNaN(x.value), 0);
+    return range.reduce((a, x) => a + numberOrNaN(x.value), 0);
 }
 function finalize(inputs, outputs, feeRate, changeType, cpfpAddFee = 0) {
     const bytesAccum = transactionBytes(inputs, outputs, changeType);
@@ -119,5 +128,6 @@ exports.utils = {
     sumOrNaN: sumOrNaN,
     sumForgiving: sumForgiving,
     transactionBytes: transactionBytes,
+    numberOrNaN: numberOrNaN,
     uintOrNaN: uintOrNaN
 };

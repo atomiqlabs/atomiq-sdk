@@ -5,7 +5,7 @@ const utils_1 = require("./utils");
 // add inputs until we reach or surpass the target value (or deplete)
 // worst-case: O(n)
 function blackjack(utxos, outputs, feeRate, type, requiredInputs) {
-    if (!isFinite(utils_1.utils.uintOrNaN(feeRate)))
+    if (!isFinite(utils_1.utils.numberOrNaN(feeRate)))
         throw new Error("Invalid feeRate passed!");
     const inputs = requiredInputs == null ? [] : [...requiredInputs];
     let bytesAccum = utils_1.utils.transactionBytes(inputs, outputs, type);

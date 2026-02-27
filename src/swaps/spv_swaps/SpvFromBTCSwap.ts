@@ -1453,7 +1453,7 @@ export class SpvFromBTCSwap<T extends ChainType>
                 (this._state as SpvFromBTCSwapState)!==SpvFromBTCSwapState.CLAIMED
             ) {
                 this._claimTxId = res.txId;
-                await this._saveAndEmit(SpvFromBTCSwapState.FRONTED);
+                await this._saveAndEmit(SpvFromBTCSwapState.CLAIMED);
             }
         }
         if(res.type===SpvWithdrawalStateType.CLOSED) {

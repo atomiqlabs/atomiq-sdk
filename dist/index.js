@@ -39,6 +39,8 @@ __exportStar(require("./enums/SwapAmountType"), exports);
 __exportStar(require("./enums/SwapDirection"), exports);
 __exportStar(require("./enums/SwapSide"), exports);
 __exportStar(require("./enums/SwapType"), exports);
+__exportStar(require("./errors/BitcoinNotEnoughBalanceError"), exports);
+__exportStar(require("./errors/SpvSwapWalletPaymentError"), exports);
 __exportStar(require("./errors/IntermediaryError"), exports);
 __exportStar(require("./errors/RequestError"), exports);
 __exportStar(require("./errors/UserError"), exports);

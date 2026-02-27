@@ -17,7 +17,7 @@ export function accumulative (
     outputs?: CoinselectTxOutput[],
     fee: number
 } {
-    if (!isFinite(utils.uintOrNaN(feeRate))) throw new Error("Invalid feeRate passed!");
+    if (!isFinite(utils.numberOrNaN(feeRate))) throw new Error("Invalid feeRate passed!");
 
     const inputs = requiredInputs==null ? [] : [...requiredInputs];
     let bytesAccum = utils.transactionBytes(inputs, outputs, type);
@@ -38,8 +38,8 @@ export function accumulative (
         if(utxo.cpfp!=null && utxo.cpfp.txEffectiveFeeRate<feeRate) cpfpFee = Math.ceil(utxo.cpfp.txVsize * (feeRate - utxo.cpfp.txEffectiveFeeRate));
 
         // skip detrimental input
-        if (utxoFee + cpfpFee > utxo.value) {
-            logger.debug("accumulative("+i+"): Skipping detrimental output, cpfpFee: "+cpfpFee+" utxoFee: "+utxoFee+" value: "+utxo.value);
+        if (utxoFee + cpfpFee > utxoValue) {
+            logger.debug("accumulative("+i+"): Skipping detrimental output, cpfpFee: "+cpfpFee+" utxoFee: "+utxoFee+" value: "+utxoValue);
             if (i === utxos.length - 1) return { fee: (feeRate * (bytesAccum + utxoBytes)) + cpfpAddFee + cpfpFee };
             continue
         }

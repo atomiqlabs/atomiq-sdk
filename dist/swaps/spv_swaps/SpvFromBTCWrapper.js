@@ -483,6 +483,11 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
      *  with the passed amount. Also allows specifying additional "gas drop" native token that the receipient receives
      *  on the destination chain in the `options` argument.
      *
+     *  @remarks When using swap wallet address swaps, swapping partial in-wallet amounts is not supported yet!
+     *   Passing a non-null amount with swap wallet mnemonic always results in the swap waiting till the wallet receives
+     *   the necessary swap amount, and apssing a null amount with swap wallet mnemonic swaps the full existing in-wallet
+     *   balance.
+     *
      * @param recipient Recipient address on the destination smart chain
      * @param amountData Amount, token and exact input/output data for to swap
      * @param lps An array of intermediaries (LPs) to get the quotes from
@@ -720,7 +725,7 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
             allowLegacyWitnessUtxo: true,
             allowUnknownOutputs: true
         });
-        const randomVaultOutScript = btc_signer_1.OutScript.encode({ type: "tr", pubkey: Buffer.from("0101010101010101010101010101010101010101010101010101010101010101", "hex") });
+        const randomVaultOutScript = (0, BitcoinUtils_1.getDummyOutputScript)(exports.REQUIRED_SPV_SWAP_VAULT_ADDRESS_TYPE);
         psbt.addInput({
             txid: (0, Utils_1.randomBytes)(32),
             index: 0,
@@ -774,9 +779,9 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
         for (const swap of swaps) {
             if (!swap.isInitiated() || swap.getState() !== SpvFromBTCSwap_1.SpvFromBTCSwapState.CREATED)
                 continue;
-            const swapWalletAddress = swap._getSwapWalletAddress();
-            if (!swapWalletAddress)
+            if (!swap.hasSwapWallet())
                 continue;
+            const swapWalletAddress = swap.getAddress();
             if (successfullyUsedWallets.includes(swapWalletAddress))
                 continue;
             let walletData = swapWalletData[swapWalletAddress];

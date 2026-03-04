@@ -803,14 +803,14 @@ class Swapper extends events_1.EventEmitter {
     swap(_srcToken, _dstToken, _amount, exactIn, src, dst, options) {
         const srcToken = typeof (_srcToken) === "string" ? this.getToken(_srcToken) : _srcToken;
         const dstToken = typeof (_dstToken) === "string" ? this.getToken(_dstToken) : _dstToken;
-        const amount = _amount == null ? null : (typeof (_amount) === "bigint" ? _amount : (0, Utils_1.fromDecimal)(_amount, exactIn ? srcToken.decimals : dstToken.decimals));
+        const amount = _amount == null ? undefined : (typeof (_amount) === "bigint" ? _amount : (0, Utils_1.fromDecimal)(_amount, exactIn ? srcToken.decimals : dstToken.decimals));
         if ((0, Token_1.isBtcToken)(srcToken)) {
             if ((0, Token_1.isSCToken)(dstToken)) {
                 if (typeof (dst) !== "string")
                     throw new Error("Destination for BTC/BTC-LN -> smart chain swaps must be a smart chain address!");
-                if (amount == null)
-                    throw new Error("Amount cannot be null for from btc swaps!");
                 if (srcToken.lightning) {
+                    if (amount == null)
+                        throw new Error("Amount cannot be null for from btc swaps!");
                     //FROM_BTCLN
                     if (src != null) {
                         if (typeof (src) !== "string" && !(0, LNURLWithdraw_1.isLNURLWithdraw)(src))
@@ -828,9 +828,15 @@ class Swapper extends events_1.EventEmitter {
                 else {
                     //FROM_BTC
                     if (this.supportsSwapType(dstToken.chainId, SwapType_1.SwapType.SPV_VAULT_FROM_BTC)) {
+                        if (typeof (src) === "string" && src.split(" ").length >= 12)
+                            options.walletMnemonic = src;
+                        if (options.walletMnemonic == null && amount == null)
+                            throw new Error("Amount cannot be null for from btc swaps!");
                         return this.createFromBTCSwapNew(dstToken.chainId, dst, dstToken.address, amount, !exactIn, undefined, options);
                     }
                     else {
+                        if (amount == null)
+                            throw new Error("Amount cannot be null for from btc swaps!");
                         return this.createFromBTCSwap(dstToken.chainId, dst, dstToken.address, amount, !exactIn, undefined, options);
                     }
                 }
@@ -876,6 +882,18 @@ class Swapper extends events_1.EventEmitter {
             }
         }
         throw new Error("Unsupported swap type");
+    }
+    /**
+     * A helper function to sweep all the funds in a single swap from a swap wallet mnemonic, this is used as an
+     *  intermediate wallet to allow users to deposit from external wallet for BTC -> SC swaps. In case the amount
+     *  sent by the user is too low / too high, or sent with invalid fee the swap fails and you can then use this
+     *  function to sweep all the remaining funds from that swap wallet in a single swap
+     */
+    async sweepSwapWallet(srcSwapWalletMnemonic, _dstToken, dst, options) {
+        const swap = await this.swap(Token_1.BitcoinTokens.BTC, _dstToken, undefined, true, srcSwapWalletMnemonic, dst, options);
+        if (!(0, SwapUtils_1.isSwapType)(swap, SwapType_1.SwapType.SPV_VAULT_FROM_BTC))
+            throw new Error("Can only sweep to chains which support new spv vault swap protocol!");
+        return swap;
     }
     async getAllSwaps(chainId, signer) {
         const queryParams = [];

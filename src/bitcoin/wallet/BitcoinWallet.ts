@@ -4,7 +4,7 @@ import {p2wpkh, OutScript, Transaction, p2tr, Address} from "@scure/btc-signer";
 import {BitcoinWalletUtxo, IBitcoinWallet} from "./IBitcoinWallet";
 import {Buffer} from "buffer";
 import {randomBytes} from "../../utils/Utils";
-import {toCoinselectAddressType, toOutputScript} from "../../utils/BitcoinUtils";
+import {getDummyOutputScript, toCoinselectAddressType, toOutputScript} from "../../utils/BitcoinUtils";
 import {TransactionInputUpdate} from "@scure/btc-signer/psbt";
 import {getLogger} from "../../utils/Logger";
 import {BitcoinNetwork, BitcoinRpcWithAddressIndex} from "@atomiqlabs/base";
@@ -347,28 +347,7 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
             })
         }
 
-        let target: Uint8Array;
-        switch(outputAddressType) {
-            case "p2pkh":
-                target = OutScript.encode({type: "pkh", hash: randomBytes(20)});
-                break;
-            case "p2sh-p2wpkh":
-                target = OutScript.encode({type: "sh", hash: randomBytes(20)});
-                break;
-            case "p2wpkh":
-                target = OutScript.encode({type: "wpkh", hash: randomBytes(20)});
-                break;
-            case "p2tr":
-                target = OutScript.encode({
-                    type: "tr",
-                    pubkey: Buffer.from("0101010101010101010101010101010101010101010101010101010101010101", "hex")
-                });
-                break;
-            default:
-                target = OutScript.encode({type: "wsh", hash: randomBytes(32)});
-                break;
-        }
-
+        const target: Uint8Array = getDummyOutputScript(outputAddressType ?? "p2wsh");
         let coinselectResult = maxSendable(utxoPool, {script: Buffer.from(target), type: outputAddressType ?? "p2wsh"}, feeRate, requiredInputs, additionalOutputs);
 
         logger.debug("_getSpendableBalance(): Max spendable result: ", coinselectResult);
@@ -384,8 +363,8 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
     abstract fundPsbt(psbt: Transaction, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<Transaction>;
     abstract signPsbt(psbt: Transaction, signInputs: number[]): Promise<Transaction>;
 
-    abstract getTransactionFee(address: string, amount: bigint, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number>;
-    abstract getFundedPsbtFee(psbt: Transaction, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number>;
+    abstract getTransactionFee(address: string, amount: bigint, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number | null>;
+    abstract getFundedPsbtFee(psbt: Transaction, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number | null>;
 
     abstract getReceiveAddress(): string;
     abstract getBalance(): Promise<{

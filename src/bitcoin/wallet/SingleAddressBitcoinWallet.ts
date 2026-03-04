@@ -102,16 +102,18 @@ export class SingleAddressBitcoinWallet extends BitcoinWallet {
     /**
      * @inheritDoc
      */
-    async getTransactionFee(address: string, amount: bigint, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number> {
-        const {fee} = await super._getPsbt(this.toBitcoinWalletAccounts(), address, Number(amount), feeRate, utxos);
+    async getTransactionFee(address: string, amount: bigint, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number | null> {
+        const {fee, psbt} = await super._getPsbt(this.toBitcoinWalletAccounts(), address, Number(amount), feeRate, utxos);
+        if(psbt==null) return null;
         return fee;
     }
 
     /**
      * @inheritDoc
      */
-    async getFundedPsbtFee(basePsbt: Transaction, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number> {
-        const {fee} = await super._fundPsbt(this.toBitcoinWalletAccounts(), basePsbt, feeRate, utxos);
+    async getFundedPsbtFee(basePsbt: Transaction, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number | null> {
+        const {fee, psbt} = await super._fundPsbt(this.toBitcoinWalletAccounts(), basePsbt, feeRate, utxos);
+        if(psbt==null) return null;
         return fee;
     }
 

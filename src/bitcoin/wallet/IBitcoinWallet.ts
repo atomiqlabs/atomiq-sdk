@@ -85,7 +85,7 @@ export interface IBitcoinWallet {
      * @param feeRate Optional fee rate in sats/vB to use for the transaction
      * @param utxos Optional pre-fetched UTXOs
      */
-    getTransactionFee(address: string, amount: bigint, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number>;
+    getTransactionFee(address: string, amount: bigint, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number | null>;
 
     /**
      * Estimates a total fee in satoshis for a given transaction as identified by the PSBT
@@ -94,7 +94,7 @@ export interface IBitcoinWallet {
      * @param feeRate Optional fee rate in sats/vB to use for the transaction
      * @param utxos Optional pre-fetched UTXOs
      */
-    getFundedPsbtFee(psbt: Transaction, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number>;
+    getFundedPsbtFee(psbt: Transaction, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number | null>;
 
     /**
      * Returns the bitcoin address suitable for receiving funds

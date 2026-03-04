@@ -33,6 +33,7 @@ export type SwapExecutionActionBitcoin<T extends "ADDRESS" | "FUNDED_PSBT" | "RA
         amount: number;
         address: string;
         hyperlink: string;
+        recommendedFeeRate?: number;
     } : T extends "FUNDED_PSBT" ? {
         type: "FUNDED_PSBT";
         psbt: Transaction;

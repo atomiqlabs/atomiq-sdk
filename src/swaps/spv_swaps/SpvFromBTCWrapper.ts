@@ -22,7 +22,12 @@ import {ISwapPrice} from "../../prices/abstract/ISwapPrice";
 import {EventEmitter} from "events";
 import {Intermediary} from "../../intermediaries/Intermediary";
 import {extendAbortController, randomBytes, throwIfUndefined} from "../../utils/Utils";
-import {fromOutputScript, toCoinselectAddressType, toOutputScript} from "../../utils/BitcoinUtils";
+import {
+    fromOutputScript,
+    getDummyOutputScript,
+    toCoinselectAddressType,
+    toOutputScript
+} from "../../utils/BitcoinUtils";
 import {IntermediaryAPI, SpvFromBTCPrepareResponseType} from "../../intermediaries/apis/IntermediaryAPI";
 import {RequestError} from "../../errors/RequestError";
 import {IntermediaryError} from "../../errors/IntermediaryError";
@@ -626,6 +631,11 @@ export class SpvFromBTCWrapper<
      *  with the passed amount. Also allows specifying additional "gas drop" native token that the receipient receives
      *  on the destination chain in the `options` argument.
      *
+     *  @remarks When using swap wallet address swaps, swapping partial in-wallet amounts is not supported yet!
+     *   Passing a non-null amount with swap wallet mnemonic always results in the swap waiting till the wallet receives
+     *   the necessary swap amount, and apssing a null amount with swap wallet mnemonic swaps the full existing in-wallet
+     *   balance.
+     *
      * @param recipient Recipient address on the destination smart chain
      * @param amountData Amount, token and exact input/output data for to swap
      * @param lps An array of intermediaries (LPs) to get the quotes from
@@ -929,7 +939,7 @@ export class SpvFromBTCWrapper<
             allowUnknownOutputs: true
         });
 
-        const randomVaultOutScript = OutScript.encode({type: "tr", pubkey: Buffer.from("0101010101010101010101010101010101010101010101010101010101010101", "hex")});
+        const randomVaultOutScript = getDummyOutputScript(REQUIRED_SPV_SWAP_VAULT_ADDRESS_TYPE);
 
         psbt.addInput({
             txid: randomBytes(32),
@@ -1000,8 +1010,8 @@ export class SpvFromBTCWrapper<
         const swapWalletData: {[address: string]: {balance: bigint, utxos: BitcoinWalletUtxo[]}} = {};
         for(const swap of swaps) {
             if(!swap.isInitiated() || swap.getState()!==SpvFromBTCSwapState.CREATED) continue;
-            const swapWalletAddress = swap._getSwapWalletAddress();
-            if(!swapWalletAddress) continue;
+            if(!swap.hasSwapWallet()) continue;
+            const swapWalletAddress = swap.getAddress();
             if(successfullyUsedWallets.includes(swapWalletAddress)) continue;
 
             let walletData = swapWalletData[swapWalletAddress];

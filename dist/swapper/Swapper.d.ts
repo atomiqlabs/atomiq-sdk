@@ -439,7 +439,7 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
     /**
      * @internal
      */
-    create<C extends ChainIds<T>>(signer: string, srcToken: BtcToken<false>, dstToken: SCToken<C>, amount: bigint, exactIn: boolean): Promise<(SupportsSwapType<T[C], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCSwap<T[C]> : FromBTCSwap<T[C]>)>;
+    create<C extends ChainIds<T>>(signer: string, srcToken: BtcToken<false>, dstToken: SCToken<C>, amount: bigint | undefined, exactIn: boolean, srcSwapWalletMnemonic?: string): Promise<(SupportsSwapType<T[C], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCSwap<T[C]> : FromBTCSwap<T[C]>)>;
     /**
      * @internal
      */
@@ -474,7 +474,7 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
     /**
      * @internal
      */
-    swap<C extends ChainIds<T>>(srcToken: BtcToken<false> | "BTC" | "BITCOIN-BTC", dstToken: SCToken<C> | string, amount: bigint | string, exactIn: boolean | SwapAmountType, src: undefined | string, dstSmartchainWallet: string, options?: (SupportsSwapType<T[C], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCOptions : FromBTCOptions)): Promise<(SupportsSwapType<T[C], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCSwap<T[C]> : FromBTCSwap<T[C]>)>;
+    swap<C extends ChainIds<T>>(srcToken: BtcToken<false> | "BTC" | "BITCOIN-BTC", dstToken: SCToken<C> | string, amount: bigint | string | undefined, exactIn: boolean | SwapAmountType, srcSwapWalletMnemonic: undefined | string, dstSmartchainWallet: string, options?: (SupportsSwapType<T[C], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCOptions : FromBTCOptions)): Promise<(SupportsSwapType<T[C], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCSwap<T[C]> : FromBTCSwap<T[C]>)>;
     /**
      * @internal
      */
@@ -505,6 +505,13 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
     swap<C extends ChainIds<T>>(srcToken: Token<C> | string, dstToken: Token<C> | string, amount: bigint | string | undefined, exactIn: boolean | SwapAmountType, src: undefined | string | LNURLWithdraw, dst: string | LNURLPay | LightningInvoiceCreateService, options?: FromBTCLNOptions | SpvFromBTCOptions | FromBTCOptions | ToBTCOptions | (ToBTCLNOptions & {
         comment?: string;
     }) | FromBTCLNAutoOptions): Promise<ISwap<T[C]>>;
+    /**
+     * A helper function to sweep all the funds in a single swap from a swap wallet mnemonic, this is used as an
+     *  intermediate wallet to allow users to deposit from external wallet for BTC -> SC swaps. In case the amount
+     *  sent by the user is too low / too high, or sent with invalid fee the swap fails and you can then use this
+     *  function to sweep all the remaining funds from that swap wallet in a single swap
+     */
+    sweepSwapWallet<C extends ChainIds<T>>(srcSwapWalletMnemonic: string, _dstToken: SCToken<C> | string, dst: string, options?: SpvFromBTCOptions): Promise<SpvFromBTCSwap<T[C]>>;
     /**
      * Returns all swaps
      */

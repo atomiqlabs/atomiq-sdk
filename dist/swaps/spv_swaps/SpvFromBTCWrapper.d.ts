@@ -156,6 +156,11 @@ export declare class SpvFromBTCWrapper<T extends ChainType> extends ISwapWrapper
      *  with the passed amount. Also allows specifying additional "gas drop" native token that the receipient receives
      *  on the destination chain in the `options` argument.
      *
+     *  @remarks When using swap wallet address swaps, swapping partial in-wallet amounts is not supported yet!
+     *   Passing a non-null amount with swap wallet mnemonic always results in the swap waiting till the wallet receives
+     *   the necessary swap amount, and apssing a null amount with swap wallet mnemonic swaps the full existing in-wallet
+     *   balance.
+     *
      * @param recipient Recipient address on the destination smart chain
      * @param amountData Amount, token and exact input/output data for to swap
      * @param lps An array of intermediaries (LPs) to get the quotes from

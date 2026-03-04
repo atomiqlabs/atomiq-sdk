@@ -5,7 +5,6 @@ const coinselect2_1 = require("../coinselect2");
 const utils_1 = require("@scure/btc-signer/utils");
 const btc_signer_1 = require("@scure/btc-signer");
 const buffer_1 = require("buffer");
-const Utils_1 = require("../../utils/Utils");
 const BitcoinUtils_1 = require("../../utils/BitcoinUtils");
 const Logger_1 = require("../../utils/Logger");
 const base_1 = require("@atomiqlabs/base");
@@ -273,27 +272,7 @@ class BitcoinWallet {
                     script: buffer_1.Buffer.from(output.script)
                 });
             }
-        let target;
-        switch (outputAddressType) {
-            case "p2pkh":
-                target = btc_signer_1.OutScript.encode({ type: "pkh", hash: (0, Utils_1.randomBytes)(20) });
-                break;
-            case "p2sh-p2wpkh":
-                target = btc_signer_1.OutScript.encode({ type: "sh", hash: (0, Utils_1.randomBytes)(20) });
-                break;
-            case "p2wpkh":
-                target = btc_signer_1.OutScript.encode({ type: "wpkh", hash: (0, Utils_1.randomBytes)(20) });
-                break;
-            case "p2tr":
-                target = btc_signer_1.OutScript.encode({
-                    type: "tr",
-                    pubkey: buffer_1.Buffer.from("0101010101010101010101010101010101010101010101010101010101010101", "hex")
-                });
-                break;
-            default:
-                target = btc_signer_1.OutScript.encode({ type: "wsh", hash: (0, Utils_1.randomBytes)(32) });
-                break;
-        }
+        const target = (0, BitcoinUtils_1.getDummyOutputScript)(outputAddressType ?? "p2wsh");
         let coinselectResult = (0, coinselect2_1.maxSendable)(utxoPool, { script: buffer_1.Buffer.from(target), type: outputAddressType ?? "p2wsh" }, feeRate, requiredInputs, additionalOutputs);
         logger.debug("_getSpendableBalance(): Max spendable result: ", coinselectResult);
         return {

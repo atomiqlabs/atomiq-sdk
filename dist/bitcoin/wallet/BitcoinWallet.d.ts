@@ -88,8 +88,8 @@ export declare abstract class BitcoinWallet implements IBitcoinWallet {
     abstract sendTransaction(address: string, amount: bigint, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<string>;
     abstract fundPsbt(psbt: Transaction, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<Transaction>;
     abstract signPsbt(psbt: Transaction, signInputs: number[]): Promise<Transaction>;
-    abstract getTransactionFee(address: string, amount: bigint, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number>;
-    abstract getFundedPsbtFee(psbt: Transaction, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number>;
+    abstract getTransactionFee(address: string, amount: bigint, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number | null>;
+    abstract getFundedPsbtFee(psbt: Transaction, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number | null>;
     abstract getReceiveAddress(): string;
     abstract getBalance(): Promise<{
         confirmedBalance: bigint;

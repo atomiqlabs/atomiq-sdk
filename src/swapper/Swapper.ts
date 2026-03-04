@@ -1368,7 +1368,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
     /**
      * @internal
      */
-    create<C extends ChainIds<T>>(signer: string, srcToken: BtcToken<false>, dstToken: SCToken<C>, amount: bigint, exactIn: boolean): Promise<(SupportsSwapType<T[C], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCSwap<T[C]> : FromBTCSwap<T[C]>)>;
+    create<C extends ChainIds<T>>(signer: string, srcToken: BtcToken<false>, dstToken: SCToken<C>, amount: bigint | undefined, exactIn: boolean, srcSwapWalletMnemonic?: string): Promise<(SupportsSwapType<T[C], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCSwap<T[C]> : FromBTCSwap<T[C]>)>;
     /**
      * @internal
      */
@@ -1425,7 +1425,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
     /**
      * @internal
      */
-    swap<C extends ChainIds<T>>(srcToken: BtcToken<false> | "BTC" | "BITCOIN-BTC", dstToken: SCToken<C> | string, amount: bigint | string, exactIn: boolean | SwapAmountType, src: undefined | string, dstSmartchainWallet: string, options?: (SupportsSwapType<T[C], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCOptions : FromBTCOptions)): Promise<(SupportsSwapType<T[C], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCSwap<T[C]> : FromBTCSwap<T[C]>)>;
+    swap<C extends ChainIds<T>>(srcToken: BtcToken<false> | "BTC" | "BITCOIN-BTC", dstToken: SCToken<C> | string, amount: bigint | string | undefined, exactIn: boolean | SwapAmountType, srcSwapWalletMnemonic: undefined | string, dstSmartchainWallet: string, options?: (SupportsSwapType<T[C], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCOptions : FromBTCOptions)): Promise<(SupportsSwapType<T[C], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCSwap<T[C]> : FromBTCSwap<T[C]>)>;
     /**
      * @internal
      */
@@ -1476,12 +1476,12 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
     ): Promise<ISwap<T[C]>> {
         const srcToken = typeof(_srcToken)==="string" ? this.getToken(_srcToken) as Token<C> : _srcToken;
         const dstToken = typeof(_dstToken)==="string" ? this.getToken(_dstToken) as Token<C> : _dstToken;
-        const amount = _amount==null ? null : (typeof(_amount)==="bigint" ? _amount : fromDecimal(_amount, exactIn ? srcToken.decimals : dstToken.decimals));
+        const amount = _amount==null ? undefined : (typeof(_amount)==="bigint" ? _amount : fromDecimal(_amount, exactIn ? srcToken.decimals : dstToken.decimals));
         if(isBtcToken(srcToken)) {
             if(isSCToken<C>(dstToken)) {
                 if(typeof(dst)!=="string") throw new Error("Destination for BTC/BTC-LN -> smart chain swaps must be a smart chain address!");
-                if(amount==null) throw new Error("Amount cannot be null for from btc swaps!");
                 if(srcToken.lightning) {
+                    if(amount==null) throw new Error("Amount cannot be null for from btc swaps!");
                     //FROM_BTCLN
                     if(src!=null) {
                         if(typeof(src)!=="string" && !isLNURLWithdraw(src)) throw new Error("LNURL must be a string or LNURLWithdraw object!");
@@ -1496,8 +1496,11 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 } else {
                     //FROM_BTC
                     if(this.supportsSwapType(dstToken.chainId, SwapType.SPV_VAULT_FROM_BTC)) {
+                        if(typeof(src)==="string" && src.split(" ").length>=12) (options as any).walletMnemonic = src;
+                        if((options as any).walletMnemonic==null && amount==null) throw new Error("Amount cannot be null for from btc swaps!");
                         return this.createFromBTCSwapNew(dstToken.chainId, dst, dstToken.address, amount, !exactIn, undefined, options as any);
                     } else {
+                        if(amount==null) throw new Error("Amount cannot be null for from btc swaps!");
                         return this.createFromBTCSwap(dstToken.chainId, dst, dstToken.address, amount, !exactIn, undefined, options as any);
                     }
                 }
@@ -1532,6 +1535,26 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
             }
         }
         throw new Error("Unsupported swap type");
+    }
+
+    /**
+     * A helper function to sweep all the funds in a single swap from a swap wallet mnemonic, this is used as an
+     *  intermediate wallet to allow users to deposit from external wallet for BTC -> SC swaps. In case the amount
+     *  sent by the user is too low / too high, or sent with invalid fee the swap fails and you can then use this
+     *  function to sweep all the remaining funds from that swap wallet in a single swap
+     */
+    async sweepSwapWallet<C extends ChainIds<T>>(
+        srcSwapWalletMnemonic: string,
+        _dstToken: SCToken<C> | string,
+        dst: string,
+        options?: SpvFromBTCOptions
+    ): Promise<SpvFromBTCSwap<T[C]>> {
+        const swap = await this.swap<C>(
+            BitcoinTokens.BTC, _dstToken, undefined, true, srcSwapWalletMnemonic, dst, options
+        );
+        if(!isSwapType(swap, SwapType.SPV_VAULT_FROM_BTC))
+            throw new Error("Can only sweep to chains which support new spv vault swap protocol!");
+        return swap;
     }
 
     /**

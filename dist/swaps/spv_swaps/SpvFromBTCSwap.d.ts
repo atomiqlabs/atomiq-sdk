@@ -16,6 +16,44 @@ import { LoggerType } from "../../utils/Logger";
 import { PriceInfoType } from "../../types/PriceInfoType";
 import { SwapExecutionAction, SwapExecutionActionBitcoin } from "../../types/SwapExecutionAction";
 import { SingleAddressBitcoinWallet } from "../../bitcoin/wallet/SingleAddressBitcoinWallet";
+import { IAddressSwap } from "../IAddressSwap";
+/**
+ * State enum for the external deposit to the SPV vault (UTXO-controlled vault) based swap
+ * @category Swaps/Bitcoin → Smart chain
+ */
+export declare enum SpvFromBTCSwapDepositState {
+    /**
+     * The user's bitcoin transaction paid less fee rate than what was expected
+     */
+    BAD_NETWORK_FEE = -3,
+    /**
+     * The user underpaid and sent less to the swap address than expected
+     */
+    UNDERPAID = -2,
+    /**
+     * The user overpaid and sent more to the swap address than expected
+     */
+    OVERPAID = -1,
+    /**
+     * The swap was created and the swap address hasn't received any transaction yet
+     */
+    UNFUNDED = 0,
+    /**
+     * The swap address received the required BTC amount, which has been used to fund the swap
+     */
+    PROCESSED = 1
+}
+/**
+ * External wallet deposit status for the SPV vault (UTXO-controlled vault) based swap
+ * @category Swaps/Bitcoin → Smart chain
+ */
+export type SpvFromBTCSwapDepositStatus = {
+    state: SpvFromBTCSwapDepositState;
+    txId?: string;
+    vout?: number;
+    actualAmount?: number;
+    actualFeeRate?: number;
+};
 /**
  * State enum for SPV vault (UTXO-controlled vault) based swaps
  * @category Swaps/Bitcoin → Smart chain
@@ -124,7 +162,7 @@ export declare function isSpvFromBTCSwapInit(obj: any): obj is SpvFromBTCSwapIni
  *
  * @category Swaps/Bitcoin → Smart chain
  */
-export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFromBTCTypeDefinition<T>> implements IBTCWalletSwap, ISwapWithGasDrop<T>, IClaimableSwap<T, SpvFromBTCTypeDefinition<T>, SpvFromBTCSwapState> {
+export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFromBTCTypeDefinition<T>> implements IBTCWalletSwap, IAddressSwap, ISwapWithGasDrop<T>, IClaimableSwap<T, SpvFromBTCTypeDefinition<T>, SpvFromBTCSwapState> {
     protected readonly currentVersion: number;
     readonly TYPE: SwapType.SPV_VAULT_FROM_BTC;
     /**
@@ -182,6 +220,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
     private readonly swapWalletMaxNetworkFeeRate?;
     private readonly swapWalletType?;
     private readonly swapWalletExistingUtxos?;
+    private swapWalletDepositStatus?;
     /**
      * @internal
      */
@@ -256,15 +295,36 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
      */
     _verifyQuoteValid(): Promise<boolean>;
     /**
-     * Returns the address of the swap wallet
-     *
-     * @internal
-     */
-    _getSwapWalletAddress(): string | null;
-    /**
      * Aborts the swap, meaning the swap address will not automatically trigger the swap initiation anymore
      */
     abortSwap(): Promise<void>;
+    /**
+     * Returns the status of the deposit for swaps via swap address (swaps which support deposits from external wallet
+     *  via swap wallet address), returns null for all other swaps
+     */
+    getDepositStatus(): SpvFromBTCSwapDepositStatus | null;
+    /**
+     * Returns the type of the deposit wallet address (if used):
+     * - `"prefunded"` - sweeping the already existing balance of the wallet, call {@link sendFromSwapWallet} to execute
+     *  the swap
+     * - `"waitpayment"` - the wallet swap address is waiting to receive the required amount of BTC, upon receipt a swap
+     *  is executed, call {@link waitForPayment} to await the payment and initiate the swap automatically
+     */
+    getDepositWalletType(): "prefunded" | "waitpayment" | undefined;
+    /**
+     * @inheritDoc
+     *
+     * @remarks Only available when swap was created using swap wallet address, you can check this with the
+     *  {@link hasSwapWallet} function, otherwise throws.
+     */
+    getAddress(): string;
+    /**
+     * @inheritDoc
+     *
+     * @remarks Only available when swap was created using swap wallet address, you can check this with the
+     *  {@link hasSwapWallet} function, otherwise throws.
+     */
+    getHyperlink(): string;
     /**
      * Returns whether the swap has a swap wallet address, that automatically executes the swap upon
      *  receiving BTC funds
@@ -427,19 +487,13 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
      */
     getInput(): TokenAmount<BtcToken<false>, true>;
     /**
-     * Executes a prefunded swap by funding the PSBT with exact snapshotted UTXOs, spending all of them fully.
-     *
-     * @internal
-     */
-    private _tryToPayFromPrefundedSwapWallet;
-    /**
      * @internal
      */
     _getSwapBitcoinWallet(): SingleAddressBitcoinWallet;
     /**
      * @internal
      */
-    _tryToPayFromSwapWallet(utxos: BitcoinWalletUtxo[]): Promise<boolean>;
+    _tryToPayFromSwapWallet(utxos: BitcoinWalletUtxo[]): Promise<string | null>;
     /**
      * @inheritDoc
      */
@@ -509,6 +563,14 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
      */
     sendBitcoinTransaction(wallet: IBitcoinWallet | MinimalBitcoinWalletInterfaceWithSigner, feeRate?: number): Promise<string>;
     /**
+     * Executes a swap using the whole existing swap wallet address balance to do the swap.
+     *
+     * @remarks Funds the PSBT with exact snapshotted UTXOs, spending all of them fully.
+     *
+     * @returns Bitcoin transaction ID of the swap
+     */
+    sendFromSwapWallet(): Promise<string>;
+    /**
      * Executes the swap with the provided bitcoin wallet
      *
      * @param wallet Bitcoin wallet to use to sign the bitcoin transaction
@@ -544,7 +606,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
         bitcoinFeeRate?: number;
         bitcoinWallet?: MinimalBitcoinWalletInterface;
     }): Promise<[
-        SwapExecutionActionBitcoin<"RAW_PSBT" | "FUNDED_PSBT">
+        SwapExecutionActionBitcoin<"RAW_PSBT" | "FUNDED_PSBT" | "ADDRESS">
     ]>;
     /**
      * @inheritDoc
@@ -580,8 +642,14 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
      *
      * @param checkIntervalSeconds How often to poll the wallet for incoming UTXOs (default 5 seconds)
      * @param abortSignal Abort signal
+     *
+     * @returns Transaction ID of the swap transaction
+     *
+     * @throws {SpvSwapWalletOverpayError} When user overpays, sends more than the required amount
+     * @throws {SpvSwapWalletUnderpayError} When user underpays, sends less than the required amount
+     * @throws {SpvSwapWalletNetworkFeeError} When user sent bitcoin transaction with too low of a network fee
      */
-    waitForPayment(checkIntervalSeconds?: number, abortSignal?: AbortSignal): Promise<void>;
+    waitForPayment(checkIntervalSeconds?: number, abortSignal?: AbortSignal): Promise<string | null>;
     /**
      * @inheritDoc
      *

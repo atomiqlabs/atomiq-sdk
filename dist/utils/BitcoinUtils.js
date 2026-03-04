@@ -1,9 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.parsePsbtTransaction = exports.toCoinselectAddressType = exports.toOutputScript = exports.fromOutputScript = void 0;
+exports.parsePsbtTransaction = exports.getDummyAddress = exports.getDummyOutputScript = exports.toCoinselectAddressType = exports.toOutputScript = exports.fromOutputScript = void 0;
 const utils_1 = require("@scure/btc-signer/utils");
 const buffer_1 = require("buffer");
 const btc_signer_1 = require("@scure/btc-signer");
+const Utils_1 = require("./Utils");
 function fromOutputScript(network, outputScriptHex) {
     return (0, btc_signer_1.Address)(network).encode(btc_signer_1.OutScript.decode(buffer_1.Buffer.from(outputScriptHex, "hex")));
 }
@@ -71,6 +72,44 @@ function toCoinselectAddressType(outputScript) {
     throw new Error("Unrecognized address type!");
 }
 exports.toCoinselectAddressType = toCoinselectAddressType;
+function getDummySpec(type) {
+    switch (type) {
+        case "p2pkh":
+            return {
+                type: "pkh",
+                hash: (0, Utils_1.randomBytes)(20)
+            };
+        case "p2sh-p2wpkh":
+            return {
+                type: "sh",
+                hash: (0, Utils_1.randomBytes)(20)
+            };
+        case "p2wpkh":
+            return {
+                type: "wpkh",
+                hash: (0, Utils_1.randomBytes)(20)
+            };
+        case "p2wsh":
+            return {
+                type: "wsh",
+                hash: (0, Utils_1.randomBytes)(32)
+            };
+        case "p2tr":
+            return {
+                type: "tr",
+                pubkey: buffer_1.Buffer.from("0101010101010101010101010101010101010101010101010101010101010101", "hex")
+            };
+    }
+    throw new Error("Unrecognized address type!");
+}
+function getDummyOutputScript(type) {
+    return btc_signer_1.OutScript.encode(getDummySpec(type));
+}
+exports.getDummyOutputScript = getDummyOutputScript;
+function getDummyAddress(network, type) {
+    return (0, btc_signer_1.Address)(network).encode(getDummySpec(type));
+}
+exports.getDummyAddress = getDummyAddress;
 /**
  * General parsers for PSBTs, can parse hex or base64 encoded PSBTs
  * @param _psbt

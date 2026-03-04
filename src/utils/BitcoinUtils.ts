@@ -2,6 +2,7 @@ import {BTC_NETWORK, isBytes, PubT, validatePubkey} from "@scure/btc-signer/util
 import {Buffer} from "buffer";
 import {Address, OutScript, Transaction} from "@scure/btc-signer";
 import {CoinselectAddressTypes} from "../bitcoin/coinselect2";
+import { randomBytes } from "./Utils";
 
 
 export function fromOutputScript(network: BTC_NETWORK, outputScriptHex: string): string {
@@ -61,6 +62,45 @@ export function toCoinselectAddressType(outputScript: Uint8Array): CoinselectAdd
             return "p2tr"
     }
     throw new Error("Unrecognized address type!");
+}
+
+function getDummySpec(type: CoinselectAddressTypes) {
+    switch(type) {
+        case "p2pkh":
+            return {
+                type: "pkh",
+                hash: randomBytes(20)
+            } as const;
+        case "p2sh-p2wpkh":
+            return {
+                type: "sh",
+                hash: randomBytes(20)
+            } as const;
+        case "p2wpkh":
+            return {
+                type: "wpkh",
+                hash: randomBytes(20)
+            } as const;
+        case "p2wsh":
+            return {
+                type: "wsh",
+                hash: randomBytes(32)
+            } as const;
+        case "p2tr":
+            return {
+                type: "tr",
+                pubkey: Buffer.from("0101010101010101010101010101010101010101010101010101010101010101", "hex")
+            } as const;
+    }
+    throw new Error("Unrecognized address type!");
+}
+
+export function getDummyOutputScript(type: CoinselectAddressTypes): Uint8Array {
+    return OutScript.encode(getDummySpec(type));
+}
+
+export function getDummyAddress(network: BTC_NETWORK, type: CoinselectAddressTypes): string {
+    return Address(network).encode(getDummySpec(type));
 }
 
 /**

@@ -46,11 +46,11 @@ export declare class SingleAddressBitcoinWallet extends BitcoinWallet {
     /**
      * @inheritDoc
      */
-    getTransactionFee(address: string, amount: bigint, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number>;
+    getTransactionFee(address: string, amount: bigint, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number | null>;
     /**
      * @inheritDoc
      */
-    getFundedPsbtFee(basePsbt: Transaction, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number>;
+    getFundedPsbtFee(basePsbt: Transaction, feeRate?: number, utxos?: BitcoinWalletUtxo[]): Promise<number | null>;
     /**
      * @inheritDoc
      */

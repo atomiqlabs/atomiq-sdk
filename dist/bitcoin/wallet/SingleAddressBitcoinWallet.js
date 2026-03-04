@@ -89,14 +89,18 @@ class SingleAddressBitcoinWallet extends BitcoinWallet_1.BitcoinWallet {
      * @inheritDoc
      */
     async getTransactionFee(address, amount, feeRate, utxos) {
-        const { fee } = await super._getPsbt(this.toBitcoinWalletAccounts(), address, Number(amount), feeRate, utxos);
+        const { fee, psbt } = await super._getPsbt(this.toBitcoinWalletAccounts(), address, Number(amount), feeRate, utxos);
+        if (psbt == null)
+            return null;
         return fee;
     }
     /**
      * @inheritDoc
      */
     async getFundedPsbtFee(basePsbt, feeRate, utxos) {
-        const { fee } = await super._fundPsbt(this.toBitcoinWalletAccounts(), basePsbt, feeRate, utxos);
+        const { fee, psbt } = await super._fundPsbt(this.toBitcoinWalletAccounts(), basePsbt, feeRate, utxos);
+        if (psbt == null)
+            return null;
         return fee;
     }
     /**

@@ -121,6 +121,8 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
             throw new IntermediaryError_1.IntermediaryError("Invalid intermediary address/pubkey");
         if (options.descriptionHash != null && decodedPr.tagsObject.purpose_commit_hash !== options.descriptionHash.toString("hex"))
             throw new IntermediaryError_1.IntermediaryError("Invalid pr returned - description hash");
+        if (options.description != null && decodedPr.tagsObject.description !== options.description)
+            throw new IntermediaryError_1.IntermediaryError("Invalid pr returned - description");
         if (decodedPr.tagsObject.payment_hash == null ||
             !buffer_1.Buffer.from(decodedPr.tagsObject.payment_hash, "hex").equals(paymentHash))
             throw new IntermediaryError_1.IntermediaryError("Invalid pr returned - payment hash");
@@ -160,6 +162,8 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
             throw new UserError_1.UserError("Invalid payment hash length, must be exactly 32 bytes!");
         if (options.descriptionHash != null && options.descriptionHash.length !== 32)
             throw new UserError_1.UserError("Invalid description hash length");
+        if (options.description != null && buffer_1.Buffer.byteLength(options.description, "utf8") > 500)
+            throw new UserError_1.UserError("Invalid description length");
         let secret;
         let paymentHash;
         if (options?.paymentHash != null) {
@@ -190,6 +194,7 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
                             amount: amountData.amount,
                             claimer: recipient,
                             token: amountData.token.toString(),
+                            description: options?.description,
                             descriptionHash: options?.descriptionHash,
                             exactOut: !amountData.exactIn,
                             feeRate: (0, Utils_1.throwIfUndefined)(_preFetches.feeRatePromise),

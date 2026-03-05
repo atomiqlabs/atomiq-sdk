@@ -19,6 +19,7 @@ import { LNURLWithdrawParamsWithUrl } from "../../../../types/lnurl/LNURLWithdra
 import { AllOptional } from "../../../../utils/TypeUtils";
 export type FromBTCLNOptions = {
     paymentHash?: Buffer;
+    description?: string;
     descriptionHash?: Buffer;
     unsafeSkipLnNodeCheck?: boolean;
 };

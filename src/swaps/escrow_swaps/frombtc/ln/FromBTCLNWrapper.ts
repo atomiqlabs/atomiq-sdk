@@ -34,6 +34,7 @@ import {sha256} from "@noble/hashes/sha2";
 
 export type FromBTCLNOptions = {
     paymentHash?: Buffer,
+    description?: string,
     descriptionHash?: Buffer,
     unsafeSkipLnNodeCheck?: boolean
 };
@@ -187,6 +188,9 @@ export class FromBTCLNWrapper<
         if(options.descriptionHash!=null && decodedPr.tagsObject.purpose_commit_hash!==options.descriptionHash.toString("hex"))
             throw new IntermediaryError("Invalid pr returned - description hash");
 
+        if(options.description!=null && decodedPr.tagsObject.description!==options.description)
+            throw new IntermediaryError("Invalid pr returned - description");
+
         if(
             decodedPr.tagsObject.payment_hash==null ||
             !Buffer.from(decodedPr.tagsObject.payment_hash, "hex").equals(paymentHash)
@@ -243,6 +247,9 @@ export class FromBTCLNWrapper<
         if(options.descriptionHash!=null && options.descriptionHash.length!==32)
             throw new UserError("Invalid description hash length");
 
+        if(options.description!=null && Buffer.byteLength(options.description, "utf8") > 500)
+            throw new UserError("Invalid description length");
+
         let secret: Buffer | undefined;
         let paymentHash: Buffer;
         if(options?.paymentHash!=null) {
@@ -279,6 +286,7 @@ export class FromBTCLNWrapper<
                                 amount: amountData.amount,
                                 claimer: recipient,
                                 token: amountData.token.toString(),
+                                description: options?.description,
                                 descriptionHash: options?.descriptionHash,
                                 exactOut: !amountData.exactIn,
                                 feeRate: throwIfUndefined(_preFetches.feeRatePromise),

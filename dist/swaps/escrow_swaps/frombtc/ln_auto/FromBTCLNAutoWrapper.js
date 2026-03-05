@@ -178,6 +178,8 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
             throw new IntermediaryError_1.IntermediaryError("Invalid intermediary address/pubkey");
         if (options.descriptionHash != null && decodedPr.tagsObject.purpose_commit_hash !== options.descriptionHash.toString("hex"))
             throw new IntermediaryError_1.IntermediaryError("Invalid pr returned - description hash");
+        if (options.description != null && decodedPr.tagsObject.description !== options.description)
+            throw new IntermediaryError_1.IntermediaryError("Invalid pr returned - description");
         if (decodedPr.tagsObject.payment_hash == null ||
             !buffer_1.Buffer.from(decodedPr.tagsObject.payment_hash, "hex").equals(paymentHash))
             throw new IntermediaryError_1.IntermediaryError("Invalid pr returned - payment hash");
@@ -224,12 +226,15 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
             gasAmount: options?.gasAmount ?? 0n,
             feeSafetyFactor: options?.feeSafetyFactor ?? 1.25,
             unsafeZeroWatchtowerFee: options?.unsafeZeroWatchtowerFee ?? false,
+            description: options?.description,
             descriptionHash: options?.descriptionHash
         };
         if (_options.paymentHash != null && _options.paymentHash.length !== 32)
             throw new UserError_1.UserError("Invalid payment hash length, must be exactly 32 bytes!");
         if (_options.descriptionHash != null && _options.descriptionHash.length !== 32)
             throw new UserError_1.UserError("Invalid description hash length");
+        if (_options.description != null && buffer_1.Buffer.byteLength(_options.description, "utf8") > 500)
+            throw new UserError_1.UserError("Invalid description length");
         if (preFetches == null)
             preFetches = {};
         let secret;
@@ -265,6 +270,7 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
                             amount: amountData.amount,
                             claimer: recipient,
                             token: amountData.token.toString(),
+                            description: _options.description,
                             descriptionHash: _options.descriptionHash,
                             exactOut: !amountData.exactIn,
                             additionalParams,
@@ -347,6 +353,7 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
             gasAmount: options?.gasAmount ?? 0n,
             feeSafetyFactor: options?.feeSafetyFactor ?? 1.25,
             unsafeZeroWatchtowerFee: options?.unsafeZeroWatchtowerFee ?? false,
+            description: options?.description,
             descriptionHash: options?.descriptionHash
         };
         if (_options.paymentHash != null && _options.paymentHash.length !== 32)

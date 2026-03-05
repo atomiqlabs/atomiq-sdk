@@ -7,8 +7,9 @@
 export class RequestError extends Error {
 
     httpCode: number;
+    lpResponseCode?: number;
 
-    constructor(msg: string, httpCode: number) {
+    constructor(msg: string, httpCode: number, lpResponseCode?: number) {
         try {
             const parsed = JSON.parse(msg);
             if(parsed.msg!=null) msg = parsed.msg;
@@ -17,6 +18,7 @@ export class RequestError extends Error {
         // Set the prototype explicitly.
         Object.setPrototypeOf(this, RequestError.prototype);
         this.httpCode = httpCode;
+        this.lpResponseCode = lpResponseCode;
     }
 
     /**
@@ -26,14 +28,16 @@ export class RequestError extends Error {
      * @param httpCode HTTP response status code
      */
     static parse(msg: string, httpCode: number): RequestError | OutOfBoundsError {
+        let lpResponseCode: number | undefined;
         try {
             const parsed = JSON.parse(msg);
             msg = parsed.msg;
+            lpResponseCode = parsed.code;
             if(parsed.code===20003 || parsed.code===20004) {
-                return new OutOfBoundsError(parsed.msg, httpCode, BigInt(parsed.data.min), BigInt(parsed.data.max));
+                return new OutOfBoundsError(parsed.msg, httpCode, BigInt(parsed.data.min), BigInt(parsed.data.max), parsed.code);
             }
         } catch (e) {}
-        return new RequestError(msg, httpCode);
+        return new RequestError(msg, httpCode, lpResponseCode);
     }
 
 }
@@ -55,8 +59,8 @@ export class OutOfBoundsError extends RequestError {
      */
     max: bigint;
 
-    constructor(msg: string, httpCode: number, min: bigint, max: bigint) {
-        super(msg, httpCode);
+    constructor(msg: string, httpCode: number, min: bigint, max: bigint, lpResponseCode?: number) {
+        super(msg, httpCode, lpResponseCode);
         this.max = max;
         this.min = min;
         Object.setPrototypeOf(this, OutOfBoundsError.prototype);

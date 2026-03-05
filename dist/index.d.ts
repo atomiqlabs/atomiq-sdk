@@ -54,7 +54,7 @@ export { IToBTCWrapper } from "./swaps/escrow_swaps/tobtc/IToBTCWrapper";
 export { IEscrowSelfInitSwap } from "./swaps/escrow_swaps/IEscrowSelfInitSwap";
 export { IEscrowSwap } from "./swaps/escrow_swaps/IEscrowSwap";
 export { IEscrowSwapWrapper } from "./swaps/escrow_swaps/IEscrowSwapWrapper";
-export { SpvFromBTCSwap, SpvFromBTCSwapState } from "./swaps/spv_swaps/SpvFromBTCSwap";
+export { SpvFromBTCSwap, SpvFromBTCSwapState, SpvFromBTCSwapDepositState, SpvFromBTCSwapDepositStatus } from "./swaps/spv_swaps/SpvFromBTCSwap";
 export { SpvFromBTCWrapper } from "./swaps/spv_swaps/SpvFromBTCWrapper";
 export { LnForGasSwap, LnForGasSwapState } from "./swaps/trusted/ln/LnForGasSwap";
 export { LnForGasWrapper } from "./swaps/trusted/ln/LnForGasWrapper";

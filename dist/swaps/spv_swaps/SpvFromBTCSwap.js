@@ -1242,7 +1242,7 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
             throw new Error("Must be in CREATED state!");
         if (!this.hasSwapWallet())
             throw new Error("Swap must have a swap address specified!");
-        if (this.swapWalletType === "waitpayment")
+        if (this.swapWalletType !== "waitpayment")
             throw new Error("To wait for payment the swap needs to be of the `waitpayment` type!");
         if (!this.isInitiated()) {
             this._setInitiated();

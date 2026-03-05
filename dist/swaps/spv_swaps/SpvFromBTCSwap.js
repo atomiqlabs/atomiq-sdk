@@ -20,6 +20,8 @@ const PriceInfoType_1 = require("../../types/PriceInfoType");
 const BitcoinWalletUtils_1 = require("../../utils/BitcoinWalletUtils");
 const SingleAddressBitcoinWallet_1 = require("../../bitcoin/wallet/SingleAddressBitcoinWallet");
 const SpvSwapWalletPaymentError_1 = require("../../errors/SpvSwapWalletPaymentError");
+const RetryUtils_1 = require("../../utils/RetryUtils");
+const RequestError_1 = require("../../errors/RequestError");
 /**
  * State enum for the external deposit to the SPV vault (UTXO-controlled vault) based swap
  * @category Swaps/Bitcoin → Smart chain
@@ -988,10 +990,10 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
         this.posted = true;
         await this._saveAndEmit(SpvFromBTCSwapState.SIGNED);
         try {
-            await IntermediaryAPI_1.IntermediaryAPI.initSpvFromBTC(this.chainIdentifier, this.url, {
+            await (0, RetryUtils_1.tryWithRetries)(() => IntermediaryAPI_1.IntermediaryAPI.initSpvFromBTC(this.chainIdentifier, this.url, {
                 quoteId: this.quoteId,
                 psbtHex: buffer_1.Buffer.from(psbt.toPSBT(0)).toString("hex")
-            });
+            }), undefined, (err) => !(err instanceof RequestError_1.RequestError) || err.lpResponseCode !== 20515);
             await this._saveAndEmit(SpvFromBTCSwapState.POSTED);
         }
         catch (e) {

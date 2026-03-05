@@ -7,7 +7,7 @@ exports.OutOfBoundsError = exports.RequestError = void 0;
  * @category Errors
  */
 class RequestError extends Error {
-    constructor(msg, httpCode) {
+    constructor(msg, httpCode, lpResponseCode) {
         try {
             const parsed = JSON.parse(msg);
             if (parsed.msg != null)
@@ -18,6 +18,7 @@ class RequestError extends Error {
         // Set the prototype explicitly.
         Object.setPrototypeOf(this, RequestError.prototype);
         this.httpCode = httpCode;
+        this.lpResponseCode = lpResponseCode;
     }
     /**
      * Parses a message + a response code returned by the intermediary (LP) as an error
@@ -26,15 +27,17 @@ class RequestError extends Error {
      * @param httpCode HTTP response status code
      */
     static parse(msg, httpCode) {
+        let lpResponseCode;
         try {
             const parsed = JSON.parse(msg);
             msg = parsed.msg;
+            lpResponseCode = parsed.code;
             if (parsed.code === 20003 || parsed.code === 20004) {
-                return new OutOfBoundsError(parsed.msg, httpCode, BigInt(parsed.data.min), BigInt(parsed.data.max));
+                return new OutOfBoundsError(parsed.msg, httpCode, BigInt(parsed.data.min), BigInt(parsed.data.max), parsed.code);
             }
         }
         catch (e) { }
-        return new RequestError(msg, httpCode);
+        return new RequestError(msg, httpCode, lpResponseCode);
     }
 }
 exports.RequestError = RequestError;
@@ -44,8 +47,8 @@ exports.RequestError = RequestError;
  * @category Errors
  */
 class OutOfBoundsError extends RequestError {
-    constructor(msg, httpCode, min, max) {
-        super(msg, httpCode);
+    constructor(msg, httpCode, min, max, lpResponseCode) {
+        super(msg, httpCode, lpResponseCode);
         this.max = max;
         this.min = min;
         Object.setPrototypeOf(this, OutOfBoundsError.prototype);

@@ -46,6 +46,8 @@ import {
     SpvSwapWalletUnderpayError
 } from "../../errors/SpvSwapWalletPaymentError";
 import {IAddressSwap} from "../IAddressSwap";
+import {tryWithRetries} from "../../utils/RetryUtils";
+import {RequestError} from "../../errors/RequestError";
 
 /**
  * State enum for the external deposit to the SPV vault (UTXO-controlled vault) based swap
@@ -1328,13 +1330,17 @@ export class SpvFromBTCSwap<T extends ChainType>
         await this._saveAndEmit(SpvFromBTCSwapState.SIGNED);
 
         try {
-            await IntermediaryAPI.initSpvFromBTC(
-                this.chainIdentifier,
-                this.url,
-                {
-                    quoteId: this.quoteId,
-                    psbtHex: Buffer.from(psbt.toPSBT(0)).toString("hex")
-                }
+            await tryWithRetries(
+                () => IntermediaryAPI.initSpvFromBTC(
+                    this.chainIdentifier,
+                    this.url!,
+                    {
+                        quoteId: this.quoteId,
+                        psbtHex: Buffer.from(psbt.toPSBT(0)).toString("hex")
+                    }
+                ),
+                undefined,
+                (err) => !(err instanceof RequestError) || err.lpResponseCode!==20515
             );
             await this._saveAndEmit(SpvFromBTCSwapState.POSTED);
         } catch (e) {

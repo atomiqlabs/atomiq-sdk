@@ -5,7 +5,8 @@
  */
 export declare class RequestError extends Error {
     httpCode: number;
-    constructor(msg: string, httpCode: number);
+    lpResponseCode?: number;
+    constructor(msg: string, httpCode: number, lpResponseCode?: number);
     /**
      * Parses a message + a response code returned by the intermediary (LP) as an error
      *
@@ -28,5 +29,5 @@ export declare class OutOfBoundsError extends RequestError {
      * Swap maximum in base units of the token in which the quote was requested
      */
     max: bigint;
-    constructor(msg: string, httpCode: number, min: bigint, max: bigint);
+    constructor(msg: string, httpCode: number, min: bigint, max: bigint, lpResponseCode?: number);
 }

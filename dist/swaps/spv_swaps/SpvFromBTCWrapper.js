@@ -559,7 +559,8 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
                             false, resp.btcAmountGas, resp.totalGas * (100000n + callerFeeShare) / 100000n, nativeTokenAddress, {}, gasTokenPricePrefetchPromise, usdPricePrefetchPromise, abortController.signal),
                             this.verifyReturnedData(resp, { ...amountData, amount }, lp, _options, callerFeeShare, bitcoinFeeRatePromise, abortController.signal)
                         ]);
-                        const existingSwapWalletUtxos = await (0, Utils_1.throwIfUndefined)(existingSwapWalletUtxosPromise);
+                        const existingSwapWalletUtxos = await existingSwapWalletUtxosPromise;
+                        abortController.signal.throwIfAborted();
                         const swapInit = {
                             pricingInfo,
                             url: lp.url,
@@ -596,7 +597,9 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
                             swapWalletAddress: bitcoinWallet?.getReceiveAddress(),
                             swapWalletMaxNetworkFeeRate: await (0, Utils_1.throwIfUndefined)(bitcoinFeeRatePromise),
                             swapWalletType: bitcoinWalletWIF == null ? undefined : amountData.amount == null ? "prefunded" : "waitpayment",
-                            swapWalletExistingUtxos: existingSwapWalletUtxos.map(utxo => utxo.txId + ":" + utxo.vout)
+                            swapWalletExistingUtxos: existingSwapWalletUtxos == null
+                                ? undefined
+                                : existingSwapWalletUtxos.map(utxo => utxo.txId + ":" + utxo.vout)
                         };
                         const quote = new SpvFromBTCSwap_1.SpvFromBTCSwap(this, swapInit);
                         return quote;

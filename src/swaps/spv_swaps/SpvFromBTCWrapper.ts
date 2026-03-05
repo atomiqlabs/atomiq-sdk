@@ -207,7 +207,7 @@ export class SpvFromBTCWrapper<
                 bitcoinBlocktime: options?.bitcoinBlocktime ?? 10*60,
                 maxTransactionsDelta: options?.maxTransactionsDelta ?? 3,
                 maxRawAmountAdjustmentDifferencePPM: options?.maxRawAmountAdjustmentDifferencePPM ?? 100,
-                maxBtcFeeOffset: options?.maxBtcFeeOffset ?? 10,
+                maxBtcFeeOffset: options?.maxBtcFeeOffset ?? 7,
                 maxBtcFeeMultiplier: options?.maxBtcFeeMultiplier ?? 1.5
             },
             events

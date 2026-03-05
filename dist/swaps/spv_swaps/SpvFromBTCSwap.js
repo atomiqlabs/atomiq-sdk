@@ -993,7 +993,9 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
             await (0, RetryUtils_1.tryWithRetries)(() => IntermediaryAPI_1.IntermediaryAPI.initSpvFromBTC(this.chainIdentifier, this.url, {
                 quoteId: this.quoteId,
                 psbtHex: buffer_1.Buffer.from(psbt.toPSBT(0)).toString("hex")
-            }), undefined, (err) => !(err instanceof RequestError_1.RequestError) || err.lpResponseCode !== 20515);
+            }), undefined, 
+            //Retry when LP returns that one of the tx inputs is already spent
+            (err) => !(err instanceof RequestError_1.RequestError) || err.lpResponseCode !== 20515);
             await this._saveAndEmit(SpvFromBTCSwapState.POSTED);
         }
         catch (e) {

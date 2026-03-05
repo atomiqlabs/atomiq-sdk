@@ -1340,6 +1340,7 @@ export class SpvFromBTCSwap<T extends ChainType>
                     }
                 ),
                 undefined,
+                //Retry when LP returns that one of the tx inputs is already spent
                 (err) => !(err instanceof RequestError) || err.lpResponseCode!==20515
             );
             await this._saveAndEmit(SpvFromBTCSwapState.POSTED);

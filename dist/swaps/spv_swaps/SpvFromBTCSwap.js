@@ -377,7 +377,7 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
      *  {@link hasSwapWallet} function, otherwise throws.
      */
     getAddress() {
-        if (this.hasSwapWallet() || this.swapWalletAddress == null)
+        if (!this.hasSwapWallet() || this.swapWalletAddress == null)
             throw new Error("Swap doesn't have the swap wallet address set, so address is not available!");
         return this.swapWalletAddress;
     }

@@ -562,7 +562,7 @@ export class SpvFromBTCSwap<T extends ChainType>
      *  {@link hasSwapWallet} function, otherwise throws.
      */
     getAddress(): string {
-        if(this.hasSwapWallet() || this.swapWalletAddress==null)
+        if(!this.hasSwapWallet() || this.swapWalletAddress==null)
             throw new Error("Swap doesn't have the swap wallet address set, so address is not available!");
         return this.swapWalletAddress;
     }

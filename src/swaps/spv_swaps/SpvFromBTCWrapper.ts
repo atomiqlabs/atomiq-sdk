@@ -800,7 +800,8 @@ export class SpvFromBTCWrapper<
                             )
                         ]);
 
-                        const existingSwapWalletUtxos = await throwIfUndefined(existingSwapWalletUtxosPromise)
+                        const existingSwapWalletUtxos = await existingSwapWalletUtxosPromise;
+                        abortController.signal.throwIfAborted();
 
                         const swapInit: SpvFromBTCSwapInit = {
                             pricingInfo,
@@ -849,7 +850,9 @@ export class SpvFromBTCWrapper<
                             swapWalletAddress: bitcoinWallet?.getReceiveAddress(),
                             swapWalletMaxNetworkFeeRate: await throwIfUndefined(bitcoinFeeRatePromise),
                             swapWalletType: bitcoinWalletWIF==null ? undefined : amountData.amount==null ? "prefunded" : "waitpayment",
-                            swapWalletExistingUtxos: existingSwapWalletUtxos.map(utxo => utxo.txId+":"+utxo.vout)
+                            swapWalletExistingUtxos: existingSwapWalletUtxos==null
+                                ? undefined
+                                : existingSwapWalletUtxos.map(utxo => utxo.txId+":"+utxo.vout)
                         };
                         const quote = new SpvFromBTCSwap<T>(this, swapInit);
                         await quote._save();

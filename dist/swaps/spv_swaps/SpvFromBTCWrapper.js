@@ -50,7 +50,7 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
             bitcoinBlocktime: options?.bitcoinBlocktime ?? 10 * 60,
             maxTransactionsDelta: options?.maxTransactionsDelta ?? 3,
             maxRawAmountAdjustmentDifferencePPM: options?.maxRawAmountAdjustmentDifferencePPM ?? 100,
-            maxBtcFeeOffset: options?.maxBtcFeeOffset ?? 10,
+            maxBtcFeeOffset: options?.maxBtcFeeOffset ?? 7,
             maxBtcFeeMultiplier: options?.maxBtcFeeMultiplier ?? 1.5
         }, events);
         this.TYPE = SwapType_1.SwapType.SPV_VAULT_FROM_BTC;

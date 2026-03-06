@@ -607,6 +607,19 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
                         return quote;
                     }
                     catch (e) {
+                        if (e instanceof RequestError_1.OutOfBoundsError && e.lpResponseCode === 20003) {
+                            //Out of bounds too low
+                            if (amountData.amount != null)
+                                try {
+                                    const amount = await amountPromise;
+                                    if (amount != null) {
+                                        const feeIncluded = amountData.amount - amount;
+                                        if (feeIncluded > 0n)
+                                            e.min += feeIncluded;
+                                    }
+                                }
+                                catch (e) { }
+                        }
                         abortController.abort(e);
                         throw e;
                     }

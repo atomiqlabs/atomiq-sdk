@@ -29,7 +29,7 @@ import {
     toOutputScript
 } from "../../utils/BitcoinUtils";
 import {IntermediaryAPI, SpvFromBTCPrepareResponseType} from "../../intermediaries/apis/IntermediaryAPI";
-import {RequestError} from "../../errors/RequestError";
+import {OutOfBoundsError, RequestError} from "../../errors/RequestError";
 import {IntermediaryError} from "../../errors/IntermediaryError";
 import {CoinselectAddressTypes} from "../../bitcoin/coinselect2";
 import {utils as coinselectUtils} from "../../bitcoin/coinselect2/utils";
@@ -814,6 +814,16 @@ export class SpvFromBTCWrapper<
                         await quote._save();
                         return quote;
                     } catch (e) {
+                        if(e instanceof OutOfBoundsError && e.lpResponseCode===20003) {
+                            //Out of bounds too low
+                            if(amountData.amount!=null) try {
+                                const amount = await amountPromise;
+                                if(amount!=null) {
+                                    const feeIncluded = amountData.amount - amount;
+                                    if(feeIncluded > 0n) e.min += feeIncluded;
+                                }
+                            } catch (e) {}
+                        }
                         abortController.abort(e);
                         throw e;
                     }

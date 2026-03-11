@@ -73,6 +73,7 @@ export * from "./types/lnurl/LNURLWithdraw";
 export * from "./types/wallets/MinimalBitcoinWalletInterface";
 export * from "./types/wallets/MinimalLightningNetworkWalletInterface";
 export * from "./types/wallets/LightningInvoiceCreateService";
+export * from "./types/SwapStateInfo";
 export * from "./types/AmountData";
 export * from "./types/CustomPriceFunction";
 export * from "./types/SwapExecutionAction";

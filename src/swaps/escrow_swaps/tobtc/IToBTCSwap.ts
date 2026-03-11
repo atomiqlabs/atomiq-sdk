@@ -301,6 +301,14 @@ export abstract class IToBTCSwap<
     }
 
     /**
+     * Returns the time (in UNIX milliseconds) at which the swap expires and the user is able to unilaterally
+     *  refund it with the {@link refund} or {@link txsRefund} function.
+     */
+    getExpiry(): number {
+        return Number(this._data.getExpiry())*1000;
+    }
+
+    /**
      * @inheritDoc
      * @internal
      */

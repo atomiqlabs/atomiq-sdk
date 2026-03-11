@@ -585,6 +585,13 @@ export class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T,
     }
 
     /**
+     * @remark Not supported
+     */
+    async execute(): Promise<boolean> {
+        throw new Error("Not supported");
+    }
+
+    /**
      * @inheritDoc
      *
      * @param options.bitcoinWallet Optional bitcoin wallet address specification to return a funded PSBT,

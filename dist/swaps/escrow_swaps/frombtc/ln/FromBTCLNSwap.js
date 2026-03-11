@@ -485,6 +485,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             if (callbacks?.onSwapSettled != null)
                 callbacks.onSwapSettled(this.getOutputTxId());
         }
+        return true;
     }
     /**
      * @inheritDoc

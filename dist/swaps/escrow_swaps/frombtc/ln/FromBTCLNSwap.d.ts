@@ -282,7 +282,7 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
         secret?: string;
         lightningTxCheckIntervalSeconds?: number;
         delayBetweenCommitAndClaimSeconds?: number;
-    }): Promise<void>;
+    }): Promise<boolean>;
     /**
      * @inheritDoc
      *

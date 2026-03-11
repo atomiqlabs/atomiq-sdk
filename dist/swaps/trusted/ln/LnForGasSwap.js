@@ -348,6 +348,12 @@ class LnForGasSwap extends ISwap_1.ISwap {
         throw new Error("Invalid swap state to obtain execution txns, required PR_CREATED");
     }
     /**
+     * @remark Not supported
+     */
+    async execute() {
+        throw new Error("Not supported");
+    }
+    /**
      * @inheritDoc
      */
     async getCurrentActions() {

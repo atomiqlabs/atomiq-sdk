@@ -421,6 +421,13 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
     }
 
     /**
+     * @remark Not supported
+     */
+    async execute(): Promise<boolean> {
+        throw new Error("Not supported");
+    }
+
+    /**
      * @inheritDoc
      */
     async getCurrentActions(): Promise<SwapExecutionAction<T>[]> {

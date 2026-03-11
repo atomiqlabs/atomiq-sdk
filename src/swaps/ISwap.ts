@@ -249,6 +249,17 @@ export abstract class ISwap<
      */
     public abstract txsExecute(options?: any): Promise<SwapExecutionAction<T>[]>;
 
+    /**
+     * Executes the swap with the provided wallet, the exact arguments for this functions differ for various swap
+     *  types. Check the `execute()` function signature in the respective swap class to see the required arguments.
+     *
+     * @param args Execution arguments, usually contains a source wallet object, callbacks and options, for exact
+     *  syntax check the respective swap class.
+     *
+     * @returns Whether a swap was successfully executed or not, if it wasn't the user can refund or claim manually
+     */
+    public abstract execute(...args: any[]): Promise<boolean>;
+
     //////////////////////////////
     //// Pricing
 

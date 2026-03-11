@@ -268,6 +268,10 @@ export declare class OnchainForGasSwap<T extends ChainType = ChainType> extends 
         SwapExecutionActionBitcoin<"ADDRESS" | "FUNDED_PSBT">
     ]>;
     /**
+     * @remark Not supported
+     */
+    execute(): Promise<boolean>;
+    /**
      * @inheritDoc
      *
      * @param options.bitcoinWallet Optional bitcoin wallet address specification to return a funded PSBT,

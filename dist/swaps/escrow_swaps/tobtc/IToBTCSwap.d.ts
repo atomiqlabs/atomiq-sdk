@@ -173,6 +173,11 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
      */
     isFailed(): boolean;
     /**
+     * Returns the time (in UNIX milliseconds) at which the swap expires and the user is able to unilaterally
+     *  refund it with the {@link refund} or {@link txsRefund} function.
+     */
+    getExpiry(): number;
+    /**
      * @inheritDoc
      * @internal
      */

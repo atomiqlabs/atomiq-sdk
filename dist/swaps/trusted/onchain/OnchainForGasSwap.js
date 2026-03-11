@@ -454,6 +454,12 @@ class OnchainForGasSwap extends ISwap_1.ISwap {
         throw new Error("Invalid swap state to obtain execution txns, required PR_CREATED or CLAIM_COMMITED");
     }
     /**
+     * @remark Not supported
+     */
+    async execute() {
+        throw new Error("Not supported");
+    }
+    /**
      * @inheritDoc
      *
      * @param options.bitcoinWallet Optional bitcoin wallet address specification to return a funded PSBT,

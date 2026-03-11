@@ -539,7 +539,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
             lightningTxCheckIntervalSeconds?: number,
             delayBetweenCommitAndClaimSeconds?: number
         }
-    ): Promise<void> {
+    ): Promise<boolean> {
         if(this._state===FromBTCLNSwapState.FAILED) throw new Error("Swap failed!");
         if(this._state===FromBTCLNSwapState.EXPIRED) throw new Error("Swap HTLC expired!");
         if(this._state===FromBTCLNSwapState.QUOTE_EXPIRED || this._state===FromBTCLNSwapState.QUOTE_SOFT_EXPIRED) throw new Error("Swap quote expired!");
@@ -585,6 +585,8 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
         if(this._state===FromBTCLNSwapState.CLAIM_CLAIMED) {
             if(callbacks?.onSwapSettled!=null) callbacks.onSwapSettled(this.getOutputTxId()!);
         }
+
+        return true;
     }
 
     /**

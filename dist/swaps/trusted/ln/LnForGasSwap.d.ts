@@ -210,6 +210,10 @@ export declare class LnForGasSwap<T extends ChainType = ChainType> extends ISwap
      */
     txsExecute(): Promise<[SwapExecutionActionLightning]>;
     /**
+     * @remark Not supported
+     */
+    execute(): Promise<boolean>;
+    /**
      * @inheritDoc
      */
     getCurrentActions(): Promise<SwapExecutionAction<T>[]>;

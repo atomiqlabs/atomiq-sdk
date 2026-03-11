@@ -222,6 +222,13 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
         return this._state === ToBTCSwapState.REFUNDED;
     }
     /**
+     * Returns the time (in UNIX milliseconds) at which the swap expires and the user is able to unilaterally
+     *  refund it with the {@link refund} or {@link txsRefund} function.
+     */
+    getExpiry() {
+        return Number(this._data.getExpiry()) * 1000;
+    }
+    /**
      * @inheritDoc
      * @internal
      */

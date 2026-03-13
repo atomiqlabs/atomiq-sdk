@@ -388,6 +388,16 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
     /**
      * @inheritDoc
      */
+    isInProgress(): boolean {
+        return (this._state===FromBTCLNSwapState.PR_CREATED && this.initiated) ||
+            (this._state===FromBTCLNSwapState.QUOTE_SOFT_EXPIRED && this.initiated) ||
+            this._state===FromBTCLNSwapState.PR_PAID ||
+            this._state===FromBTCLNSwapState.CLAIM_COMMITED;
+    }
+
+    /**
+     * @inheritDoc
+     */
     isQuoteExpired(): boolean {
         return this._state===FromBTCLNSwapState.QUOTE_EXPIRED;
     }

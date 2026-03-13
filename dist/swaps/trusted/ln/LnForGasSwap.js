@@ -220,6 +220,12 @@ class LnForGasSwap extends ISwap_1.ISwap {
     }
     /**
      * @inheritDoc
+     */
+    isInProgress() {
+        return (this._state === LnForGasSwapState.PR_CREATED && this.initiated) || this._state === LnForGasSwapState.PR_PAID;
+    }
+    /**
+     * @inheritDoc
      * @internal
      */
     _verifyQuoteDefinitelyExpired() {

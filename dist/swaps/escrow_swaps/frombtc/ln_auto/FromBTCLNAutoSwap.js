@@ -355,6 +355,15 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
     /**
      * @inheritDoc
      */
+    isInProgress() {
+        return (this._state === FromBTCLNAutoSwapState.PR_CREATED && this.initiated) ||
+            (this._state === FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED && this.initiated) ||
+            this._state === FromBTCLNAutoSwapState.PR_PAID ||
+            this._state === FromBTCLNAutoSwapState.CLAIM_COMMITED;
+    }
+    /**
+     * @inheritDoc
+     */
     isQuoteExpired() {
         return this._state === FromBTCLNAutoSwapState.QUOTE_EXPIRED;
     }

@@ -268,6 +268,10 @@ export declare abstract class ISwap<T extends ChainType = ChainType, D extends S
      */
     abstract isFailed(): boolean;
     /**
+     * Returns whether the swap is currently being processed
+     */
+    abstract isInProgress(): boolean;
+    /**
      * Whether a swap was initialized, a swap is considered initialized on first interaction with it, i.e.
      *  calling commit() on a Smart chain -> Bitcoin swaps, calling waitForPayment() or similar on the other
      *  direction. Not initiated swaps are not saved to the persistent storage by default (see

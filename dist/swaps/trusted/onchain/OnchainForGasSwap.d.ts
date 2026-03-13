@@ -173,6 +173,10 @@ export declare class OnchainForGasSwap<T extends ChainType = ChainType> extends 
     isSuccessful(): boolean;
     /**
      * @inheritDoc
+     */
+    isInProgress(): boolean;
+    /**
+     * @inheritDoc
      * @internal
      */
     _verifyQuoteDefinitelyExpired(): Promise<boolean>;

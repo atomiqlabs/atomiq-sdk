@@ -349,6 +349,14 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
     /**
      * @inheritDoc
      */
+    isInProgress() {
+        return this._state === SpvFromBTCSwapState.POSTED ||
+            this._state === SpvFromBTCSwapState.BROADCASTED ||
+            this._state === SpvFromBTCSwapState.BTC_TX_CONFIRMED;
+    }
+    /**
+     * @inheritDoc
+     */
     isQuoteExpired() {
         return this._state === SpvFromBTCSwapState.QUOTE_EXPIRED;
     }

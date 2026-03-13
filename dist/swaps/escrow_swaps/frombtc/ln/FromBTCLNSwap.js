@@ -324,6 +324,15 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
     /**
      * @inheritDoc
      */
+    isInProgress() {
+        return (this._state === FromBTCLNSwapState.PR_CREATED && this.initiated) ||
+            (this._state === FromBTCLNSwapState.QUOTE_SOFT_EXPIRED && this.initiated) ||
+            this._state === FromBTCLNSwapState.PR_PAID ||
+            this._state === FromBTCLNSwapState.CLAIM_COMMITED;
+    }
+    /**
+     * @inheritDoc
+     */
     isQuoteExpired() {
         return this._state === FromBTCLNSwapState.QUOTE_EXPIRED;
     }

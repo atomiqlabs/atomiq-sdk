@@ -240,6 +240,13 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
     /**
      * @inheritDoc
      */
+    isInProgress() {
+        return this._state === FromBTCSwapState.CLAIM_COMMITED ||
+            this._state === FromBTCSwapState.BTC_TX_CONFIRMED;
+    }
+    /**
+     * @inheritDoc
+     */
     isQuoteExpired() {
         return this._state === FromBTCSwapState.QUOTE_EXPIRED;
     }

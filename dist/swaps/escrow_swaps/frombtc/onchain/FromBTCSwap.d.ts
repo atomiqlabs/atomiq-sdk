@@ -178,6 +178,10 @@ export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromB
     /**
      * @inheritDoc
      */
+    isInProgress(): boolean;
+    /**
+     * @inheritDoc
+     */
     isQuoteExpired(): boolean;
     /**
      * @inheritDoc

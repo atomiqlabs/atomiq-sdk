@@ -473,6 +473,16 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
     /**
      * @inheritDoc
      */
+    isInProgress(): boolean {
+        return (this._state===FromBTCLNAutoSwapState.PR_CREATED && this.initiated) ||
+            (this._state===FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED && this.initiated) ||
+            this._state===FromBTCLNAutoSwapState.PR_PAID ||
+            this._state===FromBTCLNAutoSwapState.CLAIM_COMMITED;
+    }
+
+    /**
+     * @inheritDoc
+     */
     isQuoteExpired(): boolean {
         return this._state===FromBTCLNAutoSwapState.QUOTE_EXPIRED;
     }

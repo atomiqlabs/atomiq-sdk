@@ -248,6 +248,10 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
     /**
      * @inheritDoc
      */
+    isInProgress(): boolean;
+    /**
+     * @inheritDoc
+     */
     isQuoteExpired(): boolean;
     /**
      * @inheritDoc

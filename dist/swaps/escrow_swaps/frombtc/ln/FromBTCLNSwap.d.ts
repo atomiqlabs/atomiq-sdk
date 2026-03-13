@@ -211,6 +211,10 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
     /**
      * @inheritDoc
      */
+    isInProgress(): boolean;
+    /**
+     * @inheritDoc
+     */
     isQuoteExpired(): boolean;
     /**
      * @inheritDoc

@@ -310,6 +310,14 @@ export class FromBTCSwap<T extends ChainType = ChainType>
     /**
      * @inheritDoc
      */
+    isInProgress(): boolean {
+        return this._state===FromBTCSwapState.CLAIM_COMMITED ||
+            this._state===FromBTCSwapState.BTC_TX_CONFIRMED;
+    }
+
+    /**
+     * @inheritDoc
+     */
     isQuoteExpired(): boolean {
         return this._state===FromBTCSwapState.QUOTE_EXPIRED;
     }

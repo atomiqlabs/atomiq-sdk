@@ -227,6 +227,13 @@ class OnchainForGasSwap extends ISwap_1.ISwap {
     }
     /**
      * @inheritDoc
+     */
+    isInProgress() {
+        return (this._state === OnchainForGasSwapState.PR_CREATED && this.txId != null) ||
+            (this._state === OnchainForGasSwapState.REFUNDABLE && this.refundAddress != null);
+    }
+    /**
+     * @inheritDoc
      * @internal
      */
     _verifyQuoteDefinitelyExpired() {

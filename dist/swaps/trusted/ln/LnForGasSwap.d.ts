@@ -153,6 +153,10 @@ export declare class LnForGasSwap<T extends ChainType = ChainType> extends ISwap
     isSuccessful(): boolean;
     /**
      * @inheritDoc
+     */
+    isInProgress(): boolean;
+    /**
+     * @inheritDoc
      * @internal
      */
     _verifyQuoteDefinitelyExpired(): Promise<boolean>;

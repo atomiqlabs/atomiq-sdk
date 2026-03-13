@@ -301,6 +301,13 @@ export abstract class IToBTCSwap<
     }
 
     /**
+     * @inheritDoc
+     */
+    isInProgress(): boolean {
+        return this._state===ToBTCSwapState.COMMITED || this._state===ToBTCSwapState.SOFT_CLAIMED;
+    }
+
+    /**
      * Returns the time (in UNIX milliseconds) at which the swap expires and the user is able to unilaterally
      *  refund it with the {@link refund} or {@link txsRefund} function.
      */

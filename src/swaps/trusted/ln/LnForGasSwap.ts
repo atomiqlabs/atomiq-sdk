@@ -274,6 +274,13 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
 
     /**
      * @inheritDoc
+     */
+    isInProgress(): boolean {
+        return (this._state===LnForGasSwapState.PR_CREATED && this.initiated) || this._state===LnForGasSwapState.PR_PAID;
+    }
+
+    /**
+     * @inheritDoc
      * @internal
      */
     _verifyQuoteDefinitelyExpired(): Promise<boolean> {

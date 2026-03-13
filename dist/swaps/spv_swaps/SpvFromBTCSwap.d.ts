@@ -281,6 +281,10 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
     /**
      * @inheritDoc
      */
+    isInProgress(): boolean;
+    /**
+     * @inheritDoc
+     */
     isQuoteExpired(): boolean;
     /**
      * @inheritDoc

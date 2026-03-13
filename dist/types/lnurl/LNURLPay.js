@@ -15,7 +15,6 @@ exports.isLNURLPayParams = isLNURLPayParams;
  * Type guard for {@link LNURLPay}
  *
  * @category Lightning
- * @internal
  */
 function isLNURLPay(value) {
     return (typeof value === "object" &&

@@ -37,7 +37,6 @@ export type LNURLWithdraw = {
  * Type guard for {@link LNURLWithdraw}
  *
  * @category Lightning
- * @internal
  */
 export declare function isLNURLWithdraw(value: any): value is LNURLWithdraw;
 /**

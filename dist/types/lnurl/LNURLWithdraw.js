@@ -5,7 +5,6 @@ exports.isLNURLWithdrawParams = exports.isLNURLWithdraw = void 0;
  * Type guard for {@link LNURLWithdraw}
  *
  * @category Lightning
- * @internal
  */
 function isLNURLWithdraw(value) {
     return (typeof value === "object" &&

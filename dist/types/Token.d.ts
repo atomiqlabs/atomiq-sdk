@@ -4,15 +4,45 @@
  * @category Tokens
  */
 export type Token<ChainIdentifier extends string = string> = {
+    /**
+     * Chain identifier for the token's chain
+     */
     chainId: ChainIdentifier | "BITCOIN" | "LIGHTNING";
+    /**
+     * Ticker of the token
+     */
     ticker: string;
+    /**
+     * Full name of the token
+     */
     name: string;
+    /**
+     * Actual decimal places of the tokens
+     */
     decimals: number;
+    /**
+     * The decimal places that should be rendered and displayed to the user
+     */
     displayDecimals?: number;
+    /**
+     * Address of the token contract, or `""` for Bitcoin
+     */
     address: string;
+    /**
+     * Legacy chain identifier distinguishing between Smart Chain and Bitcoin tokens
+     */
     chain: "SC" | "BTC";
+    /**
+     * Legacy lightning flag, determines whether a Bitcoin token is an Lightning or on-chain one
+     */
     lightning?: boolean;
+    /**
+     * Equality check between tokens
+     */
     equals: (other: Token) => boolean;
+    /**
+     * Returns the
+     */
     toString: () => string;
 };
 /**
@@ -35,6 +65,7 @@ export type BtcToken<L = boolean> = Token & {
     address: "";
     chain: "BTC";
     lightning: L;
+    toString: () => L extends true ? "BTC-LN" : "BTC";
 };
 /**
  * Type guard for {@link BtcToken} (token on the bitcoin network - lightning or on-chain)
@@ -59,6 +90,7 @@ export declare const BitcoinTokens: {
 export type SCToken<ChainIdentifier extends string = string> = Token<ChainIdentifier> & {
     chainId: ChainIdentifier;
     chain: "SC";
+    toString: () => `${ChainIdentifier}-${string}`;
 };
 /**
  * Type guard for {@link SCToken} (token on the smart chain)

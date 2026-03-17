@@ -265,14 +265,9 @@ export declare class SwapperWithSigner<T extends MultiChain, ChainIdentifier ext
      *  initiated after this blockheight
      */
     recoverSwaps(startBlockheight?: number): Promise<ISwap<T[ChainIdentifier]>[]>;
-    /**
-     * Returns the {@link Token} object for a given token
-     *
-     * @param tickerOrAddress Token to return the object for, can use multiple formats:
-     *  - a) token ticker, such as `"BTC"`, `"SOL"`, etc.
-     *  - b) token ticker prefixed with smart chain identifier, such as `"SOLANA-SOL"`, `"SOLANA-USDC"`, etc.
-     *  - c) token address
-     */
+    getToken(ticker: "BTC" | "BITCOIN-BTC"): BtcToken<false>;
+    getToken(ticker: "BTCLN" | "BTC-LN" | "LIGHTNING-BTC"): BtcToken<true>;
+    getToken(ticker: `${ChainIdentifier}-${string}`): SCToken<ChainIdentifier>;
     getToken(tickerOrAddress: string): Token<ChainIdentifier>;
     /**
      * Returns whether the SDK supports a given swap type on this chain based on currently known LPs

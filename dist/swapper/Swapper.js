@@ -94,7 +94,7 @@ class Swapper extends events_1.EventEmitter {
                     displayDecimals: chainData.displayDecimals,
                     address: chainData.address,
                     equals: (other) => other.chainId === chainId && other.ticker === tokenData.ticker && other.address === chainData.address,
-                    toString: () => chainId + "-" + tokenData.ticker
+                    toString: () => `${chainId}-${tokenData.ticker}`
                 };
             }
         }

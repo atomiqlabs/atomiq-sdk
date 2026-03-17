@@ -427,6 +427,10 @@ export class SwapperWithSigner<T extends MultiChain, ChainIdentifier extends Cha
         return this.swapper.recoverSwaps(this.signer.getAddress(), startBlockheight);
     }
 
+    getToken(ticker: "BTC" | "BITCOIN-BTC"): BtcToken<false>;
+    getToken(ticker: "BTCLN" | "BTC-LN" | "LIGHTNING-BTC"): BtcToken<true>;
+    getToken(ticker: `${ChainIdentifier}-${string}`): SCToken<ChainIdentifier>;
+    getToken(tickerOrAddress: string): Token<ChainIdentifier>;
     /**
      * Returns the {@link Token} object for a given token
      *

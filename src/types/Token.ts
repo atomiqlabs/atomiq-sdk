@@ -4,21 +4,51 @@
  * @category Tokens
  */
 export type Token<ChainIdentifier extends string = string> = {
+    /**
+     * Chain identifier for the token's chain
+     */
     chainId: ChainIdentifier | "BITCOIN" | "LIGHTNING",
 
+    /**
+     * Ticker of the token
+     */
     ticker: string,
+    /**
+     * Full name of the token
+     */
     name: string,
+    /**
+     * Actual decimal places of the tokens
+     */
     decimals: number,
+    /**
+     * The decimal places that should be rendered and displayed to the user
+     */
     displayDecimals?: number,
 
+    /**
+     * Address of the token contract, or `""` for Bitcoin
+     */
     address: string,
 
     // legacy compatibility
+    /**
+     * Legacy chain identifier distinguishing between Smart Chain and Bitcoin tokens
+     */
     chain: "SC" | "BTC",
+    /**
+     * Legacy lightning flag, determines whether a Bitcoin token is an Lightning or on-chain one
+     */
     lightning?: boolean,
 
     // helpers
+    /**
+     * Equality check between tokens
+     */
     equals: (other: Token) => boolean,
+    /**
+     * Returns the
+     */
     toString: () => string
 };
 
@@ -51,7 +81,9 @@ export type BtcToken<L = boolean> = Token & {
 
     // legacy compatibility
     chain: "BTC",
-    lightning: L
+    lightning: L,
+
+    toString: () => L extends true ? "BTC-LN" : "BTC"
 };
 
 /**
@@ -111,6 +143,8 @@ export const BitcoinTokens: {
 export type SCToken<ChainIdentifier extends string = string> = Token<ChainIdentifier> & {
     chainId: ChainIdentifier,
     chain: "SC"
+
+    toString: () => `${ChainIdentifier}-${string}`
 };
 
 /**

@@ -16,7 +16,6 @@ import { LnForGasWrapper } from "../swaps/trusted/ln/LnForGasWrapper";
 import { LnForGasSwap } from "../swaps/trusted/ln/LnForGasSwap";
 import { EventEmitter } from "events";
 import { Intermediary } from "../intermediaries/Intermediary";
-import { WrapperCtorTokens } from "../swaps/ISwapWrapper";
 import { SwapperWithChain } from "./SwapperWithChain";
 import { OnchainForGasSwap } from "../swaps/trusted/onchain/OnchainForGasSwap";
 import { OnchainForGasWrapper } from "../swaps/trusted/onchain/OnchainForGasWrapper";
@@ -169,6 +168,17 @@ type MultiChainData<T extends MultiChain> = {
 type CtorMultiChainData<T extends MultiChain> = {
     [chainIdentifier in keyof T]: ChainData<T[chainIdentifier]>;
 };
+type SwapperCtorTokens<T extends MultiChain = MultiChain> = {
+    ticker: string;
+    name: string;
+    chains: {
+        [chainId in ChainIds<T>]?: {
+            address: string;
+            decimals: number;
+            displayDecimals?: number;
+        };
+    };
+}[];
 /**
  * Type extracting chain identifiers from a MultiChain type
  * @category Core
@@ -247,7 +257,7 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
     /**
      * @internal
      */
-    constructor(bitcoinRpc: BitcoinRpcWithAddressIndex<any>, lightningApi: LightningNetworkApi, bitcoinSynchronizer: (btcRelay: BtcRelay<any, any, any>) => RelaySynchronizer<any, any, any>, chainsData: CtorMultiChainData<T>, pricing: ISwapPrice<T>, tokens: WrapperCtorTokens<T>, messenger: Messenger, options?: SwapperOptions);
+    constructor(bitcoinRpc: BitcoinRpcWithAddressIndex<any>, lightningApi: LightningNetworkApi, bitcoinSynchronizer: (btcRelay: BtcRelay<any, any, any>) => RelaySynchronizer<any, any, any>, chainsData: CtorMultiChainData<T>, pricing: ISwapPrice<T>, tokens: SwapperCtorTokens<T>, messenger: Messenger, options?: SwapperOptions);
     private _init;
     private initPromise?;
     private initialized;

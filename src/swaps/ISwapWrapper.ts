@@ -26,15 +26,9 @@ export type ISwapWrapperOptions = {
  *
  * @category Swaps/Base
  */
-export type WrapperCtorTokens<T extends MultiChain = MultiChain> = {
-    ticker: string,
-    name: string,
-    chains: {[chainId in ChainIds<T>]?: {
-        address: string,
-        decimals: number,
-        displayDecimals?: number
-    }}
-}[];
+export type WrapperCtorTokens<T extends ChainType = ChainType> = {
+    [tokenAddress: string]: SCToken<T["ChainId"]>
+};
 
 /**
  * Type definition linking wrapper and swap types
@@ -164,20 +158,7 @@ export abstract class ISwapWrapper<
         this._prices = prices;
         this.events = events || new EventEmitter();
         this._options = options;
-        this._tokens = {};
-        for(let tokenData of tokens) {
-            const chainData = tokenData.chains[chainIdentifier];
-            if(chainData==null) continue;
-            this._tokens[chainData.address] = {
-                chain: "SC",
-                chainId: this.chainIdentifier,
-                address: chainData.address,
-                decimals: chainData.decimals,
-                ticker: tokenData.ticker,
-                name: tokenData.name,
-                displayDecimals: chainData.displayDecimals
-            };
-        }
+        this._tokens = tokens;
     }
 
 

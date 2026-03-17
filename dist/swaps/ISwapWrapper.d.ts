@@ -4,7 +4,6 @@ import { ChainEvent, ChainType } from "@atomiqlabs/base";
 import { EventEmitter } from "events";
 import { ISwap } from "./ISwap";
 import { ISwapPrice } from "../prices/abstract/ISwapPrice";
-import { ChainIds, MultiChain } from "../swapper/Swapper";
 import { UnifiedSwapEventListener } from "../events/UnifiedSwapEventListener";
 import { SwapType } from "../enums/SwapType";
 import { UnifiedSwapStorage } from "../storage/UnifiedSwapStorage";
@@ -24,17 +23,9 @@ export type ISwapWrapperOptions = {
  *
  * @category Swaps/Base
  */
-export type WrapperCtorTokens<T extends MultiChain = MultiChain> = {
-    ticker: string;
-    name: string;
-    chains: {
-        [chainId in ChainIds<T>]?: {
-            address: string;
-            decimals: number;
-            displayDecimals?: number;
-        };
-    };
-}[];
+export type WrapperCtorTokens<T extends ChainType = ChainType> = {
+    [tokenAddress: string]: SCToken<T["ChainId"]>;
+};
 /**
  * Type definition linking wrapper and swap types
  *

@@ -528,8 +528,8 @@ export class SwapperWithChain<T extends MultiChain, ChainIdentifier extends Chai
      */
     getToken(tickerOrAddress: string): Token<ChainIdentifier> {
         //Btc tokens - BTC, BTCLN, BTC-LN
-        if(tickerOrAddress==="BTC") return BitcoinTokens.BTC;
-        if(tickerOrAddress==="BTCLN" || tickerOrAddress==="BTC-LN") return BitcoinTokens.BTCLN;
+        if(tickerOrAddress==="BTC" || tickerOrAddress==="BITCOIN-BTC") return BitcoinTokens.BTC;
+        if(tickerOrAddress==="BTCLN" || tickerOrAddress==="BTC-LN" || tickerOrAddress==="LIGHTNING-BTC") return BitcoinTokens.BTCLN;
 
         //Check if the ticker is in format <chainId>-<ticker>, i.e. SOLANA-USDC, STARKNET-WBTC
         if(tickerOrAddress.includes("-")) {

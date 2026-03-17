@@ -34,21 +34,7 @@ class ISwapWrapper {
         this._prices = prices;
         this.events = events || new events_1.EventEmitter();
         this._options = options;
-        this._tokens = {};
-        for (let tokenData of tokens) {
-            const chainData = tokenData.chains[chainIdentifier];
-            if (chainData == null)
-                continue;
-            this._tokens[chainData.address] = {
-                chain: "SC",
-                chainId: this.chainIdentifier,
-                address: chainData.address,
-                decimals: chainData.decimals,
-                ticker: tokenData.ticker,
-                name: tokenData.name,
-                displayDecimals: chainData.displayDecimals
-            };
-        }
+        this._tokens = tokens;
     }
     /**
      * Pre-fetches swap price for a given swap

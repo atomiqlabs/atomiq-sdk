@@ -202,6 +202,16 @@ type CtorMultiChainData<T extends MultiChain> = {
     [chainIdentifier in keyof T]: ChainData<T[chainIdentifier]>
 };
 
+type SwapperCtorTokens<T extends MultiChain = MultiChain> = {
+    ticker: string,
+    name: string,
+    chains: {[chainId in ChainIds<T>]?: {
+        address: string,
+        decimals: number,
+        displayDecimals?: number
+    }}
+}[];
+
 /**
  * Type extracting chain identifiers from a MultiChain type
  * @category Core
@@ -300,7 +310,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         bitcoinSynchronizer: (btcRelay: BtcRelay<any, any, any>) => RelaySynchronizer<any, any, any>,
         chainsData: CtorMultiChainData<T>,
         pricing: ISwapPrice<T>,
-        tokens: WrapperCtorTokens<T>,
+        tokens: SwapperCtorTokens<T>,
         messenger: Messenger,
         options?: SwapperOptions
     ) {
@@ -341,7 +351,9 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                     name: tokenData.name,
                     decimals: chainData.decimals,
                     displayDecimals: chainData.displayDecimals,
-                    address: chainData.address
+                    address: chainData.address,
+                    equals: (other: Token) => other.chainId===chainId && other.ticker===tokenData.ticker && other.address===chainData.address,
+                    toString: () => chainId + "-" + tokenData.ticker
                 }
             }
         }
@@ -353,11 +365,12 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         this._chains = objectMap<CtorMultiChainData<T>, MultiChainData<T>>(chainsData, <InputKey extends keyof CtorMultiChainData<T>>(chainData: CtorMultiChainData<T>[InputKey], key: string) => {
             const {
                 swapContract, chainEvents, btcRelay,
-                chainInterface, spvVaultContract, spvVaultWithdrawalDataConstructor
+                chainInterface, spvVaultContract, spvVaultWithdrawalDataConstructor,
+                chainId
             } = chainData;
             const synchronizer = bitcoinSynchronizer(btcRelay);
 
-            const storageHandler = swapStorage(storagePrefix + chainData.chainId);
+            const storageHandler = swapStorage(storagePrefix + chainId);
             const unifiedSwapStorage = new UnifiedSwapStorage<T[InputKey]>(storageHandler, this.options.noSwapCache);
             const unifiedChainEvents = new UnifiedSwapEventListener<T[InputKey]>(unifiedSwapStorage, chainEvents);
 
@@ -370,7 +383,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 chainInterface,
                 swapContract,
                 pricing,
-                tokens,
+                this._tokens[chainId],
                 chainData.swapDataConstructor,
                 {
                     getRequestTimeout: this.options.getRequestTimeout,
@@ -384,7 +397,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 chainInterface,
                 swapContract,
                 pricing,
-                tokens,
+                this._tokens[chainId],
                 chainData.swapDataConstructor,
                 this._bitcoinRpc,
                 {
@@ -400,7 +413,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 chainInterface,
                 swapContract,
                 pricing,
-                tokens,
+                this._tokens[chainId],
                 chainData.swapDataConstructor,
                 lightningApi,
                 {
@@ -416,7 +429,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 chainInterface,
                 swapContract,
                 pricing,
-                tokens,
+                this._tokens[chainId],
                 chainData.swapDataConstructor,
                 btcRelay,
                 synchronizer,
@@ -433,7 +446,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 unifiedChainEvents,
                 chainInterface,
                 pricing,
-                tokens,
+                this._tokens[chainId],
                 {
                     getRequestTimeout: this.options.getRequestTimeout,
                     postRequestTimeout: this.options.postRequestTimeout
@@ -445,7 +458,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 unifiedChainEvents,
                 chainInterface,
                 pricing,
-                tokens,
+                this._tokens[chainId],
                 bitcoinRpc,
                 {
                     getRequestTimeout: this.options.getRequestTimeout,
@@ -462,7 +475,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                     chainInterface,
                     spvVaultContract,
                     pricing,
-                    tokens,
+                    this._tokens[chainId],
                     spvVaultWithdrawalDataConstructor,
                     btcRelay,
                     synchronizer,
@@ -483,7 +496,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                     chainInterface,
                     swapContract,
                     pricing,
-                    tokens,
+                    this._tokens[chainId],
                     chainData.swapDataConstructor,
                     lightningApi,
                     this.messenger,
@@ -1471,8 +1484,8 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         const srcToken = typeof(_srcToken)==="string" ? this.getToken(_srcToken) as Token<C> : _srcToken;
         const dstToken = typeof(_dstToken)==="string" ? this.getToken(_dstToken) as Token<C> : _dstToken;
         const amount = _amount==null ? null : (typeof(_amount)==="bigint" ? _amount : fromDecimal(_amount, exactIn ? srcToken.decimals : dstToken.decimals));
-        if(srcToken.chain==="BTC") {
-            if(dstToken.chain==="SC") {
+        if(isBtcToken(srcToken)) {
+            if(isSCToken<C>(dstToken)) {
                 if(typeof(dst)!=="string") throw new Error("Destination for BTC/BTC-LN -> smart chain swaps must be a smart chain address!");
                 if(amount==null) throw new Error("Amount cannot be null for from btc swaps!");
                 if(srcToken.lightning) {
@@ -1496,8 +1509,8 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                     }
                 }
             }
-        } else {
-            if(dstToken.chain==="BTC") {
+        } else if(isSCToken<C>(srcToken)) {
+            if(isBtcToken(dstToken)) {
                 if(typeof(src)!=="string") throw new Error("Source address for BTC/BTC-LN -> smart chain swaps must be a smart chain address!");
                 if(dstToken.lightning) {
                     //TO_BTCLN
@@ -1996,8 +2009,8 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
      */
     getToken(tickerOrAddress: string): Token<ChainIds<T>> {
         //Btc tokens - BTC, BTCLN, BTC-LN
-        if(tickerOrAddress==="BTC") return BitcoinTokens.BTC;
-        if(tickerOrAddress==="BTCLN" || tickerOrAddress==="BTC-LN") return BitcoinTokens.BTCLN;
+        if(tickerOrAddress==="BTC" || tickerOrAddress==="BITCOIN-BTC") return BitcoinTokens.BTC;
+        if(tickerOrAddress==="BTCLN" || tickerOrAddress==="BTC-LN" || tickerOrAddress==="LIGHTNING-BTC") return BitcoinTokens.BTCLN;
 
         //Check if the ticker is in format <chainId>-<ticker>, i.e. SOLANA-USDC, STARKNET-WBTC
         if(tickerOrAddress.includes("-")) {

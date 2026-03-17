@@ -321,6 +321,7 @@ class IntermediaryAPI {
             amount: init.amount.toString(),
             address: init.claimer,
             token: init.token,
+            description: init.description ?? null,
             descriptionHash: init.descriptionHash == null ? null : init.descriptionHash.toString("hex"),
             exactOut: init.exactOut,
             feeRate: init.feeRate
@@ -366,6 +367,7 @@ class IntermediaryAPI {
             amount: init.amount.toString(),
             address: init.claimer,
             token: init.token,
+            description: init.description ?? null,
             descriptionHash: init.descriptionHash == null ? null : init.descriptionHash.toString("hex"),
             exactOut: init.exactOut,
             gasToken: init.gasToken,

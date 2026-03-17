@@ -51,7 +51,6 @@ export function isLNURLPayParams(obj: any): obj is LNURLPayParams {
  * Type guard for {@link LNURLPay}
  *
  * @category Lightning
- * @internal
  */
 export function isLNURLPay(value: any): value is LNURLPay {
     return (

@@ -185,6 +185,7 @@ declare const FromBTCLNResponseSchema: {
 export type FromBTCLNResponseType = RequestSchemaResult<typeof FromBTCLNResponseSchema>;
 export type FromBTCLNInit = BaseFromBTCSwapInit & {
     paymentHash: Buffer;
+    description?: string;
     descriptionHash?: Buffer;
 };
 declare const FromBTCLNAutoResponseSchema: {
@@ -205,6 +206,7 @@ export type FromBTCLNAutoResponseType = RequestSchemaResult<typeof FromBTCLNAuto
 export type FromBTCLNAutoInit = Omit<BaseFromBTCSwapInit, "feeRate"> & {
     paymentHash: Buffer;
     gasToken: string;
+    description?: string;
     descriptionHash?: Buffer;
     gasAmount?: bigint;
     claimerBounty?: Promise<bigint>;

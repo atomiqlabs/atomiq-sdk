@@ -12,6 +12,7 @@ import {isSCToken, Token} from "../types/Token";
 import {SwapExecutionAction} from "../types/SwapExecutionAction";
 import {LoggerType} from "../utils/Logger";
 import {isPriceInfoType, PriceInfoType} from "../types/PriceInfoType";
+import {SwapStateInfo} from "../types/SwapStateInfo";
 
 /**
  * Initialization data for creating a swap
@@ -57,6 +58,17 @@ export abstract class ISwap<
      * Swap type
      */
     protected readonly abstract TYPE: SwapType;
+
+    /**
+     * Description for the states
+     * @internal
+     */
+    protected readonly abstract swapStateDescription: Record<S, string>;
+    /**
+     * Name of the states
+     * @internal
+     */
+    protected readonly abstract swapStateName: (state: number) => string;
     /**
      * Swap logger
      * @internal
@@ -236,6 +248,17 @@ export abstract class ISwap<
      * @param options Additional options for executing the swap
      */
     public abstract txsExecute(options?: any): Promise<SwapExecutionAction<T>[]>;
+
+    /**
+     * Executes the swap with the provided wallet, the exact arguments for this functions differ for various swap
+     *  types. Check the `execute()` function signature in the respective swap class to see the required arguments.
+     *
+     * @param args Execution arguments, usually contains a source wallet object, callbacks and options, for exact
+     *  syntax check the respective swap class.
+     *
+     * @returns Whether a swap was successfully executed or not, if it wasn't the user can refund or claim manually
+     */
+    public abstract execute(...args: any[]): Promise<boolean>;
 
     //////////////////////////////
     //// Pricing
@@ -449,6 +472,11 @@ export abstract class ISwap<
     public abstract isFailed(): boolean;
 
     /**
+     * Returns whether the swap is currently being processed
+     */
+    public abstract isInProgress(): boolean;
+
+    /**
      * Whether a swap was initialized, a swap is considered initialized on first interaction with it, i.e.
      *  calling commit() on a Smart chain -> Bitcoin swaps, calling waitForPayment() or similar on the other
      *  direction. Not initiated swaps are not saved to the persistent storage by default (see
@@ -485,6 +513,23 @@ export abstract class ISwap<
     public getState(): S {
         return this._state;
     }
+
+    /**
+     * Returns the current state of the swap along with the human-readable description of the state
+     */
+    public getStateInfo(): SwapStateInfo<S> {
+        return {
+            state: this._state,
+            name: this.swapStateName(this._state),
+            description: this.swapStateDescription[this._state]
+        }
+    }
+
+    /**
+     * Returns a state-dependent set of actions for the user to execute, or empty array if there is currently
+     *  no action required from the user to execute.
+     */
+    public abstract getCurrentActions(): Promise<SwapExecutionAction<T>[]>;
 
     //////////////////////////////
     //// Amounts & fees

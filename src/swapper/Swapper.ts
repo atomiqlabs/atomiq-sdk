@@ -1185,6 +1185,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
      * @param amount Amount to send in satoshis (if `exactOut=false`) or receive in token based units (if `exactOut=true`)
      * @param exactOut Whether to use a exact out instead of exact in
      * @param additionalParams Additional parameters sent to the LP when creating the swap
+     * @param options Additional options for the swap
      */
     async createFromBTCLNSwapViaLNURL<ChainIdentifier extends ChainIds<T>>(
         chainIdentifier: ChainIdentifier,
@@ -1193,7 +1194,8 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         lnurl: string | LNURLWithdraw,
         amount: bigint,
         exactOut: boolean = false,
-        additionalParams: Record<string, any> | undefined = this.options.defaultAdditionalParameters
+        additionalParams: Record<string, any> | undefined = this.options.defaultAdditionalParameters,
+        options?: FromBTCLNOptions
     ): Promise<FromBTCLNSwap<T[ChainIdentifier]>> {
         if(this._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
         if(typeof(lnurl)==="string" && !this.Utils.isValidLNURL(lnurl)) throw new Error("Invalid LNURL-withdraw link");
@@ -1211,6 +1213,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 typeof(lnurl)==="string" ? (lnurl.startsWith("lightning:") ? lnurl.substring(10): lnurl) : lnurl.params,
                 amountData,
                 candidates,
+                options,
                 additionalParams,
                 abortSignal
             ),
@@ -1477,7 +1480,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                         if(typeof(src)!=="string" && !isLNURLWithdraw(src)) throw new Error("LNURL must be a string or LNURLWithdraw object!");
                         return this.supportsSwapType(dstToken.chainId, SwapType.FROM_BTCLN_AUTO) ?
                             this.createFromBTCLNSwapNewViaLNURL(dstToken.chainId, dst, dstToken.address, src, amount, !exactIn, undefined, options as any) :
-                            this.createFromBTCLNSwapViaLNURL(dstToken.chainId, dst, dstToken.address, src, amount, !exactIn);
+                            this.createFromBTCLNSwapViaLNURL(dstToken.chainId, dst, dstToken.address, src, amount, !exactIn, undefined, options as any);
                     } else {
                         return this.supportsSwapType(dstToken.chainId, SwapType.FROM_BTCLN_AUTO) ?
                             this.createFromBTCLNSwapNew(dstToken.chainId, dst, dstToken.address, amount, !exactIn, undefined, options as any):

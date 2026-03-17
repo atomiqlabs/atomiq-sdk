@@ -248,6 +248,16 @@ class ISwap {
     getState() {
         return this._state;
     }
+    /**
+     * Returns the current state of the swap along with the human-readable description of the state
+     */
+    getStateInfo() {
+        return {
+            state: this._state,
+            name: this.swapStateName(this._state),
+            description: this.swapStateDescription[this._state]
+        };
+    }
     //////////////////////////////
     //// Storage
     /**

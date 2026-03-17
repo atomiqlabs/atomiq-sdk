@@ -79,6 +79,24 @@ class IEscrowSwap extends ISwap_1.ISwap {
     getId() {
         return this.getIdentifierHashString();
     }
+    /**
+     * Returns the smart chain transaction ID of the tx that initiated the escrow
+     */
+    getEscrowInitTxId() {
+        return this._commitTxId;
+    }
+    /**
+     * Returns the smart chain transaction ID of the tx that claimed (settled) the escrow
+     */
+    getEscrowClaimTxId() {
+        return this._claimTxId;
+    }
+    /**
+     * Returns the smart chain transaction ID of the tx that refunded the escrow
+     */
+    getEscrowRefundTxId() {
+        return this._refundTxId;
+    }
     //////////////////////////////
     //// Watchdogs
     /**

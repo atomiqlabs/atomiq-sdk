@@ -226,6 +226,7 @@ export type FromBTCLNResponseType = RequestSchemaResult<typeof FromBTCLNResponse
 
 export type FromBTCLNInit = BaseFromBTCSwapInit & {
     paymentHash: Buffer,
+    description?: string,
     descriptionHash?: Buffer
 }
 
@@ -258,6 +259,7 @@ export type FromBTCLNAutoResponseType = RequestSchemaResult<typeof FromBTCLNAuto
 export type FromBTCLNAutoInit = Omit<BaseFromBTCSwapInit, "feeRate"> & {
     paymentHash: Buffer,
     gasToken: string,
+    description?: string,
     descriptionHash?: Buffer,
     gasAmount?: bigint,
     claimerBounty?: Promise<bigint>
@@ -597,6 +599,7 @@ export class IntermediaryAPI {
                 amount: init.amount.toString(),
                 address: init.claimer,
                 token: init.token,
+                description: init.description ?? null,
                 descriptionHash: init.descriptionHash==null ? null : init.descriptionHash.toString("hex"),
                 exactOut: init.exactOut,
                 feeRate: init.feeRate
@@ -658,6 +661,7 @@ export class IntermediaryAPI {
                 amount: init.amount.toString(),
                 address: init.claimer,
                 token: init.token,
+                description: init.description ?? null,
                 descriptionHash: init.descriptionHash==null ? null : init.descriptionHash.toString("hex"),
                 exactOut: init.exactOut,
                 gasToken: init.gasToken,

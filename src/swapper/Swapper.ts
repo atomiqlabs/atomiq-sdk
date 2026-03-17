@@ -64,6 +64,7 @@ import {tryWithRetries} from "../utils/RetryUtils";
 import {NotNever} from "../utils/TypeUtils";
 import {IEscrowSwap} from "../swaps/escrow_swaps/IEscrowSwap";
 import {LightningInvoiceCreateService, isLightningInvoiceCreateService} from "../types/wallets/LightningInvoiceCreateService";
+import {SwapSide} from "../enums/SwapSide";
 
 /**
  * Configuration options for the Swapper
@@ -2172,7 +2173,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
      *
      * @param input Whether to return input tokens or output tokens
      */
-    getSupportedTokens(input: boolean): Token[] {
+    getSupportedTokens(input: SwapSide | boolean): Token[] {
         const tokens: {[chainId: string]: Set<string>} = {};
         let lightning = false;
         let btc = false;
@@ -2275,7 +2276,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
      * Returns tokens that you can swap to (if input=true) from a given token,
      *  or tokens that you can swap from (if input=false) to a given token
      */
-    getSwapCounterTokens(token: Token, input: boolean): Token[] {
+    getSwapCounterTokens(token: Token, input: SwapSide | boolean): Token[] {
         if(isSCToken(token)) {
             const result: Token[] = [];
             if(input) {

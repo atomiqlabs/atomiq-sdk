@@ -28,6 +28,7 @@ import { LightningInvoiceCreateService } from "../types/wallets/LightningInvoice
 import { Intermediary } from "../intermediaries/Intermediary";
 import { SpvFromBTCOptions } from "../swaps/spv_swaps/SpvFromBTCWrapper";
 import { SwapTypeMapping } from "../utils/SwapUtils";
+import { SwapSide } from "../enums/SwapSide";
 /**
  * Chain and signer-specific wrapper for automatic signer injection into swap methods
  * @category Core
@@ -322,5 +323,5 @@ export declare class SwapperWithSigner<T extends MultiChain, ChainIdentifier ext
      * Returns tokens that you can swap to (if input=true) from a given token,
      *  or tokens that you can swap from (if input=false) to a given token
      */
-    getSwapCounterTokens(token: Token, input: boolean): Token<ChainIdentifier>[];
+    getSwapCounterTokens(token: Token, input: SwapSide | boolean): Token<ChainIdentifier>[];
 }

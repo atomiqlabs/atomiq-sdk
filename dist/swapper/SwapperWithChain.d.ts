@@ -29,6 +29,7 @@ import { LNURLPay } from "../types/lnurl/LNURLPay";
 import { LightningInvoiceCreateService } from "../types/wallets/LightningInvoiceCreateService";
 import { Intermediary } from "../intermediaries/Intermediary";
 import { SwapTypeMapping } from "../utils/SwapUtils";
+import { SwapSide } from "../enums/SwapSide";
 /**
  * Chain-specific wrapper around Swapper for a particular blockchain
  *
@@ -398,7 +399,7 @@ export declare class SwapperWithChain<T extends MultiChain, ChainIdentifier exte
      * Returns tokens that you can swap to (if input=true) from a given token,
      *  or tokens that you can swap from (if input=false) to a given token
      */
-    getSwapCounterTokens(token: Token, input: boolean): Token<ChainIdentifier>[];
+    getSwapCounterTokens(token: Token, input: SwapSide | boolean): Token<ChainIdentifier>[];
     /**
      * Creates a child swapper instance with a signer
      *

@@ -39,6 +39,7 @@ import { LNURLWithdraw } from "../types/lnurl/LNURLWithdraw";
 import { LNURLPay } from "../types/lnurl/LNURLPay";
 import { NotNever } from "../utils/TypeUtils";
 import { LightningInvoiceCreateService } from "../types/wallets/LightningInvoiceCreateService";
+import { SwapSide } from "../enums/SwapSide";
 /**
  * Configuration options for the Swapper
  * @category Core
@@ -663,7 +664,7 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
      *
      * @param input Whether to return input tokens or output tokens
      */
-    getSupportedTokens(input: boolean): Token[];
+    getSupportedTokens(input: SwapSide | boolean): Token[];
     /**
      * Returns a set of supported tokens by all the intermediaries offering a specific swap service
      *
@@ -681,6 +682,6 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
      * Returns tokens that you can swap to (if input=true) from a given token,
      *  or tokens that you can swap from (if input=false) to a given token
      */
-    getSwapCounterTokens(token: Token, input: boolean): Token[];
+    getSwapCounterTokens(token: Token, input: SwapSide | boolean): Token[];
 }
 export {};

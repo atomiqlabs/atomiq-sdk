@@ -33,6 +33,7 @@ import {LightningInvoiceCreateService} from "../types/wallets/LightningInvoiceCr
 import {Messenger} from "@atomiqlabs/base";
 import {Intermediary} from "../intermediaries/Intermediary";
 import {SwapTypeMapping} from "../utils/SwapUtils";
+import {SwapSide} from "../enums/SwapSide";
 
 /**
  * Chain-specific wrapper around Swapper for a particular blockchain
@@ -650,7 +651,7 @@ export class SwapperWithChain<T extends MultiChain, ChainIdentifier extends Chai
      * Returns tokens that you can swap to (if input=true) from a given token,
      *  or tokens that you can swap from (if input=false) to a given token
      */
-    getSwapCounterTokens(token: Token, input: boolean): Token<ChainIdentifier>[] {
+    getSwapCounterTokens(token: Token, input: SwapSide | boolean): Token<ChainIdentifier>[] {
         if(isSCToken(token)) {
             const result: Token<ChainIdentifier>[] = [];
             if(input) {

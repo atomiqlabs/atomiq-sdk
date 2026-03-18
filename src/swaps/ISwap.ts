@@ -527,6 +527,14 @@ export abstract class ISwap<
         }
     }
 
+    async forLoopExample() {
+        while(!this.isFinished()) {
+            const actions = await this.getCurrentActions();
+            await actions[0].wait();
+        }
+        // Swap done
+    }
+
     /**
      * Returns a state-dependent set of actions for the user to execute, or empty array if there is currently
      *  no action required from the user to execute.

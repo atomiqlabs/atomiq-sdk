@@ -57,7 +57,7 @@ export interface IBTCWalletSwap {
      * @param wallet Sender's bitcoin wallet
      * @param feeRate Optional fee rate in sats/vB for the transaction
      */
-    estimateBitcoinFee(wallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<any, BtcToken<false>> | null>;
+    estimateBitcoinFee(wallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<BtcToken<false>> | null>;
 
     /**
      * Sends a swap bitcoin transaction via the passed bitcoin wallet

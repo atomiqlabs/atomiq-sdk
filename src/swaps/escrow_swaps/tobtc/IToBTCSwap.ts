@@ -423,7 +423,7 @@ export abstract class IToBTCSwap<
     /**
      * @inheritDoc
      */
-    getInput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
+    getInput(): TokenAmount<SCToken<T["ChainId"]>, true> {
         return toTokenAmount(
             this._data.getAmount(), this.wrapper._tokens[this._data.getToken()],
             this.wrapper._prices, this.pricingInfo
@@ -433,7 +433,7 @@ export abstract class IToBTCSwap<
     /**
      * @inheritDoc
      */
-    getInputWithoutFee(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
+    getInputWithoutFee(): TokenAmount<SCToken<T["ChainId"]>, true> {
         return toTokenAmount(
             this._data.getAmount() - (this.swapFee + this.networkFee),
             this.wrapper._tokens[this._data.getToken()], this.wrapper._prices, this.pricingInfo
@@ -445,8 +445,8 @@ export abstract class IToBTCSwap<
      */
     async hasEnoughBalance(): Promise<{
         enoughBalance: boolean,
-        balance: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>,
-        required: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>
+        balance: TokenAmount<SCToken<T["ChainId"]>, true>,
+        required: TokenAmount<SCToken<T["ChainId"]>, true>
     }> {
         const [balance, commitFee] = await Promise.all([
             this.wrapper._contract.getBalance(this._getInitiator(), this._data.getToken(), false),
@@ -467,8 +467,8 @@ export abstract class IToBTCSwap<
      */
     async hasEnoughForTxFees(): Promise<{
         enoughBalance: boolean,
-        balance: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>,
-        required: TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>
+        balance: TokenAmount<SCToken<T["ChainId"]>, true>,
+        required: TokenAmount<SCToken<T["ChainId"]>, true>
     }> {
         const [balance, commitFee] = await Promise.all([
             this.wrapper._contract.getBalance(this._getInitiator(), this.wrapper._chain.getNativeCurrencyAddress(), false),
@@ -823,7 +823,7 @@ export abstract class IToBTCSwap<
     /**
      * Get the estimated smart chain transaction fee of the refund transaction
      */
-    async getRefundNetworkFee(): Promise<TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>> {
+    async getRefundNetworkFee(): Promise<TokenAmount<SCToken<T["ChainId"]>, true>> {
         const swapContract: T["Contract"] = this.wrapper._contract;
         return toTokenAmount(
             await swapContract.getRefundFee(this._getInitiator(), this._data),

@@ -179,7 +179,7 @@ export declare class LnForGasSwap<T extends ChainType = ChainType> extends ISwap
     /**
      * @inheritDoc
      */
-    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+    getOutput(): TokenAmount<SCToken<T["ChainId"]>, true>;
     /**
      * @inheritDoc
      */
@@ -187,11 +187,11 @@ export declare class LnForGasSwap<T extends ChainType = ChainType> extends ISwap
     /**
      * @inheritDoc
      */
-    getInput(): TokenAmount<T["ChainId"], BtcToken<true>, true>;
+    getInput(): TokenAmount<BtcToken<true>, true>;
     /**
      * @inheritDoc
      */
-    getInputWithoutFee(): TokenAmount<T["ChainId"], BtcToken<true>, true>;
+    getInputWithoutFee(): TokenAmount<BtcToken<true>, true>;
     /**
      * Returns the swap fee charged by the intermediary (LP) on this swap
      *

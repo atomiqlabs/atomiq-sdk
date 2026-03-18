@@ -130,7 +130,7 @@ export class ToBTCLNSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, 
     /**
      * @inheritDoc
      */
-    getOutput(): TokenAmount<T["ChainId"], BtcToken<true>> {
+    getOutput(): TokenAmount<BtcToken<true>> {
         if(this.pr==null || !this.pr.toLowerCase().startsWith("ln"))
             return toTokenAmount(null, this.outputToken, this.wrapper._prices, this.pricingInfo);
         const parsedPR = bolt11Decode(this.pr);

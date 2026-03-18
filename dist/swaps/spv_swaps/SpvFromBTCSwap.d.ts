@@ -528,6 +528,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
         feeRate?: number;
         abortSignal?: AbortSignal;
         btcTxCheckIntervalSeconds?: number;
+        btcWalletCheckIntervalSeconds?: number;
         maxWaitTillAutomaticSettlementSeconds?: number;
     }): Promise<boolean>;
     /**
@@ -574,11 +575,13 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
         inputAddresses?: string[];
     } | null>;
     /**
-     * When the swap wallet address is specified it waits till the address receives the necessary funds
+     * When the swap wallet address is specified, polls the swap wallet address until it receives the
+     * necessary funds and the swap transaction is submitted, then waits till the LP co-signs.
      *
+     * @param checkIntervalSeconds How often to poll the wallet for incoming UTXOs (default 5 seconds)
      * @param abortSignal Abort signal
      */
-    waitForPayment(abortSignal?: AbortSignal): Promise<void>;
+    waitForPayment(checkIntervalSeconds?: number, abortSignal?: AbortSignal): Promise<void>;
     /**
      * @inheritDoc
      *

@@ -768,9 +768,6 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
         return BigInt(Math.ceil(txVsize * bitcoinFeeRate));
     }
     async checkSwapWalletSwaps(swaps) {
-        if (this.swapWalletsLastCheckedAt != null && this.swapWalletsLastCheckedAt + 5000 > Date.now())
-            return;
-        this.swapWalletsLastCheckedAt = Date.now();
         swaps.sort((a, b) => b.createdAt - a.createdAt);
         const successfullyUsedWallets = [];
         const swapWalletData = {};
@@ -797,14 +794,6 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
                 continue;
             successfullyUsedWallets.push(swapWalletAddress);
         }
-    }
-    /**
-     * @inheritDoc
-     * @internal
-     */
-    async _tick(swaps) {
-        await super._tick(swaps);
-        await this.checkSwapWalletSwaps(swaps);
     }
     /**
      * @inheritDoc

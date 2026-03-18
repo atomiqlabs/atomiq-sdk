@@ -1,6 +1,5 @@
 import {isISwapInit, ISwap, ISwapInit} from "../ISwap";
 import {
-    BtcAddressUtxo,
     BtcTxWithBlockheight,
     ChainType,
     isAbstractSigner,
@@ -11,7 +10,7 @@ import {
     SpvWithdrawalStateType
 } from "@atomiqlabs/base";
 import {SwapType} from "../../enums/SwapType";
-import {REQUIRED_SPV_SWAP_LP_ADDRESS_TYPE, SpvFromBTCTypeDefinition, SpvFromBTCWrapper} from "./SpvFromBTCWrapper";
+import {SpvFromBTCTypeDefinition, SpvFromBTCWrapper} from "./SpvFromBTCWrapper";
 import {extendAbortController} from "../../utils/Utils";
 import {parsePsbtTransaction, toCoinselectAddressType, toOutputScript} from "../../utils/BitcoinUtils";
 import {getInputType, Transaction} from "@scure/btc-signer";
@@ -41,7 +40,6 @@ import {
 import {toBitcoinWallet} from "../../utils/BitcoinWalletUtils";
 import {SwapExecutionAction, SwapExecutionActionBitcoin} from "../../types/SwapExecutionAction";
 import {SingleAddressBitcoinWallet} from "../../bitcoin/wallet/SingleAddressBitcoinWallet";
-import {BitcoinNotEnoughBalanceError} from "../../errors/BitcoinNotEnoughBalanceError";
 
 /**
  * State enum for SPV vault (UTXO-controlled vault) based swaps
@@ -1304,6 +1302,7 @@ export class SpvFromBTCSwap<T extends ChainType>
             feeRate?: number,
             abortSignal?: AbortSignal,
             btcTxCheckIntervalSeconds?: number,
+            btcWalletCheckIntervalSeconds?: number,
             maxWaitTillAutomaticSettlementSeconds?: number
         }
     ): Promise<boolean> {
@@ -1322,7 +1321,7 @@ export class SpvFromBTCSwap<T extends ChainType>
                 if(this.swapWalletType==="prefunded") {
                     await this._tryToPayFromPrefundedSwapWallet();
                 } else {
-                    await this.waitForPayment(options?.abortSignal);
+                    await this.waitForPayment(options?.btcWalletCheckIntervalSeconds, options?.abortSignal);
                 }
             }
         }
@@ -1447,23 +1446,35 @@ export class SpvFromBTCSwap<T extends ChainType>
     }
 
     /**
-     * When the swap wallet address is specified it waits till the address receives the necessary funds
+     * When the swap wallet address is specified, polls the swap wallet address until it receives the
+     * necessary funds and the swap transaction is submitted, then waits till the LP co-signs.
      *
+     * @param checkIntervalSeconds How often to poll the wallet for incoming UTXOs (default 5 seconds)
      * @param abortSignal Abort signal
      */
-    async waitForPayment(abortSignal?: AbortSignal) {
+    async waitForPayment(checkIntervalSeconds?: number, abortSignal?: AbortSignal) {
+        checkIntervalSeconds ??= 5;
         if(this._state !== SpvFromBTCSwapState.CREATED)
             throw new Error("Must be in CREATED state!");
         if(!this.hasSwapWallet())
             throw new Error("Swap must have a swap address specified!");
+        if(this.swapWalletType==="waitpayment")
+            throw new Error("To wait for payment the swap needs to be of the `waitpayment` type!");
 
-        this._setInitiated();
-        await this._saveAndEmit();
-        //TODO: Also handle errors here
-        await this.waitTillState(SpvFromBTCSwapState.CREATED, "neq", abortSignal);
-        if(this._state<SpvFromBTCSwapState.CREATED)
+        if(!this.isInitiated()) {
+            this._setInitiated();
+            await this._saveAndEmit();
+        }
+
+        const btcWallet = this._getSwapBitcoinWallet();
+        while(this._state === SpvFromBTCSwapState.CREATED) {
+            await timeoutPromise(checkIntervalSeconds * 1000, abortSignal);
+            const utxos = await btcWallet.getUtxoPool();
+            if(await this._tryToPayFromSwapWallet(utxos)) break;
+        }
+
+        if(this._state < SpvFromBTCSwapState.CREATED)
             throw new Error("Failed to receive the bitcoin transaction in time!");
-        await this.waitTillState(SpvFromBTCSwapState.SIGNED, "neq", abortSignal);
     }
 
     /**

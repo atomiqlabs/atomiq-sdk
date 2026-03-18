@@ -13,7 +13,6 @@ import { CoinselectAddressTypes } from "../../bitcoin/coinselect2";
 import { Transaction } from "@scure/btc-signer";
 import { ISwap } from "../ISwap";
 import { IClaimableSwapWrapper } from "../IClaimableSwapWrapper";
-import { AmountData } from "../../types/AmountData";
 import { AllOptional } from "../../utils/TypeUtils";
 export type SpvFromBTCOptions = {
     /**
@@ -55,9 +54,6 @@ export type SpvFromBTCOptions = {
      * @deprecated Use `maxAllowedBitcoinFeeRate` instead!
      */
     maxAllowedNetworkFeeRate?: number;
-};
-export type SpvFromBTCCreateAmountData = Omit<AmountData, "amount"> & {
-    amount?: bigint;
 };
 export type SpvFromBTCWrapperOptions = ISwapWrapperOptions & {
     maxConfirmations: number;
@@ -116,7 +112,6 @@ export declare class SpvFromBTCWrapper<T extends ChainType> extends ISwapWrapper
      * @internal
      */
     readonly _pendingSwapStates: Array<SpvFromBTCSwap<T>["_state"]>;
-    private swapWalletsLastCheckedAt?;
     /**
      * @param chainIdentifier
      * @param unifiedStorage Storage interface for the current environment
@@ -234,11 +229,6 @@ export declare class SpvFromBTCWrapper<T extends ChainType> extends ISwapWrapper
      */
     getExpectedNetworkFee(bitcoinAddress: string, bitcoinFeeRate: number, includeGasToken?: boolean): bigint;
     private checkSwapWalletSwaps;
-    /**
-     * @inheritDoc
-     * @internal
-     */
-    protected _tick(swaps: SpvFromBTCSwap<T>[]): Promise<void>;
     /**
      * @inheritDoc
      * @internal

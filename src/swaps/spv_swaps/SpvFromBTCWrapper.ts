@@ -1,6 +1,6 @@
 import {ISwapWrapper, ISwapWrapperOptions, SwapTypeDefinition, WrapperCtorTokens} from "../ISwapWrapper";
 import {
-    BitcoinRpcWithAddressIndex, BtcAddressUtxo, BtcBlock,
+    BitcoinRpcWithAddressIndex, BtcBlock,
     BtcRelay,
     ChainEvent,
     ChainType,
@@ -36,9 +36,6 @@ import {tryWithRetries} from "../../utils/RetryUtils";
 import {fromHumanReadableString} from "../../utils/TokenUtils";
 import {AllOptional, AllRequired} from "../../utils/TypeUtils";
 import {SingleAddressBitcoinWallet} from "../../bitcoin/wallet/SingleAddressBitcoinWallet";
-import {HDKey} from "@scure/bip32";
-import {mnemonicToSeed} from "@scure/bip39";
-import {hash160} from "@scure/btc-signer/utils";
 import {UserError} from "../../errors/UserError";
 import {identifyAddressType} from "../../bitcoin/wallet/BitcoinWallet";
 import {BitcoinWalletUtxo} from "../../bitcoin/wallet/IBitcoinWallet";
@@ -84,10 +81,6 @@ export type SpvFromBTCOptions = {
      * @deprecated Use `maxAllowedBitcoinFeeRate` instead!
      */
     maxAllowedNetworkFeeRate?: number
-};
-
-export type SpvFromBTCCreateAmountData = Omit<AmountData, "amount"> & {
-    amount?: bigint
 };
 
 export type SpvFromBTCWrapperOptions = ISwapWrapperOptions & {
@@ -170,8 +163,6 @@ export class SpvFromBTCWrapper<
         SpvFromBTCSwapState.DECLINED,
         SpvFromBTCSwapState.BTC_TX_CONFIRMED
     ];
-
-    private swapWalletsLastCheckedAt?: number;
 
     /**
      * @param chainIdentifier
@@ -1045,9 +1036,6 @@ export class SpvFromBTCWrapper<
     }
 
     private async checkSwapWalletSwaps(swaps: SpvFromBTCSwap<T>[]): Promise<void> {
-        if(this.swapWalletsLastCheckedAt!=null && this.swapWalletsLastCheckedAt+5000>Date.now()) return;
-        this.swapWalletsLastCheckedAt = Date.now();
-
         swaps.sort((a, b) => b.createdAt - a.createdAt);
 
         const successfullyUsedWallets: string[] = [];
@@ -1072,15 +1060,6 @@ export class SpvFromBTCWrapper<
             if(!await swap._tryToPayFromSwapWallet(walletData.utxos)) continue;
             successfullyUsedWallets.push(swapWalletAddress);
         }
-    }
-
-    /**
-     * @inheritDoc
-     * @internal
-     */
-    protected async _tick(swaps: SpvFromBTCSwap<T>[]): Promise<void> {
-        await super._tick(swaps);
-        await this.checkSwapWalletSwaps(swaps);
     }
 
     /**

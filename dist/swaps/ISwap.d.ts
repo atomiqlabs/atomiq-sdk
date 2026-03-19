@@ -309,7 +309,7 @@ export declare abstract class ISwap<T extends ChainType = ChainType, D extends S
      *  get funded PSBTs or passing the externally-generated swap secret), see the actual type in the respective swap
      *  classes
      */
-    abstract getCurrentAction(options?: any): Promise<SwapExecutionAction<T> | undefined>;
+    abstract getCurrentAction(options?: any): Promise<SwapExecutionAction | undefined>;
     /**
      * Returns a list of execution steps the user has to go through for a given swap, to see the possible execution
      *  steps check out {@link SwapExecutionStep}.

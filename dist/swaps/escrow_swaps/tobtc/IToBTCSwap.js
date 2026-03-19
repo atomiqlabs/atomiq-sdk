@@ -469,6 +469,71 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
         }
         return undefined;
     }
+    /**
+     * @inheritDoc
+     */
+    async getSwapSteps() {
+        let sourcePaymentStatus = "inactive";
+        let destinationPayoutStatus = "inactive";
+        let refundStatus = "inactive";
+        switch (this._state) {
+            case ToBTCSwapState.CREATED:
+                sourcePaymentStatus = (await this._verifyQuoteValid()) ? "awaiting" : "expired";
+                break;
+            case ToBTCSwapState.QUOTE_SOFT_EXPIRED:
+            case ToBTCSwapState.QUOTE_EXPIRED:
+                sourcePaymentStatus = "expired";
+                break;
+            case ToBTCSwapState.COMMITED:
+                sourcePaymentStatus = "confirmed";
+                destinationPayoutStatus = "waiting_lp";
+                break;
+            case ToBTCSwapState.SOFT_CLAIMED:
+                sourcePaymentStatus = "confirmed";
+                destinationPayoutStatus = "soft_settled";
+                break;
+            case ToBTCSwapState.CLAIMED:
+                sourcePaymentStatus = "confirmed";
+                destinationPayoutStatus = "settled";
+                break;
+            case ToBTCSwapState.REFUNDABLE:
+                sourcePaymentStatus = "confirmed";
+                destinationPayoutStatus = "expired";
+                refundStatus = "awaiting";
+                break;
+            case ToBTCSwapState.REFUNDED:
+                sourcePaymentStatus = "confirmed";
+                destinationPayoutStatus = "expired";
+                refundStatus = "refunded";
+                break;
+        }
+        return [
+            {
+                type: "Payment",
+                side: "source",
+                chain: this.chainIdentifier,
+                title: "Source payment",
+                description: `Initiate the swap by funding the escrow on the ${this.chainIdentifier} side`,
+                status: sourcePaymentStatus
+            },
+            {
+                type: "Settlement",
+                side: "destination",
+                chain: this.outputToken.chainId,
+                title: "Destination payout",
+                description: `Wait for the LP to process the swap and send the payout on the ${this.outputToken.chainId} side`,
+                status: destinationPayoutStatus
+            },
+            {
+                type: "Refund",
+                side: "source",
+                chain: this.chainIdentifier,
+                title: "Source refund",
+                description: `Refund escrowed funds on the ${this.chainIdentifier} side, after LP failed to execute`,
+                status: refundStatus
+            }
+        ];
+    }
     //////////////////////////////
     //// Commit
     /**

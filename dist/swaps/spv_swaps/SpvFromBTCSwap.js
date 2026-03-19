@@ -333,7 +333,7 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
      * @inheritDoc
      */
     isFinished() {
-        return this._state === SpvFromBTCSwapState.CLAIMED || this._state === SpvFromBTCSwapState.QUOTE_EXPIRED || this._state === SpvFromBTCSwapState.FAILED;
+        return this.isSuccessful() || this.isFailed() || this.isQuoteExpired();
     }
     /**
      * @inheritDoc
@@ -822,58 +822,93 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
      *  if not provided a raw PSBT is returned instead which necessitates the implementor to manually add
      *  inputs to the bitcoin transaction and **set the nSequence field of the 2nd input** (input 1 -
      *  indexing from 0) to the value returned in `in1sequence`
-     */
-    async txsExecute(options) {
-        if (this._state === SpvFromBTCSwapState.CREATED) {
-            if (!await this._verifyQuoteValid())
-                throw new Error("Quote already expired or close to expiry!");
-            return [
-                {
-                    name: "Payment",
-                    description: "Send funds to the bitcoin swap address",
-                    chain: "BITCOIN",
-                    txs: [
-                        options?.bitcoinWallet == null
-                            ? { ...await this.getPsbt(), type: "RAW_PSBT" }
-                            : { ...await this.getFundedPsbt(options.bitcoinWallet, options?.bitcoinFeeRate), type: "FUNDED_PSBT" }
-                    ]
-                }
-            ];
-        }
-        throw new Error("Invalid swap state to obtain execution txns, required CREATED");
-    }
-    /**
-     * @inheritDoc
-     *
-     * @param options.bitcoinFeeRate Optional fee rate to use for the created Bitcoin transaction
-     * @param options.bitcoinWallet Optional bitcoin wallet address specification to return a funded PSBT,
-     *  if not provided a raw PSBT is returned instead which necessitates the implementor to manually add
-     *  inputs to the bitcoin transaction and **set the nSequence field of the 2nd input** (input 1 -
-     *  indexing from 0) to the value returned in `in1sequence`
      * @param options.manualSettlementSmartChainSigner Optional smart chain signer to create a manual claim (settlement) transaction
      * @param options.maxWaitTillAutomaticSettlementSeconds Maximum time to wait for an automatic settlement after
      *  the bitcoin transaction is confirmed (defaults to 60 seconds)
      */
-    async getCurrentActions(options) {
+    async getCurrentAction(options) {
         if (this._state === SpvFromBTCSwapState.CREATED) {
-            try {
-                return await this.txsExecute(options);
+            if (!await this._verifyQuoteValid())
+                return undefined;
+            return {
+                type: "SignPSBT",
+                name: "Deposit on Bitcoin",
+                description: "Send funds to the bitcoin swap address",
+                chain: "BITCOIN",
+                txs: [
+                    options?.bitcoinWallet == null
+                        ? { ...await this.getPsbt(), type: "RAW_PSBT" }
+                        : { ...await this.getFundedPsbt(options.bitcoinWallet, options?.bitcoinFeeRate), type: "FUNDED_PSBT" }
+                ],
+                submitPsbt: async (signedPsbt) => {
+                    let psbt;
+                    if (Array.isArray(signedPsbt)) {
+                        if (signedPsbt.length !== 1)
+                            throw new Error("Need to submit exactly 1 signed PSBT!");
+                        psbt = signedPsbt[0];
+                    }
+                    else {
+                        psbt = signedPsbt;
+                    }
+                    return [await this.submitPsbt(psbt)];
+                }
+            };
+        }
+        if (this._state === SpvFromBTCSwapState.SIGNED || this._state === SpvFromBTCSwapState.POSTED || this._state === SpvFromBTCSwapState.BROADCASTED) {
+            let confirmationDelay = -1;
+            if (this._data) {
+                const result = await this.wrapper._btcRpc.getConfirmationDelay(this._data.btcTx, this.getRequiredConfirmationsCount());
+                if (result != null)
+                    confirmationDelay = result;
             }
-            catch (e) { }
+            return {
+                type: "Wait",
+                name: "Bitcoin confirmations",
+                description: "Wait for bitcoin transaction to confirm",
+                pollTimeSeconds: 10,
+                expectedTimeSeconds: confirmationDelay,
+                wait: async (maxWaitTimeSeconds, pollIntervalSeconds, abortSignal, btcConfirmationsCallback) => {
+                    const abortController = (0, Utils_1.extendAbortController)(abortSignal, maxWaitTimeSeconds, "Timed out waiting for bitcoin transaction");
+                    await this.waitForBitcoinTransaction(btcConfirmationsCallback, pollIntervalSeconds, abortController.signal);
+                }
+            };
         }
         if (this._state === SpvFromBTCSwapState.BTC_TX_CONFIRMED) {
             if (this.btcTxConfirmedAt == null ||
                 options?.maxWaitTillAutomaticSettlementSeconds === 0 ||
                 (Date.now() - this.btcTxConfirmedAt) > (options?.maxWaitTillAutomaticSettlementSeconds ?? 60) * 1000) {
-                return [{
-                        name: "Claim",
-                        description: "Manually settle (claim) the swap on the destination smart chain",
-                        chain: this.chainIdentifier,
-                        txs: await this.txsClaim(options?.manualSettlementSmartChainSigner)
-                    }];
+                const signerAddress = await this.wrapper._getSignerAddress(options?.manualSettlementSmartChainSigner);
+                return {
+                    type: "SignSmartChainTransaction",
+                    name: "Settle manually",
+                    description: "Manually settle the swap on the destination smart chain",
+                    chain: this.chainIdentifier,
+                    txs: await this.txsClaim(options?.manualSettlementSmartChainSigner),
+                    submitTransactions: async (txs, abortSignal) => {
+                        const parsedTxs = [];
+                        for (let tx of txs) {
+                            parsedTxs.push(typeof (tx) === "string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
+                        }
+                        const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
+                        await this.waitTillClaimed(undefined, abortSignal);
+                        return txIds;
+                    },
+                    requiredSigner: signerAddress ?? this._getInitiator()
+                };
+            }
+            else {
+                return {
+                    type: "Wait",
+                    name: "Automatic settlement",
+                    description: "Wait for bitcoin transaction to confirm",
+                    pollTimeSeconds: 5,
+                    expectedTimeSeconds: 10,
+                    wait: async (maxWaitTimeSeconds, pollIntervalSeconds, abortSignal) => {
+                        await this.waitTillClaimedOrFronted(maxWaitTimeSeconds ?? options?.maxWaitTillAutomaticSettlementSeconds ?? 60, abortSignal, pollIntervalSeconds);
+                    }
+                };
             }
         }
-        return [];
     }
     //////////////////////////////
     //// Bitcoin tx listener
@@ -1048,11 +1083,11 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
     /**
      * Periodically checks the chain to see whether the swap was finished (claimed or refunded)
      *
-     * @param abortSignal
      * @param interval How often to check (in seconds), default to 5s
+     * @param abortSignal
      * @internal
      */
-    async watchdogWaitTillResult(abortSignal, interval = 5) {
+    async watchdogWaitTillResult(interval = 5, abortSignal) {
         if (this._data == null)
             throw new Error("Cannot await the result before the btc transaction is sent!");
         let status = { type: base_1.SpvWithdrawalStateType.NOT_FOUND };
@@ -1094,11 +1129,12 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
      * @param maxWaitTimeSeconds Maximum time in seconds to wait for the swap to be settled (by default
      *  it waits indefinitely)
      * @param abortSignal Abort signal
+     * @param pollIntervalSeconds How often to poll via the watchdog
      *
      * @returns {boolean} whether the swap was claimed or fronted automatically or not, if the swap was not claimed
      *  the user can claim manually through the {@link claim} function
      */
-    async waitTillClaimedOrFronted(maxWaitTimeSeconds, abortSignal) {
+    async waitTillClaimedOrFronted(maxWaitTimeSeconds, abortSignal, pollIntervalSeconds) {
         if (this._state === SpvFromBTCSwapState.CLAIMED || this._state === SpvFromBTCSwapState.FRONTED)
             return Promise.resolve(true);
         const abortController = (0, Utils_1.extendAbortController)(abortSignal);
@@ -1113,7 +1149,7 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
         let res;
         try {
             res = await Promise.race([
-                this.watchdogWaitTillResult(abortController.signal),
+                this.watchdogWaitTillResult(pollIntervalSeconds, abortController.signal),
                 this.waitTillState(SpvFromBTCSwapState.CLAIMED, "eq", abortController.signal).then(() => 0),
                 this.waitTillState(SpvFromBTCSwapState.FRONTED, "eq", abortController.signal).then(() => 1),
                 this.waitTillState(SpvFromBTCSwapState.FAILED, "eq", abortController.signal).then(() => 2),

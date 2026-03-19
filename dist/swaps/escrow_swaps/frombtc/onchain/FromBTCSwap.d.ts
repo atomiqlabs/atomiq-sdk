@@ -12,7 +12,7 @@ import { IAddressSwap } from "../../../IAddressSwap";
 import { TokenAmount } from "../../../../types/TokenAmount";
 import { BtcToken, SCToken } from "../../../../types/Token";
 import { LoggerType } from "../../../../utils/Logger";
-import { SwapExecutionAction } from "../../../../types/SwapExecutionAction";
+import { SwapExecutionActionSendToAddress, SwapExecutionActionSignPSBT, SwapExecutionActionSignSmartChainTx, SwapExecutionActionWait } from "../../../../types/SwapExecutionAction";
 /**
  * State enum for legacy escrow based Bitcoin -> Smart chain swaps.
  *
@@ -322,58 +322,17 @@ export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromB
      * @param options.skipChecks Skip checks like making sure init signature is still valid and swap
      *  wasn't commited yet (this is handled on swap creation, if you commit right after quoting, you
      *  can use `skipChecks=true`)
-     *
-     * @throws {Error} if the swap or quote is expired, or if triggered in invalid state
-     */
-    txsExecute(options?: {
-        bitcoinFeeRate?: number;
-        bitcoinWallet?: MinimalBitcoinWalletInterface;
-        skipChecks?: boolean;
-    }): Promise<({
-        name: "Commit";
-        description: string;
-        chain: T["ChainId"];
-        txs: T["TX"][];
-    } | {
-        name: "Payment";
-        description: string;
-        chain: "BITCOIN";
-        txs: ({
-            address: string;
-            amount: number;
-            hyperlink: string;
-            type: "ADDRESS";
-        } | {
-            type: "FUNDED_PSBT";
-            psbt: Transaction;
-            psbtHex: string;
-            psbtBase64: string;
-            signInputs: number[];
-            address?: undefined;
-            amount?: undefined;
-            hyperlink?: undefined;
-        })[];
-    })[]>;
-    /**
-     * @inheritDoc
-     *
-     * @param options.bitcoinFeeRate Optional fee rate to use for the created Bitcoin transaction
-     * @param options.bitcoinWallet Bitcoin wallet to use, when provided the function returns a funded
-     *  psbt (`"FUNDED_PSBT"`), if not passed just a bitcoin receive address is returned (`"ADDRESS"`)
-     * @param options.skipChecks Skip checks like making sure init signature is still valid and swap
-     *  wasn't commited yet (this is handled on swap creation, if you commit right after quoting, you
-     *  can use `skipChecks=true`)
      * @param options.manualSettlementSmartChainSigner Optional smart chain signer to create a manual claim (settlement) transaction
      * @param options.maxWaitTillAutomaticSettlementSeconds Maximum time to wait for an automatic settlement after
      *  the bitcoin transaction is confirmed (defaults to 60 seconds)
      */
-    getCurrentActions(options?: {
+    getCurrentAction(options?: {
         bitcoinFeeRate?: number;
         bitcoinWallet?: MinimalBitcoinWalletInterface;
         skipChecks?: boolean;
         manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
         maxWaitTillAutomaticSettlementSeconds?: number;
-    }): Promise<SwapExecutionAction<T>[]>;
+    }): Promise<SwapExecutionActionSendToAddress<false> | SwapExecutionActionSignPSBT<"FUNDED_PSBT"> | SwapExecutionActionWait<"BITCOIN_CONFS" | "SETTLEMENT"> | SwapExecutionActionSignSmartChainTx<T> | undefined>;
     /**
      * @inheritDoc
      *
@@ -417,7 +376,7 @@ export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromB
      * @throws {Error} If swap is in invalid state (must be {@link FromBTCSwapState.BTC_TX_CONFIRMED})
      * @throws {Error} If the LP refunded sooner than we were able to claim
      */
-    waitTillClaimed(maxWaitTimeSeconds?: number, abortSignal?: AbortSignal): Promise<boolean>;
+    waitTillClaimed(maxWaitTimeSeconds?: number, abortSignal?: AbortSignal, pollIntervalSeconds?: number): Promise<boolean>;
     /**
      * @inheritDoc
      */

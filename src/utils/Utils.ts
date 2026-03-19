@@ -89,12 +89,21 @@ export function mapToArray<K, V, Output>(map: Map<K, V>, translator: (key: K, va
  * Creates a new abort controller that will abort if the passed abort signal aborts
  *
  * @param abortSignal
+ * @param timeoutSeconds
+ * @param timeoutMessage
  */
-export function extendAbortController(abortSignal?: AbortSignal) {
+export function extendAbortController(abortSignal?: AbortSignal, timeoutSeconds?: number, timeoutMessage?: string) {
     const _abortController = new AbortController();
     if(abortSignal!=null) {
         abortSignal.throwIfAborted();
         abortSignal.onabort = () => _abortController.abort(abortSignal.reason);
+    }
+    if(timeoutSeconds!=null) {
+        const timeout = setTimeout(
+            () => _abortController.abort(new Error(timeoutMessage ?? "Timed out")),
+            timeoutSeconds * 1000
+        );
+        _abortController.signal.addEventListener("abort", () => clearTimeout(timeout));
     }
     return _abortController;
 }

@@ -253,13 +253,6 @@ export abstract class ISwap<
     }
 
     /**
-     * Returns a list of steps or transactions required to finish and settle the swap
-     *
-     * @param options Additional options for executing the swap
-     */
-    public abstract txsExecute(options?: any): Promise<SwapExecutionAction<T>[]>;
-
-    /**
      * Executes the swap with the provided wallet, the exact arguments for this functions differ for various swap
      *  types. Check the `execute()` function signature in the respective swap class to see the required arguments.
      *
@@ -535,19 +528,11 @@ export abstract class ISwap<
         }
     }
 
-    async forLoopExample() {
-        while(!this.isFinished()) {
-            const actions = await this.getCurrentActions();
-            await actions[0].wait();
-        }
-        // Swap done
-    }
-
     /**
-     * Returns a state-dependent set of actions for the user to execute, or empty array if there is currently
-     *  no action required from the user to execute.
+     * Returns a current state-dependent action for the user to execute, or `undefined` if there is no more action
+     *  required for this swap - this means that the swap is probably finished (either expired, failed or settled).
      */
-    public abstract getCurrentActions(): Promise<SwapExecutionAction<T>[]>;
+    public abstract getCurrentAction(): Promise<SwapExecutionAction<T> | undefined>;
 
     //////////////////////////////
     //// Amounts & fees

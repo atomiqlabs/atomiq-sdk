@@ -39,6 +39,12 @@ export type SwapExecutionActionSendToAddress<Lightning extends boolean = boolean
     waitForTransactions: (maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal) => Promise<string>;
 };
 /**
+ * Type guard for {@link SwapExecutionActionSendToAddress}
+ *
+ * @category Swap Actions
+ */
+export declare function isSwapExecutionActionSendToAddress<Lightning extends boolean = boolean>(obj: any, lightning?: Lightning): obj is SwapExecutionActionSendToAddress<Lightning>;
+/**
  * Swap execution action requiring the user to sign the provided PSBT and then submit it back via the provided
  *  `submitPsbt()` function, has two variations:
  * - `"FUNDED_PSBT"` - A ready to sign PSBT with the inputs populated from the provided bitcoin wallet address
@@ -86,6 +92,12 @@ export type SwapExecutionActionSignPSBT<T extends "FUNDED_PSBT" | "RAW_PSBT" = "
     submitPsbt: (signedPsbt: string | Transaction | (string | Transaction)[]) => Promise<string[]>;
 };
 /**
+ * Type guard for {@link SwapExecutionActionSignPSBT}
+ *
+ * @category Swap Actions
+ */
+export declare function isSwapExecutionActionSignPSBT<T extends "FUNDED_PSBT" | "RAW_PSBT" = "FUNDED_PSBT" | "RAW_PSBT">(obj: any, psbtType?: T): obj is SwapExecutionActionSignPSBT<T>;
+/**
  * Swap execution action requiring the user to sign the provided smart chain transactions, these can then
  *  be either broadcasted manually, or sent via the provided `submitTransactions()` function
  *
@@ -123,6 +135,12 @@ export type SwapExecutionActionSignSmartChainTx<T extends ChainType = ChainType>
     requiredSigner: string;
 };
 /**
+ * Type guard for {@link SwapExecutionActionSignSmartChainTx}
+ *
+ * @category Swap Actions
+ */
+export declare function isSwapExecutionActionSignSmartChainTx<T extends ChainType = ChainType>(obj: any, chainIdentifier?: T["ChainId"] | T["ChainId"][]): obj is SwapExecutionActionSignSmartChainTx<T>;
+/**
  * Swap action indicating that the user should wait for either LP to process the swap, automatic settlement to happen or
  *  until the Bitcoin transaction gets enough confirmations
  *
@@ -157,6 +175,12 @@ export type SwapExecutionActionWait<T extends "LP" | "SETTLEMENT" | "BITCOIN_CON
      */
     pollTimeSeconds: number;
 };
+/**
+ * Type guard for {@link SwapExecutionActionWait}
+ *
+ * @category Swap Actions
+ */
+export declare function isSwapExecutionActionWait<T extends "LP" | "SETTLEMENT" | "BITCOIN_CONFS" = "LP" | "SETTLEMENT" | "BITCOIN_CONFS">(obj: any, waitType?: T): obj is SwapExecutionActionWait<T>;
 /**
  * Swap execution action, a single step in the swapping process
  *

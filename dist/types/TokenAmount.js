@@ -1,7 +1,32 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.toTokenAmount = void 0;
+exports.toTokenAmount = exports.isTokenAmount = void 0;
+const Token_1 = require("./Token");
 const Utils_1 = require("../utils/Utils");
+/**
+ * Type guard for {@link TokenAmount}
+ *
+ * @category Tokens
+ */
+function isTokenAmount(obj, token, known) {
+    const hasExpectedKnownState = known == null
+        ? ((typeof (obj?.rawAmount) === "bigint" && obj?.isUnknown === false) ||
+            (obj?.rawAmount === undefined && obj?.isUnknown === true))
+        : known
+            ? typeof (obj?.rawAmount) === "bigint" && obj?.isUnknown === false
+            : obj?.rawAmount === undefined && obj?.isUnknown === true;
+    return obj != null &&
+        typeof (obj) === "object" &&
+        typeof (obj.amount) === "string" &&
+        typeof (obj._amount) === "number" &&
+        (token == null ? (0, Token_1.isToken)(obj.token) : token.equals(obj.token)) &&
+        typeof (obj.currentUsdValue) === "function" &&
+        typeof (obj.usdValue) === "function" &&
+        (obj.pastUsdValue == null || typeof (obj.pastUsdValue) === "number") &&
+        typeof (obj.toString) === "function" &&
+        hasExpectedKnownState;
+}
+exports.isTokenAmount = isTokenAmount;
 /**
  * Factory function to create a TokenAmount
  *

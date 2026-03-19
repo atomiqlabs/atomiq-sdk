@@ -15,6 +15,7 @@ import { BtcToken, SCToken } from "../../types/Token";
 import { LoggerType } from "../../utils/Logger";
 import { PriceInfoType } from "../../types/PriceInfoType";
 import { SwapExecutionActionSignPSBT, SwapExecutionActionSignSmartChainTx, SwapExecutionActionWait } from "../../types/SwapExecutionAction";
+import { SwapExecutionStepPayment, SwapExecutionStepSettlement } from "../../types/SwapExecutionStep";
 /**
  * State enum for SPV vault (UTXO-controlled vault) based swaps
  * @category Swaps/Bitcoin → Smart chain
@@ -487,6 +488,15 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
         manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
         maxWaitTillAutomaticSettlementSeconds?: number;
     }): Promise<SwapExecutionActionSignPSBT | SwapExecutionActionWait<"BITCOIN_CONFS" | "SETTLEMENT"> | SwapExecutionActionSignSmartChainTx<T> | undefined>;
+    /**
+     * @inheritDoc
+     */
+    getSwapSteps(options?: {
+        maxWaitTillAutomaticSettlementSeconds?: number;
+    }): Promise<[
+        SwapExecutionStepPayment<"BITCOIN">,
+        SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
+    ]>;
     /**
      * Checks whether a bitcoin payment was already made, returns the payment or null when no payment has been made.
      * @internal

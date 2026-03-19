@@ -13,6 +13,7 @@ import { TokenAmount } from "../../../../types/TokenAmount";
 import { BtcToken, SCToken } from "../../../../types/Token";
 import { LoggerType } from "../../../../utils/Logger";
 import { SwapExecutionActionSendToAddress, SwapExecutionActionSignPSBT, SwapExecutionActionSignSmartChainTx, SwapExecutionActionWait } from "../../../../types/SwapExecutionAction";
+import { SwapExecutionStepPayment, SwapExecutionStepSettlement, SwapExecutionStepSetup } from "../../../../types/SwapExecutionStep";
 /**
  * State enum for legacy escrow based Bitcoin -> Smart chain swaps.
  *
@@ -333,6 +334,16 @@ export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromB
         manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
         maxWaitTillAutomaticSettlementSeconds?: number;
     }): Promise<SwapExecutionActionSendToAddress<false> | SwapExecutionActionSignPSBT<"FUNDED_PSBT"> | SwapExecutionActionWait<"BITCOIN_CONFS" | "SETTLEMENT"> | SwapExecutionActionSignSmartChainTx<T> | undefined>;
+    /**
+     * @inheritDoc
+     */
+    getSwapSteps(options?: {
+        maxWaitTillAutomaticSettlementSeconds?: number;
+    }): Promise<[
+        SwapExecutionStepSetup<T["ChainId"]>,
+        SwapExecutionStepPayment<"BITCOIN">,
+        SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
+    ]>;
     /**
      * @inheritDoc
      *

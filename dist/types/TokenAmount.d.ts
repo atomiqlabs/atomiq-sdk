@@ -61,6 +61,12 @@ export type TokenAmount<T extends Token = Token, Known extends boolean = boolean
     isUnknown: Known extends true ? false : true;
 };
 /**
+ * Type guard for {@link TokenAmount}
+ *
+ * @category Tokens
+ */
+export declare function isTokenAmount<T extends Token = Token, Known extends boolean = boolean>(obj: any, token?: T, known?: Known): obj is TokenAmount<T, Known>;
+/**
  * Factory function to create a TokenAmount
  *
  * @category Tokens

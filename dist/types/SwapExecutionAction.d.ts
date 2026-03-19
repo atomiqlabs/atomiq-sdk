@@ -186,4 +186,4 @@ export declare function isSwapExecutionActionWait<T extends "LP" | "SETTLEMENT" 
  *
  * @category Swap Actions
  */
-export type SwapExecutionAction<T extends ChainType> = SwapExecutionActionSendToAddress | SwapExecutionActionSignPSBT | SwapExecutionActionSignSmartChainTx<T> | SwapExecutionActionWait;
+export type SwapExecutionAction = SwapExecutionActionSendToAddress | SwapExecutionActionSignPSBT | SwapExecutionActionSignSmartChainTx | SwapExecutionActionWait;

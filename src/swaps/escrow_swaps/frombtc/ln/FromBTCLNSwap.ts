@@ -700,14 +700,14 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
 
         switch(this._state) {
             case FromBTCLNSwapState.PR_CREATED:
-                lightningPaymentStatus = await this._verifyQuoteValid() ? "awaiting" : "expired";
+                lightningPaymentStatus = await this._verifyQuoteValid() ? "awaiting" : "soft_expired";
                 break;
             case FromBTCLNSwapState.QUOTE_SOFT_EXPIRED:
                 if(this.signatureData==null) {
-                    lightningPaymentStatus = "expired";
+                    lightningPaymentStatus = "soft_expired";
                 } else {
                     lightningPaymentStatus = "confirmed";
-                    destinationSettlementStatus = "expired";
+                    destinationSettlementStatus = "soft_expired";
                 }
                 break;
             case FromBTCLNSwapState.PR_PAID:

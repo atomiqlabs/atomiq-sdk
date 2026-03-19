@@ -14,7 +14,10 @@ function isSwapExecutionStepSetup(obj, chain) {
         (chain == null || obj.chain === chain) &&
         typeof (obj.title) === "string" &&
         typeof (obj.description) === "string" &&
-        (obj.status === "awaiting" || obj.status === "completed" || obj.status === "expired");
+        (obj.status === "awaiting" ||
+            obj.status === "completed" ||
+            obj.status === "soft_expired" ||
+            obj.status === "expired");
 }
 exports.isSwapExecutionStepSetup = isSwapExecutionStepSetup;
 /**
@@ -34,6 +37,7 @@ function isSwapExecutionStepPayment(obj, chain) {
             obj.status === "awaiting" ||
             obj.status === "received" ||
             obj.status === "confirmed" ||
+            obj.status === "soft_expired" ||
             obj.status === "expired") &&
         (obj.confirmations == null ||
             (typeof (obj.confirmations) === "object" &&
@@ -60,6 +64,7 @@ function isSwapExecutionStepSettlement(obj, chain) {
             obj.status === "awaiting_automatic" ||
             obj.status === "awaiting_manual" ||
             obj.status === "soft_settled" ||
+            obj.status === "soft_expired" ||
             obj.status === "settled" ||
             obj.status === "expired");
 }

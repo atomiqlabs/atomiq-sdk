@@ -981,9 +981,11 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
 
         switch(this._state) {
             case FromBTCLNAutoSwapState.PR_CREATED:
-                lightningPaymentStatus = await this._verifyQuoteValid() ? "awaiting" : "expired";
+                lightningPaymentStatus = await this._verifyQuoteValid() ? "awaiting" : "soft_expired";
                 break;
             case FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED:
+                lightningPaymentStatus = "soft_expired";
+                break;
             case FromBTCLNAutoSwapState.QUOTE_EXPIRED:
                 lightningPaymentStatus = "expired";
                 break;

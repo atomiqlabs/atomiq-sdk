@@ -848,7 +848,7 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
         }
         if (this._state === SpvFromBTCSwapState.SIGNED || this._state === SpvFromBTCSwapState.POSTED || this._state === SpvFromBTCSwapState.BROADCASTED) {
             let confirmationDelay = -1;
-            if (this._data) {
+            if (this._data && this._state === SpvFromBTCSwapState.BROADCASTED) {
                 const result = await this.wrapper._btcRpc.getConfirmationDelay(this._data.btcTx, this.getRequiredConfirmationsCount());
                 if (result != null)
                     confirmationDelay = result;
@@ -901,6 +901,105 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
                 };
             }
         }
+    }
+    /**
+     * @inheritDoc
+     */
+    async getSwapSteps(options) {
+        let confirmations;
+        let bitcoinPaymentStatus = "inactive";
+        let destinationSettlementStatus = "inactive";
+        switch (this._state) {
+            case SpvFromBTCSwapState.QUOTE_EXPIRED:
+            case SpvFromBTCSwapState.DECLINED:
+            case SpvFromBTCSwapState.FAILED:
+                bitcoinPaymentStatus = "expired";
+                destinationSettlementStatus = "inactive";
+                break;
+            case SpvFromBTCSwapState.CREATED:
+                bitcoinPaymentStatus = await this._verifyQuoteValid() ? "awaiting" : "expired";
+                destinationSettlementStatus = "inactive";
+                break;
+            case SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED:
+            case SpvFromBTCSwapState.SIGNED:
+            case SpvFromBTCSwapState.POSTED:
+            case SpvFromBTCSwapState.BROADCASTED:
+            case SpvFromBTCSwapState.FRONTED:
+                let state = this._state; // Snapshot state before async actions
+                const bitcoinPayment = await this.getBitcoinPayment();
+                let knownBitcoinPaymentStatus;
+                if (bitcoinPayment != null) {
+                    if (bitcoinPayment.confirmations >= bitcoinPayment.targetConfirmations) {
+                        knownBitcoinPaymentStatus = "confirmed";
+                    }
+                    else if (this._data != null) {
+                        const result = await this.wrapper._btcRpc.getConfirmationDelay(this._data?.btcTx, bitcoinPayment.targetConfirmations);
+                        confirmations = {
+                            current: bitcoinPayment.confirmations,
+                            target: bitcoinPayment.targetConfirmations,
+                            etaSeconds: result ?? -1
+                        };
+                        knownBitcoinPaymentStatus = "received";
+                    }
+                }
+                if (state === SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED)
+                    bitcoinPaymentStatus = knownBitcoinPaymentStatus ?? "expired";
+                if (state === SpvFromBTCSwapState.POSTED || state === SpvFromBTCSwapState.SIGNED)
+                    bitcoinPaymentStatus = knownBitcoinPaymentStatus ?? "awaiting";
+                if (state === SpvFromBTCSwapState.BROADCASTED)
+                    bitcoinPaymentStatus = knownBitcoinPaymentStatus ?? "received";
+                destinationSettlementStatus = "inactive";
+                if (state === SpvFromBTCSwapState.FRONTED) {
+                    bitcoinPaymentStatus = knownBitcoinPaymentStatus ?? "received";
+                    destinationSettlementStatus = "settled";
+                }
+                break;
+            case SpvFromBTCSwapState.BTC_TX_CONFIRMED:
+                bitcoinPaymentStatus = "confirmed";
+                if (this.btcTxConfirmedAt == null ||
+                    options?.maxWaitTillAutomaticSettlementSeconds === 0 ||
+                    (Date.now() - this.btcTxConfirmedAt) > (options?.maxWaitTillAutomaticSettlementSeconds ?? 60) * 1000) {
+                    destinationSettlementStatus = "awaiting_manual";
+                }
+                else {
+                    destinationSettlementStatus = "awaiting_automatic";
+                }
+                break;
+            case SpvFromBTCSwapState.CLAIMED:
+                bitcoinPaymentStatus = "confirmed";
+                destinationSettlementStatus = "settled";
+                break;
+            case SpvFromBTCSwapState.CLOSED:
+                bitcoinPaymentStatus = "confirmed";
+                destinationSettlementStatus = "expired";
+                break;
+        }
+        if (bitcoinPaymentStatus === "confirmed") {
+            confirmations = {
+                current: this.getRequiredConfirmationsCount(),
+                target: this.getRequiredConfirmationsCount(),
+                etaSeconds: 0
+            };
+        }
+        return [
+            {
+                type: "Payment",
+                side: "source",
+                chain: "BITCOIN",
+                title: "Bitcoin payment",
+                description: "Sign and submit the Bitcoin swap PSBT, then wait for the bitcoin transaction to confirm",
+                status: bitcoinPaymentStatus,
+                confirmations
+            },
+            {
+                type: "Settlement",
+                side: "destination",
+                chain: this.chainIdentifier,
+                title: "Destination settlement",
+                description: `Wait for automatic settlement on the ${this.chainIdentifier} side, or settle manually if it takes too long`,
+                status: destinationSettlementStatus
+            }
+        ];
     }
     //////////////////////////////
     //// Bitcoin tx listener

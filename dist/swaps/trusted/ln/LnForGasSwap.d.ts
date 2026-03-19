@@ -9,6 +9,7 @@ import { TokenAmount } from "../../../types/TokenAmount";
 import { BtcToken, SCToken } from "../../../types/Token";
 import { LoggerType } from "../../../utils/Logger";
 import { SwapExecutionActionSendToAddress, SwapExecutionActionWait } from "../../../types/SwapExecutionAction";
+import { SwapExecutionStepPayment, SwapExecutionStepSettlement } from "../../../types/SwapExecutionStep";
 /**
  * State enum for trusted Lightning gas swaps
  *
@@ -217,6 +218,10 @@ export declare class LnForGasSwap<T extends ChainType = ChainType> extends ISwap
      * @inheritDoc
      */
     getCurrentAction(): Promise<SwapExecutionActionSendToAddress<true> | SwapExecutionActionWait<"LP"> | undefined>;
+    getSwapSteps(): Promise<[
+        SwapExecutionStepPayment<"LIGHTNING">,
+        SwapExecutionStepSettlement<T["ChainId"], never>
+    ]>;
     /**
      * Queries the intermediary (LP) node for the state of the swap
      *

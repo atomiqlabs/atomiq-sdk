@@ -78,6 +78,7 @@ export * from "./types/SwapStateInfo";
 export * from "./types/AmountData";
 export * from "./types/CustomPriceFunction";
 export * from "./types/SwapExecutionAction";
+export * from "./types/SwapExecutionStep";
 export * from "./types/SwapWithSigner";
 export * from "./types/Token";
 export * from "./types/TokenAmount";

@@ -13,6 +13,7 @@ import {SwapExecutionAction} from "../types/SwapExecutionAction";
 import {LoggerType} from "../utils/Logger";
 import {isPriceInfoType, PriceInfoType} from "../types/PriceInfoType";
 import {SwapStateInfo} from "../types/SwapStateInfo";
+import {SwapExecutionStep} from "../types/SwapExecutionStep";
 
 /**
  * Initialization data for creating a swap
@@ -523,8 +524,21 @@ export abstract class ISwap<
     /**
      * Returns a current state-dependent action for the user to execute, or `undefined` if there is no more action
      *  required for this swap - this means that the swap is probably finished (either expired, failed or settled).
+     *
+     * @param options Optional options argument for the additional action context (i.e. passing bitcoin wallet info to
+     *  get funded PSBTs or passing the externally-generated swap secret), see the actual type in the respective swap
+     *  classes
      */
-    public abstract getCurrentAction(): Promise<SwapExecutionAction<T> | undefined>;
+    public abstract getCurrentAction(options?: any): Promise<SwapExecutionAction<T> | undefined>;
+
+    /**
+     * Returns a list of execution steps the user has to go through for a given swap, to see the possible execution
+     *  steps check out {@link SwapExecutionStep}.
+     *
+     * @param options Optional options argument for the additional steps context (i.e. automatic settlement timeout),
+     *  see the actual type in the respective swap classes
+     */
+    public abstract getSwapSteps(options?: any): Promise<SwapExecutionStep[]>;
 
     //////////////////////////////
     //// Amounts & fees

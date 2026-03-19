@@ -269,6 +269,10 @@ export declare class OnchainForGasSwap<T extends ChainType = ChainType> extends 
         bitcoinWallet?: MinimalBitcoinWalletInterface;
     }): Promise<never>;
     /**
+     * @inheritDoc
+     */
+    getSwapSteps(): Promise<never>;
+    /**
      * @remark Not supported
      */
     execute(): Promise<boolean>;

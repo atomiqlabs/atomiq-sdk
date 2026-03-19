@@ -151,6 +151,7 @@ __exportStar(require("./types/SwapStateInfo"), exports);
 __exportStar(require("./types/AmountData"), exports);
 __exportStar(require("./types/CustomPriceFunction"), exports);
 __exportStar(require("./types/SwapExecutionAction"), exports);
+__exportStar(require("./types/SwapExecutionStep"), exports);
 __exportStar(require("./types/SwapWithSigner"), exports);
 __exportStar(require("./types/Token"), exports);
 __exportStar(require("./types/TokenAmount"), exports);

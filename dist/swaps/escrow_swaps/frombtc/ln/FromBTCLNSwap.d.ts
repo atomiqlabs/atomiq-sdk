@@ -14,6 +14,7 @@ import { BtcToken, SCToken } from "../../../../types/Token";
 import { LoggerType } from "../../../../utils/Logger";
 import { LNURLWithdraw } from "../../../../types/lnurl/LNURLWithdraw";
 import { SwapExecutionActionSendToAddress, SwapExecutionActionSignSmartChainTx } from "../../../../types/SwapExecutionAction";
+import { SwapExecutionStepPayment, SwapExecutionStepSettlement } from "../../../../types/SwapExecutionStep";
 /**
  * State enum for legacy Lightning -> Smart chain swaps
  * @category Swaps/Legacy/Lightning → Smart chain
@@ -301,6 +302,13 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
         skipChecks?: boolean;
         secret?: string;
     }): Promise<SwapExecutionActionSendToAddress<true> | SwapExecutionActionSignSmartChainTx<T> | undefined>;
+    /**
+     * @inheritDoc
+     */
+    getSwapSteps(): Promise<[
+        SwapExecutionStepPayment<"LIGHTNING">,
+        SwapExecutionStepSettlement<T["ChainId"], "awaiting_manual">
+    ]>;
     /**
      * Checks whether the LP received the LN payment and we can continue by committing & claiming the HTLC on-chain
      *

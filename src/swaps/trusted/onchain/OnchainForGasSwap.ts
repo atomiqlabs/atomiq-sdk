@@ -568,6 +568,13 @@ export class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T,
     }
 
     /**
+     * @inheritDoc
+     */
+    async getSwapSteps(): Promise<never> {
+        throw new Error("Not supported");
+    }
+
+    /**
      * @remark Not supported
      */
     async execute(): Promise<boolean> {

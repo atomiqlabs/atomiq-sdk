@@ -17,6 +17,7 @@ import { LoggerType } from "../../../../utils/Logger";
 import { LNURLWithdraw } from "../../../../types/lnurl/LNURLWithdraw";
 import { PriceInfoType } from "../../../../types/PriceInfoType";
 import { SwapExecutionActionSendToAddress, SwapExecutionActionSignSmartChainTx, SwapExecutionActionWait } from "../../../../types/SwapExecutionAction";
+import { SwapExecutionStepPayment, SwapExecutionStepSettlement } from "../../../../types/SwapExecutionStep";
 /**
  * State enum for FromBTCLNAuto swaps
  * @category Swaps/Lightning → Smart chain
@@ -408,6 +409,15 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
         maxWaitTillAutomaticSettlementSeconds?: number;
         secret?: string;
     }): Promise<SwapExecutionActionSendToAddress<true> | SwapExecutionActionWait<"LP" | "SETTLEMENT"> | SwapExecutionActionSignSmartChainTx<T> | undefined>;
+    /**
+     * @inheritDoc
+     */
+    getSwapSteps(options?: {
+        maxWaitTillAutomaticSettlementSeconds?: number;
+    }): Promise<[
+        SwapExecutionStepPayment<"LIGHTNING">,
+        SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
+    ]>;
     /**
      * Checks whether the LP received the LN payment
      *

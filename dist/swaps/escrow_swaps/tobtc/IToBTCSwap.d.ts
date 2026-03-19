@@ -8,6 +8,7 @@ import { FeeType } from "../../../enums/FeeType";
 import { TokenAmount } from "../../../types/TokenAmount";
 import { BtcToken, SCToken } from "../../../types/Token";
 import { SwapExecutionActionSignSmartChainTx, SwapExecutionActionWait } from "../../../types/SwapExecutionAction";
+import { SwapExecutionStepPayment, SwapExecutionStepRefund, SwapExecutionStepSettlement } from "../../../types/SwapExecutionStep";
 export type IToBTCSwapInit<T extends SwapData> = IEscrowSelfInitSwapInit<T> & {
     signatureData?: SignatureData;
     data: T;
@@ -274,6 +275,14 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
         skipChecks?: boolean;
         refundSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
     }): Promise<SwapExecutionActionSignSmartChainTx<T> | SwapExecutionActionWait<"LP"> | undefined>;
+    /**
+     * @inheritDoc
+     */
+    getSwapSteps(): Promise<[
+        SwapExecutionStepPayment<T["ChainId"]>,
+        SwapExecutionStepSettlement<"BITCOIN" | "LIGHTNING", "soft_settled">,
+        SwapExecutionStepRefund<T["ChainId"]>
+    ]>;
     /**
      * @inheritDoc
      *

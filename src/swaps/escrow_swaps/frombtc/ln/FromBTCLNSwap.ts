@@ -35,6 +35,10 @@ import {
     SwapExecutionActionSendToAddress,
     SwapExecutionActionSignSmartChainTx
 } from "../../../../types/SwapExecutionAction";
+import {
+    SwapExecutionStepPayment,
+    SwapExecutionStepSettlement
+} from "../../../../types/SwapExecutionStep";
 
 /**
  * State enum for legacy Lightning -> Smart chain swaps
@@ -682,6 +686,72 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
         }
 
         return undefined;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    async getSwapSteps(): Promise<[
+        SwapExecutionStepPayment<"LIGHTNING">,
+        SwapExecutionStepSettlement<T["ChainId"], "awaiting_manual">
+    ]> {
+        let lightningPaymentStatus: SwapExecutionStepPayment<"LIGHTNING">["status"] = "inactive";
+        let destinationSettlementStatus: SwapExecutionStepSettlement<T["ChainId"]>["status"] = "inactive";
+
+        switch(this._state) {
+            case FromBTCLNSwapState.PR_CREATED:
+                lightningPaymentStatus = await this._verifyQuoteValid() ? "awaiting" : "expired";
+                break;
+            case FromBTCLNSwapState.QUOTE_SOFT_EXPIRED:
+                if(this.signatureData==null) {
+                    lightningPaymentStatus = "expired";
+                } else {
+                    lightningPaymentStatus = "confirmed";
+                    destinationSettlementStatus = "expired";
+                }
+                break;
+            case FromBTCLNSwapState.PR_PAID:
+            case FromBTCLNSwapState.CLAIM_COMMITED:
+                lightningPaymentStatus = "confirmed";
+                destinationSettlementStatus = "awaiting_manual";
+                break;
+            case FromBTCLNSwapState.CLAIM_CLAIMED:
+                lightningPaymentStatus = "confirmed";
+                destinationSettlementStatus = "settled";
+                break;
+            case FromBTCLNSwapState.EXPIRED:
+            case FromBTCLNSwapState.FAILED:
+                lightningPaymentStatus = "confirmed";
+                destinationSettlementStatus = "expired";
+                break;
+            case FromBTCLNSwapState.QUOTE_EXPIRED:
+                if(this.signatureData==null) {
+                    lightningPaymentStatus = "expired";
+                } else {
+                    lightningPaymentStatus = "confirmed";
+                    destinationSettlementStatus = "expired";
+                }
+                break;
+        }
+
+        return [
+            {
+                type: "Payment",
+                side: "source",
+                chain: "LIGHTNING",
+                title: "Lightning payment",
+                description: "Pay the Lightning network invoice to initiate the swap",
+                status: lightningPaymentStatus
+            },
+            {
+                type: "Settlement",
+                side: "destination",
+                chain: this.chainIdentifier,
+                title: "Destination settlement",
+                description: `Manually settle the swap on the ${this.chainIdentifier} side`,
+                status: destinationSettlementStatus
+            }
+        ];
     }
 
 

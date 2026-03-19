@@ -4,7 +4,7 @@ const apiFunctionDict = {
   createSwap: {
     type: "POST",
     callback: (requestBody: any, queryParams: any) => {
-      ...
+      // ...
     },
     inputSchema: {
       inputToken: {
@@ -13,7 +13,7 @@ const apiFunctionDict = {
       },
       outputToken: "string",
       amount: "string",
-      ...
+      // ...
     }
   },
   status: {
@@ -27,5 +27,5 @@ const apiFunctionDict = {
 
 // Example boilerplate
 for(let key in apiFunctionDict) {
-  app.post("/"+key, (req, res) => apiFunctionDict[key].callback(req.body, req.query).then(response => res.json(response)));
+  // app.post("/"+key, (req, res) => apiFunctionDict[key].callback(req.body, req.query).then(response => res.json(response)));
 }

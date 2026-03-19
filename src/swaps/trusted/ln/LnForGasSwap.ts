@@ -17,6 +17,10 @@ import {
     SwapExecutionActionSendToAddress,
     SwapExecutionActionWait
 } from "../../../types/SwapExecutionAction";
+import {
+    SwapExecutionStepPayment,
+    SwapExecutionStepSettlement
+} from "../../../types/SwapExecutionStep";
 
 /**
  * State enum for trusted Lightning gas swaps
@@ -478,6 +482,54 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
         }
 
         return undefined;
+    }
+
+    async getSwapSteps(): Promise<[
+        SwapExecutionStepPayment<"LIGHTNING">,
+        SwapExecutionStepSettlement<T["ChainId"], never>
+    ]> {
+        let lightningPaymentStatus: SwapExecutionStepPayment<"LIGHTNING">["status"] = "inactive";
+        let destinationSettlementStatus: SwapExecutionStepSettlement<T["ChainId"]>["status"] = "inactive";
+
+        switch(this._state) {
+            case LnForGasSwapState.PR_CREATED:
+                lightningPaymentStatus = await this._verifyQuoteValid() ? "awaiting" : "expired";
+                break;
+            case LnForGasSwapState.EXPIRED:
+                lightningPaymentStatus = "expired";
+                break;
+            case LnForGasSwapState.PR_PAID:
+                lightningPaymentStatus = "confirmed";
+                destinationSettlementStatus = "waiting_lp";
+                break;
+            case LnForGasSwapState.FAILED:
+                lightningPaymentStatus = "confirmed";
+                destinationSettlementStatus = "expired";
+                break;
+            case LnForGasSwapState.FINISHED:
+                lightningPaymentStatus = "confirmed";
+                destinationSettlementStatus = "settled";
+                break;
+        }
+
+        return [
+            {
+                type: "Payment",
+                side: "source",
+                chain: "LIGHTNING",
+                title: "Lightning payment",
+                description: "Pay the Lightning network invoice to initiate the swap",
+                status: lightningPaymentStatus
+            },
+            {
+                type: "Settlement",
+                side: "destination",
+                chain: this.chainIdentifier,
+                title: "Destination payout",
+                description: "Wait for the intermediary to send the gas tokens on the destination smart chain",
+                status: destinationSettlementStatus
+            }
+        ];
     }
 
     /**

@@ -14,9 +14,10 @@ export type SwapExecutionStepSetup<Chain extends string = string> = {
      *
      * - `awaiting`: The setup transaction or action still needs to be performed.
      * - `completed`: The setup was already completed successfully.
+     * - `soft_expired`: The setup should be treated as expired by the user, but it may still progress because of in-flight or background processing.
      * - `expired`: The setup can no longer be performed because the swap expired.
      */
-    status: "awaiting" | "completed" | "expired";
+    status: "awaiting" | "completed" | "soft_expired" | "expired";
 };
 /**
  * Type guard for {@link SwapExecutionStepSetup}
@@ -42,9 +43,10 @@ export type SwapExecutionStepPayment<Chain extends string = string> = {
      * - `awaiting`: The payment is expected, but no payment transaction is known yet.
      * - `received`: A payment transaction is known, but it is not yet fully confirmed.
      * - `confirmed`: The payment was confirmed and fully satisfies the swap requirements.
+     * - `soft_expired`: The payment should be treated as expired by the user, but it may still progress because of in-flight or background processing.
      * - `expired`: The payment step can no longer be completed because the swap expired.
      */
-    status: "inactive" | "awaiting" | "received" | "confirmed" | "expired";
+    status: "inactive" | "awaiting" | "received" | "confirmed" | "soft_expired" | "expired";
     /**
      * Optional confirmation progress for Bitcoin on-chain payments.
      */
@@ -90,10 +92,11 @@ export type SwapExecutionStepSettlement<Chain extends string = string, Additiona
      * - `awaiting_automatic`: The swap is waiting for automatic settlement by watchtowers.
      * - `awaiting_manual`: The swap is ready for manual destination-side settlement by the user.
      * - `soft_settled`: The user already received the payout, but the swap is not yet fully finalized on the source side.
+     * - `soft_expired`: The settlement should be treated as expired by the user, but it may still progress because of in-flight or background processing.
      * - `settled`: The settlement completed successfully.
      * - `expired`: Settlement is no longer possible because the swap expired or failed.
      */
-    status: "inactive" | "waiting_lp" | "settled" | "expired" | AdditionalStatuses;
+    status: "inactive" | "waiting_lp" | "soft_expired" | "settled" | "expired" | AdditionalStatuses;
 };
 /**
  * Type guard for {@link SwapExecutionStepSettlement}

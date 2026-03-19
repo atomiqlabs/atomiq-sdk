@@ -798,9 +798,11 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
                 destinationSetupStatus =
                     (await this._verifyQuoteValid()) && this.getTimeoutTime() >= Date.now() ?
                         "awaiting" :
-                        "expired";
+                        "soft_expired";
                 break;
             case FromBTCSwapState.QUOTE_SOFT_EXPIRED:
+                destinationSetupStatus = "soft_expired";
+                break;
             case FromBTCSwapState.QUOTE_EXPIRED:
                 destinationSetupStatus = "expired";
                 break;

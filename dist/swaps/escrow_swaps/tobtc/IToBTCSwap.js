@@ -478,9 +478,11 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
         let refundStatus = "inactive";
         switch (this._state) {
             case ToBTCSwapState.CREATED:
-                sourcePaymentStatus = (await this._verifyQuoteValid()) ? "awaiting" : "expired";
+                sourcePaymentStatus = (await this._verifyQuoteValid()) ? "awaiting" : "soft_expired";
                 break;
             case ToBTCSwapState.QUOTE_SOFT_EXPIRED:
+                sourcePaymentStatus = "soft_expired";
+                break;
             case ToBTCSwapState.QUOTE_EXPIRED:
                 sourcePaymentStatus = "expired";
                 break;

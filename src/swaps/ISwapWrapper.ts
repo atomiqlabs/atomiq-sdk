@@ -1,4 +1,4 @@
-import {ChainEvent, ChainType} from "@atomiqlabs/base";
+import {ChainEvent, ChainType, isAbstractSigner} from "@atomiqlabs/base";
 import {EventEmitter} from "events";
 import {ISwap} from "./ISwap";
 import {ISwapPrice} from "../prices/abstract/ISwapPrice";
@@ -526,6 +526,23 @@ export abstract class ISwapWrapper<
      */
     _getPendingSwap(id: string): D["Swap"] | null {
         return this.pendingSwaps.get(id)?.deref() ?? null;
+    }
+
+    /**
+     * @internal
+     */
+    async _getSignerAddress(signer?: string | T["Signer"] | T["NativeSigner"]): Promise<string | undefined> {
+        let address: string | undefined = undefined;
+        if(signer!=null) {
+            if (typeof (signer) === "string") {
+                address = signer;
+            } else if (isAbstractSigner(signer)) {
+                address = signer.getAddress();
+            } else {
+                address = (await this._chain.wrapSigner(signer)).getAddress();
+            }
+        }
+        return address;
     }
 
 }

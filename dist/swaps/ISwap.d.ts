@@ -151,12 +151,6 @@ export declare abstract class ISwap<T extends ChainType = ChainType, D extends S
      */
     protected waitTillState(targetState: S, type?: "eq" | "gte" | "neq", abortSignal?: AbortSignal): Promise<void>;
     /**
-     * Returns a list of steps or transactions required to finish and settle the swap
-     *
-     * @param options Additional options for executing the swap
-     */
-    abstract txsExecute(options?: any): Promise<SwapExecutionAction<T>[]>;
-    /**
      * Executes the swap with the provided wallet, the exact arguments for this functions differ for various swap
      *  types. Check the `execute()` function signature in the respective swap class to see the required arguments.
      *
@@ -299,10 +293,10 @@ export declare abstract class ISwap<T extends ChainType = ChainType, D extends S
      */
     getStateInfo(): SwapStateInfo<S>;
     /**
-     * Returns a state-dependent set of actions for the user to execute, or empty array if there is currently
-     *  no action required from the user to execute.
+     * Returns a current state-dependent action for the user to execute, or `undefined` if there is no more action
+     *  required for this swap - this means that the swap is probably finished (either expired, failed or settled).
      */
-    abstract getCurrentActions(): Promise<SwapExecutionAction<T>[]>;
+    abstract getCurrentAction(): Promise<SwapExecutionAction<T> | undefined>;
     /**
      * Returns output amount of the swap, user receives this much
      */

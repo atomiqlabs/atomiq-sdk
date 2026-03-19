@@ -14,7 +14,7 @@ import { TokenAmount } from "../../types/TokenAmount";
 import { BtcToken, SCToken } from "../../types/Token";
 import { LoggerType } from "../../utils/Logger";
 import { PriceInfoType } from "../../types/PriceInfoType";
-import { SwapExecutionAction, SwapExecutionActionBitcoin } from "../../types/SwapExecutionAction";
+import { SwapExecutionActionSignPSBT, SwapExecutionActionSignSmartChainTx, SwapExecutionActionWait } from "../../types/SwapExecutionAction";
 /**
  * State enum for SPV vault (UTXO-controlled vault) based swaps
  * @category Swaps/Bitcoin → Smart chain
@@ -475,31 +475,16 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
      *  if not provided a raw PSBT is returned instead which necessitates the implementor to manually add
      *  inputs to the bitcoin transaction and **set the nSequence field of the 2nd input** (input 1 -
      *  indexing from 0) to the value returned in `in1sequence`
-     */
-    txsExecute(options?: {
-        bitcoinFeeRate?: number;
-        bitcoinWallet?: MinimalBitcoinWalletInterface;
-    }): Promise<[
-        SwapExecutionActionBitcoin<"RAW_PSBT" | "FUNDED_PSBT">
-    ]>;
-    /**
-     * @inheritDoc
-     *
-     * @param options.bitcoinFeeRate Optional fee rate to use for the created Bitcoin transaction
-     * @param options.bitcoinWallet Optional bitcoin wallet address specification to return a funded PSBT,
-     *  if not provided a raw PSBT is returned instead which necessitates the implementor to manually add
-     *  inputs to the bitcoin transaction and **set the nSequence field of the 2nd input** (input 1 -
-     *  indexing from 0) to the value returned in `in1sequence`
      * @param options.manualSettlementSmartChainSigner Optional smart chain signer to create a manual claim (settlement) transaction
      * @param options.maxWaitTillAutomaticSettlementSeconds Maximum time to wait for an automatic settlement after
      *  the bitcoin transaction is confirmed (defaults to 60 seconds)
      */
-    getCurrentActions(options?: {
+    getCurrentAction(options?: {
         bitcoinFeeRate?: number;
         bitcoinWallet?: MinimalBitcoinWalletInterface;
         manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
         maxWaitTillAutomaticSettlementSeconds?: number;
-    }): Promise<SwapExecutionAction<T>[]>;
+    }): Promise<SwapExecutionActionSignPSBT | SwapExecutionActionWait<"BITCOIN_CONFS" | "SETTLEMENT"> | SwapExecutionActionSignSmartChainTx<T> | undefined>;
     /**
      * Checks whether a bitcoin payment was already made, returns the payment or null when no payment has been made.
      * @internal
@@ -547,11 +532,11 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
     /**
      * Periodically checks the chain to see whether the swap was finished (claimed or refunded)
      *
-     * @param abortSignal
      * @param interval How often to check (in seconds), default to 5s
+     * @param abortSignal
      * @internal
      */
-    protected watchdogWaitTillResult(abortSignal?: AbortSignal, interval?: number): Promise<SpvWithdrawalClaimedState | SpvWithdrawalFrontedState | SpvWithdrawalClosedState>;
+    protected watchdogWaitTillResult(interval?: number, abortSignal?: AbortSignal): Promise<SpvWithdrawalClaimedState | SpvWithdrawalFrontedState | SpvWithdrawalClosedState>;
     /**
      * Waits till the swap is successfully settled (claimed), should be called after sending the claim (settlement)
      *  transactions manually to wait till the SDK processes the settlement and updates the swap state accordingly.
@@ -572,11 +557,12 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
      * @param maxWaitTimeSeconds Maximum time in seconds to wait for the swap to be settled (by default
      *  it waits indefinitely)
      * @param abortSignal Abort signal
+     * @param pollIntervalSeconds How often to poll via the watchdog
      *
      * @returns {boolean} whether the swap was claimed or fronted automatically or not, if the swap was not claimed
      *  the user can claim manually through the {@link claim} function
      */
-    waitTillClaimedOrFronted(maxWaitTimeSeconds?: number, abortSignal?: AbortSignal): Promise<boolean>;
+    waitTillClaimedOrFronted(maxWaitTimeSeconds?: number, abortSignal?: AbortSignal, pollIntervalSeconds?: number): Promise<boolean>;
     /**
      * Waits till the bitcoin transaction confirms and swap settled on the destination chain
      *

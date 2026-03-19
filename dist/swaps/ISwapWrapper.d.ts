@@ -250,4 +250,8 @@ export declare abstract class ISwapWrapper<T extends ChainType, D extends SwapTy
      * @internal
      */
     _getPendingSwap(id: string): D["Swap"] | null;
+    /**
+     * @internal
+     */
+    _getSignerAddress(signer?: string | T["Signer"] | T["NativeSigner"]): Promise<string | undefined>;
 }

@@ -657,30 +657,6 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
         throw new Error("Invalid state reached!");
     }
     /**
-     * @inheritDoc
-     */
-    async txsExecute() {
-        if (this._state === FromBTCLNAutoSwapState.PR_CREATED) {
-            if (!await this._verifyQuoteValid())
-                throw new Error("Quote already expired or close to expiry!");
-            return [
-                {
-                    name: "Payment",
-                    description: "Initiates the swap by paying up the lightning network invoice",
-                    chain: "LIGHTNING",
-                    txs: [
-                        {
-                            type: "BOLT11_PAYMENT_REQUEST",
-                            address: this.getAddress(),
-                            hyperlink: this.getHyperlink()
-                        }
-                    ]
-                }
-            ];
-        }
-        throw new Error("Invalid swap state to obtain execution txns, required PR_CREATED");
-    }
-    /**
      *
      * @param options.manualSettlementSmartChainSigner Optional smart chain signer to create a manual claim (settlement) transaction
      * @param options.maxWaitTillAutomaticSettlementSeconds Maximum time to wait for an automatic settlement after
@@ -688,28 +664,98 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
      * @param options.secret A swap secret to broadcast to watchtowers, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      */
-    async getCurrentActions(options) {
+    async getCurrentAction(options) {
         if (options?.secret != null)
             this.setSecretPreimage(options.secret);
         if (this._state === FromBTCLNAutoSwapState.PR_CREATED) {
-            try {
-                return await this.txsExecute();
-            }
-            catch (e) { }
+            if (!await this._verifyQuoteValid())
+                return undefined;
+            if (this.pr == null || !this.pr.toLowerCase().startsWith("ln"))
+                return undefined;
+            return {
+                type: "SendToAddress",
+                name: "Deposit on Lightning",
+                description: "Pay the lightning network invoice to initiate the swap",
+                chain: "LIGHTNING",
+                txs: [{
+                        type: "BOLT11_PAYMENT_REQUEST",
+                        address: this.getAddress(),
+                        hyperlink: this.getHyperlink(),
+                        amount: this.getInput()
+                    }],
+                waitForTransactions: async (maxWaitTimeSeconds, pollIntervalSeconds, abortSignal) => {
+                    let lightningTxId;
+                    const abortController = (0, Utils_1.extendAbortController)(abortSignal, maxWaitTimeSeconds, "Timed out waiting for lightning payment");
+                    try {
+                        const success = await this.waitForPayment((txId) => {
+                            lightningTxId = txId;
+                            abortController.abort();
+                        }, pollIntervalSeconds, abortController.signal);
+                        if (!success)
+                            throw new Error("Quote expired while waiting for Lightning payment");
+                    }
+                    catch (e) {
+                        if (lightningTxId != null)
+                            return lightningTxId;
+                        throw e;
+                    }
+                    return lightningTxId;
+                }
+            };
         }
-        if (this.isClaimable()) {
+        if (this._state === FromBTCLNAutoSwapState.PR_PAID) {
+            return {
+                type: "Wait",
+                name: "Awaiting LP payout",
+                description: "Wait for the LP to create the swap HTLC on the destination smart chain",
+                pollTimeSeconds: 5,
+                expectedTimeSeconds: 10,
+                wait: async (maxWaitTimeSeconds, pollIntervalSeconds, abortSignal) => {
+                    const abortController = (0, Utils_1.extendAbortController)(abortSignal, maxWaitTimeSeconds, "Timed out waiting for LP payout");
+                    await this.waitTillCommited(pollIntervalSeconds, abortController.signal);
+                }
+            };
+        }
+        if (this._state === FromBTCLNAutoSwapState.CLAIM_COMMITED) {
             if (this._commitedAt == null ||
                 options?.maxWaitTillAutomaticSettlementSeconds === 0 ||
                 (Date.now() - this._commitedAt) > (options?.maxWaitTillAutomaticSettlementSeconds ?? 60) * 1000) {
-                return [{
-                        name: "Claim",
-                        description: "Manually settle (claim) the swap on the destination smart chain",
-                        chain: this.chainIdentifier,
-                        txs: await this.txsClaim(options?.manualSettlementSmartChainSigner)
-                    }];
+                //TODO: Maybe return an action requesting the secret from the user
+                if (!this.hasSecretPreimage())
+                    return undefined;
+                const signerAddress = await this.wrapper._getSignerAddress(options?.manualSettlementSmartChainSigner);
+                return {
+                    type: "SignSmartChainTransaction",
+                    name: "Settle manually",
+                    description: "Manually settle (claim) the swap on the destination smart chain",
+                    chain: this.chainIdentifier,
+                    txs: await this.txsClaim(options?.manualSettlementSmartChainSigner, options?.secret),
+                    submitTransactions: async (txs, abortSignal) => {
+                        const parsedTxs = [];
+                        for (let tx of txs) {
+                            parsedTxs.push(typeof (tx) === "string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
+                        }
+                        const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
+                        await this.waitTillClaimed(undefined, abortSignal, options?.secret);
+                        return txIds;
+                    },
+                    requiredSigner: signerAddress ?? this._getInitiator()
+                };
+            }
+            else {
+                return {
+                    type: "Wait",
+                    name: "Automatic settlement",
+                    description: "Wait for automatic settlement by the watchtower",
+                    pollTimeSeconds: 5,
+                    expectedTimeSeconds: 10,
+                    wait: async (maxWaitTimeSeconds, pollIntervalSeconds, abortSignal) => {
+                        await this.waitTillClaimed(maxWaitTimeSeconds ?? options?.maxWaitTillAutomaticSettlementSeconds ?? 60, abortSignal, options?.secret, pollIntervalSeconds);
+                    }
+                };
             }
         }
-        return [];
+        return undefined;
     }
     //////////////////////////////
     //// Payment
@@ -1009,12 +1055,13 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
      * @param abortSignal AbortSignal
      * @param secret A swap secret to broadcast to watchtowers, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
+     * @param pollIntervalSeconds How often to poll via the watchdog
      *
      * @throws {Error} If swap is in invalid state (must be {@link FromBTCLNAutoSwapState.CLAIM_COMMITED})
      * @throws {Error} If the LP refunded sooner than we were able to claim
      * @returns {boolean} whether the swap was claimed in time or not
      */
-    async waitTillClaimed(maxWaitTimeSeconds, abortSignal, secret) {
+    async waitTillClaimed(maxWaitTimeSeconds, abortSignal, secret, pollIntervalSeconds) {
         if (this._state === FromBTCLNAutoSwapState.CLAIM_CLAIMED)
             return Promise.resolve(true);
         if (this._state !== FromBTCLNAutoSwapState.CLAIM_COMMITED)
@@ -1038,7 +1085,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
         let res;
         try {
             res = await Promise.race([
-                this.watchdogWaitTillResult(undefined, abortController.signal),
+                this.watchdogWaitTillResult(pollIntervalSeconds, abortController.signal),
                 this.waitTillState(FromBTCLNAutoSwapState.CLAIM_CLAIMED, "eq", abortController.signal).then(() => 0),
                 this.waitTillState(FromBTCLNAutoSwapState.EXPIRED, "eq", abortController.signal).then(() => 1),
             ]);

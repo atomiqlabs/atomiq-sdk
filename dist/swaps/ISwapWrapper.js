@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ISwapWrapper = void 0;
+const base_1 = require("@atomiqlabs/base");
 const events_1 = require("events");
 const IntermediaryError_1 = require("../errors/IntermediaryError");
 const Logger_1 = require("../utils/Logger");
@@ -266,6 +267,24 @@ class ISwapWrapper {
      */
     _getPendingSwap(id) {
         return this.pendingSwaps.get(id)?.deref() ?? null;
+    }
+    /**
+     * @internal
+     */
+    async _getSignerAddress(signer) {
+        let address = undefined;
+        if (signer != null) {
+            if (typeof (signer) === "string") {
+                address = signer;
+            }
+            else if ((0, base_1.isAbstractSigner)(signer)) {
+                address = signer.getAddress();
+            }
+            else {
+                address = (await this._chain.wrapSigner(signer)).getAddress();
+            }
+        }
+        return address;
     }
 }
 exports.ISwapWrapper = ISwapWrapper;

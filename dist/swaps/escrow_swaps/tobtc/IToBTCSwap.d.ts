@@ -7,7 +7,7 @@ import { IRefundableSwap } from "../../IRefundableSwap";
 import { FeeType } from "../../../enums/FeeType";
 import { TokenAmount } from "../../../types/TokenAmount";
 import { BtcToken, SCToken } from "../../../types/Token";
-import { SwapExecutionAction, SwapExecutionActionCommit } from "../../../types/SwapExecutionAction";
+import { SwapExecutionActionSignSmartChainTx, SwapExecutionActionWait } from "../../../types/SwapExecutionAction";
 export type IToBTCSwapInit<T extends SwapData> = IEscrowSelfInitSwapInit<T> & {
     signatureData?: SignatureData;
     data: T;
@@ -268,23 +268,12 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
      *
      * @param options.skipChecks Skip checks like making sure init signature is still valid and swap wasn't commited yet
      *  (this is handled on swap creation, if you commit right after quoting, you can use `skipChecks=true`)
-     */
-    txsExecute(options?: {
-        skipChecks?: boolean;
-    }): Promise<[
-        SwapExecutionActionCommit<T>
-    ]>;
-    /**
-     * @inheritDoc
-     *
-     * @param options.skipChecks Skip checks like making sure init signature is still valid and swap wasn't commited yet
-     *  (this is handled on swap creation, if you commit right after quoting, you can use `skipChecks=true`)
      * @param options.refundSmartChainSigner Optional smart chain signer to use when creating refunds transactions
      */
-    getCurrentActions(options?: {
+    getCurrentAction(options?: {
         skipChecks?: boolean;
         refundSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
-    }): Promise<SwapExecutionAction<T>[]>;
+    }): Promise<SwapExecutionActionSignSmartChainTx<T> | SwapExecutionActionWait<"LP"> | undefined>;
     /**
      * @inheritDoc
      *

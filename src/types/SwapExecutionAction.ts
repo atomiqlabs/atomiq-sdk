@@ -311,7 +311,7 @@ export function isSwapExecutionActionWait<
  *
  * @category Swap Actions
  */
-export type SwapExecutionAction<T extends ChainType> = SwapExecutionActionSendToAddress |
+export type SwapExecutionAction = SwapExecutionActionSendToAddress |
     SwapExecutionActionSignPSBT |
-    SwapExecutionActionSignSmartChainTx<T> |
+    SwapExecutionActionSignSmartChainTx |
     SwapExecutionActionWait;

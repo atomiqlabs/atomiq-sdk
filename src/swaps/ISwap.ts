@@ -529,7 +529,7 @@ export abstract class ISwap<
      *  get funded PSBTs or passing the externally-generated swap secret), see the actual type in the respective swap
      *  classes
      */
-    public abstract getCurrentAction(options?: any): Promise<SwapExecutionAction<T> | undefined>;
+    public abstract getCurrentAction(options?: any): Promise<SwapExecutionAction | undefined>;
 
     /**
      * Returns a list of execution steps the user has to go through for a given swap, to see the possible execution

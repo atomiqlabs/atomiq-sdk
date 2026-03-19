@@ -1247,7 +1247,7 @@ export class SpvFromBTCSwap<T extends ChainType>
                 destinationSettlementStatus = "inactive";
                 break;
             case SpvFromBTCSwapState.CREATED:
-                bitcoinPaymentStatus = await this._verifyQuoteValid() ? "awaiting" : "expired";
+                bitcoinPaymentStatus = await this._verifyQuoteValid() ? "awaiting" : "soft_expired";
                 destinationSettlementStatus = "inactive";
                 break;
             case SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED:
@@ -1275,7 +1275,7 @@ export class SpvFromBTCSwap<T extends ChainType>
                     }
                 }
                 if(state===SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED)
-                    bitcoinPaymentStatus = knownBitcoinPaymentStatus ?? "expired";
+                    bitcoinPaymentStatus = knownBitcoinPaymentStatus ?? "soft_expired";
                 if(state===SpvFromBTCSwapState.POSTED || state===SpvFromBTCSwapState.SIGNED)
                     bitcoinPaymentStatus = knownBitcoinPaymentStatus ?? "awaiting";
                 if(state===SpvFromBTCSwapState.BROADCASTED)

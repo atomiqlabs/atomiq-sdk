@@ -1,9 +1,31 @@
 import {ChainType} from "@atomiqlabs/base";
 import {Transaction} from "@scure/btc-signer";
-import {TokenAmount} from "./TokenAmount";
-import {BtcToken} from "./Token";
+import {isTokenAmount, TokenAmount} from "./TokenAmount";
+import {BitcoinTokens, BtcToken, isBtcToken} from "./Token";
 
+const swapExecutionActionWaitNames = {
+    LP: "Awaiting LP payout",
+    SETTLEMENT: "Automatic settlement",
+    BITCOIN_CONFS: "Bitcoin confirmations"
+} as const;
 
+function isSwapExecutionActionPsbtTx(
+    obj: any,
+    type?: "FUNDED_PSBT" | "RAW_PSBT"
+): obj is SwapExecutionActionSignPSBT["txs"][number] {
+    const resolvedType = type ?? obj?.type;
+    if(obj == null || typeof(obj) !== "object") return false;
+    if(resolvedType !== "FUNDED_PSBT" && resolvedType !== "RAW_PSBT") return false;
+    return obj.type === resolvedType &&
+        obj.psbt instanceof Transaction &&
+        typeof(obj.psbtHex) === "string" &&
+        typeof(obj.psbtBase64) === "string" &&
+        (
+            resolvedType === "FUNDED_PSBT"
+                ? Array.isArray(obj.signInputs) && obj.signInputs.every((input: any) => typeof(input) === "number")
+                : typeof(obj.in1sequence) === "number"
+        );
+}
 
 /**
  * Swap execution action requiring the user to send assets to a specific LIGHTNING invoice or BITCOIN
@@ -40,6 +62,38 @@ export type SwapExecutionActionSendToAddress<Lightning extends boolean = boolean
      * @returns A transaction ID of the received transaction
      */
     waitForTransactions: (maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal) => Promise<string>
+}
+
+/**
+ * Type guard for {@link SwapExecutionActionSendToAddress}
+ *
+ * @category Swap Actions
+ */
+export function isSwapExecutionActionSendToAddress<Lightning extends boolean = boolean>(
+    obj: any,
+    lightning?: Lightning
+): obj is SwapExecutionActionSendToAddress<Lightning> {
+    const resolvedLightning = lightning ?? (obj?.chain === "LIGHTNING");
+    return obj != null &&
+        typeof(obj) === "object" &&
+        obj.type === "SendToAddress" &&
+        obj.name === (resolvedLightning ? "Deposit on Lightning" : "Deposit on Bitcoin") &&
+        typeof(obj.description) === "string" &&
+        obj.chain === (resolvedLightning ? "LIGHTNING" : "BITCOIN") &&
+        Array.isArray(obj.txs) &&
+        obj.txs.every((tx: any) =>
+            tx != null &&
+            typeof(tx) === "object" &&
+            tx.type === (resolvedLightning ? "BOLT11_PAYMENT_REQUEST" : "BITCOIN_ADDRESS") &&
+            typeof(tx.address) === "string" &&
+            typeof(tx.hyperlink) === "string" &&
+            isTokenAmount(
+                tx.amount,
+                lightning ? BitcoinTokens.BTCLN : BitcoinTokens.BTC,
+                true
+            )
+        ) &&
+        typeof(obj.waitForTransactions) === "function";
 }
 
 /**
@@ -93,6 +147,29 @@ export type SwapExecutionActionSignPSBT<
 }
 
 /**
+ * Type guard for {@link SwapExecutionActionSignPSBT}
+ *
+ * @category Swap Actions
+ */
+export function isSwapExecutionActionSignPSBT<
+    T extends "FUNDED_PSBT" | "RAW_PSBT" = "FUNDED_PSBT" | "RAW_PSBT"
+>(
+    obj: any,
+    psbtType?: T
+): obj is SwapExecutionActionSignPSBT<T> {
+    const resolvedPsbtType = psbtType ?? obj?.txs?.[0]?.type;
+    return obj != null &&
+        typeof(obj) === "object" &&
+        obj.type === "SignPSBT" &&
+        obj.name === "Deposit on Bitcoin" &&
+        typeof(obj.description) === "string" &&
+        obj.chain === "BITCOIN" &&
+        Array.isArray(obj.txs) &&
+        obj.txs.every((tx: any) => isSwapExecutionActionPsbtTx(tx, resolvedPsbtType)) &&
+        typeof(obj.submitPsbt) === "function";
+}
+
+/**
  * Swap execution action requiring the user to sign the provided smart chain transactions, these can then
  *  be either broadcasted manually, or sent via the provided `submitTransactions()` function
  *
@@ -128,6 +205,32 @@ export type SwapExecutionActionSignSmartChainTx<T extends ChainType = ChainType>
      * The address of the signer that has to sign the transactions
      */
     requiredSigner: string
+}
+
+/**
+ * Type guard for {@link SwapExecutionActionSignSmartChainTx}
+ *
+ * @category Swap Actions
+ */
+export function isSwapExecutionActionSignSmartChainTx<T extends ChainType = ChainType>(
+    obj: any,
+    chainIdentifier?: T["ChainId"] | T["ChainId"][]
+): obj is SwapExecutionActionSignSmartChainTx<T> {
+    const allowedChains = chainIdentifier == null ? null : Array.isArray(chainIdentifier) ? chainIdentifier : [chainIdentifier];
+    return obj != null &&
+        typeof(obj) === "object" &&
+        obj.type === "SignSmartChainTransaction" &&
+        (
+            obj.name === "Initiate swap" ||
+            obj.name === "Settle manually" ||
+            obj.name === "Refund"
+        ) &&
+        typeof(obj.description) === "string" &&
+        typeof(obj.chain) === "string" &&
+        (allowedChains == null || allowedChains.includes(obj.chain)) &&
+        Array.isArray(obj.txs) &&
+        typeof(obj.submitTransactions) === "function" &&
+        typeof(obj.requiredSigner) === "string";
 }
 
 /**
@@ -175,6 +278,32 @@ export type SwapExecutionActionWait<
      * Recommended time interval in seconds after which you should re-check the current action
      */
     pollTimeSeconds: number
+}
+
+/**
+ * Type guard for {@link SwapExecutionActionWait}
+ *
+ * @category Swap Actions
+ */
+export function isSwapExecutionActionWait<
+    T extends "LP" | "SETTLEMENT" | "BITCOIN_CONFS" = "LP" | "SETTLEMENT" | "BITCOIN_CONFS"
+>(
+    obj: any,
+    waitType?: T
+): obj is SwapExecutionActionWait<T> {
+    const resolvedWaitType = waitType ??
+        (Object.keys(swapExecutionActionWaitNames).find(key =>
+            swapExecutionActionWaitNames[key as keyof typeof swapExecutionActionWaitNames] === obj?.name
+        ) as keyof typeof swapExecutionActionWaitNames | undefined);
+    return obj != null &&
+        typeof(obj) === "object" &&
+        obj.type === "Wait" &&
+        resolvedWaitType != null &&
+        obj.name === swapExecutionActionWaitNames[resolvedWaitType] &&
+        typeof(obj.description) === "string" &&
+        typeof(obj.wait) === "function" &&
+        typeof(obj.expectedTimeSeconds) === "number" &&
+        typeof(obj.pollTimeSeconds) === "number";
 }
 
 /**

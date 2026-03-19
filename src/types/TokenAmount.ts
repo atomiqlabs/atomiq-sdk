@@ -1,5 +1,5 @@
 import {ISwapPrice} from "../prices/abstract/ISwapPrice";
-import {Token} from "./Token";
+import {isToken, Token} from "./Token";
 import {PriceInfoType} from "./PriceInfoType";
 import {toDecimal} from "../utils/Utils";
 
@@ -65,6 +65,40 @@ export type TokenAmount<
      */
     isUnknown: Known extends true ? false : true
 };
+
+/**
+ * Type guard for {@link TokenAmount}
+ *
+ * @category Tokens
+ */
+export function isTokenAmount<
+    T extends Token = Token,
+    Known extends boolean = boolean
+>(
+    obj: any,
+    token?: T,
+    known?: Known
+): obj is TokenAmount<T, Known> {
+    const hasExpectedKnownState = known == null
+        ? (
+            (typeof(obj?.rawAmount) === "bigint" && obj?.isUnknown === false) ||
+            (obj?.rawAmount === undefined && obj?.isUnknown === true)
+        )
+        : known
+            ? typeof(obj?.rawAmount) === "bigint" && obj?.isUnknown === false
+            : obj?.rawAmount === undefined && obj?.isUnknown === true;
+
+    return obj != null &&
+        typeof(obj) === "object" &&
+        typeof(obj.amount) === "string" &&
+        typeof(obj._amount) === "number" &&
+        (token == null ? isToken(obj.token) : token.equals(obj.token)) &&
+        typeof(obj.currentUsdValue) === "function" &&
+        typeof(obj.usdValue) === "function" &&
+        (obj.pastUsdValue == null || typeof(obj.pastUsdValue) === "number") &&
+        typeof(obj.toString) === "function" &&
+        hasExpectedKnownState;
+}
 
 /**
  * Factory function to create a TokenAmount

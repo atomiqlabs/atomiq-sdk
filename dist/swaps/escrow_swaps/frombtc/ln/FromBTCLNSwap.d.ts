@@ -13,7 +13,7 @@ import { TokenAmount } from "../../../../types/TokenAmount";
 import { BtcToken, SCToken } from "../../../../types/Token";
 import { LoggerType } from "../../../../utils/Logger";
 import { LNURLWithdraw } from "../../../../types/lnurl/LNURLWithdraw";
-import { SwapExecutionAction } from "../../../../types/SwapExecutionAction";
+import { SwapExecutionActionSendToAddress, SwapExecutionActionSignSmartChainTx } from "../../../../types/SwapExecutionAction";
 /**
  * State enum for legacy Lightning -> Smart chain swaps
  * @category Swaps/Legacy/Lightning → Smart chain
@@ -297,43 +297,10 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
      * @param options.secret A swap secret to use for the claim transaction, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      */
-    txsExecute(options?: {
+    getCurrentAction(options?: {
         skipChecks?: boolean;
         secret?: string;
-    }): Promise<{
-        name: "Payment";
-        description: string;
-        chain: "LIGHTNING";
-        txs: {
-            type: "BOLT11_PAYMENT_REQUEST";
-            address: string;
-            hyperlink: string;
-        }[];
-    }[] | ({
-        name: "Commit";
-        description: string;
-        chain: T["ChainId"];
-        txs: T["TX"][];
-    } | {
-        name: "Claim";
-        description: string;
-        chain: T["ChainId"];
-        txs: T["TX"][];
-    })[]>;
-    /**
-     * @inheritDoc
-     *
-     * @param options
-     * @param options.skipChecks Skip checks like making sure init signature is still valid and swap
-     *  wasn't commited yet (this is handled on swap creation, if you commit right after quoting, you
-     *  can use `skipChecks=true`)
-     * @param options.secret A swap secret to use for the claim transaction, generally only needed if the swap
-     *  was recovered from on-chain data, or the pre-image was generated outside the SDK
-     */
-    getCurrentActions(options?: {
-        skipChecks?: boolean;
-        secret?: string;
-    }): Promise<SwapExecutionAction<T>[]>;
+    }): Promise<SwapExecutionActionSendToAddress<true> | SwapExecutionActionSignSmartChainTx<T> | undefined>;
     /**
      * Checks whether the LP received the LN payment and we can continue by committing & claiming the HTLC on-chain
      *

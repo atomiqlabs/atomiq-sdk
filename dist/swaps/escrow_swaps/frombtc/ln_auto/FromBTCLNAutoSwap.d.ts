@@ -16,7 +16,7 @@ import { BtcToken, SCToken } from "../../../../types/Token";
 import { LoggerType } from "../../../../utils/Logger";
 import { LNURLWithdraw } from "../../../../types/lnurl/LNURLWithdraw";
 import { PriceInfoType } from "../../../../types/PriceInfoType";
-import { SwapExecutionAction } from "../../../../types/SwapExecutionAction";
+import { SwapExecutionActionSendToAddress, SwapExecutionActionSignSmartChainTx, SwapExecutionActionWait } from "../../../../types/SwapExecutionAction";
 /**
  * State enum for FromBTCLNAuto swaps
  * @category Swaps/Lightning → Smart chain
@@ -396,19 +396,6 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
         secret?: string;
     }): Promise<boolean>;
     /**
-     * @inheritDoc
-     */
-    txsExecute(): Promise<{
-        name: "Payment";
-        description: string;
-        chain: "LIGHTNING";
-        txs: {
-            type: "BOLT11_PAYMENT_REQUEST";
-            address: string;
-            hyperlink: string;
-        }[];
-    }[]>;
-    /**
      *
      * @param options.manualSettlementSmartChainSigner Optional smart chain signer to create a manual claim (settlement) transaction
      * @param options.maxWaitTillAutomaticSettlementSeconds Maximum time to wait for an automatic settlement after
@@ -416,11 +403,11 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
      * @param options.secret A swap secret to broadcast to watchtowers, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      */
-    getCurrentActions(options?: {
+    getCurrentAction(options?: {
         manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
         maxWaitTillAutomaticSettlementSeconds?: number;
         secret?: string;
-    }): Promise<SwapExecutionAction<T>[]>;
+    }): Promise<SwapExecutionActionSendToAddress<true> | SwapExecutionActionWait<"LP" | "SETTLEMENT"> | SwapExecutionActionSignSmartChainTx<T> | undefined>;
     /**
      * Checks whether the LP received the LN payment
      *
@@ -501,12 +488,13 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
      * @param abortSignal AbortSignal
      * @param secret A swap secret to broadcast to watchtowers, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
+     * @param pollIntervalSeconds How often to poll via the watchdog
      *
      * @throws {Error} If swap is in invalid state (must be {@link FromBTCLNAutoSwapState.CLAIM_COMMITED})
      * @throws {Error} If the LP refunded sooner than we were able to claim
      * @returns {boolean} whether the swap was claimed in time or not
      */
-    waitTillClaimed(maxWaitTimeSeconds?: number, abortSignal?: AbortSignal, secret?: string): Promise<boolean>;
+    waitTillClaimed(maxWaitTimeSeconds?: number, abortSignal?: AbortSignal, secret?: string, pollIntervalSeconds?: number): Promise<boolean>;
     /**
      * Whether this swap uses an LNURL-withdraw link
      */

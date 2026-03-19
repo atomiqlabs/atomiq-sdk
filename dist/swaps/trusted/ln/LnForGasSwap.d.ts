@@ -8,7 +8,7 @@ import { FeeType } from "../../../enums/FeeType";
 import { TokenAmount } from "../../../types/TokenAmount";
 import { BtcToken, SCToken } from "../../../types/Token";
 import { LoggerType } from "../../../utils/Logger";
-import { SwapExecutionAction, SwapExecutionActionLightning } from "../../../types/SwapExecutionAction";
+import { SwapExecutionActionSendToAddress, SwapExecutionActionWait } from "../../../types/SwapExecutionAction";
 /**
  * State enum for trusted Lightning gas swaps
  *
@@ -210,17 +210,13 @@ export declare class LnForGasSwap<T extends ChainType = ChainType> extends ISwap
         fee: Fee<T["ChainId"], BtcToken<true>, SCToken<T["ChainId"]>>;
     }];
     /**
-     * @inheritDoc
-     */
-    txsExecute(): Promise<[SwapExecutionActionLightning]>;
-    /**
      * @remark Not supported
      */
     execute(): Promise<boolean>;
     /**
      * @inheritDoc
      */
-    getCurrentActions(): Promise<SwapExecutionAction<T>[]>;
+    getCurrentAction(): Promise<SwapExecutionActionSendToAddress<true> | SwapExecutionActionWait<"LP"> | undefined>;
     /**
      * Queries the intermediary (LP) node for the state of the swap
      *
@@ -232,13 +228,15 @@ export declare class LnForGasSwap<T extends ChainType = ChainType> extends ISwap
     protected checkInvoicePaid(save?: boolean): Promise<boolean | null>;
     /**
      * A blocking promise resolving when payment was received by the intermediary and client can continue,
-     *  rejecting in case of failure. The swap must be in {@link LnForGasSwapState.PR_CREATED} state!
+     *  rejecting in case of failure. The swap must be in {@link LnForGasSwapState.PR_CREATED} or
+     *  {@link LnForGasSwapState.PR_PAID} state!
      *
      * @param checkIntervalSeconds How often to poll the intermediary for answer (default 5 seconds)
      * @param abortSignal Abort signal
+     * @param onPaymentReceived Callback as for when the LP reports having received the ln payment
      * @throws {Error} When in invalid state (not PR_CREATED)
      */
-    waitForPayment(checkIntervalSeconds?: number, abortSignal?: AbortSignal): Promise<boolean>;
+    waitForPayment(checkIntervalSeconds?: number, abortSignal?: AbortSignal, onPaymentReceived?: (txId: string) => void): Promise<boolean>;
     /**
      * @inheritDoc
      */

@@ -31,7 +31,10 @@ import {getLogger, LoggerType} from "../../../../utils/Logger";
 import {timeoutPromise} from "../../../../utils/TimeoutUtils";
 import {isLNURLWithdraw, LNURLWithdraw, LNURLWithdrawParamsWithUrl} from "../../../../types/lnurl/LNURLWithdraw";
 import {sha256} from "@noble/hashes/sha2";
-import {SwapExecutionAction} from "../../../../types/SwapExecutionAction";
+import {
+    SwapExecutionActionSendToAddress,
+    SwapExecutionActionSignSmartChainTx
+} from "../../../../types/SwapExecutionAction";
 
 /**
  * State enum for legacy Lightning -> Smart chain swaps
@@ -609,82 +612,76 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
      * @param options.secret A swap secret to use for the claim transaction, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      */
-    async txsExecute(options?: {
+    async getCurrentAction(options?: {
         skipChecks?: boolean,
         secret?: string
-    }) {
+    }): Promise<
+        SwapExecutionActionSendToAddress<true> |
+        SwapExecutionActionSignSmartChainTx<T> |
+        undefined
+    > {
+        if(options?.secret!=null) this.setSecretPreimage(options.secret);
+
         if(this._state===FromBTCLNSwapState.PR_CREATED) {
-            if(!await this._verifyQuoteValid()) throw new Error("Quote already expired or close to expiry!");
-            return [
-                {
-                    name: "Payment" as const,
-                    description: "Initiates the swap by paying up the lightning network invoice",
-                    chain: "LIGHTNING" as const,
-                    txs: [
-                        {
-                            type: "BOLT11_PAYMENT_REQUEST" as const,
-                            address: this.getAddress(),
-                            hyperlink: this.getHyperlink()
-                        }
-                    ]
+            if(!await this._verifyQuoteValid()) return undefined;
+            if(this.pr==null || !this.pr.toLowerCase().startsWith("ln")) return undefined;
+
+            return {
+                type: "SendToAddress",
+                name: "Deposit on Lightning",
+                description: "Pay the lightning network invoice to initiate the swap",
+                chain: "LIGHTNING",
+                txs: [{
+                    type: "BOLT11_PAYMENT_REQUEST",
+                    address: this.getAddress(),
+                    hyperlink: this.getHyperlink(),
+                    amount: this.getInput()
+                }],
+                waitForTransactions: async (
+                    maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal
+                ) => {
+                    const abortController = extendAbortController(
+                        abortSignal, maxWaitTimeSeconds, "Timed out waiting for lightning payment"
+                    );
+
+                    const success = await this.waitForPayment(
+                        undefined,
+                        pollIntervalSeconds,
+                        abortController.signal
+                    );
+                    if(!success) throw new Error("Quote expired while waiting for Lightning payment");
+
+                    return this.getInputTxId();
                 }
-            ];
+            } as SwapExecutionActionSendToAddress<true>;
         }
 
-        if(this._state===FromBTCLNSwapState.PR_PAID) {
-            if(!await this._verifyQuoteValid()) throw new Error("Quote already expired or close to expiry!");
-            const txsCommit = await this.txsCommit(options?.skipChecks);
-            const txsClaim = await this._txsClaim(undefined, options?.secret);
-            return [
-                {
-                    name: "Commit" as const,
-                    description: `Creates the HTLC escrow on the ${this.chainIdentifier} side`,
-                    chain: this.chainIdentifier,
-                    txs: txsCommit
+        if(this._state===FromBTCLNSwapState.PR_PAID || this._state===FromBTCLNSwapState.CLAIM_COMMITED) {
+            if(this._state===FromBTCLNSwapState.PR_PAID && !await this._verifyQuoteValid()) return undefined;
+            //TODO: Maybe return an action requesting the secret from the user
+            if(!this.hasSecretPreimage()) return undefined;
+
+            return {
+                type: "SignSmartChainTransaction",
+                name: "Settle manually",
+                description: "Create the HTLC escrow and settle the swap on the destination smart chain",
+                chain: this.chainIdentifier,
+                txs: await this.txsCommitAndClaim(options?.skipChecks, options?.secret),
+                submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => {
+                    const parsedTxs: T["SignedTXType"][] = [];
+                    for(let tx of txs) {
+                        parsedTxs.push(typeof(tx)==="string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
+                    }
+                    const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
+                    await this.waitTillCommited(abortSignal);
+                    await this.waitTillClaimed(undefined, abortSignal);
+                    return txIds;
                 },
-                {
-                    name: "Claim" as const,
-                    description: `Settles & claims the funds from the HTLC escrow on the ${this.chainIdentifier} side`,
-                    chain: this.chainIdentifier,
-                    txs: txsClaim
-                },
-            ];
+                requiredSigner: this._getInitiator()
+            } as SwapExecutionActionSignSmartChainTx<T>;
         }
 
-        if(this._state===FromBTCLNSwapState.CLAIM_COMMITED) {
-            const txsClaim = await this.txsClaim(undefined, options?.secret);
-            return [
-                {
-                    name: "Claim" as const,
-                    description: `Settles & claims the funds from the HTLC escrow on the ${this.chainIdentifier} side`,
-                    chain: this.chainIdentifier,
-                    txs: txsClaim
-                },
-            ];
-        }
-
-        throw new Error("Invalid swap state to obtain execution txns, required PR_CREATED, PR_PAID or CLAIM_COMMITED");
-    }
-
-    /**
-     * @inheritDoc
-     *
-     * @param options
-     * @param options.skipChecks Skip checks like making sure init signature is still valid and swap
-     *  wasn't commited yet (this is handled on swap creation, if you commit right after quoting, you
-     *  can use `skipChecks=true`)
-     * @param options.secret A swap secret to use for the claim transaction, generally only needed if the swap
-     *  was recovered from on-chain data, or the pre-image was generated outside the SDK
-     */
-    async getCurrentActions(options?: {
-        skipChecks?: boolean,
-        secret?: string
-    }): Promise<SwapExecutionAction<T>[]> {
-        try {
-            return await this.txsExecute(options);
-        } catch (e) {
-            return [];
-        }
+        return undefined;
     }
 
 

@@ -23,7 +23,6 @@ import {BitcoinTokens, BtcToken, SCToken} from "../../../types/Token";
 import {getLogger, LoggerType} from "../../../utils/Logger";
 import {timeoutPromise} from "../../../utils/TimeoutUtils";
 import {toBitcoinWallet} from "../../../utils/BitcoinWalletUtils";
-import {SwapExecutionAction, SwapExecutionActionBitcoin} from "../../../types/SwapExecutionAction";
 
 /**
  * State enum for trusted on-chain gas swaps
@@ -562,34 +561,10 @@ export class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T,
      * @param options.bitcoinWallet Optional bitcoin wallet address specification to return a funded PSBT,
      *  if not provided an address is returned instead.
      */
-    async txsExecute(options?: {
+    async getCurrentAction(options?: {
         bitcoinWallet?: MinimalBitcoinWalletInterface
-    }): Promise<[
-        SwapExecutionActionBitcoin<"ADDRESS" | "FUNDED_PSBT">
-    ]> {
-        if(this._state===OnchainForGasSwapState.PR_CREATED) {
-            if(!await this._verifyQuoteValid()) throw new Error("Quote already expired or close to expiry!");
-            return [
-                {
-                    name: "Payment" as const,
-                    description: "Send funds to the bitcoin swap address",
-                    chain: "BITCOIN",
-                    txs: [
-                        options?.bitcoinWallet==null ? {
-                            address: this.address,
-                            amount: Number(this.inputAmount),
-                            hyperlink: this.getHyperlink(),
-                            type: "ADDRESS"
-                        } : {
-                            ...await this.getFundedPsbt(options.bitcoinWallet),
-                            type: "FUNDED_PSBT"
-                        }
-                    ]
-                }
-            ];
-        }
-
-        throw new Error("Invalid swap state to obtain execution txns, required PR_CREATED or CLAIM_COMMITED");
+    }): Promise<never> {
+        throw new Error("Not supported");
     }
 
     /**
@@ -597,22 +572,6 @@ export class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T,
      */
     async execute(): Promise<boolean> {
         throw new Error("Not supported");
-    }
-
-    /**
-     * @inheritDoc
-     *
-     * @param options.bitcoinWallet Optional bitcoin wallet address specification to return a funded PSBT,
-     *  if not provided an address is returned instead.
-     */
-    async getCurrentActions(options?: {
-        bitcoinWallet?: MinimalBitcoinWalletInterface
-    }): Promise<SwapExecutionAction<T>[]> {
-        try {
-            return await this.txsExecute(options);
-        } catch (e) {
-            return [];
-        }
     }
 
     //////////////////////////////

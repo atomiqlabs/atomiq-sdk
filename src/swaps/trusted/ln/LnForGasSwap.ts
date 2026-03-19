@@ -2,7 +2,7 @@ import {decode as bolt11Decode} from "@atomiqlabs/bolt11";
 import {SwapType} from "../../../enums/SwapType";
 import {ChainType} from "@atomiqlabs/base";
 import {LnForGasSwapTypeDefinition, LnForGasWrapper} from "./LnForGasWrapper";
-import {toBigInt} from "../../../utils/Utils";
+import {extendAbortController, toBigInt} from "../../../utils/Utils";
 import {isISwapInit, ISwap, ISwapInit} from "../../ISwap";
 import {InvoiceStatusResponseCodes, TrustedIntermediaryAPI} from "../../../intermediaries/apis/TrustedIntermediaryAPI";
 import {Fee} from "../../../types/fees/Fee";
@@ -13,7 +13,10 @@ import {TokenAmount, toTokenAmount} from "../../../types/TokenAmount";
 import {BitcoinTokens, BtcToken, SCToken} from "../../../types/Token";
 import {getLogger, LoggerType} from "../../../utils/Logger";
 import {timeoutPromise} from "../../../utils/TimeoutUtils";
-import {SwapExecutionAction, SwapExecutionActionLightning} from "../../../types/SwapExecutionAction";
+import {
+    SwapExecutionActionSendToAddress,
+    SwapExecutionActionWait
+} from "../../../types/SwapExecutionAction";
 
 /**
  * State enum for trusted Lightning gas swaps
@@ -403,31 +406,6 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
     //// Payment
 
     /**
-     * @inheritDoc
-     */
-    async txsExecute(): Promise<[SwapExecutionActionLightning]> {
-        if(this._state===LnForGasSwapState.PR_CREATED) {
-            if (!await this._verifyQuoteValid()) throw new Error("Quote already expired or close to expiry!");
-            return [
-                {
-                    name: "Payment" as const,
-                    description: "Initiates the swap by paying up the lightning network invoice",
-                    chain: "LIGHTNING",
-                    txs: [
-                        {
-                            type: "BOLT11_PAYMENT_REQUEST",
-                            address: this.pr,
-                            hyperlink: this.getHyperlink()
-                        }
-                    ]
-                }
-            ];
-        }
-
-        throw new Error("Invalid swap state to obtain execution txns, required PR_CREATED");
-    }
-
-    /**
      * @remark Not supported
      */
     async execute(): Promise<boolean> {
@@ -437,12 +415,69 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
     /**
      * @inheritDoc
      */
-    async getCurrentActions(): Promise<SwapExecutionAction<T>[]> {
-        try {
-            return await this.txsExecute();
-        } catch (e) {
-            return [];
+    async getCurrentAction(): Promise<
+        SwapExecutionActionSendToAddress<true> |
+        SwapExecutionActionWait<"LP"> |
+        undefined
+    > {
+        if(this._state===LnForGasSwapState.PR_CREATED) {
+            if(!await this._verifyQuoteValid()) return undefined;
+
+            return {
+                type: "SendToAddress",
+                name: "Deposit on Lightning",
+                description: "Pay the lightning network invoice to initiate the swap",
+                chain: "LIGHTNING",
+                txs: [{
+                    type: "BOLT11_PAYMENT_REQUEST",
+                    address: this.pr,
+                    hyperlink: this.getHyperlink(),
+                    amount: this.getInput()
+                }],
+                waitForTransactions: async (
+                    maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal
+                ) => {
+                    const abortController = extendAbortController(
+                        abortSignal, maxWaitTimeSeconds, "Timed out waiting for lightning payment"
+                    );
+                    let lightningTxId: string | undefined;
+                    try {
+                        const success = await this.waitForPayment(
+                            pollIntervalSeconds, abortController.signal,
+                            (txId: string) => {
+                                lightningTxId = txId;
+                                abortController.abort();
+                            }
+                        );
+                        if(!success) throw new Error("Quote expired while waiting for lightning payment");
+                    } catch (e) {
+                        if(lightningTxId!=null) return lightningTxId;
+                        throw e;
+                    }
+                    return this.getInputTxId()!;
+                }
+            } as SwapExecutionActionSendToAddress<true>;
         }
+
+        if(this._state===LnForGasSwapState.PR_PAID) {
+            return {
+                type: "Wait",
+                name: "Awaiting LP payout",
+                description: "Wait for the intermediary to send the gas tokens on the destination smart chain",
+                pollTimeSeconds: 5,
+                expectedTimeSeconds: 10,
+                wait: async (
+                    maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal
+                ) => {
+                    const abortController = extendAbortController(
+                        abortSignal, maxWaitTimeSeconds, "Timed out waiting for LP payout"
+                    );
+                    await this.waitForPayment(pollIntervalSeconds, abortController.signal);
+                }
+            } as SwapExecutionActionWait<"LP">;
+        }
+
+        return undefined;
     }
 
     /**
@@ -508,14 +543,17 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
 
     /**
      * A blocking promise resolving when payment was received by the intermediary and client can continue,
-     *  rejecting in case of failure. The swap must be in {@link LnForGasSwapState.PR_CREATED} state!
+     *  rejecting in case of failure. The swap must be in {@link LnForGasSwapState.PR_CREATED} or
+     *  {@link LnForGasSwapState.PR_PAID} state!
      *
      * @param checkIntervalSeconds How often to poll the intermediary for answer (default 5 seconds)
      * @param abortSignal Abort signal
+     * @param onPaymentReceived Callback as for when the LP reports having received the ln payment
      * @throws {Error} When in invalid state (not PR_CREATED)
      */
-    async waitForPayment(checkIntervalSeconds?: number, abortSignal?: AbortSignal): Promise<boolean> {
-        if(this._state!==LnForGasSwapState.PR_CREATED) throw new Error("Must be in PR_CREATED state!");
+    async waitForPayment(checkIntervalSeconds?: number, abortSignal?: AbortSignal, onPaymentReceived?: (txId: string) => void): Promise<boolean> {
+        if(this._state!==LnForGasSwapState.PR_CREATED && this._state!==LnForGasSwapState.PR_PAID)
+            throw new Error("Must be in PR_CREATED or PR_PAID state!");
 
         if(!this.initiated) {
             this.initiated = true;
@@ -524,8 +562,16 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
 
         while(!abortSignal?.aborted && (this._state===LnForGasSwapState.PR_CREATED || this._state===LnForGasSwapState.PR_PAID)) {
             await this.checkInvoicePaid(true);
+            if((this._state as LnForGasSwapState)===LnForGasSwapState.PR_PAID) {
+                if(onPaymentReceived!=null) {
+                    onPaymentReceived(this.getInputTxId()!);
+                    onPaymentReceived = undefined; // Set to null so it only triggers once
+                }
+            }
             if(this._state===LnForGasSwapState.PR_CREATED || this._state===LnForGasSwapState.PR_PAID) await timeoutPromise((checkIntervalSeconds ?? 5)*1000, abortSignal);
         }
+
+        if(abortSignal!=null) abortSignal.throwIfAborted();
 
         if(this.isFailed()) throw new Error("Swap failed");
         return !this.isQuoteExpired();

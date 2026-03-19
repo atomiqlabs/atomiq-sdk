@@ -23,7 +23,7 @@ import {ppmToPercentage} from "../../../types/fees/PercentagePPM";
 import {TokenAmount, toTokenAmount} from "../../../types/TokenAmount";
 import {BtcToken, SCToken} from "../../../types/Token";
 import {timeoutPromise} from "../../../utils/TimeoutUtils";
-import {SwapExecutionAction, SwapExecutionActionCommit} from "../../../types/SwapExecutionAction";
+import {SwapExecutionActionSignSmartChainTx, SwapExecutionActionWait} from "../../../types/SwapExecutionAction";
 
 export type IToBTCSwapInit<T extends SwapData> = IEscrowSelfInitSwapInit<T> & {
     signatureData?: SignatureData,
@@ -539,49 +539,75 @@ export abstract class IToBTCSwap<
      *
      * @param options.skipChecks Skip checks like making sure init signature is still valid and swap wasn't commited yet
      *  (this is handled on swap creation, if you commit right after quoting, you can use `skipChecks=true`)
-     */
-    async txsExecute(options?: {
-        skipChecks?: boolean
-    }): Promise<[
-        SwapExecutionActionCommit<T>
-    ]> {
-        if(this._state!==ToBTCSwapState.CREATED) throw new Error("Invalid swap state, needs to be CREATED!");
-        const txsCommit = await this.txsCommit(options?.skipChecks);
-        return [
-            {
-                name: "Commit" as const,
-                description: `Initiates the swap by commiting the funds to the escrow on the ${this.chainIdentifier} side`,
-                chain: this.chainIdentifier,
-                txs: txsCommit
-            }
-        ];
-    }
-
-    /**
-     * @inheritDoc
-     *
-     * @param options.skipChecks Skip checks like making sure init signature is still valid and swap wasn't commited yet
-     *  (this is handled on swap creation, if you commit right after quoting, you can use `skipChecks=true`)
      * @param options.refundSmartChainSigner Optional smart chain signer to use when creating refunds transactions
      */
-    async getCurrentActions(options?: {
+    async getCurrentAction(options?: {
         skipChecks?: boolean,
         refundSmartChainSigner?: string | T["Signer"] | T["NativeSigner"]
-    }): Promise<SwapExecutionAction<T>[]> {
+    }): Promise<
+        SwapExecutionActionSignSmartChainTx<T> |
+        SwapExecutionActionWait<"LP"> |
+        undefined
+    > {
         if(this._state===ToBTCSwapState.CREATED) {
-            try {
-                return await this.txsExecute(options);
-            } catch (e) {}
+            if(this.signatureData==null) return undefined;
+            if(!await this._verifyQuoteValid()) return undefined;
+            return {
+                type: "SignSmartChainTransaction",
+                name: "Initiate swap",
+                description: `Initiates the swap by commiting the funds to the escrow on the ${this.chainIdentifier} side`,
+                chain: this.chainIdentifier,
+                txs: await this.txsCommit(options?.skipChecks),
+                submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => {
+                    if(!await this._verifyQuoteValid()) throw new Error("Quote is already expired!");
+                    const parsedTxs: T["SignedTXType"][] = [];
+                    for(let tx of txs) {
+                        parsedTxs.push(typeof(tx)==="string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
+                    }
+                    const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
+                    await this.waitTillCommited(abortSignal);
+                    return txIds;
+                },
+                requiredSigner: this._getInitiator()
+            } as SwapExecutionActionSignSmartChainTx<T>;
+        }
+        if(this._state===ToBTCSwapState.COMMITED) {
+            return {
+                type: "Wait",
+                name: "Awaiting LP payout",
+                description: "Wait for the intermediary to process the swap and either send the payout or make the swap refundable",
+                pollTimeSeconds: 5,
+                expectedTimeSeconds: 10,
+                wait: async (
+                    maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal
+                ) => {
+                    await this.waitForPayment(maxWaitTimeSeconds, pollIntervalSeconds, abortSignal);
+                }
+            } as SwapExecutionActionWait<"LP">;
         }
         if(this.isRefundable()) {
-            return [{
-                name: "Refund" as const,
+            const signerAddress =
+                await this.wrapper._getSignerAddress(options?.refundSmartChainSigner);
+
+            return {
+                type: "SignSmartChainTransaction",
+                name: "Refund",
                 description: "Refund the swap after it failed to execute",
                 chain: this.chainIdentifier,
-                txs: await this.txsRefund(options?.refundSmartChainSigner)
-            }];
+                txs: await this.txsRefund(options?.refundSmartChainSigner),
+                submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => {
+                    const parsedTxs: T["SignedTXType"][] = [];
+                    for(let tx of txs) {
+                        parsedTxs.push(typeof(tx)==="string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
+                    }
+                    const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
+                    await this.waitTillRefunded(abortSignal);
+                    return txIds;
+                },
+                requiredSigner: signerAddress ?? this._getInitiator()
+            } as SwapExecutionActionSignSmartChainTx<T>;
         }
-        return [];
+        return undefined;
     }
 
     //////////////////////////////

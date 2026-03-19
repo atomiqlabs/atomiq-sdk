@@ -785,6 +785,119 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
         }
         return undefined;
     }
+    /**
+     * @inheritDoc
+     */
+    async getSwapSteps(options) {
+        let confirmations;
+        let destinationSetupStatus = "awaiting";
+        let bitcoinPaymentStatus = "inactive";
+        let destinationSettlementStatus = "inactive";
+        switch (this._state) {
+            case FromBTCSwapState.PR_CREATED:
+                destinationSetupStatus =
+                    (await this._verifyQuoteValid()) && this.getTimeoutTime() >= Date.now() ?
+                        "awaiting" :
+                        "expired";
+                break;
+            case FromBTCSwapState.QUOTE_SOFT_EXPIRED:
+            case FromBTCSwapState.QUOTE_EXPIRED:
+                destinationSetupStatus = "expired";
+                break;
+            case FromBTCSwapState.CLAIM_COMMITED:
+            case FromBTCSwapState.EXPIRED:
+            case FromBTCSwapState.FAILED:
+                destinationSetupStatus = "completed";
+                if (this.address != null) {
+                    const bitcoinPayment = await this.getBitcoinPayment();
+                    if (bitcoinPayment == null) {
+                        bitcoinPaymentStatus =
+                            this._state === FromBTCSwapState.CLAIM_COMMITED ?
+                                "awaiting" :
+                                "expired";
+                    }
+                    else if (bitcoinPayment.confirmations >= bitcoinPayment.targetConfirmations) {
+                        bitcoinPaymentStatus = "confirmed";
+                    }
+                    else {
+                        bitcoinPaymentStatus = "received";
+                        const tx = await this.wrapper._btcRpc.getTransaction(bitcoinPayment.txId);
+                        const result = tx == null
+                            ? null
+                            : await this.wrapper._btcRpc.getConfirmationDelay(tx, bitcoinPayment.targetConfirmations);
+                        confirmations = {
+                            current: bitcoinPayment.confirmations,
+                            target: bitcoinPayment.targetConfirmations,
+                            etaSeconds: result ?? -1
+                        };
+                    }
+                }
+                else {
+                    bitcoinPaymentStatus =
+                        this._state === FromBTCSwapState.CLAIM_COMMITED ?
+                            "awaiting" :
+                            "expired";
+                }
+                if (this._state === FromBTCSwapState.FAILED) {
+                    destinationSettlementStatus = "expired";
+                }
+                break;
+            case FromBTCSwapState.BTC_TX_CONFIRMED:
+                destinationSetupStatus = "completed";
+                bitcoinPaymentStatus = "confirmed";
+                if (this.btcTxConfirmedAt == null ||
+                    options?.maxWaitTillAutomaticSettlementSeconds === 0 ||
+                    (Date.now() - this.btcTxConfirmedAt) > (options?.maxWaitTillAutomaticSettlementSeconds ?? 60) * 1000) {
+                    destinationSettlementStatus = "awaiting_manual";
+                }
+                else {
+                    destinationSettlementStatus = "awaiting_automatic";
+                }
+                break;
+            case FromBTCSwapState.CLAIM_CLAIMED:
+                destinationSetupStatus = "completed";
+                bitcoinPaymentStatus = "confirmed";
+                destinationSettlementStatus = "settled";
+                break;
+        }
+        if (bitcoinPaymentStatus === "confirmed") {
+            const requiredConfirmations = this.getRequiredConfirmationsCount();
+            if (!Number.isNaN(requiredConfirmations)) {
+                confirmations = {
+                    current: requiredConfirmations,
+                    target: requiredConfirmations,
+                    etaSeconds: 0
+                };
+            }
+        }
+        return [
+            {
+                type: "Setup",
+                side: "destination",
+                chain: this.chainIdentifier,
+                title: "Open Bitcoin swap address",
+                description: `Create the escrow on the ${this.chainIdentifier} side to open the Bitcoin swap address`,
+                status: destinationSetupStatus
+            },
+            {
+                type: "Payment",
+                side: "source",
+                chain: "BITCOIN",
+                title: "Bitcoin payment",
+                description: "Send Bitcoin to the swap address and wait for the transaction to confirm",
+                status: bitcoinPaymentStatus,
+                confirmations
+            },
+            {
+                type: "Settlement",
+                side: "destination",
+                chain: this.chainIdentifier,
+                title: "Destination settlement",
+                description: `Wait for automatic settlement on the ${this.chainIdentifier} side, or settle manually if it takes too long`,
+                status: destinationSettlementStatus
+            }
+        ];
+    }
     //////////////////////////////
     //// Commit
     /**

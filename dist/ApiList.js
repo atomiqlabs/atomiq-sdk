@@ -4,20 +4,27 @@ const apiFunctionDict = {
     createSwap: {
         type: "POST",
         callback: (requestBody, queryParams) => {
+            // ...
         },
-        ...
+        inputSchema: {
+            inputToken: {
+                type: "string",
+                description: "Input token ticker or address"
+            },
+            outputToken: "string",
+            amount: "string",
+            // ...
+        }
     },
-    inputSchema: {
-        inputToken: {
-            type: "string",
-            description: "Input token ticker or address"
-        },
-        outputToken: "string",
-        amount: "string",
-        ...
+    status: {
+        type: "GET",
+        callback: (requestBody, queryParams) => Promise,
+        inputSchema: {
+            id: "string"
+        }
     }
-}, status;
+};
 // Example boilerplate
 for (let key in apiFunctionDict) {
-    app.post("/" + key, (req, res) => apiFunctionDict[key].callback(req.body, req.query).then(response => res.json(response)));
+    // app.post("/"+key, (req, res) => apiFunctionDict[key].callback(req.body, req.query).then(response => res.json(response)));
 }

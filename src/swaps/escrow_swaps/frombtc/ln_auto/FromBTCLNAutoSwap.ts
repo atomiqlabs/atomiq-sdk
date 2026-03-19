@@ -45,6 +45,10 @@ import {
     SwapExecutionActionSignSmartChainTx,
     SwapExecutionActionWait
 } from "../../../../types/SwapExecutionAction";
+import {
+    SwapExecutionStepPayment,
+    SwapExecutionStepSettlement
+} from "../../../../types/SwapExecutionStep";
 
 /**
  * State enum for FromBTCLNAuto swaps
@@ -961,6 +965,73 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
         }
 
         return undefined;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    async getSwapSteps(options?: {
+        maxWaitTillAutomaticSettlementSeconds?: number
+    }): Promise<[
+        SwapExecutionStepPayment<"LIGHTNING">,
+        SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
+    ]> {
+        let lightningPaymentStatus: SwapExecutionStepPayment<"LIGHTNING">["status"] = "inactive";
+        let destinationSettlementStatus: SwapExecutionStepSettlement<T["ChainId"]>["status"] = "inactive";
+
+        switch(this._state) {
+            case FromBTCLNAutoSwapState.PR_CREATED:
+                lightningPaymentStatus = await this._verifyQuoteValid() ? "awaiting" : "expired";
+                break;
+            case FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED:
+            case FromBTCLNAutoSwapState.QUOTE_EXPIRED:
+                lightningPaymentStatus = "expired";
+                break;
+            case FromBTCLNAutoSwapState.PR_PAID:
+                lightningPaymentStatus = "confirmed";
+                destinationSettlementStatus = "waiting_lp";
+                break;
+            case FromBTCLNAutoSwapState.CLAIM_COMMITED:
+                lightningPaymentStatus = "confirmed";
+                if(
+                    this._commitedAt==null ||
+                    options?.maxWaitTillAutomaticSettlementSeconds===0 ||
+                    (Date.now() - this._commitedAt) > (options?.maxWaitTillAutomaticSettlementSeconds ?? 60)*1000
+                ) {
+                    destinationSettlementStatus = "awaiting_manual";
+                } else {
+                    destinationSettlementStatus = "awaiting_automatic";
+                }
+                break;
+            case FromBTCLNAutoSwapState.CLAIM_CLAIMED:
+                lightningPaymentStatus = "confirmed";
+                destinationSettlementStatus = "settled";
+                break;
+            case FromBTCLNAutoSwapState.EXPIRED:
+            case FromBTCLNAutoSwapState.FAILED:
+                lightningPaymentStatus = "confirmed";
+                destinationSettlementStatus = "expired";
+                break;
+        }
+
+        return [
+            {
+                type: "Payment",
+                side: "source",
+                chain: "LIGHTNING",
+                title: "Lightning payment",
+                description: "Pay the Lightning network invoice to initiate the swap",
+                status: lightningPaymentStatus
+            },
+            {
+                type: "Settlement",
+                side: "destination",
+                chain: this.chainIdentifier,
+                title: "Destination settlement",
+                description: `Wait for the LP to initiate on the ${this.chainIdentifier} side, then wait for automatic settlement, or settle manually if it takes too long`,
+                status: destinationSettlementStatus
+            }
+        ];
     }
 
 

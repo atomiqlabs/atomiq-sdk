@@ -833,6 +833,222 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
     }
 
     /**
+     * @internal
+     */
+    protected async _getExecutionStatus(options?: {
+        maxWaitTillAutomaticSettlementSeconds?: number,
+        secret?: string
+    }) {
+        if(options?.secret!=null) this.setSecretPreimage(options.secret);
+
+        const state = this._state;
+        const now = Date.now();
+
+        let lightningPaymentStatus: SwapExecutionStepPayment<"LIGHTNING">["status"] = "inactive";
+        let destinationSettlementStatus: SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">["status"] = "inactive";
+        let buildCurrentAction: (actionOptions?: {
+            manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"]
+        }) => Promise<
+            SwapExecutionActionSendToAddress<true> |
+            SwapExecutionActionWait<"LP" | "SETTLEMENT"> |
+            SwapExecutionActionSignSmartChainTx<T> |
+            undefined
+        > = async () => undefined;
+
+        switch(state) {
+            case FromBTCLNAutoSwapState.PR_CREATED: {
+                const quoteValid = await this._verifyQuoteValid();
+                lightningPaymentStatus = quoteValid ? "awaiting" : "soft_expired";
+                if(quoteValid && this.pr!=null && this.pr.toLowerCase().startsWith("ln")) {
+                    buildCurrentAction = this._buildLightningPaymentAction.bind(this);
+                }
+                break;
+            }
+            case FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED:
+                lightningPaymentStatus = "soft_expired";
+                break;
+            case FromBTCLNAutoSwapState.QUOTE_EXPIRED:
+                lightningPaymentStatus = "expired";
+                break;
+            case FromBTCLNAutoSwapState.PR_PAID:
+                lightningPaymentStatus = "received";
+                destinationSettlementStatus = "waiting_lp";
+                buildCurrentAction = this._buildWaitLpAction.bind(this);
+                break;
+            case FromBTCLNAutoSwapState.CLAIM_COMMITED:
+                lightningPaymentStatus = "received";
+                if(
+                    this._commitedAt==null ||
+                    options?.maxWaitTillAutomaticSettlementSeconds===0 ||
+                    (now - this._commitedAt) > (options?.maxWaitTillAutomaticSettlementSeconds ?? 60)*1000
+                ) {
+                    destinationSettlementStatus = "awaiting_manual";
+                    if(this.hasSecretPreimage()) {
+                        //TODO: Maybe add an action that would prompt the user to reveal the pre-image
+                        buildCurrentAction = this._buildClaimSmartChainTxAction.bind(this);
+                    }
+                } else {
+                    destinationSettlementStatus = "awaiting_automatic";
+                    //TODO: Maybe add an action that would prompt the user to reveal the pre-image
+                    buildCurrentAction = this._buildWaitSettlementAction.bind(this, options?.maxWaitTillAutomaticSettlementSeconds);
+                }
+                break;
+            case FromBTCLNAutoSwapState.CLAIM_CLAIMED:
+                lightningPaymentStatus = "confirmed";
+                destinationSettlementStatus = "settled";
+                break;
+            case FromBTCLNAutoSwapState.EXPIRED:
+            case FromBTCLNAutoSwapState.FAILED:
+                lightningPaymentStatus = "expired";
+                destinationSettlementStatus = "expired";
+                break;
+        }
+
+        return {
+            steps: [
+                {
+                    type: "Payment",
+                    side: "source",
+                    chain: "LIGHTNING",
+                    title: "Lightning payment",
+                    description: "Pay the Lightning network invoice to initiate the swap",
+                    status: lightningPaymentStatus
+                },
+                {
+                    type: "Settlement",
+                    side: "destination",
+                    chain: this.chainIdentifier,
+                    title: "Destination settlement",
+                    description: `Wait for the LP to initiate on the ${this.chainIdentifier} side, then wait for automatic settlement, or settle manually if it takes too long`,
+                    status: destinationSettlementStatus
+                }
+            ] as [
+                SwapExecutionStepPayment<"LIGHTNING">,
+                SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
+            ],
+            buildCurrentAction
+        };
+    }
+
+    /**
+     * @internal
+     */
+    private async _buildLightningPaymentAction(): Promise<SwapExecutionActionSendToAddress<true>> {
+        return {
+            type: "SendToAddress",
+            name: "Deposit on Lightning",
+            description: "Pay the lightning network invoice to initiate the swap",
+            chain: "LIGHTNING",
+            txs: [{
+                type: "BOLT11_PAYMENT_REQUEST",
+                address: this.getAddress(),
+                hyperlink: this.getHyperlink(),
+                amount: this.getInput()
+            }],
+            waitForTransactions: async (
+                maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal
+            ) => {
+                let lightningTxId: string | undefined;
+                const abortController = extendAbortController(
+                    abortSignal, maxWaitTimeSeconds, "Timed out waiting for lightning payment"
+                );
+
+                try {
+                    const success = await this.waitForPayment(
+                        (txId) => {
+                            lightningTxId = txId;
+                            abortController.abort();
+                        },
+                        pollIntervalSeconds,
+                        abortController.signal
+                    );
+                    if(!success) throw new Error("Quote expired while waiting for Lightning payment");
+                } catch (e) {
+                    if(lightningTxId!=null) return lightningTxId;
+                    throw e;
+                }
+
+                return lightningTxId;
+            }
+        } as SwapExecutionActionSendToAddress<true>;
+    }
+
+    /**
+     * @internal
+     */
+    private async _buildWaitLpAction(): Promise<SwapExecutionActionWait<"LP">> {
+        return {
+            type: "Wait",
+            name: "Awaiting LP payout",
+            description: "Wait for the LP to create the swap HTLC on the destination smart chain",
+            pollTimeSeconds: 5,
+            expectedTimeSeconds: 10,
+            wait: async (
+                maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal
+            ) => {
+                const abortController = extendAbortController(
+                    abortSignal, maxWaitTimeSeconds, "Timed out waiting for LP payout"
+                );
+                await this.waitTillCommited(pollIntervalSeconds, abortController.signal);
+            }
+        } as SwapExecutionActionWait<"LP">;
+    }
+
+    /**
+     * @internal
+     */
+    private async _buildWaitSettlementAction(
+        maxWaitTillAutomaticSettlementSeconds?: number
+    ): Promise<SwapExecutionActionWait<"SETTLEMENT">> {
+        return {
+            type: "Wait",
+            name: "Automatic settlement",
+            description: "Wait for automatic settlement by the watchtower",
+            pollTimeSeconds: 5,
+            expectedTimeSeconds: 10,
+            wait: async (
+                maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal
+            ) => {
+                await this.waitTillClaimed(
+                    maxWaitTimeSeconds ?? maxWaitTillAutomaticSettlementSeconds ?? 60,
+                    abortSignal,
+                    undefined,
+                    pollIntervalSeconds
+                );
+            }
+        } as SwapExecutionActionWait<"SETTLEMENT">;
+    }
+
+    /**
+     * @internal
+     */
+    private async _buildClaimSmartChainTxAction(actionOptions?: {
+        manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"],
+        secret?: string
+    }): Promise<SwapExecutionActionSignSmartChainTx<T>> {
+        const signerAddress =
+            await this.wrapper._getSignerAddress(actionOptions?.manualSettlementSmartChainSigner);
+
+        return {
+            type: "SignSmartChainTransaction",
+            name: "Settle manually",
+            description: "Manually settle (claim) the swap on the destination smart chain",
+            chain: this.chainIdentifier,
+            txs: await this.txsClaim(actionOptions?.manualSettlementSmartChainSigner, actionOptions?.secret),
+            submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => {
+                const parsedTxs: T["SignedTXType"][] = [];
+                for(let tx of txs) {
+                    parsedTxs.push(typeof(tx)==="string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
+                }
+                const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
+                await this.waitTillClaimed(undefined, abortSignal, actionOptions?.secret);
+                return txIds;
+            },
+            requiredSigner: signerAddress ?? this._getInitiator()
+        } as SwapExecutionActionSignSmartChainTx<T>;
+    }
+
+    /**
      *
      * @param options.manualSettlementSmartChainSigner Optional smart chain signer to create a manual claim (settlement) transaction
      * @param options.maxWaitTillAutomaticSettlementSeconds Maximum time to wait for an automatic settlement after
@@ -850,121 +1066,33 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
         SwapExecutionActionSignSmartChainTx<T> |
         undefined
     > {
-        if(options?.secret!=null) this.setSecretPreimage(options.secret);
+        const executionStatus = await this._getExecutionStatus(options);
+        return executionStatus.buildCurrentAction(options);
+    }
 
-        if(this._state===FromBTCLNAutoSwapState.PR_CREATED) {
-            if(!await this._verifyQuoteValid()) return undefined;
-            if(this.pr==null || !this.pr.toLowerCase().startsWith("ln")) return undefined;
-
-            return {
-                type: "SendToAddress",
-                name: "Deposit on Lightning",
-                description: "Pay the lightning network invoice to initiate the swap",
-                chain: "LIGHTNING",
-                txs: [{
-                    type: "BOLT11_PAYMENT_REQUEST",
-                    address: this.getAddress(),
-                    hyperlink: this.getHyperlink(),
-                    amount: this.getInput()
-                }],
-                waitForTransactions: async (
-                    maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal
-                ) => {
-                    let lightningTxId: string | undefined;
-                    const abortController = extendAbortController(
-                        abortSignal, maxWaitTimeSeconds, "Timed out waiting for lightning payment"
-                    );
-
-                    try {
-                        const success = await this.waitForPayment(
-                            (txId) => {
-                                lightningTxId = txId;
-                                abortController.abort();
-                            },
-                            pollIntervalSeconds,
-                            abortController.signal
-                        );
-                        if(!success) throw new Error("Quote expired while waiting for Lightning payment");
-                    } catch (e) {
-                        if(lightningTxId!=null) return lightningTxId;
-                        throw e;
-                    }
-
-                    return lightningTxId;
-                }
-            } as SwapExecutionActionSendToAddress<true>;
-        }
-
-        if(this._state===FromBTCLNAutoSwapState.PR_PAID) {
-            return {
-                type: "Wait",
-                name: "Awaiting LP payout",
-                description: "Wait for the LP to create the swap HTLC on the destination smart chain",
-                pollTimeSeconds: 5,
-                expectedTimeSeconds: 10,
-                wait: async (
-                    maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal
-                ) => {
-                    const abortController = extendAbortController(
-                        abortSignal, maxWaitTimeSeconds, "Timed out waiting for LP payout"
-                    );
-                    await this.waitTillCommited(pollIntervalSeconds, abortController.signal);
-                }
-            } as SwapExecutionActionWait<"LP">;
-        }
-
-        if(this._state===FromBTCLNAutoSwapState.CLAIM_COMMITED) {
-            if(
-                this._commitedAt==null ||
-                options?.maxWaitTillAutomaticSettlementSeconds===0 ||
-                (Date.now() - this._commitedAt) > (options?.maxWaitTillAutomaticSettlementSeconds ?? 60)*1000
-            ) {
-                //TODO: Maybe return an action requesting the secret from the user
-                if(!this.hasSecretPreimage()) return undefined;
-
-                const signerAddress =
-                    await this.wrapper._getSignerAddress(options?.manualSettlementSmartChainSigner);
-
-                return {
-                    type: "SignSmartChainTransaction",
-                    name: "Settle manually",
-                    description: "Manually settle (claim) the swap on the destination smart chain",
-                    chain: this.chainIdentifier,
-                    txs: await this.txsClaim(options?.manualSettlementSmartChainSigner, options?.secret),
-                    submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => {
-                        const parsedTxs: T["SignedTXType"][] = [];
-                        for(let tx of txs) {
-                            parsedTxs.push(typeof(tx)==="string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
-                        }
-                        const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
-                        await this.waitTillClaimed(undefined, abortSignal, options?.secret);
-                        return txIds;
-                    },
-                    requiredSigner: signerAddress ?? this._getInitiator()
-                } as SwapExecutionActionSignSmartChainTx<T>;
-            } else {
-                return {
-                    type: "Wait",
-                    name: "Automatic settlement",
-                    description: "Wait for automatic settlement by the watchtower",
-                    pollTimeSeconds: 5,
-                    expectedTimeSeconds: 10,
-                    wait: async (
-                        maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal
-                    ) => {
-                        await this.waitTillClaimed(
-                            maxWaitTimeSeconds ?? options?.maxWaitTillAutomaticSettlementSeconds ?? 60,
-                            abortSignal,
-                            options?.secret,
-                            pollIntervalSeconds
-                        );
-                    }
-                } as SwapExecutionActionWait<"SETTLEMENT">;
-            }
-
-        }
-
-        return undefined;
+    /**
+     * @inheritDoc
+     */
+    async getExecutionStatus(options?: {
+        manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"],
+        maxWaitTillAutomaticSettlementSeconds?: number,
+        secret?: string
+    }): Promise<{
+        steps: [
+            SwapExecutionStepPayment<"LIGHTNING">,
+            SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
+        ],
+        currentAction:
+            SwapExecutionActionSendToAddress<true> |
+            SwapExecutionActionWait<"LP" | "SETTLEMENT"> |
+            SwapExecutionActionSignSmartChainTx<T> |
+            undefined
+    }> {
+        const executionStatus = await this._getExecutionStatus(options);
+        return {
+            steps: executionStatus.steps,
+            currentAction: await executionStatus.buildCurrentAction(options)
+        };
     }
 
     /**
@@ -976,64 +1104,7 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
         SwapExecutionStepPayment<"LIGHTNING">,
         SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
     ]> {
-        let lightningPaymentStatus: SwapExecutionStepPayment<"LIGHTNING">["status"] = "inactive";
-        let destinationSettlementStatus: SwapExecutionStepSettlement<T["ChainId"]>["status"] = "inactive";
-
-        switch(this._state) {
-            case FromBTCLNAutoSwapState.PR_CREATED:
-                lightningPaymentStatus = await this._verifyQuoteValid() ? "awaiting" : "soft_expired";
-                break;
-            case FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED:
-                lightningPaymentStatus = "soft_expired";
-                break;
-            case FromBTCLNAutoSwapState.QUOTE_EXPIRED:
-                lightningPaymentStatus = "expired";
-                break;
-            case FromBTCLNAutoSwapState.PR_PAID:
-                lightningPaymentStatus = "confirmed";
-                destinationSettlementStatus = "waiting_lp";
-                break;
-            case FromBTCLNAutoSwapState.CLAIM_COMMITED:
-                lightningPaymentStatus = "confirmed";
-                if(
-                    this._commitedAt==null ||
-                    options?.maxWaitTillAutomaticSettlementSeconds===0 ||
-                    (Date.now() - this._commitedAt) > (options?.maxWaitTillAutomaticSettlementSeconds ?? 60)*1000
-                ) {
-                    destinationSettlementStatus = "awaiting_manual";
-                } else {
-                    destinationSettlementStatus = "awaiting_automatic";
-                }
-                break;
-            case FromBTCLNAutoSwapState.CLAIM_CLAIMED:
-                lightningPaymentStatus = "confirmed";
-                destinationSettlementStatus = "settled";
-                break;
-            case FromBTCLNAutoSwapState.EXPIRED:
-            case FromBTCLNAutoSwapState.FAILED:
-                lightningPaymentStatus = "confirmed";
-                destinationSettlementStatus = "expired";
-                break;
-        }
-
-        return [
-            {
-                type: "Payment",
-                side: "source",
-                chain: "LIGHTNING",
-                title: "Lightning payment",
-                description: "Pay the Lightning network invoice to initiate the swap",
-                status: lightningPaymentStatus
-            },
-            {
-                type: "Settlement",
-                side: "destination",
-                chain: this.chainIdentifier,
-                title: "Destination settlement",
-                description: `Wait for the LP to initiate on the ${this.chainIdentifier} side, then wait for automatic settlement, or settle manually if it takes too long`,
-                status: destinationSettlementStatus
-            }
-        ];
+        return (await this._getExecutionStatus(options)).steps;
     }
 
 

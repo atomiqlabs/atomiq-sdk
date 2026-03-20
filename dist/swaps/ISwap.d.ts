@@ -319,6 +319,18 @@ export declare abstract class ISwap<T extends ChainType = ChainType, D extends S
      */
     abstract getSwapSteps(options?: any): Promise<SwapExecutionStep[]>;
     /**
+     * Returns the current action and the full execution steps for a given swap. Prefer this to calling
+     *  {@link getSwapSteps} and {@link getCurrentAction} separately - if called sequentially they might
+     *  return the respective steps/actions in different states if you hit the state transition boundary.
+     *
+     * @param options Optional options argument for the additional execution status context, see the actual type in
+     *  the respective swap classes
+     */
+    abstract getExecutionStatus(options?: any): Promise<{
+        steps: SwapExecutionStep[];
+        currentAction: SwapExecutionAction | undefined;
+    }>;
+    /**
      * Returns output amount of the swap, user receives this much
      */
     abstract getOutput(): TokenAmount;

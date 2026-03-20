@@ -471,6 +471,39 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
         maxWaitTillAutomaticSettlementSeconds?: number;
     }): Promise<boolean>;
     /**
+     * @internal
+     */
+    protected _getExecutionStatus(options?: {
+        bitcoinFeeRate?: number;
+        bitcoinWallet?: MinimalBitcoinWalletInterface;
+        manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
+        maxWaitTillAutomaticSettlementSeconds?: number;
+    }): Promise<{
+        steps: [SwapExecutionStepPayment<"BITCOIN">, SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">];
+        buildCurrentAction: (actionOptions?: {
+            bitcoinFeeRate?: number;
+            bitcoinWallet?: MinimalBitcoinWalletInterface;
+            manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
+            maxWaitTillAutomaticSettlementSeconds?: number;
+        }) => Promise<SwapExecutionActionSignPSBT | SwapExecutionActionWait<"BITCOIN_CONFS" | "SETTLEMENT"> | SwapExecutionActionSignSmartChainTx<T> | undefined>;
+    }>;
+    /**
+     * @internal
+     */
+    private _buildDepositPsbtAction;
+    /**
+     * @internal
+     */
+    private _buildWaitBitcoinConfirmationsAction;
+    /**
+     * @internal
+     */
+    private _buildWaitSettlementAction;
+    /**
+     * @internal
+     */
+    private _buildClaimSmartChainTxAction;
+    /**
      * @inheritDoc
      *
      * @param options.bitcoinFeeRate Optional fee rate to use for the created Bitcoin transaction
@@ -488,6 +521,21 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
         manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
         maxWaitTillAutomaticSettlementSeconds?: number;
     }): Promise<SwapExecutionActionSignPSBT | SwapExecutionActionWait<"BITCOIN_CONFS" | "SETTLEMENT"> | SwapExecutionActionSignSmartChainTx<T> | undefined>;
+    /**
+     * @inheritDoc
+     */
+    getExecutionStatus(options?: {
+        bitcoinFeeRate?: number;
+        bitcoinWallet?: MinimalBitcoinWalletInterface;
+        manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
+        maxWaitTillAutomaticSettlementSeconds?: number;
+    }): Promise<{
+        steps: [
+            SwapExecutionStepPayment<"BITCOIN">,
+            SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
+        ];
+        currentAction: SwapExecutionActionSignPSBT | SwapExecutionActionWait<"BITCOIN_CONFS" | "SETTLEMENT"> | SwapExecutionActionSignSmartChainTx<T> | undefined;
+    }>;
     /**
      * @inheritDoc
      */

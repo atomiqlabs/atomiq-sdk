@@ -17,23 +17,23 @@ import { SwapExecutionStepPayment, SwapExecutionStepSettlement } from "../../../
  */
 export declare enum LnForGasSwapState {
     /**
-     * The swap quote expired without user sending in the lightning network payment
+     * The swap quote expired before the user paid the Lightning invoice
      */
     EXPIRED = -2,
     /**
-     * The swap has failed after the intermediary already received a lightning network payment on the source
+     * The swap has failed before the destination payout completed, and the held Lightning invoice was released
      */
     FAILED = -1,
     /**
-     * Swap was created, pay the provided lightning network invoice
+     * Swap was created, pay the provided Lightning invoice which will remain held until destination payout succeeds
      */
     PR_CREATED = 0,
     /**
-     * User paid the lightning network invoice on the source
+     * The Lightning invoice was paid and is currently held until the user receives the destination funds
      */
     PR_PAID = 1,
     /**
-     * The swap is finished after the intermediary sent funds on the destination chain
+     * The swap is finished after the destination payout succeeded and the held Lightning invoice was settled
      */
     FINISHED = 2
 }
@@ -215,9 +215,37 @@ export declare class LnForGasSwap<T extends ChainType = ChainType> extends ISwap
      */
     execute(): Promise<boolean>;
     /**
+     * @internal
+     */
+    protected _getExecutionStatus(): Promise<{
+        steps: [SwapExecutionStepPayment<"LIGHTNING">, SwapExecutionStepSettlement<T["ChainId"], never>];
+        buildCurrentAction: () => Promise<SwapExecutionActionSendToAddress<true> | SwapExecutionActionWait<"LP"> | undefined>;
+    }>;
+    /**
+     * @internal
+     */
+    private _buildLightningPaymentAction;
+    /**
+     * @internal
+     */
+    private _buildWaitLpAction;
+    /**
      * @inheritDoc
      */
     getCurrentAction(): Promise<SwapExecutionActionSendToAddress<true> | SwapExecutionActionWait<"LP"> | undefined>;
+    /**
+     * @inheritDoc
+     */
+    getExecutionStatus(): Promise<{
+        steps: [
+            SwapExecutionStepPayment<"LIGHTNING">,
+            SwapExecutionStepSettlement<T["ChainId"], never>
+        ];
+        currentAction: SwapExecutionActionSendToAddress<true> | SwapExecutionActionWait<"LP"> | undefined;
+    }>;
+    /**
+     * @inheritDoc
+     */
     getSwapSteps(): Promise<[
         SwapExecutionStepPayment<"LIGHTNING">,
         SwapExecutionStepSettlement<T["ChainId"], never>

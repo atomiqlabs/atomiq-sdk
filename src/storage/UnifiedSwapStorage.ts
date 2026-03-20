@@ -18,6 +18,7 @@ const indexes = [
  * Simple index types for SDK swap storage
  *
  * @category Storage
+ * @useDeclaredType
  */
 export type UnifiedSwapStorageIndexes = typeof indexes;
 
@@ -31,6 +32,7 @@ const compositeIndexes = [
  * Composite index types for SDK swap storage
  *
  * @category Storage
+ * @useDeclaredType
  */
 export type UnifiedSwapStorageCompositeIndexes = typeof compositeIndexes;
 

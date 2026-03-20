@@ -78,5 +78,9 @@ export function serializeAction(action: SwapExecutionAction): SerializedAction<S
             const {wait, ...rest} = action as SwapExecutionActionWait;
             return rest as unknown as SerializedAction<SwapExecutionAction>;
         }
+        default: {
+            const _exhaustive: never = action;
+            throw new Error(`Unknown action type: ${(_exhaustive as any).type}`);
+        }
     }
 }

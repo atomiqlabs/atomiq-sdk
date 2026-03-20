@@ -1,34 +1,26 @@
 import {MultiChain, Swapper} from "../swapper/Swapper";
 import {
-    ApiAmount,
     ApiEndpoint,
     CreateSwapInput,
     GetSwapStatusInput,
     SubmitTransactionInput,
     SubmitTransactionOutput,
-    SwapStatusResponse
+    SwapStatusResponse,
+    toApiAmount
 } from "./ApiTypes";
 import {
     isSwapExecutionActionSignPSBT,
     isSwapExecutionActionSignSmartChainTx
 } from "../types/SwapExecutionAction";
 import {ISwap} from "../swaps/ISwap";
-import {TokenAmount} from "../types/TokenAmount";
 import {serializeAction} from "./SerializedAction";
 import {FeeType} from "../enums/FeeType";
 import {SwapType} from "../enums/SwapType";
 
-function toApiAmount(tokenAmount: TokenAmount): ApiAmount {
-    return {
-        amount: tokenAmount.amount,
-        rawAmount: tokenAmount.rawAmount != null ? tokenAmount.rawAmount.toString() : "0",
-        decimals: tokenAmount.token.decimals,
-        symbol: tokenAmount.token.ticker,
-        chain: tokenAmount.token.chainId
-    };
-}
-
-async function buildSwapStatusResponse(swap: ISwap): Promise<SwapStatusResponse> {
+async function buildSwapStatusResponse(
+    swap: ISwap,
+    txSerializer?: (chainId: string, tx: any) => Promise<string>
+): Promise<SwapStatusResponse> {
     const stateInfo = swap.getStateInfo();
     const input = swap.getInput();
     const output = swap.getOutput();
@@ -71,7 +63,7 @@ async function buildSwapStatusResponse(swap: ISwap): Promise<SwapStatusResponse>
         expiresAt: swap.getQuoteExpiry() > 0 ? swap.getQuoteExpiry() : null,
 
         steps,
-        currentAction: currentAction ? serializeAction(currentAction) : null,
+        currentAction: currentAction ? await serializeAction(currentAction, txSerializer) : null,
 
         transactions: {
             source: {
@@ -108,7 +100,16 @@ export class SwapperApi<T extends MultiChain> {
                     dstAddress: { type: "string", required: true, description: "Destination address" },
                     gasAmount: { type: "string", required: false, description: "Gas token amount to receive on destination chain" },
                     paymentHash: { type: "string", required: false, description: "Custom payment hash for Lightning swaps" },
-                    options: { type: "object", required: false, description: "Additional options: description, descriptionHash, expirySeconds" }
+                    options: {
+                        type: "object",
+                        required: false,
+                        description: "Additional swap options",
+                        properties: {
+                            description: { type: "string", required: false, description: "Description for Lightning invoice" },
+                            descriptionHash: { type: "string", required: false, description: "Description hash for Lightning invoice (hex)" },
+                            expirySeconds: { type: "number", required: false, description: "Custom expiry time in seconds" }
+                        }
+                    }
                 },
                 callback: (input) => this.createSwap(input)
             },
@@ -127,6 +128,14 @@ export class SwapperApi<T extends MultiChain> {
                 },
                 callback: (input) => this.submitTransaction(input)
             }
+        };
+    }
+
+    private getTxSerializer(): (chainId: string, tx: any) => Promise<string> {
+        return (chainId: string, tx: any) => {
+            const chain = (this.swapper._chains as any)[chainId];
+            if (chain == null) throw new Error("Unknown chain: " + chainId);
+            return chain.chainInterface.serializeTx(tx);
         };
     }
 
@@ -164,7 +173,7 @@ export class SwapperApi<T extends MultiChain> {
             Object.keys(options).length > 0 ? options : undefined
         );
 
-        return buildSwapStatusResponse(swap);
+        return buildSwapStatusResponse(swap, this.getTxSerializer());
     }
 
     private async getSwapStatus(input: GetSwapStatusInput): Promise<SwapStatusResponse> {
@@ -172,7 +181,7 @@ export class SwapperApi<T extends MultiChain> {
         if (swap == null) {
             throw new Error("Swap not found: " + input.swapId);
         }
-        return buildSwapStatusResponse(swap);
+        return buildSwapStatusResponse(swap, this.getTxSerializer());
     }
 
     private async submitTransaction(input: SubmitTransactionInput): Promise<SubmitTransactionOutput> {

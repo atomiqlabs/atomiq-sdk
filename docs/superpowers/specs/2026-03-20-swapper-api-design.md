@@ -23,7 +23,11 @@ This continues Adam's work on the `api` branch, which added `getCurrentAction()`
 
 ## Architecture
 
-### New File: `src/SwapperApi.ts`
+### New Folder: `src/api/`
+
+All API-related files live in `src/api/` to keep them cleanly separated from the core SDK.
+
+### `src/api/SwapperApi.ts`
 
 A generic class wrapping the `Swapper`:
 
@@ -63,9 +67,11 @@ Each endpoint is strongly typed — consumers get full type info for inputs and 
 
 ### File Changes
 
-- **New:** `src/SwapperApi.ts` — main API class, types, serialization
-- **Remove:** `src/ApiList.ts` — replaced by SwapperApi
-- **Update:** `src/index.ts` — export SwapperApi and related types
+- **New:** `src/api/SwapperApi.ts` — main API class, endpoint definitions, callbacks, response building
+- **New:** `src/api/ApiTypes.ts` — type definitions (ApiEndpoint, ApiAmount, SwapStatusResponse, input/output types)
+- **New:** `src/api/SerializedAction.ts` — SerializedAction generic type + runtime serializer
+- **Remove:** `src/ApiList.ts` — replaced by `src/api/`
+- **Update:** `src/index.ts` — export from `src/api/`, remove ApiList export
 
 ## Common Types
 

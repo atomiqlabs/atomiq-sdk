@@ -541,6 +541,171 @@ export abstract class IToBTCSwap<
     }
 
     /**
+     * @internal
+     */
+    protected async _getExecutionStatus() {
+        const state = this._state;
+
+        let sourcePaymentStatus: SwapExecutionStepPayment<T["ChainId"]>["status"] = "inactive";
+        let destinationPayoutStatus: SwapExecutionStepSettlement<"BITCOIN" | "LIGHTNING", "soft_settled">["status"] = "inactive";
+        let refundStatus: SwapExecutionStepRefund<T["ChainId"]>["status"] = "inactive";
+        let buildCurrentAction: (actionOptions?: {
+            skipChecks?: boolean,
+            refundSmartChainSigner?: string | T["Signer"] | T["NativeSigner"]
+        }) => Promise<
+            SwapExecutionActionSignSmartChainTx<T> |
+            SwapExecutionActionWait<"LP"> |
+            undefined
+        > = async () => undefined;
+
+        switch(state) {
+            case ToBTCSwapState.CREATED:
+                const quoteValid = await this._verifyQuoteValid();
+                sourcePaymentStatus = quoteValid ? "awaiting" : "soft_expired";
+                if(this.signatureData!=null && quoteValid) {
+                    buildCurrentAction = this._buildInitSmartChainTxAction.bind(this);
+                }
+                break;
+            case ToBTCSwapState.QUOTE_SOFT_EXPIRED:
+                sourcePaymentStatus = "soft_expired";
+                break;
+            case ToBTCSwapState.QUOTE_EXPIRED:
+                sourcePaymentStatus = "expired";
+                break;
+            case ToBTCSwapState.COMMITED:
+                sourcePaymentStatus = "confirmed";
+                destinationPayoutStatus = "waiting_lp";
+                buildCurrentAction = this._buildWaitLpAction.bind(this);
+                break;
+            case ToBTCSwapState.SOFT_CLAIMED:
+                sourcePaymentStatus = "confirmed";
+                destinationPayoutStatus = "soft_settled";
+                break;
+            case ToBTCSwapState.CLAIMED:
+                sourcePaymentStatus = "confirmed";
+                destinationPayoutStatus = "settled";
+                break;
+            case ToBTCSwapState.REFUNDABLE:
+                sourcePaymentStatus = "confirmed";
+                destinationPayoutStatus = "expired";
+                refundStatus = "awaiting";
+                buildCurrentAction = this._buildRefundSmartChainTxAction.bind(this);
+                break;
+            case ToBTCSwapState.REFUNDED:
+                sourcePaymentStatus = "confirmed";
+                destinationPayoutStatus = "expired";
+                refundStatus = "refunded";
+                break;
+        }
+
+        return {
+            steps: [
+                {
+                    type: "Payment",
+                    side: "source",
+                    chain: this.chainIdentifier,
+                    title: "Source payment",
+                    description: `Initiate the swap by funding the escrow on the ${this.chainIdentifier} side`,
+                    status: sourcePaymentStatus
+                },
+                {
+                    type: "Settlement",
+                    side: "destination",
+                    chain: this.outputToken.chainId,
+                    title: "Destination payout",
+                    description: `Wait for the LP to process the swap and send the payout on the ${this.outputToken.chainId} side`,
+                    status: destinationPayoutStatus
+                },
+                {
+                    type: "Refund",
+                    side: "source",
+                    chain: this.chainIdentifier,
+                    title: "Source refund",
+                    description: `Refund escrowed funds on the ${this.chainIdentifier} side, after LP failed to execute`,
+                    status: refundStatus
+                }
+            ] as [
+                SwapExecutionStepPayment<T["ChainId"]>,
+                SwapExecutionStepSettlement<"BITCOIN" | "LIGHTNING", "soft_settled">,
+                SwapExecutionStepRefund<T["ChainId"]>,
+            ],
+            buildCurrentAction
+        };
+    }
+
+    /**
+     * @internal
+     */
+    private async _buildInitSmartChainTxAction(actionOptions?: {
+        skipChecks?: boolean
+    }): Promise<SwapExecutionActionSignSmartChainTx> {
+        return {
+            type: "SignSmartChainTransaction",
+            name: "Initiate swap",
+            description: `Initiates the swap by commiting the funds to the escrow on the ${this.chainIdentifier} side`,
+            chain: this.chainIdentifier,
+            txs: await this.txsCommit(actionOptions?.skipChecks),
+            submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => {
+                if(!await this._verifyQuoteValid()) throw new Error("Quote is already expired!");
+                const parsedTxs: T["SignedTXType"][] = [];
+                for(let tx of txs) {
+                    parsedTxs.push(typeof(tx)==="string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
+                }
+                const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
+                await this.waitTillCommited(abortSignal);
+                return txIds;
+            },
+            requiredSigner: this._getInitiator()
+        } as SwapExecutionActionSignSmartChainTx;
+    }
+
+    /**
+     * @internal
+     */
+    private async _buildWaitLpAction(): Promise<SwapExecutionActionWait<"LP">> {
+        return {
+            type: "Wait",
+            name: "Awaiting LP payout",
+            description: "Wait for the intermediary to process the swap and either send the payout or make the swap refundable",
+            pollTimeSeconds: 5,
+            expectedTimeSeconds: 10,
+            wait: async (
+                maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal
+            ) => {
+                await this.waitForPayment(maxWaitTimeSeconds, pollIntervalSeconds, abortSignal);
+            }
+        } as SwapExecutionActionWait<"LP">;
+    }
+
+    /**
+     * @internal
+     */
+    private async _buildRefundSmartChainTxAction(actionOptions?: {
+        refundSmartChainSigner?: string | T["Signer"] | T["NativeSigner"]
+    }): Promise<SwapExecutionActionSignSmartChainTx> {
+        const signerAddress =
+            await this.wrapper._getSignerAddress(actionOptions?.refundSmartChainSigner);
+
+        return {
+            type: "SignSmartChainTransaction",
+            name: "Refund",
+            description: "Refund the swap after it failed to execute",
+            chain: this.chainIdentifier,
+            txs: await this.txsRefund(actionOptions?.refundSmartChainSigner),
+            submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => {
+                const parsedTxs: T["SignedTXType"][] = [];
+                for(let tx of txs) {
+                    parsedTxs.push(typeof(tx)==="string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
+                }
+                const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
+                await this.waitTillRefunded(abortSignal);
+                return txIds;
+            },
+            requiredSigner: signerAddress ?? this._getInitiator()
+        } as SwapExecutionActionSignSmartChainTx;
+    }
+
+    /**
      * @inheritDoc
      *
      * @param options.skipChecks Skip checks like making sure init signature is still valid and swap wasn't commited yet
@@ -555,65 +720,32 @@ export abstract class IToBTCSwap<
         SwapExecutionActionWait<"LP"> |
         undefined
     > {
-        if(this._state===ToBTCSwapState.CREATED) {
-            if(this.signatureData==null) return undefined;
-            if(!await this._verifyQuoteValid()) return undefined;
-            return {
-                type: "SignSmartChainTransaction",
-                name: "Initiate swap",
-                description: `Initiates the swap by commiting the funds to the escrow on the ${this.chainIdentifier} side`,
-                chain: this.chainIdentifier,
-                txs: await this.txsCommit(options?.skipChecks),
-                submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => {
-                    if(!await this._verifyQuoteValid()) throw new Error("Quote is already expired!");
-                    const parsedTxs: T["SignedTXType"][] = [];
-                    for(let tx of txs) {
-                        parsedTxs.push(typeof(tx)==="string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
-                    }
-                    const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
-                    await this.waitTillCommited(abortSignal);
-                    return txIds;
-                },
-                requiredSigner: this._getInitiator()
-            } as SwapExecutionActionSignSmartChainTx<T>;
-        }
-        if(this._state===ToBTCSwapState.COMMITED) {
-            return {
-                type: "Wait",
-                name: "Awaiting LP payout",
-                description: "Wait for the intermediary to process the swap and either send the payout or make the swap refundable",
-                pollTimeSeconds: 5,
-                expectedTimeSeconds: 10,
-                wait: async (
-                    maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal
-                ) => {
-                    await this.waitForPayment(maxWaitTimeSeconds, pollIntervalSeconds, abortSignal);
-                }
-            } as SwapExecutionActionWait<"LP">;
-        }
-        if(this.isRefundable()) {
-            const signerAddress =
-                await this.wrapper._getSignerAddress(options?.refundSmartChainSigner);
+        const executionStatus = await this._getExecutionStatus();
+        return executionStatus.buildCurrentAction(options);
+    }
 
-            return {
-                type: "SignSmartChainTransaction",
-                name: "Refund",
-                description: "Refund the swap after it failed to execute",
-                chain: this.chainIdentifier,
-                txs: await this.txsRefund(options?.refundSmartChainSigner),
-                submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => {
-                    const parsedTxs: T["SignedTXType"][] = [];
-                    for(let tx of txs) {
-                        parsedTxs.push(typeof(tx)==="string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
-                    }
-                    const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
-                    await this.waitTillRefunded(abortSignal);
-                    return txIds;
-                },
-                requiredSigner: signerAddress ?? this._getInitiator()
-            } as SwapExecutionActionSignSmartChainTx<T>;
-        }
-        return undefined;
+    /**
+     * @inheritDoc
+     */
+    async getExecutionStatus(options?: {
+        skipChecks?: boolean,
+        refundSmartChainSigner?: string | T["Signer"] | T["NativeSigner"]
+    }): Promise<{
+        steps: [
+            SwapExecutionStepPayment<T["ChainId"]>,
+            SwapExecutionStepSettlement<"BITCOIN" | "LIGHTNING", "soft_settled">,
+            SwapExecutionStepRefund<T["ChainId"]>,
+        ],
+        currentAction:
+            SwapExecutionActionSignSmartChainTx<T> |
+            SwapExecutionActionWait<"LP"> |
+            undefined
+    }> {
+        const executionStatus = await this._getExecutionStatus();
+        return {
+            steps: executionStatus.steps,
+            currentAction: await executionStatus.buildCurrentAction(options)
+        };
     }
 
     /**
@@ -624,70 +756,7 @@ export abstract class IToBTCSwap<
         SwapExecutionStepSettlement<"BITCOIN" | "LIGHTNING", "soft_settled">,
         SwapExecutionStepRefund<T["ChainId"]>,
     ]> {
-        let sourcePaymentStatus: SwapExecutionStepPayment<T["ChainId"]>["status"] = "inactive";
-        let destinationPayoutStatus: SwapExecutionStepSettlement<"BITCOIN" | "LIGHTNING">["status"] = "inactive";
-        let refundStatus: SwapExecutionStepRefund<T["ChainId"]>["status"] = "inactive";
-
-        switch(this._state) {
-            case ToBTCSwapState.CREATED:
-                sourcePaymentStatus = (await this._verifyQuoteValid()) ? "awaiting" : "soft_expired";
-                break;
-            case ToBTCSwapState.QUOTE_SOFT_EXPIRED:
-                sourcePaymentStatus = "soft_expired";
-                break;
-            case ToBTCSwapState.QUOTE_EXPIRED:
-                sourcePaymentStatus = "expired";
-                break;
-            case ToBTCSwapState.COMMITED:
-                sourcePaymentStatus = "confirmed";
-                destinationPayoutStatus = "waiting_lp";
-                break;
-            case ToBTCSwapState.SOFT_CLAIMED:
-                sourcePaymentStatus = "confirmed";
-                destinationPayoutStatus = "soft_settled";
-                break;
-            case ToBTCSwapState.CLAIMED:
-                sourcePaymentStatus = "confirmed";
-                destinationPayoutStatus = "settled";
-                break;
-            case ToBTCSwapState.REFUNDABLE:
-                sourcePaymentStatus = "confirmed";
-                destinationPayoutStatus = "expired";
-                refundStatus = "awaiting";
-                break;
-            case ToBTCSwapState.REFUNDED:
-                sourcePaymentStatus = "confirmed";
-                destinationPayoutStatus = "expired";
-                refundStatus = "refunded";
-                break;
-        }
-
-        return [
-            {
-                type: "Payment",
-                side: "source",
-                chain: this.chainIdentifier,
-                title: "Source payment",
-                description: `Initiate the swap by funding the escrow on the ${this.chainIdentifier} side`,
-                status: sourcePaymentStatus
-            },
-            {
-                type: "Settlement",
-                side: "destination",
-                chain: this.outputToken.chainId,
-                title: "Destination payout",
-                description: `Wait for the LP to process the swap and send the payout on the ${this.outputToken.chainId} side`,
-                status: destinationPayoutStatus
-            },
-            {
-                type: "Refund",
-                side: "source",
-                chain: this.chainIdentifier,
-                title: "Source refund",
-                description: `Refund escrowed funds on the ${this.chainIdentifier} side, after LP failed to execute`,
-                status: refundStatus
-            }
-        ];
+        return (await this._getExecutionStatus()).steps;
     }
 
     //////////////////////////////

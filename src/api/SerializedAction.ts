@@ -5,6 +5,7 @@ import {
     SwapExecutionActionSignSmartChainTx,
     SwapExecutionActionWait
 } from "../types/SwapExecutionAction";
+import {ApiAmount, toApiAmount} from "./ApiTypes";
 
 /**
  * Strips non-serializable fields (functions, complex objects) from SwapExecutionAction types.
@@ -12,7 +13,7 @@ import {
  *
  * - SignSmartChainTransaction: functions removed, txs → string[]
  * - SignPSBT: functions removed, txs[].psbt (Transaction object) omitted
- * - SendToAddress: functions removed, txs[].amount (TokenAmount) → string
+ * - SendToAddress: functions removed, txs[].amount (TokenAmount) → ApiAmount
  * - Wait: functions removed, data fields kept as-is
  *
  * @category API
@@ -30,7 +31,7 @@ export type SerializedAction<T extends SwapExecutionAction> =
     T["type"] extends "SendToAddress" ? {
         [K in keyof T as T[K] extends Function ? never : K]:
             K extends "txs" ? (T extends { txs: (infer U)[] }
-                ? (Omit<U, "amount"> & { amount: string })[] : never) : T[K]
+                ? (Omit<U, "amount"> & { amount: ApiAmount })[] : never) : T[K]
     } : {
         [K in keyof T as T[K] extends Function ? never : K]: T[K]
     };
@@ -39,9 +40,17 @@ export type SerializedAction<T extends SwapExecutionAction> =
  * Runtime serializer that strips non-serializable fields from a SwapExecutionAction.
  * Matches the compile-time SerializedAction<T> type.
  *
+ * @param action The swap execution action to serialize
+ * @param txSerializer Optional chain-specific transaction serializer for SignSmartChainTransaction actions.
+ *   Accepts the chain identifier and raw transaction, returns the serialized string.
+ *   Falls back to JSON.stringify if not provided.
+ *
  * @category API
  */
-export function serializeAction(action: SwapExecutionAction): SerializedAction<SwapExecutionAction> {
+export async function serializeAction(
+    action: SwapExecutionAction,
+    txSerializer?: (chainId: string, tx: any) => Promise<string>
+): Promise<SerializedAction<SwapExecutionAction>> {
     switch (action.type) {
         case "SendToAddress": {
             const {waitForTransactions, ...rest} = action as SwapExecutionActionSendToAddress<boolean>;
@@ -51,9 +60,7 @@ export function serializeAction(action: SwapExecutionAction): SerializedAction<S
                     type: tx.type,
                     address: tx.address,
                     hyperlink: tx.hyperlink,
-                    amount: tx.amount.rawAmount != null
-                        ? tx.amount.rawAmount.toString()
-                        : tx.amount.amount
+                    amount: toApiAmount(tx.amount)
                 }))
             } as unknown as SerializedAction<SwapExecutionAction>;
         }
@@ -71,7 +78,11 @@ export function serializeAction(action: SwapExecutionAction): SerializedAction<S
             const {submitTransactions, ...rest} = action as SwapExecutionActionSignSmartChainTx;
             return {
                 ...rest,
-                txs: rest.txs.map(tx => JSON.stringify(tx))
+                txs: await Promise.all(rest.txs.map(tx =>
+                    txSerializer != null
+                        ? txSerializer(rest.chain, tx)
+                        : Promise.resolve(JSON.stringify(tx))
+                ))
             } as unknown as SerializedAction<SwapExecutionAction>;
         }
         case "Wait": {

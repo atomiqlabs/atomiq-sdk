@@ -1,6 +1,7 @@
 import {SwapExecutionStep} from "../types/SwapExecutionStep";
 import {SwapExecutionAction} from "../types/SwapExecutionAction";
 import {SerializedAction} from "./SerializedAction";
+import {TokenAmount} from "../types/TokenAmount";
 
 /**
  * Unified amount type for all API responses
@@ -21,17 +22,66 @@ export interface ApiAmount {
 }
 
 /**
+ * Converts a TokenAmount to the serializable ApiAmount format
+ *
+ * @category API
+ */
+export function toApiAmount(tokenAmount: TokenAmount): ApiAmount {
+    return {
+        amount: tokenAmount.amount,
+        rawAmount: tokenAmount.rawAmount != null ? tokenAmount.rawAmount.toString() : "0",
+        decimals: tokenAmount.token.decimals,
+        symbol: tokenAmount.token.ticker,
+        chain: tokenAmount.token.chainId
+    };
+}
+
+/**
+ * Maps a TypeScript type to its schema type string representation
+ *
+ * @category API
+ */
+type TypeToSchemaType<T> =
+    [NonNullable<T>] extends [string] ? "string" :
+    [NonNullable<T>] extends [number] ? "number" :
+    [NonNullable<T>] extends [boolean] ? "boolean" :
+    [NonNullable<T>] extends [any[]] ? "array" :
+    "object";
+
+/**
+ * Schema field descriptor for nested properties (uses plain string for type)
+ *
+ * @category API
+ */
+export interface InputSchemaNestedField {
+    type: string;
+    required: boolean;
+    description: string;
+    properties?: Record<string, InputSchemaNestedField>;
+}
+
+/**
+ * Schema field descriptor with statically typed `type` and optional nested properties
+ *
+ * @category API
+ */
+export type InputSchemaField<T = unknown> = {
+    type: TypeToSchemaType<T>;
+    required: boolean;
+    description: string;
+    properties?: Record<string, InputSchemaNestedField>;
+};
+
+/**
  * Typed API endpoint definition for framework-agnostic integration
  *
  * @category API
  */
 export interface ApiEndpoint<TInput, TOutput> {
     type: "GET" | "POST";
-    inputSchema: Record<keyof TInput, {
-        type: string;
-        required: boolean;
-        description: string;
-    }>;
+    inputSchema: {
+        [K in keyof TInput]-?: InputSchemaField<TInput[K]>;
+    };
     callback: (input: TInput) => Promise<TOutput>;
 }
 

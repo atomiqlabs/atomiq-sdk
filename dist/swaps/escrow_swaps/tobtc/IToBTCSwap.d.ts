@@ -265,6 +265,28 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
         maxWaitTillSwapProcessedSeconds?: number;
     }): Promise<boolean>;
     /**
+     * @internal
+     */
+    protected _getExecutionStatus(): Promise<{
+        steps: [SwapExecutionStepPayment<T["ChainId"]>, SwapExecutionStepSettlement<"BITCOIN" | "LIGHTNING", "soft_settled">, SwapExecutionStepRefund<T["ChainId"]>];
+        buildCurrentAction: (actionOptions?: {
+            skipChecks?: boolean;
+            refundSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
+        }) => Promise<SwapExecutionActionSignSmartChainTx<T> | SwapExecutionActionWait<"LP"> | undefined>;
+    }>;
+    /**
+     * @internal
+     */
+    private _buildInitSmartChainTxAction;
+    /**
+     * @internal
+     */
+    private _buildWaitLpAction;
+    /**
+     * @internal
+     */
+    private _buildRefundSmartChainTxAction;
+    /**
      * @inheritDoc
      *
      * @param options.skipChecks Skip checks like making sure init signature is still valid and swap wasn't commited yet
@@ -275,6 +297,20 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
         skipChecks?: boolean;
         refundSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
     }): Promise<SwapExecutionActionSignSmartChainTx<T> | SwapExecutionActionWait<"LP"> | undefined>;
+    /**
+     * @inheritDoc
+     */
+    getExecutionStatus(options?: {
+        skipChecks?: boolean;
+        refundSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
+    }): Promise<{
+        steps: [
+            SwapExecutionStepPayment<T["ChainId"]>,
+            SwapExecutionStepSettlement<"BITCOIN" | "LIGHTNING", "soft_settled">,
+            SwapExecutionStepRefund<T["ChainId"]>
+        ];
+        currentAction: SwapExecutionActionSignSmartChainTx<T> | SwapExecutionActionWait<"LP"> | undefined;
+    }>;
     /**
      * @inheritDoc
      */

@@ -273,6 +273,10 @@ export declare class OnchainForGasSwap<T extends ChainType = ChainType> extends 
      */
     getSwapSteps(): Promise<never>;
     /**
+     * @inheritDoc
+     */
+    getExecutionStatus(): Promise<never>;
+    /**
      * @remark Not supported
      */
     execute(): Promise<boolean>;

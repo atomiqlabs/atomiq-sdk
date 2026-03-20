@@ -397,6 +397,34 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
         secret?: string;
     }): Promise<boolean>;
     /**
+     * @internal
+     */
+    protected _getExecutionStatus(options?: {
+        maxWaitTillAutomaticSettlementSeconds?: number;
+        secret?: string;
+    }): Promise<{
+        steps: [SwapExecutionStepPayment<"LIGHTNING">, SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">];
+        buildCurrentAction: (actionOptions?: {
+            manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
+        }) => Promise<SwapExecutionActionSendToAddress<true> | SwapExecutionActionWait<"LP" | "SETTLEMENT"> | SwapExecutionActionSignSmartChainTx<T> | undefined>;
+    }>;
+    /**
+     * @internal
+     */
+    private _buildLightningPaymentAction;
+    /**
+     * @internal
+     */
+    private _buildWaitLpAction;
+    /**
+     * @internal
+     */
+    private _buildWaitSettlementAction;
+    /**
+     * @internal
+     */
+    private _buildClaimSmartChainTxAction;
+    /**
      *
      * @param options.manualSettlementSmartChainSigner Optional smart chain signer to create a manual claim (settlement) transaction
      * @param options.maxWaitTillAutomaticSettlementSeconds Maximum time to wait for an automatic settlement after
@@ -409,6 +437,20 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
         maxWaitTillAutomaticSettlementSeconds?: number;
         secret?: string;
     }): Promise<SwapExecutionActionSendToAddress<true> | SwapExecutionActionWait<"LP" | "SETTLEMENT"> | SwapExecutionActionSignSmartChainTx<T> | undefined>;
+    /**
+     * @inheritDoc
+     */
+    getExecutionStatus(options?: {
+        manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
+        maxWaitTillAutomaticSettlementSeconds?: number;
+        secret?: string;
+    }): Promise<{
+        steps: [
+            SwapExecutionStepPayment<"LIGHTNING">,
+            SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
+        ];
+        currentAction: SwapExecutionActionSendToAddress<true> | SwapExecutionActionWait<"LP" | "SETTLEMENT"> | SwapExecutionActionSignSmartChainTx<T> | undefined;
+    }>;
     /**
      * @inheritDoc
      */

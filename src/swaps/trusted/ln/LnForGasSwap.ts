@@ -29,38 +29,38 @@ import {
  */
 export enum LnForGasSwapState {
     /**
-     * The swap quote expired without user sending in the lightning network payment
+     * The swap quote expired before the user paid the Lightning invoice
      */
     EXPIRED = -2,
     /**
-     * The swap has failed after the intermediary already received a lightning network payment on the source
+     * The swap has failed before the destination payout completed, and the held Lightning invoice was released
      */
     FAILED = -1,
     /**
-     * Swap was created, pay the provided lightning network invoice
+     * Swap was created, pay the provided Lightning invoice which will remain held until destination payout succeeds
      */
     PR_CREATED = 0,
     /**
-     * User paid the lightning network invoice on the source
+     * The Lightning invoice was paid and is currently held until the user receives the destination funds
      */
     PR_PAID = 1,
     /**
-     * The swap is finished after the intermediary sent funds on the destination chain
+     * The swap is finished after the destination payout succeeded and the held Lightning invoice was settled
      */
     FINISHED = 2
 }
 
 const LnForGasSwapStateDescription = {
     [LnForGasSwapState.EXPIRED]:
-        "The swap quote expired without user sending in the lightning network payment",
+        "The swap quote expired before the user paid the Lightning invoice",
     [LnForGasSwapState.FAILED]:
-        "The swap has failed after the intermediary already received a lightning network payment on the source",
+        "The swap failed before destination payout completed, and the held Lightning invoice was released back to the user",
     [LnForGasSwapState.PR_CREATED]:
-        "Swap was created, pay the provided lightning network invoice",
+        "Swap was created, pay the provided Lightning invoice. The invoice will remain held until destination payout succeeds",
     [LnForGasSwapState.PR_PAID]:
-        "User paid the lightning network invoice on the source",
+        "The Lightning invoice was paid and is currently held. It will only settle once the user receives the destination funds",
     [LnForGasSwapState.FINISHED]:
-        "The swap is finished after the intermediary sent funds on the destination chain"
+        "The swap is finished after the destination payout succeeded and the held Lightning invoice was settled"
 }
 
 export type LnForGasSwapInit = ISwapInit & {
@@ -417,93 +417,38 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
     }
 
     /**
-     * @inheritDoc
+     * @internal
      */
-    async getCurrentAction(): Promise<
-        SwapExecutionActionSendToAddress<true> |
-        SwapExecutionActionWait<"LP"> |
-        undefined
-    > {
-        if(this._state===LnForGasSwapState.PR_CREATED) {
-            if(!await this._verifyQuoteValid()) return undefined;
+    protected async _getExecutionStatus() {
+        const state = this._state;
 
-            return {
-                type: "SendToAddress",
-                name: "Deposit on Lightning",
-                description: "Pay the lightning network invoice to initiate the swap",
-                chain: "LIGHTNING",
-                txs: [{
-                    type: "BOLT11_PAYMENT_REQUEST",
-                    address: this.pr,
-                    hyperlink: this.getHyperlink(),
-                    amount: this.getInput()
-                }],
-                waitForTransactions: async (
-                    maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal
-                ) => {
-                    const abortController = extendAbortController(
-                        abortSignal, maxWaitTimeSeconds, "Timed out waiting for lightning payment"
-                    );
-                    let lightningTxId: string | undefined;
-                    try {
-                        const success = await this.waitForPayment(
-                            pollIntervalSeconds, abortController.signal,
-                            (txId: string) => {
-                                lightningTxId = txId;
-                                abortController.abort();
-                            }
-                        );
-                        if(!success) throw new Error("Quote expired while waiting for lightning payment");
-                    } catch (e) {
-                        if(lightningTxId!=null) return lightningTxId;
-                        throw e;
-                    }
-                    return this.getInputTxId()!;
-                }
-            } as SwapExecutionActionSendToAddress<true>;
-        }
-
-        if(this._state===LnForGasSwapState.PR_PAID) {
-            return {
-                type: "Wait",
-                name: "Awaiting LP payout",
-                description: "Wait for the intermediary to send the gas tokens on the destination smart chain",
-                pollTimeSeconds: 5,
-                expectedTimeSeconds: 10,
-                wait: async (
-                    maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal
-                ) => {
-                    const abortController = extendAbortController(
-                        abortSignal, maxWaitTimeSeconds, "Timed out waiting for LP payout"
-                    );
-                    await this.waitForPayment(pollIntervalSeconds, abortController.signal);
-                }
-            } as SwapExecutionActionWait<"LP">;
-        }
-
-        return undefined;
-    }
-
-    async getSwapSteps(): Promise<[
-        SwapExecutionStepPayment<"LIGHTNING">,
-        SwapExecutionStepSettlement<T["ChainId"], never>
-    ]> {
         let lightningPaymentStatus: SwapExecutionStepPayment<"LIGHTNING">["status"] = "inactive";
         let destinationSettlementStatus: SwapExecutionStepSettlement<T["ChainId"]>["status"] = "inactive";
+        let buildCurrentAction: () => Promise<
+            SwapExecutionActionSendToAddress<true> |
+            SwapExecutionActionWait<"LP"> |
+            undefined
+        > = async () => undefined;
 
-        switch(this._state) {
-            case LnForGasSwapState.PR_CREATED:
-                lightningPaymentStatus = await this._verifyQuoteValid() ? "awaiting" : "expired";
+        switch(state) {
+            case LnForGasSwapState.PR_CREATED: {
+                const quoteValid = await this._verifyQuoteValid();
+                lightningPaymentStatus = quoteValid ? "awaiting" : "soft_expired";
+                if(quoteValid) {
+                    buildCurrentAction = this._buildLightningPaymentAction.bind(this);
+                }
                 break;
+            }
             case LnForGasSwapState.EXPIRED:
                 lightningPaymentStatus = "expired";
                 break;
             case LnForGasSwapState.PR_PAID:
-                lightningPaymentStatus = "confirmed";
+                lightningPaymentStatus = "received";
                 destinationSettlementStatus = "waiting_lp";
+                buildCurrentAction = this._buildWaitLpAction.bind(this);
                 break;
             case LnForGasSwapState.FAILED:
-                lightningPaymentStatus = "confirmed";
+                lightningPaymentStatus = "expired";
                 destinationSettlementStatus = "expired";
                 break;
             case LnForGasSwapState.FINISHED:
@@ -512,24 +457,133 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
                 break;
         }
 
-        return [
-            {
-                type: "Payment",
-                side: "source",
-                chain: "LIGHTNING",
-                title: "Lightning payment",
-                description: "Pay the Lightning network invoice to initiate the swap",
-                status: lightningPaymentStatus
-            },
-            {
-                type: "Settlement",
-                side: "destination",
-                chain: this.chainIdentifier,
-                title: "Destination payout",
-                description: "Wait for the intermediary to send the gas tokens on the destination smart chain",
-                status: destinationSettlementStatus
+        return {
+            steps: [
+                {
+                    type: "Payment",
+                    side: "source",
+                    chain: "LIGHTNING",
+                    title: "Lightning payment",
+                    description: "Pay the Lightning network invoice to initiate the swap",
+                    status: lightningPaymentStatus
+                },
+                {
+                    type: "Settlement",
+                    side: "destination",
+                    chain: this.chainIdentifier,
+                    title: "Destination payout",
+                    description: "Wait for the intermediary to send the gas tokens on the destination smart chain",
+                    status: destinationSettlementStatus
+                }
+            ] as [
+                SwapExecutionStepPayment<"LIGHTNING">,
+                SwapExecutionStepSettlement<T["ChainId"], never>
+            ],
+            buildCurrentAction
+        };
+    }
+
+    /**
+     * @internal
+     */
+    private async _buildLightningPaymentAction(): Promise<SwapExecutionActionSendToAddress<true>> {
+        return {
+            type: "SendToAddress",
+            name: "Deposit on Lightning",
+            description: "Pay the lightning network invoice to initiate the swap",
+            chain: "LIGHTNING",
+            txs: [{
+                type: "BOLT11_PAYMENT_REQUEST",
+                address: this.pr,
+                hyperlink: this.getHyperlink(),
+                amount: this.getInput()
+            }],
+            waitForTransactions: async (
+                maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal
+            ) => {
+                const abortController = extendAbortController(
+                    abortSignal, maxWaitTimeSeconds, "Timed out waiting for lightning payment"
+                );
+                let lightningTxId: string | undefined;
+                try {
+                    const success = await this.waitForPayment(
+                        pollIntervalSeconds, abortController.signal,
+                        (txId: string) => {
+                            lightningTxId = txId;
+                            abortController.abort();
+                        }
+                    );
+                    if(!success) throw new Error("Quote expired while waiting for lightning payment");
+                } catch (e) {
+                    if(lightningTxId!=null) return lightningTxId;
+                    throw e;
+                }
+                return this.getInputTxId()!;
             }
-        ];
+        } as SwapExecutionActionSendToAddress<true>;
+    }
+
+    /**
+     * @internal
+     */
+    private async _buildWaitLpAction(): Promise<SwapExecutionActionWait<"LP">> {
+        return {
+            type: "Wait",
+            name: "Awaiting LP payout",
+            description: "Wait for the intermediary to send the gas tokens on the destination smart chain",
+            pollTimeSeconds: 5,
+            expectedTimeSeconds: 10,
+            wait: async (
+                maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal
+            ) => {
+                const abortController = extendAbortController(
+                    abortSignal, maxWaitTimeSeconds, "Timed out waiting for LP payout"
+                );
+                await this.waitForPayment(pollIntervalSeconds, abortController.signal);
+            }
+        } as SwapExecutionActionWait<"LP">;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    async getCurrentAction(): Promise<
+        SwapExecutionActionSendToAddress<true> |
+        SwapExecutionActionWait<"LP"> |
+        undefined
+    > {
+        const executionStatus = await this._getExecutionStatus();
+        return executionStatus.buildCurrentAction();
+    }
+
+    /**
+     * @inheritDoc
+     */
+    async getExecutionStatus(): Promise<{
+        steps: [
+            SwapExecutionStepPayment<"LIGHTNING">,
+            SwapExecutionStepSettlement<T["ChainId"], never>
+        ],
+        currentAction:
+            SwapExecutionActionSendToAddress<true> |
+            SwapExecutionActionWait<"LP"> |
+            undefined
+    }> {
+        const executionStatus = await this._getExecutionStatus();
+        return {
+            steps: executionStatus.steps,
+            currentAction: await executionStatus.buildCurrentAction()
+        };
+    }
+
+    /**
+     * @inheritDoc
+     */
+    async getSwapSteps(): Promise<[
+        SwapExecutionStepPayment<"LIGHTNING">,
+        SwapExecutionStepSettlement<T["ChainId"], never>
+    ]> {
+        return (await this._getExecutionStatus()).steps;
     }
 
     /**

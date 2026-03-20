@@ -33,8 +33,7 @@ async function buildSwapStatusResponse(swap: ISwap): Promise<SwapStatusResponse>
     const input = swap.getInput();
     const output = swap.getOutput();
     const feeBreakdown = swap.getFeeBreakdown();
-    const currentAction = await swap.getCurrentAction();
-    const steps = await swap.getSwapSteps();
+    const {steps, currentAction} = await swap.getExecutionStatus();
 
     // Build fees from breakdown
     const swapFeeEntry = feeBreakdown.find(f => f.type === FeeType.SWAP);

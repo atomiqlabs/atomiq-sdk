@@ -18,13 +18,13 @@
 
 All API-related files live in `src/api/` to keep them cleanly separated from the core SDK.
 
-| File | Action | Responsibility |
-|------|--------|----------------|
-| `src/api/SwapperApi.ts` | Create | Main API class, endpoint definitions, callbacks, response building |
-| `src/api/SerializedAction.ts` | Create | `SerializedAction<T>` generic type + `serializeAction()` runtime function |
-| `src/api/ApiTypes.ts` | Create | `ApiEndpoint`, `ApiAmount`, `SwapStatusResponse`, `CreateSwapInput`, `GetSwapStatusInput`, `SubmitTransactionInput`, `SubmitTransactionOutput` |
-| `src/ApiList.ts` | Remove | Replaced by `src/api/` |
-| `src/index.ts` | Modify | Add exports for new files, remove ApiList export |
+| File | Action      | Responsibility                                                                                                                                 |
+|------|-------------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| `src/api/SwapperApi.ts` | Create      | Main API class, endpoint definitions, callbacks, response building                                                                             |
+| `src/api/SerializedAction.ts` | Create      | `SerializedAction<T>` generic type + `serializeAction()` runtime function                                                                      |
+| `src/api/ApiTypes.ts` | Create      | `ApiEndpoint`, `ApiAmount`, `SwapStatusResponse`, `CreateSwapInput`, `GetSwapStatusInput`, `SubmitTransactionInput`, `SubmitTransactionOutput` |
+| `src/ApiList.ts` | Remove      | Replaced by `src/api/`                                                                                                                         |
+| `src/index.ts` | Don't touch | Don't add new exports just yet, there will be a separate export shim just for API-related exports                                              |
 
 ---
 
@@ -58,6 +58,10 @@ export interface ApiAmount {
 ```
 
 - [ ] **Step 2: Create `ApiEndpoint` type**
+
+//TODO: Improve the `inputSchema` fields to have a statically typed `type` based on the actual type of the specific key in `TInput` generic
+
+//TODO: There also needs to be some nesting possible in `inputSchema`, since we want to have at least a nested `options` type for the create endpoint (maybe for others)
 
 ```typescript
 /**
@@ -116,7 +120,7 @@ export interface GetSwapStatusInput {
  */
 export interface SubmitTransactionInput {
     swapId: string;
-    signedTxs: any[];
+    signedTxs: string[]; // Make this a string, so it enforces transactions to be in their serialized format
 }
 
 /**
@@ -175,12 +179,12 @@ export interface SwapStatusResponse {
 
     transactions: {
         source: {
-            initiation: string | null;
+            init: string | null; // Shortened to `init`
             settlement: string | null;
             refund: string | null;
         };
         destination: {
-            initiation: string | null;
+            init: string | null; // Shortened to `init`
             settlement: string | null;
         };
     };
@@ -210,6 +214,8 @@ git commit -m "Add API type definitions: ApiAmount, ApiEndpoint, SwapStatusRespo
 **Reference:** Read `src/types/SwapExecutionAction.ts` for the four action types and their fields. The generic type must use key-remapping (`as` clause) to truly omit function keys.
 
 - [ ] **Step 1: Create `SerializedAction<T>` generic type**
+
+//TODO: Amount here should also use the ApiAmount type!
 
 ```typescript
 // src/api/SerializedAction.ts
@@ -253,7 +259,11 @@ export type SerializedAction<T extends SwapExecutionAction> =
 
 - [ ] **Step 2: Create `serializeAction()` runtime function**
 
-This function performs the runtime transformation matching the compile-time type. It discriminates on `action.type`.
+This function performs the runtime transformation matching the compile-time type. It discriminates on `action.type` and uses available transaction serialization functions exposed in `swapper._chains[<chainId>].chainInterface` for serializing smart chain transactions.
+
+//TODO: As mentioned earlier it needs to translate amount to ApiAmount type not to string!
+
+//TODO: Needs to use the mentioned TX serializers for serializing smart chain transactions, not just `JSON.stringify`, that will break on internal transaction structures with buffers, bigints, etc.!
 
 ```typescript
 /**
@@ -274,7 +284,7 @@ export function serializeAction(action: SwapExecutionAction): SerializedAction<S
                     hyperlink: tx.hyperlink,
                     amount: tx.amount.rawAmount != null
                         ? tx.amount.rawAmount.toString()
-                        : tx.amount.amount
+                        : tx.amount.amount 
                 }))
             } as SerializedAction<SwapExecutionAction>;
         }
@@ -499,7 +509,7 @@ export class SwapperApi<T extends MultiChain> {
 
     async poll(): Promise<void> {
         // Poll on-chain events across all chains
-        // Check Swapper for event polling methods — may need to iterate chains and call poll on each
+        // TODO: Keep this empty for now, until the swapper instance exposes the poll() function
     }
 
     async sync(): Promise<void> {
@@ -617,27 +627,15 @@ git rm src/ApiList.ts
 
 Also remove the corresponding `dist/ApiList.js` and `dist/ApiList.d.ts` if they exist.
 
-- [ ] **Step 2: Update `src/index.ts`**
-
-Add exports for the new files. Remove any existing ApiList export if present.
-
-Add these lines to `src/index.ts` (in the appropriate section near existing type exports):
-
-```typescript
-export * from "./api/ApiTypes";
-export * from "./api/SerializedAction";
-export {SwapperApi} from "./api/SwapperApi";
-```
-
 Check if `src/index.ts` currently exports from `./ApiList` and remove that line.
 
-- [ ] **Step 3: Full project compile check**
+- [ ] **Step 2: Full project compile check**
 
 Run: `cd /Users/marci/dev/Atomiq/atomiq-sdk && tsc`
 
 This is the full build — verify everything compiles together. Fix any remaining type errors.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
 git add -A

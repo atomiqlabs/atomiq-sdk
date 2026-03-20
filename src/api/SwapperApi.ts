@@ -1,5 +1,6 @@
 import {MultiChain, Swapper} from "../swapper/Swapper";
 import {
+    ApiAmount,
     ApiEndpoint,
     CreateSwapInput,
     GetSwapStatusInput,
@@ -13,7 +14,6 @@ import {
 } from "../types/SwapExecutionAction";
 import {ISwap} from "../swaps/ISwap";
 import {TokenAmount} from "../types/TokenAmount";
-import {ApiAmount} from "./ApiTypes";
 import {serializeAction} from "./SerializedAction";
 import {FeeType} from "../enums/FeeType";
 import {SwapType} from "../enums/SwapType";

@@ -777,6 +777,332 @@ export class FromBTCSwap<T extends ChainType = ChainType>
     }
 
     /**
+     * @internal
+     */
+    protected async _getExecutionStatus(options?: {
+        maxWaitTillAutomaticSettlementSeconds?: number
+    }) {
+        const state = this._state;
+        const now = Date.now();
+        const timeoutTime = this.getTimeoutTime();
+
+        let confirmations: {
+            current: number,
+            target: number,
+            etaSeconds: number
+        } | undefined;
+
+        let destinationSetupStatus: SwapExecutionStepSetup<T["ChainId"]>["status"] = "awaiting";
+        let bitcoinPaymentStatus: SwapExecutionStepPayment<"BITCOIN">["status"] = "inactive";
+        let destinationSettlementStatus: SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">["status"] = "inactive";
+        let buildCurrentAction: (actionOptions?: {
+            bitcoinFeeRate?: number,
+            bitcoinWallet?: MinimalBitcoinWalletInterface,
+            skipChecks?: boolean,
+            manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"],
+        }) => Promise<
+            SwapExecutionActionSendToAddress<false> |
+            SwapExecutionActionSignPSBT<"FUNDED_PSBT"> |
+            SwapExecutionActionWait<"BITCOIN_CONFS" | "SETTLEMENT"> |
+            SwapExecutionActionSignSmartChainTx<T> |
+            undefined
+        > = async () => undefined;
+
+        switch(state) {
+            case FromBTCSwapState.PR_CREATED: {
+                const quoteValid = await this._verifyQuoteValid();
+                destinationSetupStatus = quoteValid && timeoutTime>=now ? "awaiting" : "soft_expired";
+                if(quoteValid && timeoutTime>=now) {
+                    buildCurrentAction = this._buildInitSmartChainTxAction.bind(this);
+                }
+                break;
+            }
+            case FromBTCSwapState.QUOTE_SOFT_EXPIRED:
+                destinationSetupStatus = "soft_expired";
+                break;
+            case FromBTCSwapState.QUOTE_EXPIRED:
+                destinationSetupStatus = "expired";
+                break;
+            case FromBTCSwapState.CLAIM_COMMITED:
+            case FromBTCSwapState.EXPIRED:
+            case FromBTCSwapState.FAILED:
+                const bitcoinPayment = this.address==null ? null : await this.getBitcoinPayment();
+                let bitcoinConfirmationDelay: number | undefined;
+                if(bitcoinPayment!=null && bitcoinPayment.confirmations < bitcoinPayment.targetConfirmations) {
+                    const tx = await this.wrapper._btcRpc.getTransaction(bitcoinPayment.txId);
+                    const result = tx==null
+                        ? null
+                        : await this.wrapper._btcRpc.getConfirmationDelay(tx, bitcoinPayment.targetConfirmations);
+                    bitcoinConfirmationDelay = result ?? -1;
+                }
+
+                destinationSetupStatus = "completed";
+                if(bitcoinPayment==null) {
+                    bitcoinPaymentStatus = "awaiting";
+                    if(state===FromBTCSwapState.EXPIRED) bitcoinPaymentStatus = "soft_expired";
+                    if(state===FromBTCSwapState.FAILED) bitcoinPaymentStatus = "expired";
+                    if(
+                        state===FromBTCSwapState.CLAIM_COMMITED && timeoutTime>=now &&
+                        this.address!=null && this.amount!=null
+                    ) {
+                        buildCurrentAction = this._buildSendToAddressOrSignPsbtAction.bind(this);
+                    }
+                } else if(bitcoinPayment.confirmations >= bitcoinPayment.targetConfirmations) {
+                    bitcoinPaymentStatus = "confirmed";
+                    if(state!==FromBTCSwapState.FAILED) {
+                        buildCurrentAction = this._buildWaitBitcoinConfirmationsAction.bind(this, bitcoinConfirmationDelay ?? -1);
+                    }
+                } else {
+                    bitcoinPaymentStatus = "received";
+                    confirmations = {
+                        current: bitcoinPayment.confirmations,
+                        target: bitcoinPayment.targetConfirmations,
+                        etaSeconds: bitcoinConfirmationDelay ?? -1
+                    };
+                    if(state!==FromBTCSwapState.FAILED) {
+                        buildCurrentAction = this._buildWaitBitcoinConfirmationsAction.bind(this, bitcoinConfirmationDelay ?? -1);
+                    }
+                }
+                destinationSettlementStatus = state===FromBTCSwapState.FAILED ? "expired" : "inactive";
+                break;
+            case FromBTCSwapState.BTC_TX_CONFIRMED:
+                destinationSetupStatus = "completed";
+                bitcoinPaymentStatus = "confirmed";
+                if(
+                    this.btcTxConfirmedAt==null ||
+                    options?.maxWaitTillAutomaticSettlementSeconds===0 ||
+                    (now - this.btcTxConfirmedAt) > (options?.maxWaitTillAutomaticSettlementSeconds ?? 60)*1000
+                ) {
+                    destinationSettlementStatus = "awaiting_manual";
+                    buildCurrentAction = this._buildClaimSmartChainTxAction.bind(this);
+                } else {
+                    destinationSettlementStatus = "awaiting_automatic";
+                    buildCurrentAction = this._buildWaitSettlementAction.bind(this, options?.maxWaitTillAutomaticSettlementSeconds);
+                }
+                break;
+            case FromBTCSwapState.CLAIM_CLAIMED:
+                destinationSetupStatus = "completed";
+                bitcoinPaymentStatus = "confirmed";
+                destinationSettlementStatus = "settled";
+                break;
+        }
+
+        if(bitcoinPaymentStatus==="confirmed") {
+            const requiredConfirmations = this.getRequiredConfirmationsCount();
+            if(!Number.isNaN(requiredConfirmations)) {
+                confirmations = {
+                    current: requiredConfirmations,
+                    target: requiredConfirmations,
+                    etaSeconds: 0
+                };
+            }
+        }
+
+        return {
+            steps: [
+                {
+                    type: "Setup",
+                    side: "destination",
+                    chain: this.chainIdentifier,
+                    title: "Open Bitcoin swap address",
+                    description: `Create the escrow on the ${this.chainIdentifier} side to open the Bitcoin swap address`,
+                    status: destinationSetupStatus
+                },
+                {
+                    type: "Payment",
+                    side: "source",
+                    chain: "BITCOIN",
+                    title: "Bitcoin payment",
+                    description: "Send Bitcoin to the swap address and wait for the transaction to confirm",
+                    status: bitcoinPaymentStatus,
+                    confirmations
+                },
+                {
+                    type: "Settlement",
+                    side: "destination",
+                    chain: this.chainIdentifier,
+                    title: "Destination settlement",
+                    description: `Wait for automatic settlement on the ${this.chainIdentifier} side, or settle manually if it takes too long`,
+                    status: destinationSettlementStatus
+                }
+            ] as [
+                SwapExecutionStepSetup<T["ChainId"]>,
+                SwapExecutionStepPayment<"BITCOIN">,
+                SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
+            ],
+            buildCurrentAction
+        };
+    }
+
+    /**
+     * @internal
+     */
+    private async _buildSendToAddressOrSignPsbtAction(actionOptions?: {
+        bitcoinFeeRate?: number,
+        bitcoinWallet?: MinimalBitcoinWalletInterface,
+    }): Promise<
+        SwapExecutionActionSendToAddress<false> |
+        SwapExecutionActionSignPSBT<"FUNDED_PSBT">
+    > {
+        if(this.address==null) throw new Error("Bitcoin swap address not known!");
+        if(this.amount==null) throw new Error("Bitcoin swap amount not known!");
+
+        if(actionOptions?.bitcoinWallet==null) {
+            return {
+                type: "SendToAddress",
+                name: "Deposit on Bitcoin",
+                description: "Send funds to the bitcoin swap address",
+                chain: "BITCOIN",
+                txs: [{
+                    type: "BITCOIN_ADDRESS",
+                    address: this.address,
+                    hyperlink: this._getHyperlink(),
+                    amount: toTokenAmount(this.amount, BitcoinTokens.BTC, this.wrapper._prices)
+                }],
+                waitForTransactions: async (
+                    maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal
+                ) => {
+                    let btcTxId: string | undefined;
+                    const abortController = extendAbortController(
+                        abortSignal, maxWaitTimeSeconds, "Timed out waiting for bitcoin transaction"
+                    );
+
+                    try {
+                        return await this.waitForBitcoinTransaction(
+                            (txId) => {
+                                btcTxId = txId;
+                                abortController.abort();
+                            },
+                            pollIntervalSeconds,
+                            abortController.signal
+                        );
+                    } catch (e) {
+                        if(btcTxId!=null) return btcTxId;
+                        throw e;
+                    }
+                }
+            } as SwapExecutionActionSendToAddress<false>;
+        }
+
+        return {
+            type: "SignPSBT",
+            name: "Deposit on Bitcoin",
+            description: "Send funds to the bitcoin swap address",
+            chain: "BITCOIN",
+            txs: [{
+                ...await this.getFundedPsbt(actionOptions.bitcoinWallet, actionOptions?.bitcoinFeeRate),
+                type: "FUNDED_PSBT"
+            }],
+            submitPsbt: async (signedPsbt: string | Transaction | (string | Transaction)[]) => {
+                let psbt: string | Transaction;
+                if(Array.isArray(signedPsbt)) {
+                    if(signedPsbt.length!==1) throw new Error("Need to submit exactly 1 signed PSBT!");
+                    psbt = signedPsbt[0];
+                } else {
+                    psbt = signedPsbt;
+                }
+                return [await this.submitPsbt(psbt)];
+            }
+        } as SwapExecutionActionSignPSBT<"FUNDED_PSBT">;
+    }
+
+    /**
+     * @internal
+     */
+    private async _buildWaitBitcoinConfirmationsAction(confirmationDelay: number): Promise<SwapExecutionActionWait<"BITCOIN_CONFS">> {
+        return {
+            type: "Wait",
+            name: "Bitcoin confirmations",
+            description: "Wait for bitcoin transaction to confirm",
+            pollTimeSeconds: 10,
+            expectedTimeSeconds: confirmationDelay,
+            wait: async (
+                maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal,
+                btcConfirmationsCallback?: (txId?: string, confirmations?: number, targetConfirmations?: number, txEtaMs?: number) => void
+            ) => {
+                const abortController = extendAbortController(
+                    abortSignal, maxWaitTimeSeconds, "Timed out waiting for bitcoin transaction to confirm"
+                );
+                await this.waitForBitcoinTransaction(btcConfirmationsCallback, pollIntervalSeconds, abortController.signal);
+            }
+        } as SwapExecutionActionWait<"BITCOIN_CONFS">;
+    }
+
+    /**
+     * @internal
+     */
+    private async _buildWaitSettlementAction(maxWaitTillAutomaticSettlementSeconds?: number): Promise<SwapExecutionActionWait<"SETTLEMENT">> {
+        return {
+            type: "Wait",
+            name: "Automatic settlement",
+            description: "Wait for automatic settlement by the watchtower",
+            pollTimeSeconds: 5,
+            expectedTimeSeconds: 10,
+            wait: async (
+                maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal
+            ) => {
+                await this.waitTillClaimed(maxWaitTimeSeconds ?? maxWaitTillAutomaticSettlementSeconds ?? 60, abortSignal, pollIntervalSeconds);
+            }
+        } as SwapExecutionActionWait<"SETTLEMENT">;
+    }
+
+    /**
+     * @internal
+     */
+    private async _buildInitSmartChainTxAction(actionOptions?: {
+        skipChecks?: boolean,
+    }): Promise<SwapExecutionActionSignSmartChainTx<T>> {
+        return {
+            type: "SignSmartChainTransaction",
+            name: "Initiate swap",
+            description: `Opens up the bitcoin swap address on the ${this.chainIdentifier} side`,
+            chain: this.chainIdentifier,
+            txs: await this.txsCommit(actionOptions?.skipChecks),
+            submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => {
+                if(!await this._verifyQuoteValid()) throw new Error("Quote is already expired!");
+                if(this.getTimeoutTime()<Date.now()) throw new Error("Swap address already expired or close to expiry!");
+
+                const parsedTxs: T["SignedTXType"][] = [];
+                for(let tx of txs) {
+                    parsedTxs.push(typeof(tx)==="string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
+                }
+                const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
+                await this.waitTillCommited(abortSignal);
+                return txIds;
+            },
+            requiredSigner: this._getInitiator()
+        } as SwapExecutionActionSignSmartChainTx<T>;
+    }
+
+    /**
+     * @internal
+     */
+    private async _buildClaimSmartChainTxAction(actionOptions?: {
+        manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"],
+    }): Promise<SwapExecutionActionSignSmartChainTx<T>> {
+        const signerAddress =
+            await this.wrapper._getSignerAddress(actionOptions?.manualSettlementSmartChainSigner);
+
+        return {
+            type: "SignSmartChainTransaction",
+            name: "Settle manually",
+            description: "Manually settle (claim) the swap on the destination smart chain",
+            chain: this.chainIdentifier,
+            txs: await this.txsClaim(actionOptions?.manualSettlementSmartChainSigner),
+            submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => {
+                const parsedTxs: T["SignedTXType"][] = [];
+                for(let tx of txs) {
+                    parsedTxs.push(typeof(tx)==="string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
+                }
+                const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
+                await this.waitTillClaimed(undefined, abortSignal);
+                return txIds;
+            },
+            requiredSigner: signerAddress ?? this._getInitiator()
+        } as SwapExecutionActionSignSmartChainTx<T>;
+    }
+
+    /**
      * @inheritDoc
      *
      * @param options.bitcoinFeeRate Optional fee rate to use for the created Bitcoin transaction
@@ -802,166 +1128,37 @@ export class FromBTCSwap<T extends ChainType = ChainType>
         SwapExecutionActionSignSmartChainTx<T> |
         undefined
     > {
-        if(this._state===FromBTCSwapState.PR_CREATED) {
-            if(!await this._verifyQuoteValid()) return undefined;
-            if(this.getTimeoutTime()<Date.now()) return undefined;
-            return {
-                type: "SignSmartChainTransaction",
-                name: "Initiate swap",
-                description: `Opens up the bitcoin swap address on the ${this.chainIdentifier} side`,
-                chain: this.chainIdentifier,
-                txs: await this.txsCommit(options?.skipChecks),
-                submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => {
-                    if(!await this._verifyQuoteValid()) throw new Error("Quote is already expired!");
-                    if(this.getTimeoutTime()<Date.now()) throw new Error("Swap address already expired or close to expiry!");
+        const executionStatus = await this._getExecutionStatus(options);
+        return executionStatus.buildCurrentAction(options);
+    }
 
-                    const parsedTxs: T["SignedTXType"][] = [];
-                    for(let tx of txs) {
-                        parsedTxs.push(typeof(tx)==="string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
-                    }
-                    const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
-                    await this.waitTillCommited(abortSignal);
-                    return txIds;
-                },
-                requiredSigner: this._getInitiator()
-            } as SwapExecutionActionSignSmartChainTx<T>;
-        }
-
-        if((this._state===FromBTCSwapState.CLAIM_COMMITED || this._state===FromBTCSwapState.EXPIRED) && this.address!=null) {
-            const bitcoinPayment = await this.getBitcoinPayment();
-            if(bitcoinPayment==null) {
-                if(this._state===FromBTCSwapState.EXPIRED) return undefined;
-                if(this.getTimeoutTime()<Date.now()) return undefined;
-                if(this.amount==null) return undefined;
-
-                if(options?.bitcoinWallet==null) {
-                    return {
-                        type: "SendToAddress",
-                        name: "Deposit on Bitcoin",
-                        description: "Send funds to the bitcoin swap address",
-                        chain: "BITCOIN",
-                        txs: [{
-                            type: "BITCOIN_ADDRESS",
-                            address: this.address,
-                            hyperlink: this._getHyperlink(),
-                            amount: toTokenAmount(this.amount, BitcoinTokens.BTC, this.wrapper._prices)
-                        }],
-                        waitForTransactions: async (
-                            maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal
-                        ) => {
-                            let btcTxId: string | undefined;
-                            const abortController = extendAbortController(
-                                abortSignal, maxWaitTimeSeconds, "Timed out waiting for bitcoin transaction"
-                            );
-
-                            try {
-                                return await this.waitForBitcoinTransaction(
-                                    (txId) => {
-                                        btcTxId = txId;
-                                        abortController.abort();
-                                    },
-                                    pollIntervalSeconds,
-                                    abortController.signal
-                                );
-                            } catch (e) {
-                                if(btcTxId!=null) return btcTxId;
-                                throw e;
-                            }
-                        }
-                    } as SwapExecutionActionSendToAddress<false>;
-                }
-
-                return {
-                    type: "SignPSBT",
-                    name: "Deposit on Bitcoin",
-                    description: "Send funds to the bitcoin swap address",
-                    chain: "BITCOIN",
-                    txs: [{
-                        ...await this.getFundedPsbt(options.bitcoinWallet, options?.bitcoinFeeRate),
-                        type: "FUNDED_PSBT"
-                    }],
-                    submitPsbt: async (signedPsbt: string | Transaction | (string | Transaction)[]) => {
-                        let psbt: string | Transaction;
-                        if(Array.isArray(signedPsbt)) {
-                            if(signedPsbt.length!==1) throw new Error("Need to submit exactly 1 signed PSBT!");
-                            psbt = signedPsbt[0];
-                        } else {
-                            psbt = signedPsbt;
-                        }
-                        return [await this.submitPsbt(psbt)];
-                    }
-                } as SwapExecutionActionSignPSBT<"FUNDED_PSBT">;
-            } else {
-                let confirmationDelay = -1;
-                if(this.requiredConfirmations!=null) {
-                    const tx = await this.wrapper._btcRpc.getTransaction(bitcoinPayment.txId);
-                    if(tx!=null) {
-                        const result = await this.wrapper._btcRpc.getConfirmationDelay(tx, this.requiredConfirmations);
-                        if(result!=null) confirmationDelay = result;
-                    }
-                }
-
-                return {
-                    type: "Wait",
-                    name: "Bitcoin confirmations",
-                    description: "Wait for bitcoin transaction to confirm",
-                    pollTimeSeconds: 10,
-                    expectedTimeSeconds: confirmationDelay,
-                    wait: async (
-                        maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal,
-                        btcConfirmationsCallback?: (txId?: string, confirmations?: number, targetConfirmations?: number, txEtaMs?: number) => void
-                    ) => {
-                        const abortController = extendAbortController(
-                            abortSignal, maxWaitTimeSeconds, "Timed out waiting for bitcoin transaction to confirm"
-                        );
-                        await this.waitForBitcoinTransaction(btcConfirmationsCallback, pollIntervalSeconds, abortController.signal);
-                    }
-                } as SwapExecutionActionWait<"BITCOIN_CONFS">;
-            }
-        }
-
-        if(this._state===FromBTCSwapState.BTC_TX_CONFIRMED) {
-            if(
-                this.btcTxConfirmedAt==null ||
-                options?.maxWaitTillAutomaticSettlementSeconds===0 ||
-                (Date.now() - this.btcTxConfirmedAt) > (options?.maxWaitTillAutomaticSettlementSeconds ?? 60)*1000
-            ) {
-                const signerAddress =
-                    await this.wrapper._getSignerAddress(options?.manualSettlementSmartChainSigner);
-
-                return {
-                    type: "SignSmartChainTransaction",
-                    name: "Settle manually",
-                    description: "Manually settle (claim) the swap on the destination smart chain",
-                    chain: this.chainIdentifier,
-                    txs: await this.txsClaim(options?.manualSettlementSmartChainSigner),
-                    submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => {
-                        const parsedTxs: T["SignedTXType"][] = [];
-                        for(let tx of txs) {
-                            parsedTxs.push(typeof(tx)==="string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
-                        }
-                        const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
-                        await this.waitTillClaimed(undefined, abortSignal);
-                        return txIds;
-                    },
-                    requiredSigner: signerAddress ?? this._getInitiator()
-                } as SwapExecutionActionSignSmartChainTx<T>;
-            } else {
-                return {
-                    type: "Wait",
-                    name: "Automatic settlement",
-                    description: "Wait for automatic settlement by the watchtower",
-                    pollTimeSeconds: 5,
-                    expectedTimeSeconds: 10,
-                    wait: async (
-                        maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal
-                    ) => {
-                        await this.waitTillClaimed(maxWaitTimeSeconds ?? options?.maxWaitTillAutomaticSettlementSeconds ?? 60, abortSignal, pollIntervalSeconds);
-                    }
-                } as SwapExecutionActionWait<"SETTLEMENT">;
-            }
-        }
-        return undefined;
+    /**
+     * @inheritDoc
+     */
+    async getExecutionStatus(options?: {
+        bitcoinFeeRate?: number,
+        bitcoinWallet?: MinimalBitcoinWalletInterface,
+        skipChecks?: boolean,
+        manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"],
+        maxWaitTillAutomaticSettlementSeconds?: number
+    }): Promise<{
+        steps: [
+            SwapExecutionStepSetup<T["ChainId"]>,
+            SwapExecutionStepPayment<"BITCOIN">,
+            SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
+        ],
+        currentAction:
+            SwapExecutionActionSendToAddress<false> |
+            SwapExecutionActionSignPSBT<"FUNDED_PSBT"> |
+            SwapExecutionActionWait<"BITCOIN_CONFS" | "SETTLEMENT"> |
+            SwapExecutionActionSignSmartChainTx<T> |
+            undefined
+    }> {
+        const executionStatus = await this._getExecutionStatus(options);
+        return {
+            steps: executionStatus.steps,
+            currentAction: await executionStatus.buildCurrentAction(options)
+        };
     }
 
     /**
@@ -974,122 +1171,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
         SwapExecutionStepPayment<"BITCOIN">,
         SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
     ]> {
-        let confirmations: {
-            current: number,
-            target: number,
-            etaSeconds: number
-        } | undefined;
-
-        let destinationSetupStatus: SwapExecutionStepSetup<T["ChainId"]>["status"] = "awaiting";
-        let bitcoinPaymentStatus: SwapExecutionStepPayment<"BITCOIN">["status"] = "inactive";
-        let destinationSettlementStatus: SwapExecutionStepSettlement<T["ChainId"]>["status"] = "inactive";
-
-        switch(this._state) {
-            case FromBTCSwapState.PR_CREATED:
-                destinationSetupStatus =
-                    (await this._verifyQuoteValid()) && this.getTimeoutTime()>=Date.now() ?
-                        "awaiting" :
-                        "soft_expired";
-                break;
-            case FromBTCSwapState.QUOTE_SOFT_EXPIRED:
-                destinationSetupStatus = "soft_expired";
-                break;
-            case FromBTCSwapState.QUOTE_EXPIRED:
-                destinationSetupStatus = "expired";
-                break;
-            case FromBTCSwapState.CLAIM_COMMITED:
-            case FromBTCSwapState.EXPIRED:
-            case FromBTCSwapState.FAILED:
-                destinationSetupStatus = "completed";
-                if(this.address!=null) {
-                    const bitcoinPayment = await this.getBitcoinPayment();
-                    if(bitcoinPayment==null) {
-                        bitcoinPaymentStatus =
-                            this._state===FromBTCSwapState.CLAIM_COMMITED ?
-                                "awaiting" :
-                                "expired";
-                    } else if(bitcoinPayment.confirmations >= bitcoinPayment.targetConfirmations) {
-                        bitcoinPaymentStatus = "confirmed";
-                    } else {
-                        bitcoinPaymentStatus = "received";
-                        const tx = await this.wrapper._btcRpc.getTransaction(bitcoinPayment.txId);
-                        const result = tx==null
-                            ? null
-                            : await this.wrapper._btcRpc.getConfirmationDelay(tx, bitcoinPayment.targetConfirmations);
-                        confirmations = {
-                            current: bitcoinPayment.confirmations,
-                            target: bitcoinPayment.targetConfirmations,
-                            etaSeconds: result ?? -1
-                        };
-                    }
-                } else {
-                    bitcoinPaymentStatus =
-                        this._state===FromBTCSwapState.CLAIM_COMMITED ?
-                            "awaiting" :
-                            "expired";
-                }
-                if(this._state===FromBTCSwapState.FAILED) {
-                    destinationSettlementStatus = "expired";
-                }
-                break;
-            case FromBTCSwapState.BTC_TX_CONFIRMED:
-                destinationSetupStatus = "completed";
-                bitcoinPaymentStatus = "confirmed";
-                if(
-                    this.btcTxConfirmedAt==null ||
-                    options?.maxWaitTillAutomaticSettlementSeconds===0 ||
-                    (Date.now() - this.btcTxConfirmedAt) > (options?.maxWaitTillAutomaticSettlementSeconds ?? 60)*1000
-                ) {
-                    destinationSettlementStatus = "awaiting_manual";
-                } else {
-                    destinationSettlementStatus = "awaiting_automatic";
-                }
-                break;
-            case FromBTCSwapState.CLAIM_CLAIMED:
-                destinationSetupStatus = "completed";
-                bitcoinPaymentStatus = "confirmed";
-                destinationSettlementStatus = "settled";
-                break;
-        }
-
-        if(bitcoinPaymentStatus==="confirmed") {
-            const requiredConfirmations = this.getRequiredConfirmationsCount();
-            if(!Number.isNaN(requiredConfirmations)) {
-                confirmations = {
-                    current: requiredConfirmations,
-                    target: requiredConfirmations,
-                    etaSeconds: 0
-                };
-            }
-        }
-
-        return [
-            {
-                type: "Setup",
-                side: "destination",
-                chain: this.chainIdentifier,
-                title: "Open Bitcoin swap address",
-                description: `Create the escrow on the ${this.chainIdentifier} side to open the Bitcoin swap address`,
-                status: destinationSetupStatus
-            },
-            {
-                type: "Payment",
-                side: "source",
-                chain: "BITCOIN",
-                title: "Bitcoin payment",
-                description: "Send Bitcoin to the swap address and wait for the transaction to confirm",
-                status: bitcoinPaymentStatus,
-                confirmations
-            },
-            {
-                type: "Settlement",
-                side: "destination",
-                chain: this.chainIdentifier,
-                title: "Destination settlement",
-                description: `Wait for automatic settlement on the ${this.chainIdentifier} side, or settle manually if it takes too long`,
-                status: destinationSettlementStatus
-            }
-        ];
+        return (await this._getExecutionStatus(options)).steps;
     }
 
     //////////////////////////////

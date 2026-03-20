@@ -289,6 +289,25 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
         delayBetweenCommitAndClaimSeconds?: number;
     }): Promise<boolean>;
     /**
+     * @internal
+     */
+    protected _getExecutionStatus(options?: {
+        secret?: string;
+    }): Promise<{
+        steps: [SwapExecutionStepPayment<"LIGHTNING">, SwapExecutionStepSettlement<T["ChainId"], "awaiting_manual">];
+        buildCurrentAction: (actionOptions?: {
+            skipChecks?: boolean;
+        }) => Promise<SwapExecutionActionSendToAddress<true> | SwapExecutionActionSignSmartChainTx<T> | undefined>;
+    }>;
+    /**
+     * @internal
+     */
+    private _buildLightningPaymentAction;
+    /**
+     * @internal
+     */
+    private _buildClaimSmartChainTxAction;
+    /**
      * @inheritDoc
      *
      * @param options
@@ -302,6 +321,19 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
         skipChecks?: boolean;
         secret?: string;
     }): Promise<SwapExecutionActionSendToAddress<true> | SwapExecutionActionSignSmartChainTx<T> | undefined>;
+    /**
+     * @inheritDoc
+     */
+    getExecutionStatus(options?: {
+        skipChecks?: boolean;
+        secret?: string;
+    }): Promise<{
+        steps: [
+            SwapExecutionStepPayment<"LIGHTNING">,
+            SwapExecutionStepSettlement<T["ChainId"], "awaiting_manual">
+        ];
+        currentAction: SwapExecutionActionSendToAddress<true> | SwapExecutionActionSignSmartChainTx<T> | undefined;
+    }>;
     /**
      * @inheritDoc
      */

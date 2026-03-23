@@ -8,7 +8,7 @@ export declare class SwapperApi<T extends MultiChain> {
         submitTransaction: ApiEndpoint<SubmitTransactionInput, SubmitTransactionOutput>;
     };
     constructor(swapper: Swapper<T>);
-    private getTxSerializer;
+    private txSerializer;
     init(): Promise<void>;
     poll(): Promise<void>;
     sync(): Promise<void>;

@@ -131,12 +131,10 @@ export class SwapperApi<T extends MultiChain> {
         };
     }
 
-    private getTxSerializer(): (chainId: string, tx: any) => Promise<string> {
-        return (chainId: string, tx: any) => {
-            const chain = (this.swapper._chains as any)[chainId];
-            if (chain == null) throw new Error("Unknown chain: " + chainId);
-            return chain.chainInterface.serializeTx(tx);
-        };
+    private txSerializer(chainId: string, tx: any): Promise<string> {
+        const chain = (this.swapper._chains as any)[chainId];
+        if (chain == null) throw new Error("Unknown chain: " + chainId);
+        return chain.chainInterface.serializeTx(tx);
     }
 
     async init(): Promise<void> {
@@ -173,7 +171,7 @@ export class SwapperApi<T extends MultiChain> {
             Object.keys(options).length > 0 ? options : undefined
         );
 
-        return buildSwapStatusResponse(swap, this.getTxSerializer());
+        return buildSwapStatusResponse(swap, this.txSerializer.bind(this));
     }
 
     private async getSwapStatus(input: GetSwapStatusInput): Promise<SwapStatusResponse> {
@@ -181,7 +179,7 @@ export class SwapperApi<T extends MultiChain> {
         if (swap == null) {
             throw new Error("Swap not found: " + input.swapId);
         }
-        return buildSwapStatusResponse(swap, this.getTxSerializer());
+        return buildSwapStatusResponse(swap, this.txSerializer.bind(this));
     }
 
     private async submitTransaction(input: SubmitTransactionInput): Promise<SubmitTransactionOutput> {

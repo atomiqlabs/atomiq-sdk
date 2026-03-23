@@ -102,13 +102,11 @@ class SwapperApi {
             }
         };
     }
-    getTxSerializer() {
-        return (chainId, tx) => {
-            const chain = this.swapper._chains[chainId];
-            if (chain == null)
-                throw new Error("Unknown chain: " + chainId);
-            return chain.chainInterface.serializeTx(tx);
-        };
+    txSerializer(chainId, tx) {
+        const chain = this.swapper._chains[chainId];
+        if (chain == null)
+            throw new Error("Unknown chain: " + chainId);
+        return chain.chainInterface.serializeTx(tx);
     }
     async init() {
         await this.swapper.init();
@@ -135,14 +133,14 @@ class SwapperApi {
             options.expirySeconds = input.options.expirySeconds;
         // swapper.swap() handles routing based on token types
         const swap = await this.swapper.swap(input.srcToken, input.dstToken, BigInt(input.amount), exactIn, input.srcAddress, input.dstAddress, Object.keys(options).length > 0 ? options : undefined);
-        return buildSwapStatusResponse(swap, this.getTxSerializer());
+        return buildSwapStatusResponse(swap, this.txSerializer.bind(this));
     }
     async getSwapStatus(input) {
         const swap = await this.swapper.getSwapById(input.swapId);
         if (swap == null) {
             throw new Error("Swap not found: " + input.swapId);
         }
-        return buildSwapStatusResponse(swap, this.getTxSerializer());
+        return buildSwapStatusResponse(swap, this.txSerializer.bind(this));
     }
     async submitTransaction(input) {
         const swap = await this.swapper.getSwapById(input.swapId);

@@ -1,8 +1,7 @@
-import {SwapExecutionStep} from "../types/SwapExecutionStep";
-import {SwapExecutionAction} from "../types/SwapExecutionAction";
-import {SerializedAction} from "./SerializedAction";
-import {TokenAmount} from "../types/TokenAmount";
-
+import { SwapExecutionStep } from "../types/SwapExecutionStep";
+import { SwapExecutionAction } from "../types/SwapExecutionAction";
+import { SerializedAction } from "./SerializedAction";
+import { TokenAmount } from "../types/TokenAmount";
 /**
  * Unified amount type for all API responses
  *
@@ -20,45 +19,35 @@ export interface ApiAmount {
     /** Chain identifier, e.g. "STARKNET", "BITCOIN", "LIGHTNING" */
     chain: string;
 }
-
 /**
  * Converts a TokenAmount to the serializable ApiAmount format
  *
  * @category API
  */
-export function toApiAmount(tokenAmount: TokenAmount): ApiAmount {
-    return {
-        amount: tokenAmount.amount,
-        rawAmount: tokenAmount.rawAmount != null ? tokenAmount.rawAmount.toString() : "0",
-        decimals: tokenAmount.token.decimals,
-        symbol: tokenAmount.token.ticker,
-        chain: tokenAmount.token.chainId
-    };
-}
-
+export declare function toApiAmount(tokenAmount: TokenAmount): ApiAmount;
 /**
  * Maps a TypeScript type to its schema type string representation
  *
  * @category API
  */
-type TypeToSchemaType<T> =
-    [NonNullable<T>] extends [string] ? "string" :
-    [NonNullable<T>] extends [number] ? "number" :
-    [NonNullable<T>] extends [boolean] ? "boolean" :
-    [NonNullable<T>] extends [any[]] ? "array" :
-    "object";
-
+type TypeToSchemaType<T> = [
+    NonNullable<T>
+] extends [string] ? "string" : [
+    NonNullable<T>
+] extends [number] ? "number" : [
+    NonNullable<T>
+] extends [boolean] ? "boolean" : [
+    NonNullable<T>
+] extends [any[]] ? "array" : "object";
 export type InputSchemaField<T = unknown> = {
     type: TypeToSchemaType<T>;
     required: boolean;
     description: string;
-    properties?: T extends readonly any[] ? never :
-        T extends object ? {
-            [K in keyof T]-?: InputSchemaField<T[K]>;
-        } : never;
+    properties?: T extends readonly any[] ? never : T extends object ? {
+        [K in keyof T]-?: InputSchemaField<T[K]>;
+    } : never;
     items?: T extends readonly (infer U)[] ? InputSchemaField<U> : never;
 };
-
 /**
  * Typed API endpoint definition for framework-agnostic integration
  *
@@ -71,7 +60,6 @@ export interface ApiEndpoint<TInput, TOutput> {
     };
     callback: (input: TInput) => Promise<TOutput>;
 }
-
 /**
  * Input for creating a new swap
  *
@@ -92,7 +80,6 @@ export interface CreateSwapInput {
         expirySeconds?: number;
     };
 }
-
 /**
  * Input for getting swap status
  *
@@ -101,7 +88,6 @@ export interface CreateSwapInput {
 export interface GetSwapStatusInput {
     swapId: string;
 }
-
 /**
  * Input for submitting signed transactions
  *
@@ -111,7 +97,6 @@ export interface SubmitTransactionInput {
     swapId: string;
     signedTxs: string[];
 }
-
 /**
  * Output from submitting transactions
  *
@@ -120,7 +105,6 @@ export interface SubmitTransactionInput {
 export interface SubmitTransactionOutput {
     txHashes: string[];
 }
-
 /**
  * Shared response type for createSwap and getSwapStatus
  *
@@ -129,7 +113,6 @@ export interface SubmitTransactionOutput {
 export interface SwapStatusResponse {
     swapId: string;
     swapType: string;
-
     state: {
         number: number;
         name: string;
@@ -139,7 +122,6 @@ export interface SwapStatusResponse {
     isSuccess: boolean;
     isFailed: boolean;
     isExpired: boolean;
-
     quote: {
         inputAmount: ApiAmount;
         outputAmount: ApiAmount;
@@ -149,13 +131,10 @@ export interface SwapStatusResponse {
         };
         expiry: number;
     };
-
     createdAt: number;
     expiresAt: number | null;
-
     steps: SwapExecutionStep[];
     currentAction: SerializedAction<SwapExecutionAction> | null;
-
     transactions: {
         source: {
             init: string | null;
@@ -168,3 +147,4 @@ export interface SwapStatusResponse {
         };
     };
 }
+export {};

@@ -130,13 +130,15 @@ export type SwapExecutionActionSignPSBT<
         psbt: Transaction,
         psbtHex: string,
         psbtBase64: string,
-        signInputs: number[]
+        signInputs: number[],
+        feeRate: number
     }[] : {
         type: "RAW_PSBT",
         psbt: Transaction,
         psbtHex: string,
         psbtBase64: string,
-        in1sequence: number
+        in1sequence: number,
+        feeRate: number
     }[],
     /**
      * Submit a signed PSBT, accepts hexadecimal, base64 and `@scure/btc-signer` {@link Transaction} object.

@@ -681,7 +681,9 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
                     chain: "LIGHTNING",
                     title: "Lightning payment",
                     description: "Pay the Lightning network invoice to initiate the swap",
-                    status: lightningPaymentStatus
+                    status: lightningPaymentStatus,
+                    initTxId: this.getInputTxId(),
+                    settleTxId: lightningPaymentStatus==="confirmed" ? this.getInputTxId() : undefined
                 },
                 {
                     type: "Settlement",
@@ -689,7 +691,9 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
                     chain: this.chainIdentifier,
                     title: "Destination settlement",
                     description: `Manually settle the swap on the ${this.chainIdentifier} side`,
-                    status: destinationSettlementStatus
+                    status: destinationSettlementStatus,
+                    initTxId: this._commitTxId,
+                    settleTxId: this._claimTxId
                 }
             ] as [
                 SwapExecutionStepPayment<"LIGHTNING">,

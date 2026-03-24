@@ -53,8 +53,8 @@ export type InputSchemaField<T = unknown> = {
  *
  * @category API
  */
-export interface ApiEndpoint<TInput, TOutput> {
-    type: "GET" | "POST";
+export interface ApiEndpoint<TInput, TOutput, Type extends "GET" | "POST"> {
+    type: Type;
     inputSchema: {
         [K in keyof TInput]-?: InputSchemaField<TInput[K]>;
     };
@@ -87,6 +87,11 @@ export interface CreateSwapInput {
  */
 export interface GetSwapStatusInput {
     swapId: string;
+    secret?: string;
+    bitcoinAddress?: string;
+    bitcoinPublicKey?: string;
+    bitcoinFeeRate?: number;
+    signer?: string;
 }
 /**
  * Input for submitting signed transactions

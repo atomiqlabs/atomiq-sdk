@@ -582,7 +582,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
         _bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface,
         feeRate?: number,
         additionalOutputs?: ({amount: bigint, outputScript: Uint8Array} | {amount: bigint, address: string})[]
-    ): Promise<{psbt: Transaction, psbtHex: string, psbtBase64: string, signInputs: number[]}> {
+    ): Promise<{psbt: Transaction, psbtHex: string, psbtBase64: string, signInputs: number[], feeRate: number}> {
         if(this.address==null) throw new Error("Cannot create funded PSBT, because the address is not known! This can happen after a swap is recovered.");
 
         let bitcoinWallet: IBitcoinWallet;
@@ -622,7 +622,8 @@ export class FromBTCSwap<T extends ChainType = ChainType>
             psbt,
             psbtHex: serializedPsbt.toString("hex"),
             psbtBase64: serializedPsbt.toString("base64"),
-            signInputs
+            signInputs,
+            feeRate
         };
     }
 
@@ -791,6 +792,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
             target: number,
             etaSeconds: number
         } | undefined;
+        let bitcoinTxId: string | undefined;
 
         let destinationSetupStatus: SwapExecutionStepSetup<T["ChainId"]>["status"] = "awaiting";
         let bitcoinPaymentStatus: SwapExecutionStepPayment<"BITCOIN">["status"] = "inactive";
@@ -827,6 +829,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
             case FromBTCSwapState.EXPIRED:
             case FromBTCSwapState.FAILED:
                 const bitcoinPayment = this.address==null ? null : await this.getBitcoinPayment();
+                bitcoinTxId = bitcoinPayment?.txId;
                 let bitcoinConfirmationDelay: number | undefined;
                 if(bitcoinPayment!=null && bitcoinPayment.confirmations < bitcoinPayment.targetConfirmations) {
                     const tx = await this.wrapper._btcRpc.getTransaction(bitcoinPayment.txId);
@@ -906,7 +909,8 @@ export class FromBTCSwap<T extends ChainType = ChainType>
                     chain: this.chainIdentifier,
                     title: "Open Bitcoin swap address",
                     description: `Create the escrow on the ${this.chainIdentifier} side to open the Bitcoin swap address`,
-                    status: destinationSetupStatus
+                    status: destinationSetupStatus,
+                    setupTxId: this._commitTxId
                 },
                 {
                     type: "Payment",
@@ -915,7 +919,9 @@ export class FromBTCSwap<T extends ChainType = ChainType>
                     title: "Bitcoin payment",
                     description: "Send Bitcoin to the swap address and wait for the transaction to confirm",
                     status: bitcoinPaymentStatus,
-                    confirmations
+                    confirmations,
+                    initTxId: this.txId ?? bitcoinTxId,
+                    settleTxId: this.txId
                 },
                 {
                     type: "Settlement",
@@ -923,7 +929,9 @@ export class FromBTCSwap<T extends ChainType = ChainType>
                     chain: this.chainIdentifier,
                     title: "Destination settlement",
                     description: `Wait for automatic settlement on the ${this.chainIdentifier} side, or settle manually if it takes too long`,
-                    status: destinationSettlementStatus
+                    status: destinationSettlementStatus,
+                    initTxId: this._commitTxId,
+                    settleTxId: this._claimTxId
                 }
             ] as [
                 SwapExecutionStepSetup<T["ChainId"]>,

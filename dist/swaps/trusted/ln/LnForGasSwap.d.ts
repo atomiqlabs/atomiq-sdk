@@ -232,7 +232,7 @@ export declare class LnForGasSwap<T extends ChainType = ChainType> extends ISwap
     /**
      * @inheritDoc
      */
-    getCurrentAction(): Promise<SwapExecutionActionSendToAddress<true> | SwapExecutionActionWait<"LP"> | undefined>;
+    getExecutionAction(): Promise<SwapExecutionActionSendToAddress<true> | SwapExecutionActionWait<"LP"> | undefined>;
     /**
      * @inheritDoc
      */
@@ -246,7 +246,7 @@ export declare class LnForGasSwap<T extends ChainType = ChainType> extends ISwap
     /**
      * @inheritDoc
      */
-    getSwapSteps(): Promise<[
+    getExecutionSteps(): Promise<[
         SwapExecutionStepPayment<"LIGHTNING">,
         SwapExecutionStepSettlement<T["ChainId"], never>
     ]>;

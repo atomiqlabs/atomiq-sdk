@@ -554,7 +554,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
      *  (this is handled on swap creation, if you commit right after quoting, you can use `skipChecks=true`)
      * @param options.refundSmartChainSigner Optional smart chain signer to use when creating refunds transactions
      */
-    async getCurrentAction(options) {
+    async getExecutionAction(options) {
         const executionStatus = await this._getExecutionStatus();
         return executionStatus.buildCurrentAction(options);
     }
@@ -571,7 +571,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
     /**
      * @inheritDoc
      */
-    async getSwapSteps() {
+    async getExecutionSteps() {
         return (await this._getExecutionStatus()).steps;
     }
     //////////////////////////////

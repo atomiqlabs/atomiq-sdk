@@ -64,8 +64,8 @@ export type InputSchemaField<T = unknown> = {
  *
  * @category API
  */
-export interface ApiEndpoint<TInput, TOutput> {
-    type: "GET" | "POST";
+export interface ApiEndpoint<TInput, TOutput, Type extends "GET" | "POST"> {
+    type: Type;
     inputSchema: {
         [K in keyof TInput]-?: InputSchemaField<TInput[K]>;
     };
@@ -100,6 +100,17 @@ export interface CreateSwapInput {
  */
 export interface GetSwapStatusInput {
     swapId: string;
+
+    // Additional optional params
+    secret?: string; // Swap secret pre-image for lightning network swaps
+
+    // Pass these if you want to get pre-funded PSBT from the endpoint
+    bitcoinAddress?: string;
+    bitcoinPublicKey?: string;
+    bitcoinFeeRate?: number; // Optional, otherwise the current economical fee rate is fetched
+
+    // Pass this if you want to change the signer to be used for claims / refunds
+    signer?: string; // Signer to use for creating claim / refund transactions
 }
 
 /**

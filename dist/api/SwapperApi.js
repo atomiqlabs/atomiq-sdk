@@ -6,12 +6,12 @@ const SwapExecutionAction_1 = require("../types/SwapExecutionAction");
 const SerializedAction_1 = require("./SerializedAction");
 const FeeType_1 = require("../enums/FeeType");
 const SwapType_1 = require("../enums/SwapType");
-async function buildSwapStatusResponse(swap, txSerializer) {
+async function buildSwapStatusResponse(swap, txSerializer, options) {
     const stateInfo = swap.getStateInfo();
     const input = swap.getInput();
     const output = swap.getOutput();
     const feeBreakdown = swap.getFeeBreakdown();
-    const { steps, currentAction } = await swap.getExecutionStatus();
+    const { steps, currentAction } = await swap.getExecutionStatus(options);
     // Build fees from breakdown
     const swapFeeEntry = feeBreakdown.find(f => f.type === FeeType_1.FeeType.SWAP);
     const networkFeeEntry = feeBreakdown.find(f => f.type === FeeType_1.FeeType.NETWORK_OUTPUT);
@@ -88,7 +88,12 @@ class SwapperApi {
             getSwapStatus: {
                 type: "GET",
                 inputSchema: {
-                    swapId: { type: "string", required: true, description: "The swap identifier" }
+                    swapId: { type: "string", required: true, description: "The swap identifier" },
+                    secret: { type: "string", required: false, description: "Revealed swap secret pre-image (in hexadecimal format) for lightning network swaps" },
+                    bitcoinAddress: { type: "string", required: false, description: "Bitcoin wallet address to obtain funded PSBT" },
+                    bitcoinPublicKey: { type: "string", required: false, description: "Bitcoin wallet public key (in hexadecimal format) to obtain funded PSBT" },
+                    bitcoinFeeRate: { type: "number", required: false, description: "Fee rate to use when creating a funded PSBT" },
+                    signer: { type: "string", required: false, description: "Alternative different smart chain signer to use for refunds and manual settlement" }
                 },
                 callback: (input) => this.getSwapStatus(input)
             },
@@ -140,7 +145,40 @@ class SwapperApi {
         if (swap == null) {
             throw new Error("Swap not found: " + input.swapId);
         }
-        return buildSwapStatusResponse(swap, this.txSerializer.bind(this));
+        if (input.signer != null && !this.swapper.Utils.isValidSmartChainAddress(input.signer, swap.chainIdentifier)) {
+            throw new Error(`Invalid ${swap.chainIdentifier} signer address: ` + input.signer);
+        }
+        if (input.secret != null) {
+            try {
+                Buffer.from(input.secret, "hex");
+            }
+            catch (e) {
+                throw new Error(`Invalid secret passed, has to be a hexadecimal string!`);
+            }
+        }
+        let bitcoinWallet;
+        if (input.bitcoinAddress != null && input.bitcoinPublicKey != null) {
+            bitcoinWallet = {
+                publicKey: input.bitcoinPublicKey,
+                address: input.bitcoinAddress
+            };
+        }
+        else if (input.bitcoinAddress != null || input.bitcoinPublicKey != null) {
+            throw new Error("When specifying bitcoin wallet you have to pass both `bitcoinAddress` and `bitcoinPublicKey` params!");
+        }
+        if (input.bitcoinFeeRate != null) {
+            if (isNaN(input.bitcoinFeeRate))
+                throw new Error("Bitcoin fee rate passed cannot be NaN!");
+            if (input.bitcoinFeeRate <= 0)
+                throw new Error("Bitcoin fee rate passed cannot be negative or 0!");
+        }
+        return buildSwapStatusResponse(swap, this.txSerializer.bind(this), {
+            secret: input.secret,
+            bitcoinWallet,
+            bitcoinFeeRate: input.bitcoinFeeRate,
+            manualSettlementSmartChainSigner: input.signer,
+            refundSmartChainSigner: input.signer
+        });
     }
     async submitTransaction(input) {
         const swap = await this.swapper.getSwapById(input.swapId);
@@ -149,7 +187,7 @@ class SwapperApi {
         }
         const action = await swap.getCurrentAction();
         if (action == null) {
-            throw new Error("No current action for swap — re-fetch status");
+            throw new Error("No current action for swap - re-fetch status");
         }
         if ((0, SwapExecutionAction_1.isSwapExecutionActionSignPSBT)(action)) {
             const txHashes = await action.submitPsbt(input.signedTxs);
@@ -159,7 +197,7 @@ class SwapperApi {
             const txHashes = await action.submitTransactions(input.signedTxs);
             return { txHashes };
         }
-        throw new Error("Current action is not submittable (type: " + action.type + ") — re-fetch status");
+        throw new Error("Current action is not submittable (type: " + action.type + ") - re-fetch status");
     }
 }
 exports.SwapperApi = SwapperApi;

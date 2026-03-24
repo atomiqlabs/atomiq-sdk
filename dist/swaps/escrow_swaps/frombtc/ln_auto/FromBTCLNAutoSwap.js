@@ -722,7 +722,9 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
                     chain: "LIGHTNING",
                     title: "Lightning payment",
                     description: "Pay the Lightning network invoice to initiate the swap",
-                    status: lightningPaymentStatus
+                    status: lightningPaymentStatus,
+                    initTxId: this.getInputTxId(),
+                    settleTxId: lightningPaymentStatus === "confirmed" ? this.getInputTxId() : undefined
                 },
                 {
                     type: "Settlement",
@@ -730,7 +732,9 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
                     chain: this.chainIdentifier,
                     title: "Destination settlement",
                     description: `Wait for the LP to initiate on the ${this.chainIdentifier} side, then wait for automatic settlement, or settle manually if it takes too long`,
-                    status: destinationSettlementStatus
+                    status: destinationSettlementStatus,
+                    initTxId: this._commitTxId,
+                    settleTxId: this._claimTxId
                 }
             ],
             buildCurrentAction

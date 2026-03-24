@@ -271,6 +271,7 @@ export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromB
         psbtHex: string;
         psbtBase64: string;
         signInputs: number[];
+        feeRate: number;
     }>;
     /**
      * @inheritDoc

@@ -458,7 +458,9 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
                     chain: this.chainIdentifier,
                     title: "Source payment",
                     description: `Initiate the swap by funding the escrow on the ${this.chainIdentifier} side`,
-                    status: sourcePaymentStatus
+                    status: sourcePaymentStatus,
+                    initTxId: this._commitTxId,
+                    settleTxId: this._claimTxId
                 },
                 {
                     type: "Settlement",
@@ -466,7 +468,9 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
                     chain: this.outputToken.chainId,
                     title: "Destination payout",
                     description: `Wait for the LP to process the swap and send the payout on the ${this.outputToken.chainId} side`,
-                    status: destinationPayoutStatus
+                    status: destinationPayoutStatus,
+                    initTxId: destinationPayoutStatus === "settled" || destinationPayoutStatus === "soft_settled" ? this.getOutputTxId() : undefined,
+                    settleTxId: destinationPayoutStatus === "settled" ? this.getOutputTxId() : undefined,
                 },
                 {
                     type: "Refund",
@@ -474,7 +478,8 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
                     chain: this.chainIdentifier,
                     title: "Source refund",
                     description: `Refund escrowed funds on the ${this.chainIdentifier} side, after LP failed to execute`,
-                    status: refundStatus
+                    status: refundStatus,
+                    refundTxId: this._refundTxId
                 }
             ],
             buildCurrentAction

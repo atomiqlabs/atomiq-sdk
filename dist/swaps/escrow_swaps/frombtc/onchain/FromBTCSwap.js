@@ -496,7 +496,8 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             psbt,
             psbtHex: serializedPsbt.toString("hex"),
             psbtBase64: serializedPsbt.toString("base64"),
-            signInputs
+            signInputs,
+            feeRate
         };
     }
     /**
@@ -630,6 +631,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
         const now = Date.now();
         const timeoutTime = this.getTimeoutTime();
         let confirmations;
+        let bitcoinTxId;
         let destinationSetupStatus = "awaiting";
         let bitcoinPaymentStatus = "inactive";
         let destinationSettlementStatus = "inactive";
@@ -653,6 +655,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             case FromBTCSwapState.EXPIRED:
             case FromBTCSwapState.FAILED:
                 const bitcoinPayment = this.address == null ? null : await this.getBitcoinPayment();
+                bitcoinTxId = bitcoinPayment?.txId;
                 let bitcoinConfirmationDelay;
                 if (bitcoinPayment != null && bitcoinPayment.confirmations < bitcoinPayment.targetConfirmations) {
                     const tx = await this.wrapper._btcRpc.getTransaction(bitcoinPayment.txId);
@@ -730,7 +733,8 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
                     chain: this.chainIdentifier,
                     title: "Open Bitcoin swap address",
                     description: `Create the escrow on the ${this.chainIdentifier} side to open the Bitcoin swap address`,
-                    status: destinationSetupStatus
+                    status: destinationSetupStatus,
+                    setupTxId: this._commitTxId
                 },
                 {
                     type: "Payment",
@@ -739,7 +743,9 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
                     title: "Bitcoin payment",
                     description: "Send Bitcoin to the swap address and wait for the transaction to confirm",
                     status: bitcoinPaymentStatus,
-                    confirmations
+                    confirmations,
+                    initTxId: this.txId ?? bitcoinTxId,
+                    settleTxId: this.txId
                 },
                 {
                     type: "Settlement",
@@ -747,7 +753,9 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
                     chain: this.chainIdentifier,
                     title: "Destination settlement",
                     description: `Wait for automatic settlement on the ${this.chainIdentifier} side, or settle manually if it takes too long`,
-                    status: destinationSettlementStatus
+                    status: destinationSettlementStatus,
+                    initTxId: this._commitTxId,
+                    settleTxId: this._claimTxId
                 }
             ],
             buildCurrentAction

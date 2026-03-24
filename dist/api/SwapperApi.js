@@ -6,6 +6,20 @@ const SwapExecutionAction_1 = require("../types/SwapExecutionAction");
 const SerializedAction_1 = require("./SerializedAction");
 const FeeType_1 = require("../enums/FeeType");
 const SwapType_1 = require("../enums/SwapType");
+const FromBTCLNSwap_1 = require("../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap");
+const FromBTCLNAutoSwap_1 = require("../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap");
+function requiresSecretRevealForApi(swap) {
+    if (swap instanceof FromBTCLNSwap_1.FromBTCLNSwap) {
+        if (swap.hasSecretPreimage())
+            return false;
+        return swap.getState() === FromBTCLNSwap_1.FromBTCLNSwapState.PR_PAID || swap.getState() === FromBTCLNSwap_1.FromBTCLNSwapState.CLAIM_COMMITED;
+    }
+    if (swap instanceof FromBTCLNAutoSwap_1.FromBTCLNAutoSwap) {
+        if (swap.hasSecretPreimage())
+            return false;
+        return swap.getState() === FromBTCLNAutoSwap_1.FromBTCLNAutoSwapState.CLAIM_COMMITED;
+    }
+}
 async function buildSwapStatusResponse(swap, txSerializer, options) {
     const stateInfo = swap.getStateInfo();
     const input = swap.getInput();
@@ -41,20 +55,9 @@ async function buildSwapStatusResponse(swap, txSerializer, options) {
             expiry: swap.getQuoteExpiry()
         },
         createdAt: swap.createdAt,
-        expiresAt: swap.getQuoteExpiry() > 0 ? swap.getQuoteExpiry() : null,
         steps,
         currentAction: currentAction ? await (0, SerializedAction_1.serializeAction)(currentAction, txSerializer) : null,
-        transactions: {
-            source: {
-                init: swap.getInputTxId(),
-                settlement: null,
-                refund: null // TODO: expose when available on ISwap
-            },
-            destination: {
-                init: null,
-                settlement: swap.getOutputTxId()
-            }
-        }
+        requiresSecretReveal: requiresSecretRevealForApi(swap)
     };
 }
 class SwapperApi {

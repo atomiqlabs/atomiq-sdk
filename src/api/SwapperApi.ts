@@ -17,6 +17,19 @@ import {serializeAction} from "./SerializedAction";
 import {FeeType} from "../enums/FeeType";
 import {SwapType} from "../enums/SwapType";
 import {MinimalBitcoinWalletInterface} from "../types/wallets/MinimalBitcoinWalletInterface";
+import {FromBTCLNSwap, FromBTCLNSwapState} from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap";
+import {FromBTCLNAutoSwap, FromBTCLNAutoSwapState} from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap";
+
+function requiresSecretRevealForApi(swap: ISwap): boolean | undefined {
+    if(swap instanceof FromBTCLNSwap) {
+        if(swap.hasSecretPreimage()) return false;
+        return swap.getState()===FromBTCLNSwapState.PR_PAID || swap.getState()===FromBTCLNSwapState.CLAIM_COMMITED;
+    }
+    if(swap instanceof FromBTCLNAutoSwap) {
+        if(swap.hasSecretPreimage()) return false;
+        return swap.getState()===FromBTCLNAutoSwapState.CLAIM_COMMITED;
+    }
+}
 
 async function buildSwapStatusResponse(
     swap: ISwap,
@@ -64,7 +77,9 @@ async function buildSwapStatusResponse(
         createdAt: swap.createdAt,
 
         steps,
-        currentAction: currentAction ? await serializeAction(currentAction, txSerializer) : null
+        currentAction: currentAction ? await serializeAction(currentAction, txSerializer) : null,
+
+        requiresSecretReveal: requiresSecretRevealForApi(swap)
     };
 }
 

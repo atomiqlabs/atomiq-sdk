@@ -432,7 +432,7 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
      * @param options.secret A swap secret to broadcast to watchtowers, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      */
-    getCurrentAction(options?: {
+    getExecutionAction(options?: {
         manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
         maxWaitTillAutomaticSettlementSeconds?: number;
         secret?: string;
@@ -454,7 +454,7 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
     /**
      * @inheritDoc
      */
-    getSwapSteps(options?: {
+    getExecutionSteps(options?: {
         maxWaitTillAutomaticSettlementSeconds?: number;
     }): Promise<[
         SwapExecutionStepPayment<"LIGHTNING">,

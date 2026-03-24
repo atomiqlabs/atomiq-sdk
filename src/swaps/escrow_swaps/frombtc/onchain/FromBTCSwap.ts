@@ -1123,7 +1123,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
      * @param options.maxWaitTillAutomaticSettlementSeconds Maximum time to wait for an automatic settlement after
      *  the bitcoin transaction is confirmed (defaults to 60 seconds)
      */
-    async getCurrentAction(options?: {
+    async getExecutionAction(options?: {
         bitcoinFeeRate?: number,
         bitcoinWallet?: MinimalBitcoinWalletInterface,
         skipChecks?: boolean,
@@ -1172,7 +1172,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
     /**
      * @inheritDoc
      */
-    async getSwapSteps(options?: {
+    async getExecutionSteps(options?: {
         maxWaitTillAutomaticSettlementSeconds?: number
     }): Promise<[
         SwapExecutionStepSetup<T["ChainId"]>,

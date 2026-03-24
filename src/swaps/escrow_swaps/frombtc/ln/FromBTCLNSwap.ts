@@ -774,7 +774,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
      * @param options.secret A swap secret to use for the claim transaction, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      */
-    async getCurrentAction(options?: {
+    async getExecutionAction(options?: {
         skipChecks?: boolean,
         secret?: string
     }): Promise<
@@ -812,7 +812,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
     /**
      * @inheritDoc
      */
-    async getSwapSteps(): Promise<[
+    async getExecutionSteps(): Promise<[
         SwapExecutionStepPayment<"LIGHTNING">,
         SwapExecutionStepSettlement<T["ChainId"], "awaiting_manual">
     ]> {

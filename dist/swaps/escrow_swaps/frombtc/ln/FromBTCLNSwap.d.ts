@@ -317,7 +317,7 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
      * @param options.secret A swap secret to use for the claim transaction, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      */
-    getCurrentAction(options?: {
+    getExecutionAction(options?: {
         skipChecks?: boolean;
         secret?: string;
     }): Promise<SwapExecutionActionSendToAddress<true> | SwapExecutionActionSignSmartChainTx<T> | undefined>;
@@ -337,7 +337,7 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
     /**
      * @inheritDoc
      */
-    getSwapSteps(): Promise<[
+    getExecutionSteps(): Promise<[
         SwapExecutionStepPayment<"LIGHTNING">,
         SwapExecutionStepSettlement<T["ChainId"], "awaiting_manual">
     ]>;

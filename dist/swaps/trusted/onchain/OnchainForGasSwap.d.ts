@@ -265,13 +265,13 @@ export declare class OnchainForGasSwap<T extends ChainType = ChainType> extends 
      * @param options.bitcoinWallet Optional bitcoin wallet address specification to return a funded PSBT,
      *  if not provided an address is returned instead.
      */
-    getCurrentAction(options?: {
+    getExecutionAction(options?: {
         bitcoinWallet?: MinimalBitcoinWalletInterface;
     }): Promise<never>;
     /**
      * @inheritDoc
      */
-    getSwapSteps(): Promise<never>;
+    getExecutionSteps(): Promise<never>;
     /**
      * @inheritDoc
      */

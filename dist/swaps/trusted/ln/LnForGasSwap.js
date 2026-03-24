@@ -445,7 +445,7 @@ class LnForGasSwap extends ISwap_1.ISwap {
     /**
      * @inheritDoc
      */
-    async getCurrentAction() {
+    async getExecutionAction() {
         const executionStatus = await this._getExecutionStatus();
         return executionStatus.buildCurrentAction();
     }
@@ -462,7 +462,7 @@ class LnForGasSwap extends ISwap_1.ISwap {
     /**
      * @inheritDoc
      */
-    async getSwapSteps() {
+    async getExecutionSteps() {
         return (await this._getExecutionStatus()).steps;
     }
     /**

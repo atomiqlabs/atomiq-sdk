@@ -293,7 +293,7 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
      *  (this is handled on swap creation, if you commit right after quoting, you can use `skipChecks=true`)
      * @param options.refundSmartChainSigner Optional smart chain signer to use when creating refunds transactions
      */
-    getCurrentAction(options?: {
+    getExecutionAction(options?: {
         skipChecks?: boolean;
         refundSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
     }): Promise<SwapExecutionActionSignSmartChainTx<T> | SwapExecutionActionWait<"LP"> | undefined>;
@@ -314,7 +314,7 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
     /**
      * @inheritDoc
      */
-    getSwapSteps(): Promise<[
+    getExecutionSteps(): Promise<[
         SwapExecutionStepPayment<T["ChainId"]>,
         SwapExecutionStepSettlement<"BITCOIN" | "LIGHTNING", "soft_settled">,
         SwapExecutionStepRefund<T["ChainId"]>

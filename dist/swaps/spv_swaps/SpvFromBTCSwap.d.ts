@@ -518,7 +518,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
      * @param options.maxWaitTillAutomaticSettlementSeconds Maximum time to wait for an automatic settlement after
      *  the bitcoin transaction is confirmed (defaults to 60 seconds)
      */
-    getCurrentAction(options?: {
+    getExecutionAction(options?: {
         bitcoinFeeRate?: number;
         bitcoinWallet?: MinimalBitcoinWalletInterface;
         manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
@@ -542,7 +542,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
     /**
      * @inheritDoc
      */
-    getSwapSteps(options?: {
+    getExecutionSteps(options?: {
         maxWaitTillAutomaticSettlementSeconds?: number;
     }): Promise<[
         SwapExecutionStepPayment<"BITCOIN">,

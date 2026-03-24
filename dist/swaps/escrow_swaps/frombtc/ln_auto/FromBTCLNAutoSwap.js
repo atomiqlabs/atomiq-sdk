@@ -837,7 +837,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
      * @param options.secret A swap secret to broadcast to watchtowers, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      */
-    async getCurrentAction(options) {
+    async getExecutionAction(options) {
         const executionStatus = await this._getExecutionStatus(options);
         return executionStatus.buildCurrentAction(options);
     }
@@ -854,7 +854,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
     /**
      * @inheritDoc
      */
-    async getSwapSteps(options) {
+    async getExecutionSteps(options) {
         return (await this._getExecutionStatus(options)).steps;
     }
     //////////////////////////////

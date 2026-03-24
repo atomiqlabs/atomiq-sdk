@@ -529,8 +529,7 @@ export abstract class ISwap<
      *  get funded PSBTs or passing the externally-generated swap secret), see the actual type in the respective swap
      *  classes
      */
-    //TODO: Rename this to getExecutionAction()
-    public abstract getCurrentAction(options?: any): Promise<SwapExecutionAction | undefined>;
+    public abstract getExecutionAction(options?: any): Promise<SwapExecutionAction | undefined>;
 
     /**
      * Returns a list of execution steps the user has to go through for a given swap, to see the possible execution
@@ -539,12 +538,11 @@ export abstract class ISwap<
      * @param options Optional options argument for the additional steps context (i.e. automatic settlement timeout),
      *  see the actual type in the respective swap classes
      */
-    //TODO: Rename this to getExecutionSteps()
-    public abstract getSwapSteps(options?: any): Promise<SwapExecutionStep[]>;
+    public abstract getExecutionSteps(options?: any): Promise<SwapExecutionStep[]>;
 
     /**
      * Returns the current action and the full execution steps for a given swap. Prefer this to calling
-     *  {@link getSwapSteps} and {@link getCurrentAction} separately - if called sequentially they might
+     *  {@link getExecutionSteps} and {@link getExecutionAction} separately - if called sequentially they might
      *  return the respective steps/actions in different states if you hit the state transition boundary.
      *
      * @param options Optional options argument for the additional execution status context, see the actual type in

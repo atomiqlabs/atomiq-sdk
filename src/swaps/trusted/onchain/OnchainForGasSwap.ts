@@ -561,7 +561,7 @@ export class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T,
      * @param options.bitcoinWallet Optional bitcoin wallet address specification to return a funded PSBT,
      *  if not provided an address is returned instead.
      */
-    async getCurrentAction(options?: {
+    async getExecutionAction(options?: {
         bitcoinWallet?: MinimalBitcoinWalletInterface
     }): Promise<never> {
         throw new Error("Not supported");
@@ -570,7 +570,7 @@ export class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T,
     /**
      * @inheritDoc
      */
-    async getSwapSteps(): Promise<never> {
+    async getExecutionSteps(): Promise<never> {
         throw new Error("Not supported");
     }
 

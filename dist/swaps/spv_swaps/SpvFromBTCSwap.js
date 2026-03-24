@@ -1032,7 +1032,7 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
      * @param options.maxWaitTillAutomaticSettlementSeconds Maximum time to wait for an automatic settlement after
      *  the bitcoin transaction is confirmed (defaults to 60 seconds)
      */
-    async getCurrentAction(options) {
+    async getExecutionAction(options) {
         const executionStatus = await this._getExecutionStatus(options);
         return executionStatus.buildCurrentAction(options);
     }
@@ -1049,7 +1049,7 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
     /**
      * @inheritDoc
      */
-    async getSwapSteps(options) {
+    async getExecutionSteps(options) {
         return (await this._getExecutionStatus(options)).steps;
     }
     //////////////////////////////

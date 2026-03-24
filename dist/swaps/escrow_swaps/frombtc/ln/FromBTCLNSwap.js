@@ -636,7 +636,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
      * @param options.secret A swap secret to use for the claim transaction, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      */
-    async getCurrentAction(options) {
+    async getExecutionAction(options) {
         const executionStatus = await this._getExecutionStatus(options);
         return executionStatus.buildCurrentAction(options);
     }
@@ -653,7 +653,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
     /**
      * @inheritDoc
      */
-    async getSwapSteps() {
+    async getExecutionSteps() {
         return (await this._getExecutionStatus()).steps;
     }
     //////////////////////////////

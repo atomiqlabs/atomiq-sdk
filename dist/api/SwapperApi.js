@@ -188,7 +188,7 @@ class SwapperApi {
         if (swap == null) {
             throw new Error("Swap not found: " + input.swapId);
         }
-        const action = await swap.getCurrentAction();
+        const action = await swap.getExecutionAction();
         if (action == null) {
             throw new Error("No current action for swap - re-fetch status");
         }

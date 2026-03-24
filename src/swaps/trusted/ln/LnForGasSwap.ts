@@ -547,7 +547,7 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
     /**
      * @inheritDoc
      */
-    async getCurrentAction(): Promise<
+    async getExecutionAction(): Promise<
         SwapExecutionActionSendToAddress<true> |
         SwapExecutionActionWait<"LP"> |
         undefined
@@ -579,7 +579,7 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
     /**
      * @inheritDoc
      */
-    async getSwapSteps(): Promise<[
+    async getExecutionSteps(): Promise<[
         SwapExecutionStepPayment<"LIGHTNING">,
         SwapExecutionStepSettlement<T["ChainId"], never>
     ]> {

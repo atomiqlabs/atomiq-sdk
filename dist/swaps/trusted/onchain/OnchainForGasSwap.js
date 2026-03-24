@@ -435,13 +435,13 @@ class OnchainForGasSwap extends ISwap_1.ISwap {
      * @param options.bitcoinWallet Optional bitcoin wallet address specification to return a funded PSBT,
      *  if not provided an address is returned instead.
      */
-    async getCurrentAction(options) {
+    async getExecutionAction(options) {
         throw new Error("Not supported");
     }
     /**
      * @inheritDoc
      */
-    async getSwapSteps() {
+    async getExecutionSteps() {
         throw new Error("Not supported");
     }
     /**

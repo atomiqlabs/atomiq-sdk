@@ -137,19 +137,8 @@ export interface SwapStatusResponse {
         expiry: number;
     };
     createdAt: number;
-    expiresAt: number | null;
     steps: SwapExecutionStep[];
     currentAction: SerializedAction<SwapExecutionAction> | null;
-    transactions: {
-        source: {
-            init: string | null;
-            settlement: string | null;
-            refund: string | null;
-        };
-        destination: {
-            init: string | null;
-            settlement: string | null;
-        };
-    };
+    requiresSecretReveal?: boolean;
 }
 export {};

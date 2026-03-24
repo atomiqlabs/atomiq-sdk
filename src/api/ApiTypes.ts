@@ -165,4 +165,6 @@ export interface SwapStatusResponse {
 
     steps: SwapExecutionStep[];
     currentAction: SerializedAction<SwapExecutionAction> | null;
+
+    requiresSecretReveal?: boolean;
 }

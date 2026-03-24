@@ -404,13 +404,15 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
     /**
      * Returns the raw PSBT (not funded), the wallet should fund the PSBT (add its inputs) and importantly **set the nSequence field of the
      *  2nd input** (input 1 - indexing from 0) to the value returned in `in1sequence`, sign the PSBT and then pass
-     *  it back to the swap with {@link submitPsbt} function.
+     *  it back to the swap with {@link submitPsbt} function. The transaction should use at least the returned `feeRate`
+     *  sats/vB as the transaction fee.
      */
     getPsbt(): Promise<{
         psbt: Transaction;
         psbtHex: string;
         psbtBase64: string;
         in1sequence: number;
+        feeRate: number;
     }>;
     /**
      * Returns the PSBT that is already funded with wallet's UTXOs (runs a coin-selection algorithm to choose UTXOs to use),
@@ -435,6 +437,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
         psbtHex: string;
         psbtBase64: string;
         signInputs: number[];
+        feeRate: number;
     }>;
     /**
      * @inheritDoc

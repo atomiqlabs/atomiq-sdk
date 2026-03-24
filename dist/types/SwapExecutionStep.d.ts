@@ -18,6 +18,7 @@ export type SwapExecutionStepSetup<Chain extends string = string> = {
      * - `expired`: The setup can no longer be performed because the swap expired.
      */
     status: "awaiting" | "completed" | "soft_expired" | "expired";
+    setupTxId?: string;
 };
 /**
  * Type guard for {@link SwapExecutionStepSetup}
@@ -66,6 +67,8 @@ export type SwapExecutionStepPayment<Chain extends string = string> = {
          */
         etaSeconds: number;
     };
+    initTxId?: string;
+    settleTxId?: string;
 };
 /**
  * Type guard for {@link SwapExecutionStepPayment}
@@ -97,6 +100,8 @@ export type SwapExecutionStepSettlement<Chain extends string = string, Additiona
      * - `expired`: Settlement is no longer possible because the swap expired or failed.
      */
     status: "inactive" | "waiting_lp" | "soft_expired" | "settled" | "expired" | AdditionalStatuses;
+    initTxId?: string;
+    settleTxId?: string;
 };
 /**
  * Type guard for {@link SwapExecutionStepSettlement}
@@ -123,6 +128,7 @@ export type SwapExecutionStepRefund<Chain extends string = string> = {
      * - `refunded`: The refund was completed successfully.
      */
     status: "inactive" | "awaiting" | "refunded";
+    refundTxId?: string;
 };
 /**
  * Type guard for {@link SwapExecutionStepRefund}

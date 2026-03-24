@@ -587,7 +587,8 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
     /**
      * Returns the raw PSBT (not funded), the wallet should fund the PSBT (add its inputs) and importantly **set the nSequence field of the
      *  2nd input** (input 1 - indexing from 0) to the value returned in `in1sequence`, sign the PSBT and then pass
-     *  it back to the swap with {@link submitPsbt} function.
+     *  it back to the swap with {@link submitPsbt} function. The transaction should use at least the returned `feeRate`
+     *  sats/vB as the transaction fee.
      */
     async getPsbt() {
         const res = await this.getTransactionDetails();
@@ -622,7 +623,8 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
             psbt,
             psbtHex: serializedPsbt.toString("hex"),
             psbtBase64: serializedPsbt.toString("base64"),
-            in1sequence: res.in1sequence
+            in1sequence: res.in1sequence,
+            feeRate: this.minimumBtcFeeRate
         };
     }
     /**
@@ -666,7 +668,8 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
             psbt,
             psbtHex: serializedPsbt.toString("hex"),
             psbtBase64: serializedPsbt.toString("base64"),
-            signInputs
+            signInputs,
+            feeRate
         };
     }
     /**
@@ -917,7 +920,9 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
                     title: "Bitcoin payment",
                     description: "Sign and submit the Bitcoin swap PSBT, then wait for the bitcoin transaction to confirm",
                     status: bitcoinPaymentStatus,
-                    confirmations
+                    confirmations,
+                    initTxId: this._data?.btcTx?.txid,
+                    settleTxId: bitcoinPaymentStatus === "confirmed" ? this._data?.btcTx?.txid : undefined
                 },
                 {
                     type: "Settlement",
@@ -925,7 +930,9 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
                     chain: this.chainIdentifier,
                     title: "Destination settlement",
                     description: `Wait for automatic settlement on the ${this.chainIdentifier} side, or settle manually if it takes too long`,
-                    status: destinationSettlementStatus
+                    status: destinationSettlementStatus,
+                    initTxId: this._frontTxId ?? this._claimTxId,
+                    settleTxId: this._frontTxId ?? this._claimTxId
                 }
             ],
             buildCurrentAction

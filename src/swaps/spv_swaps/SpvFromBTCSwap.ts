@@ -823,13 +823,15 @@ export class SpvFromBTCSwap<T extends ChainType>
     /**
      * Returns the raw PSBT (not funded), the wallet should fund the PSBT (add its inputs) and importantly **set the nSequence field of the
      *  2nd input** (input 1 - indexing from 0) to the value returned in `in1sequence`, sign the PSBT and then pass
-     *  it back to the swap with {@link submitPsbt} function.
+     *  it back to the swap with {@link submitPsbt} function. The transaction should use at least the returned `feeRate`
+     *  sats/vB as the transaction fee.
      */
     async getPsbt(): Promise<{
         psbt: Transaction,
         psbtHex: string,
         psbtBase64: string,
-        in1sequence: number
+        in1sequence: number,
+        feeRate: number
     }> {
         const res = await this.getTransactionDetails();
         const psbt = new Transaction({
@@ -863,7 +865,8 @@ export class SpvFromBTCSwap<T extends ChainType>
             psbt,
             psbtHex: serializedPsbt.toString("hex"),
             psbtBase64: serializedPsbt.toString("base64"),
-            in1sequence: res.in1sequence
+            in1sequence: res.in1sequence,
+            feeRate: this.minimumBtcFeeRate
         };
     }
 
@@ -887,7 +890,8 @@ export class SpvFromBTCSwap<T extends ChainType>
         psbt: Transaction,
         psbtHex: string,
         psbtBase64: string,
-        signInputs: number[]
+        signInputs: number[],
+        feeRate: number
     }> {
         const bitcoinWallet: IBitcoinWallet = toBitcoinWallet(_bitcoinWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
         if(feeRate!=null) {
@@ -914,7 +918,8 @@ export class SpvFromBTCSwap<T extends ChainType>
             psbt,
             psbtHex: serializedPsbt.toString("hex"),
             psbtBase64: serializedPsbt.toString("base64"),
-            signInputs
+            signInputs,
+            feeRate
         };
     }
 
@@ -1223,7 +1228,9 @@ export class SpvFromBTCSwap<T extends ChainType>
                     title: "Bitcoin payment",
                     description: "Sign and submit the Bitcoin swap PSBT, then wait for the bitcoin transaction to confirm",
                     status: bitcoinPaymentStatus,
-                    confirmations
+                    confirmations,
+                    initTxId: this._data?.btcTx?.txid,
+                    settleTxId: bitcoinPaymentStatus==="confirmed" ? this._data?.btcTx?.txid : undefined
                 },
                 {
                     type: "Settlement",
@@ -1231,7 +1238,9 @@ export class SpvFromBTCSwap<T extends ChainType>
                     chain: this.chainIdentifier,
                     title: "Destination settlement",
                     description: `Wait for automatic settlement on the ${this.chainIdentifier} side, or settle manually if it takes too long`,
-                    status: destinationSettlementStatus
+                    status: destinationSettlementStatus,
+                    initTxId: this._frontTxId ?? this._claimTxId,
+                    settleTxId: this._frontTxId ?? this._claimTxId
                 }
             ] as [
                 SwapExecutionStepPayment<"BITCOIN">,

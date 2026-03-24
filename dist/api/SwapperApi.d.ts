@@ -3,9 +3,9 @@ import { ApiEndpoint, CreateSwapInput, GetSwapStatusInput, SubmitTransactionInpu
 export declare class SwapperApi<T extends MultiChain> {
     private swapper;
     readonly endpoints: {
-        createSwap: ApiEndpoint<CreateSwapInput, SwapStatusResponse>;
-        getSwapStatus: ApiEndpoint<GetSwapStatusInput, SwapStatusResponse>;
-        submitTransaction: ApiEndpoint<SubmitTransactionInput, SubmitTransactionOutput>;
+        createSwap: ApiEndpoint<CreateSwapInput, SwapStatusResponse, "POST">;
+        getSwapStatus: ApiEndpoint<GetSwapStatusInput, SwapStatusResponse, "GET">;
+        submitTransaction: ApiEndpoint<SubmitTransactionInput, SubmitTransactionOutput, "POST">;
     };
     constructor(swapper: Swapper<T>);
     private txSerializer;

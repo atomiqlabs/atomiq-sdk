@@ -17,7 +17,8 @@ export type SwapExecutionStepSetup<Chain extends string = string> = {
      * - `soft_expired`: The setup should be treated as expired by the user, but it may still progress because of in-flight or background processing.
      * - `expired`: The setup can no longer be performed because the swap expired.
      */
-    status: "awaiting" | "completed" | "soft_expired" | "expired"
+    status: "awaiting" | "completed" | "soft_expired" | "expired",
+    setupTxId?: string
 }
 
 /**
@@ -81,7 +82,9 @@ export type SwapExecutionStepPayment<Chain extends string = string> = {
          * Can be `-1` if the estimate is not available.
          */
         etaSeconds: number
-    }
+    },
+    initTxId?: string,
+    settleTxId?: string
 }
 
 /**
@@ -142,7 +145,9 @@ export type SwapExecutionStepSettlement<
      * - `settled`: The settlement completed successfully.
      * - `expired`: Settlement is no longer possible because the swap expired or failed.
      */
-    status: "inactive" | "waiting_lp" | "soft_expired" | "settled" | "expired" | AdditionalStatuses
+    status: "inactive" | "waiting_lp" | "soft_expired" | "settled" | "expired" | AdditionalStatuses,
+    initTxId?: string,
+    settleTxId?: string
 }
 
 /**
@@ -188,7 +193,8 @@ export type SwapExecutionStepRefund<Chain extends string = string> = {
      * - `awaiting`: The swap can be refunded and the user may perform the refund action.
      * - `refunded`: The refund was completed successfully.
      */
-    status: "inactive" | "awaiting" | "refunded"
+    status: "inactive" | "awaiting" | "refunded",
+    refundTxId?: string
 }
 
 /**

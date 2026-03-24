@@ -62,22 +62,9 @@ async function buildSwapStatusResponse(
         },
 
         createdAt: swap.createdAt,
-        expiresAt: swap.getQuoteExpiry() > 0 ? swap.getQuoteExpiry() : null,
 
         steps,
-        currentAction: currentAction ? await serializeAction(currentAction, txSerializer) : null,
-
-        transactions: {
-            source: {
-                init: swap.getInputTxId(),
-                settlement: null,  // TODO: expose when available on ISwap
-                refund: null       // TODO: expose when available on ISwap
-            },
-            destination: {
-                init: null,  // TODO: expose when available on ISwap
-                settlement: swap.getOutputTxId()
-            }
-        }
+        currentAction: currentAction ? await serializeAction(currentAction, txSerializer) : null
     };
 }
 

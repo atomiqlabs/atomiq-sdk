@@ -30,6 +30,7 @@ import {
     SwapExecutionStepRefund,
     SwapExecutionStepSettlement
 } from "../../../types/SwapExecutionStep";
+import {SwapStateInfo} from "../../../types/SwapStateInfo";
 
 export type IToBTCSwapInit<T extends SwapData> = IEscrowSelfInitSwapInit<T> & {
     signatureData?: SignatureData,
@@ -634,7 +635,8 @@ export abstract class IToBTCSwap<
                 SwapExecutionStepSettlement<"BITCOIN" | "LIGHTNING", "soft_settled">,
                 SwapExecutionStepRefund<T["ChainId"]>,
             ],
-            buildCurrentAction
+            buildCurrentAction,
+            state
         };
     }
 
@@ -744,12 +746,14 @@ export abstract class IToBTCSwap<
         currentAction:
             SwapExecutionActionSignSmartChainTx<T> |
             SwapExecutionActionWait<"LP"> |
-            undefined
+            undefined,
+        stateInfo: SwapStateInfo<ToBTCSwapState>
     }> {
         const executionStatus = await this._getExecutionStatus();
         return {
             steps: executionStatus.steps,
-            currentAction: await executionStatus.buildCurrentAction(options)
+            currentAction: await executionStatus.buildCurrentAction(options),
+            stateInfo: this._getStateInfo(executionStatus.state)
         };
     }
 

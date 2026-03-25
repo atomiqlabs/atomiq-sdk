@@ -49,6 +49,7 @@ import {
     SwapExecutionStepPayment,
     SwapExecutionStepSettlement
 } from "../../../../types/SwapExecutionStep";
+import {SwapStateInfo} from "../../../../types/SwapStateInfo";
 
 /**
  * State enum for FromBTCLNAuto swaps
@@ -930,7 +931,8 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
                 SwapExecutionStepPayment<"LIGHTNING">,
                 SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
             ],
-            buildCurrentAction
+            buildCurrentAction,
+            state
         };
     }
 
@@ -1090,12 +1092,14 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
             SwapExecutionActionSendToAddress<true> |
             SwapExecutionActionWait<"LP" | "SETTLEMENT"> |
             SwapExecutionActionSignSmartChainTx<T> |
-            undefined
+            undefined,
+        stateInfo: SwapStateInfo<FromBTCLNAutoSwapState>
     }> {
         const executionStatus = await this._getExecutionStatus(options);
         return {
             steps: executionStatus.steps,
-            currentAction: await executionStatus.buildCurrentAction(options)
+            currentAction: await executionStatus.buildCurrentAction(options),
+            stateInfo: this._getStateInfo(executionStatus.state)
         };
     }
 

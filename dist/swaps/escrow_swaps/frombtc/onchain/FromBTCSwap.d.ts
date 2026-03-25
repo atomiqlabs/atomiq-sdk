@@ -14,6 +14,7 @@ import { BtcToken, SCToken } from "../../../../types/Token";
 import { LoggerType } from "../../../../utils/Logger";
 import { SwapExecutionActionSendToAddress, SwapExecutionActionSignPSBT, SwapExecutionActionSignSmartChainTx, SwapExecutionActionWait } from "../../../../types/SwapExecutionAction";
 import { SwapExecutionStepPayment, SwapExecutionStepSettlement, SwapExecutionStepSetup } from "../../../../types/SwapExecutionStep";
+import { SwapStateInfo } from "../../../../types/SwapStateInfo";
 /**
  * State enum for legacy escrow based Bitcoin -> Smart chain swaps.
  *
@@ -328,6 +329,7 @@ export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromB
             skipChecks?: boolean;
             manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
         }) => Promise<SwapExecutionActionSendToAddress<false> | SwapExecutionActionSignPSBT<"FUNDED_PSBT"> | SwapExecutionActionWait<"BITCOIN_CONFS" | "SETTLEMENT"> | SwapExecutionActionSignSmartChainTx<T> | undefined>;
+        state: FromBTCSwapState;
     }>;
     /**
      * @internal
@@ -385,6 +387,7 @@ export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromB
             SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
         ];
         currentAction: SwapExecutionActionSendToAddress<false> | SwapExecutionActionSignPSBT<"FUNDED_PSBT"> | SwapExecutionActionWait<"BITCOIN_CONFS" | "SETTLEMENT"> | SwapExecutionActionSignSmartChainTx<T> | undefined;
+        stateInfo: SwapStateInfo<FromBTCSwapState>;
     }>;
     /**
      * @inheritDoc

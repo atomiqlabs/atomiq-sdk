@@ -168,6 +168,12 @@ export declare abstract class ISwap<T extends ChainType = ChainType, D extends S
      */
     protected tryRecomputeSwapPrice(): void;
     /**
+     * Returns the specific state along with the human-readable description of that state
+     *
+     * @internal
+     */
+    protected _getStateInfo(state: S): SwapStateInfo<S>;
+    /**
      * Re-fetches & revalidates the price data based on the current market prices
      */
     refreshPriceData(): Promise<void>;
@@ -321,6 +327,7 @@ export declare abstract class ISwap<T extends ChainType = ChainType, D extends S
     abstract getExecutionStatus(options?: any): Promise<{
         steps: SwapExecutionStep[];
         currentAction: SwapExecutionAction | undefined;
+        stateInfo: SwapStateInfo<S>;
     }>;
     /**
      * Returns output amount of the swap, user receives this much

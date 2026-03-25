@@ -296,6 +296,19 @@ export abstract class ISwap<
     }
 
     /**
+     * Returns the specific state along with the human-readable description of that state
+     *
+     * @internal
+     */
+    protected _getStateInfo(state: S): SwapStateInfo<S> {
+        return {
+            state: state,
+            name: this.swapStateName(state),
+            description: this.swapStateDescription[state]
+        };
+    }
+
+    /**
      * Re-fetches & revalidates the price data based on the current market prices
      */
     public async refreshPriceData(): Promise<void> {
@@ -514,11 +527,7 @@ export abstract class ISwap<
      * Returns the current state of the swap along with the human-readable description of the state
      */
     public getStateInfo(): SwapStateInfo<S> {
-        return {
-            state: this._state,
-            name: this.swapStateName(this._state),
-            description: this.swapStateDescription[this._state]
-        }
+        return this._getStateInfo(this._state);
     }
 
     /**
@@ -550,7 +559,8 @@ export abstract class ISwap<
      */
     public abstract getExecutionStatus(options?: any): Promise<{
         steps: SwapExecutionStep[],
-        currentAction: SwapExecutionAction | undefined
+        currentAction: SwapExecutionAction | undefined,
+        stateInfo: SwapStateInfo<S>
     }>;
 
     //////////////////////////////

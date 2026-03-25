@@ -47,6 +47,7 @@ import {
     SwapExecutionStepPayment,
     SwapExecutionStepSettlement
 } from "../../types/SwapExecutionStep";
+import {SwapStateInfo} from "../../types/SwapStateInfo";
 
 /**
  * State enum for SPV vault (UTXO-controlled vault) based swaps
@@ -1246,7 +1247,8 @@ export class SpvFromBTCSwap<T extends ChainType>
                 SwapExecutionStepPayment<"BITCOIN">,
                 SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
             ],
-            buildCurrentAction
+            buildCurrentAction,
+            state
         };
     }
 
@@ -1392,12 +1394,14 @@ export class SpvFromBTCSwap<T extends ChainType>
             SwapExecutionActionSignPSBT |
             SwapExecutionActionWait<"BITCOIN_CONFS" | "SETTLEMENT"> |
             SwapExecutionActionSignSmartChainTx<T> |
-            undefined
+            undefined,
+        stateInfo: SwapStateInfo<SpvFromBTCSwapState>
     }> {
         const executionStatus = await this._getExecutionStatus(options);
         return {
             steps: executionStatus.steps,
-            currentAction: await executionStatus.buildCurrentAction(options)
+            currentAction: await executionStatus.buildCurrentAction(options),
+            stateInfo: this._getStateInfo(executionStatus.state)
         };
     }
 

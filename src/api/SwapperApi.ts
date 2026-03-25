@@ -36,11 +36,10 @@ async function buildSwapStatusResponse(
     txSerializer: (chainId: string, tx: any) => Promise<string>,
     options?: any
 ): Promise<SwapStatusResponse> {
-    const stateInfo = swap.getStateInfo();
     const input = swap.getInput();
     const output = swap.getOutput();
     const feeBreakdown = swap.getFeeBreakdown();
-    const {steps, currentAction} = await swap.getExecutionStatus(options);
+    const {steps, currentAction, stateInfo} = await swap.getExecutionStatus(options);
 
     // Build fees from breakdown
     const swapFeeEntry = feeBreakdown.find(f => f.type === FeeType.SWAP);

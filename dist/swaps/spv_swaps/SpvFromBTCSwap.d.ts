@@ -16,6 +16,7 @@ import { LoggerType } from "../../utils/Logger";
 import { PriceInfoType } from "../../types/PriceInfoType";
 import { SwapExecutionActionSignPSBT, SwapExecutionActionSignSmartChainTx, SwapExecutionActionWait } from "../../types/SwapExecutionAction";
 import { SwapExecutionStepPayment, SwapExecutionStepSettlement } from "../../types/SwapExecutionStep";
+import { SwapStateInfo } from "../../types/SwapStateInfo";
 /**
  * State enum for SPV vault (UTXO-controlled vault) based swaps
  * @category Swaps/Bitcoin → Smart chain
@@ -489,6 +490,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
             manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
             maxWaitTillAutomaticSettlementSeconds?: number;
         }) => Promise<SwapExecutionActionSignPSBT | SwapExecutionActionWait<"BITCOIN_CONFS" | "SETTLEMENT"> | SwapExecutionActionSignSmartChainTx<T> | undefined>;
+        state: number;
     }>;
     /**
      * @internal
@@ -538,6 +540,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
             SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
         ];
         currentAction: SwapExecutionActionSignPSBT | SwapExecutionActionWait<"BITCOIN_CONFS" | "SETTLEMENT"> | SwapExecutionActionSignSmartChainTx<T> | undefined;
+        stateInfo: SwapStateInfo<SpvFromBTCSwapState>;
     }>;
     /**
      * @inheritDoc

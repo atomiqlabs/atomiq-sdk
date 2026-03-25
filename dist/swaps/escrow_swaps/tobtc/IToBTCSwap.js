@@ -482,7 +482,8 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
                     refundTxId: this._refundTxId
                 }
             ],
-            buildCurrentAction
+            buildCurrentAction,
+            state
         };
     }
     /**
@@ -565,7 +566,8 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
         const executionStatus = await this._getExecutionStatus();
         return {
             steps: executionStatus.steps,
-            currentAction: await executionStatus.buildCurrentAction(options)
+            currentAction: await executionStatus.buildCurrentAction(options),
+            stateInfo: this._getStateInfo(executionStatus.state)
         };
     }
     /**

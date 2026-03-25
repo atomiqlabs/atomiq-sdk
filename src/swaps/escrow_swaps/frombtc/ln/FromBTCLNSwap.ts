@@ -39,6 +39,7 @@ import {
     SwapExecutionStepPayment,
     SwapExecutionStepSettlement
 } from "../../../../types/SwapExecutionStep";
+import {SwapStateInfo} from "../../../../types/SwapStateInfo";
 
 /**
  * State enum for legacy Lightning -> Smart chain swaps
@@ -699,7 +700,8 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
                 SwapExecutionStepPayment<"LIGHTNING">,
                 SwapExecutionStepSettlement<T["ChainId"], "awaiting_manual">
             ],
-            buildCurrentAction
+            buildCurrentAction,
+            state
         };
     }
 
@@ -800,12 +802,14 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
         currentAction:
             SwapExecutionActionSendToAddress<true> |
             SwapExecutionActionSignSmartChainTx<T> |
-            undefined
+            undefined,
+        stateInfo: SwapStateInfo<FromBTCLNSwapState>
     }> {
         const executionStatus = await this._getExecutionStatus(options);
         return {
             steps: executionStatus.steps,
-            currentAction: await executionStatus.buildCurrentAction(options)
+            currentAction: await executionStatus.buildCurrentAction(options),
+            stateInfo: this._getStateInfo(executionStatus.state)
         };
     }
 

@@ -576,7 +576,8 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
                     settleTxId: this._claimTxId
                 }
             ],
-            buildCurrentAction
+            buildCurrentAction,
+            state
         };
     }
     /**
@@ -647,7 +648,8 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
         const executionStatus = await this._getExecutionStatus(options);
         return {
             steps: executionStatus.steps,
-            currentAction: await executionStatus.buildCurrentAction(options)
+            currentAction: await executionStatus.buildCurrentAction(options),
+            stateInfo: this._getStateInfo(executionStatus.state)
         };
     }
     /**

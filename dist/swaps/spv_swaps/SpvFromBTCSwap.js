@@ -935,7 +935,8 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
                     settleTxId: this._frontTxId ?? this._claimTxId
                 }
             ],
-            buildCurrentAction
+            buildCurrentAction,
+            state
         };
     }
     /**
@@ -1043,7 +1044,8 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
         const executionStatus = await this._getExecutionStatus(options);
         return {
             steps: executionStatus.steps,
-            currentAction: await executionStatus.buildCurrentAction(options)
+            currentAction: await executionStatus.buildCurrentAction(options),
+            stateInfo: this._getStateInfo(executionStatus.state)
         };
     }
     /**

@@ -21,11 +21,10 @@ function requiresSecretRevealForApi(swap) {
     }
 }
 async function buildSwapStatusResponse(swap, txSerializer, options) {
-    const stateInfo = swap.getStateInfo();
     const input = swap.getInput();
     const output = swap.getOutput();
     const feeBreakdown = swap.getFeeBreakdown();
-    const { steps, currentAction } = await swap.getExecutionStatus(options);
+    const { steps, currentAction, stateInfo } = await swap.getExecutionStatus(options);
     // Build fees from breakdown
     const swapFeeEntry = feeBreakdown.find(f => f.type === FeeType_1.FeeType.SWAP);
     const networkFeeEntry = feeBreakdown.find(f => f.type === FeeType_1.FeeType.NETWORK_OUTPUT);

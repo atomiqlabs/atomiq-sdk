@@ -46,6 +46,7 @@ import {
     SwapExecutionStepSettlement,
     SwapExecutionStepSetup
 } from "../../../../types/SwapExecutionStep";
+import {SwapStateInfo} from "../../../../types/SwapStateInfo";
 
 /**
  * State enum for legacy escrow based Bitcoin -> Smart chain swaps.
@@ -938,7 +939,8 @@ export class FromBTCSwap<T extends ChainType = ChainType>
                 SwapExecutionStepPayment<"BITCOIN">,
                 SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
             ],
-            buildCurrentAction
+            buildCurrentAction,
+            state
         };
     }
 
@@ -1160,12 +1162,14 @@ export class FromBTCSwap<T extends ChainType = ChainType>
             SwapExecutionActionSignPSBT<"FUNDED_PSBT"> |
             SwapExecutionActionWait<"BITCOIN_CONFS" | "SETTLEMENT"> |
             SwapExecutionActionSignSmartChainTx<T> |
-            undefined
+            undefined,
+        stateInfo: SwapStateInfo<FromBTCSwapState>
     }> {
         const executionStatus = await this._getExecutionStatus(options);
         return {
             steps: executionStatus.steps,
-            currentAction: await executionStatus.buildCurrentAction(options)
+            currentAction: await executionStatus.buildCurrentAction(options),
+            stateInfo: this._getStateInfo(executionStatus.state)
         };
     }
 

@@ -18,6 +18,7 @@ import { LNURLWithdraw } from "../../../../types/lnurl/LNURLWithdraw";
 import { PriceInfoType } from "../../../../types/PriceInfoType";
 import { SwapExecutionActionSendToAddress, SwapExecutionActionSignSmartChainTx, SwapExecutionActionWait } from "../../../../types/SwapExecutionAction";
 import { SwapExecutionStepPayment, SwapExecutionStepSettlement } from "../../../../types/SwapExecutionStep";
+import { SwapStateInfo } from "../../../../types/SwapStateInfo";
 /**
  * State enum for FromBTCLNAuto swaps
  * @category Swaps/Lightning → Smart chain
@@ -407,6 +408,7 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
         buildCurrentAction: (actionOptions?: {
             manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
         }) => Promise<SwapExecutionActionSendToAddress<true> | SwapExecutionActionWait<"LP" | "SETTLEMENT"> | SwapExecutionActionSignSmartChainTx<T> | undefined>;
+        state: number;
     }>;
     /**
      * @internal
@@ -450,6 +452,7 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
             SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
         ];
         currentAction: SwapExecutionActionSendToAddress<true> | SwapExecutionActionWait<"LP" | "SETTLEMENT"> | SwapExecutionActionSignSmartChainTx<T> | undefined;
+        stateInfo: SwapStateInfo<FromBTCLNAutoSwapState>;
     }>;
     /**
      * @inheritDoc

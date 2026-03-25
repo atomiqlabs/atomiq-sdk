@@ -9,6 +9,7 @@ import { TokenAmount } from "../../../types/TokenAmount";
 import { BtcToken, SCToken } from "../../../types/Token";
 import { SwapExecutionActionSignSmartChainTx, SwapExecutionActionWait } from "../../../types/SwapExecutionAction";
 import { SwapExecutionStepPayment, SwapExecutionStepRefund, SwapExecutionStepSettlement } from "../../../types/SwapExecutionStep";
+import { SwapStateInfo } from "../../../types/SwapStateInfo";
 export type IToBTCSwapInit<T extends SwapData> = IEscrowSelfInitSwapInit<T> & {
     signatureData?: SignatureData;
     data: T;
@@ -273,6 +274,7 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
             skipChecks?: boolean;
             refundSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
         }) => Promise<SwapExecutionActionSignSmartChainTx<T> | SwapExecutionActionWait<"LP"> | undefined>;
+        state: ToBTCSwapState;
     }>;
     /**
      * @internal
@@ -310,6 +312,7 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
             SwapExecutionStepRefund<T["ChainId"]>
         ];
         currentAction: SwapExecutionActionSignSmartChainTx<T> | SwapExecutionActionWait<"LP"> | undefined;
+        stateInfo: SwapStateInfo<ToBTCSwapState>;
     }>;
     /**
      * @inheritDoc

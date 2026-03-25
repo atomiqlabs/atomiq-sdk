@@ -21,6 +21,7 @@ import {
     SwapExecutionStepPayment,
     SwapExecutionStepSettlement
 } from "../../../types/SwapExecutionStep";
+import {SwapStateInfo} from "../../../types/SwapStateInfo";
 
 /**
  * State enum for trusted Lightning gas swaps
@@ -479,7 +480,8 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
                 SwapExecutionStepPayment<"LIGHTNING">,
                 SwapExecutionStepSettlement<T["ChainId"], never>
             ],
-            buildCurrentAction
+            buildCurrentAction,
+            state
         };
     }
 
@@ -567,12 +569,14 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
         currentAction:
             SwapExecutionActionSendToAddress<true> |
             SwapExecutionActionWait<"LP"> |
-            undefined
+            undefined,
+        stateInfo: SwapStateInfo<LnForGasSwapState>
     }> {
         const executionStatus = await this._getExecutionStatus();
         return {
             steps: executionStatus.steps,
-            currentAction: await executionStatus.buildCurrentAction()
+            currentAction: await executionStatus.buildCurrentAction(),
+            stateInfo: this._getStateInfo(executionStatus.state)
         };
     }
 

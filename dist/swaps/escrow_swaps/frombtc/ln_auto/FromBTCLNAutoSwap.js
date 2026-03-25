@@ -737,7 +737,8 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
                     settleTxId: this._claimTxId
                 }
             ],
-            buildCurrentAction
+            buildCurrentAction,
+            state
         };
     }
     /**
@@ -848,7 +849,8 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
         const executionStatus = await this._getExecutionStatus(options);
         return {
             steps: executionStatus.steps,
-            currentAction: await executionStatus.buildCurrentAction(options)
+            currentAction: await executionStatus.buildCurrentAction(options),
+            stateInfo: this._getStateInfo(executionStatus.state)
         };
     }
     /**

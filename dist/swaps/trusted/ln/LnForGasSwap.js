@@ -388,7 +388,8 @@ class LnForGasSwap extends ISwap_1.ISwap {
                     status: destinationSettlementStatus
                 }
             ],
-            buildCurrentAction
+            buildCurrentAction,
+            state
         };
     }
     /**
@@ -456,7 +457,8 @@ class LnForGasSwap extends ISwap_1.ISwap {
         const executionStatus = await this._getExecutionStatus();
         return {
             steps: executionStatus.steps,
-            currentAction: await executionStatus.buildCurrentAction()
+            currentAction: await executionStatus.buildCurrentAction(),
+            stateInfo: this._getStateInfo(executionStatus.state)
         };
     }
     /**

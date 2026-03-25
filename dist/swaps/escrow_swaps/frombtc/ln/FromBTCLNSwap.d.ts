@@ -15,6 +15,7 @@ import { LoggerType } from "../../../../utils/Logger";
 import { LNURLWithdraw } from "../../../../types/lnurl/LNURLWithdraw";
 import { SwapExecutionActionSendToAddress, SwapExecutionActionSignSmartChainTx } from "../../../../types/SwapExecutionAction";
 import { SwapExecutionStepPayment, SwapExecutionStepSettlement } from "../../../../types/SwapExecutionStep";
+import { SwapStateInfo } from "../../../../types/SwapStateInfo";
 /**
  * State enum for legacy Lightning -> Smart chain swaps
  * @category Swaps/Legacy/Lightning → Smart chain
@@ -298,6 +299,7 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
         buildCurrentAction: (actionOptions?: {
             skipChecks?: boolean;
         }) => Promise<SwapExecutionActionSendToAddress<true> | SwapExecutionActionSignSmartChainTx<T> | undefined>;
+        state: FromBTCLNSwapState;
     }>;
     /**
      * @internal
@@ -333,6 +335,7 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
             SwapExecutionStepSettlement<T["ChainId"], "awaiting_manual">
         ];
         currentAction: SwapExecutionActionSendToAddress<true> | SwapExecutionActionSignSmartChainTx<T> | undefined;
+        stateInfo: SwapStateInfo<FromBTCLNSwapState>;
     }>;
     /**
      * @inheritDoc

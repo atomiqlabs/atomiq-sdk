@@ -32,13 +32,47 @@ import {ISwap} from "../ISwap";
 import {IClaimableSwapWrapper} from "../IClaimableSwapWrapper";
 import {AmountData} from "../../types/AmountData";
 import {tryWithRetries} from "../../utils/RetryUtils";
-import {AllOptional, AllRequired} from "../../utils/TypeUtils";
+import {AllOptional} from "../../utils/TypeUtils";
+import {fromHumanReadableString} from "../../utils/TokenUtils";
+import {UserError} from "../../errors/UserError";
 
 export type SpvFromBTCOptions = {
-    gasAmount?: bigint,
+    /**
+     * Optional additional native token to receive as an output of the swap (e.g. STRK on Starknet or cBTC on Citrea).
+     *
+     * When passed as a `bigint` it is specified in base units of the token and in `string` it is the human readable
+     *  decimal format.
+     */
+    gasAmount?: bigint | string,
+    /**
+     * The LP enforces a minimum bitcoin fee rate in sats/vB for the swap transaction. With this config you can optionally
+     *  limit how high of a minimum fee rate would you accept.
+     *
+     * By default the maximum allowed fee rate is calculated dynamically based on current bitcoin fee rate as:
+     *
+     * `maxAllowedBitcoinFeeRate` = 10 + `currentBitcoinFeeRate` * 1.5
+     */
+    maxAllowedBitcoinFeeRate?: number,
+    /**
+     * A flag to attach 0 watchtower fee to the swap, this would make the settlement unattractive for the watchtowers
+     *  and therefore automatic settlement for such swaps will not be possible, you will have to settle manually
+     *  with {@link FromBTCLNSwap.claim} or {@link FromBTCLNSwap.txsClaim} functions.
+     */
     unsafeZeroWatchtowerFee?: boolean,
+    /**
+     * A safety factor to use when estimating the watchtower fee to attach to the swap (this has to cover the gas fee
+     *  of watchtowers settling the swap). A higher multiple here would mean that a swap is more attractive for
+     *  watchtowers to settle automatically.
+     *
+     * Uses a `1.25` multiple by default (i.e. the current network fee is multiplied by 1.25 and then used to estimate
+     *  the settlement gas fee cost)
+     */
     feeSafetyFactor?: number,
-    maxAllowedNetworkFeeRate?: number
+
+    /**
+     * @deprecated Use `maxAllowedBitcoinFeeRate` instead!
+     */
+    maxAllowedNetworkFeeRate?: number,
 };
 
 export type SpvFromBTCWrapperOptions = ISwapWrapperOptions & {
@@ -275,7 +309,10 @@ export class SpvFromBTCWrapper<
      */
     private async preFetchCallerFeeShare(
         amountData: AmountData,
-        options: AllRequired<SpvFromBTCOptions>,
+        options: {
+            unsafeZeroWatchtowerFee: boolean,
+            feeSafetyFactor: number
+        },
         pricePrefetch: Promise<bigint | undefined>,
         nativeTokenPricePrefetch: Promise<bigint | undefined> | undefined,
         abortController: AbortController
@@ -355,7 +392,9 @@ export class SpvFromBTCWrapper<
         resp: SpvFromBTCPrepareResponseType,
         amountData: AmountData,
         lp: Intermediary,
-        options: SpvFromBTCOptions,
+        options: {
+            gasAmount: bigint
+        },
         callerFeeShare: bigint,
         bitcoinFeeRatePromise: Promise<number | undefined>,
         abortSignal: AbortSignal
@@ -438,7 +477,7 @@ export class SpvFromBTCWrapper<
                         throw new IntermediaryError("Invalid amount0 multiplier used, rawAmount diff too high");
                     if(resp.total !== adjustedAmount) throw new IntermediaryError("Invalid total returned");
                 }
-                if(options.gasAmount==null || options.gasAmount===0n) {
+                if(options.gasAmount===0n) {
                     if(resp.totalGas !== 0n) throw new IntermediaryError("Invalid gas total returned");
                 } else {
                     //Check the difference between amount adjusted due to scaling to raw amount
@@ -548,12 +587,15 @@ export class SpvFromBTCWrapper<
         quote: Promise<SpvFromBTCSwap<T>>,
         intermediary: Intermediary
     }[] {
-        const _options: AllRequired<SpvFromBTCOptions> = {
-            gasAmount: options?.gasAmount ?? 0n,
+        const _options = {
+            gasAmount: this.parseGasAmount(options?.gasAmount),
             unsafeZeroWatchtowerFee: options?.unsafeZeroWatchtowerFee ?? false,
             feeSafetyFactor: options?.feeSafetyFactor ?? 1.25,
-            maxAllowedNetworkFeeRate: options?.maxAllowedNetworkFeeRate ?? Infinity
+            maxAllowedBitcoinFeeRate: options?.maxAllowedBitcoinFeeRate ?? options?.maxAllowedNetworkFeeRate ?? Infinity
         };
+
+        if(amountData.token===this._chain.getNativeCurrencyAddress() && _options.gasAmount!==0n)
+            throw new UserError("Cannot specify `gasAmount` for swaps to a native token!");
 
         const _abortController = extendAbortController(abortSignal);
         const pricePrefetchPromise: Promise<bigint | undefined> = this.preFetchPrice(amountData, _abortController.signal);
@@ -564,8 +606,8 @@ export class SpvFromBTCWrapper<
             undefined :
             this.preFetchPrice({token: nativeTokenAddress}, _abortController.signal);
         const callerFeePrefetchPromise = this.preFetchCallerFeeShare(amountData, _options, pricePrefetchPromise, gasTokenPricePrefetchPromise, _abortController);
-        const bitcoinFeeRatePromise: Promise<number | undefined> = _options.maxAllowedNetworkFeeRate!=Infinity ?
-            Promise.resolve(_options.maxAllowedNetworkFeeRate) :
+        const bitcoinFeeRatePromise: Promise<number | undefined> = _options.maxAllowedBitcoinFeeRate!=Infinity ?
+            Promise.resolve(_options.maxAllowedBitcoinFeeRate) :
             this._btcRpc.getFeeRate().then(x => this._options.maxBtcFeeOffset + (x*this._options.maxBtcFeeMultiplier)).catch(e => {
                 _abortController.abort(e);
                 return undefined;

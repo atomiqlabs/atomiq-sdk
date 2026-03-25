@@ -15,11 +15,55 @@ import { LNURLPayParamsWithUrl } from "../../../../types/lnurl/LNURLPay";
 import { AllOptional } from "../../../../utils/TypeUtils";
 import { LightningInvoiceCreateService } from "../../../../types/wallets/LightningInvoiceCreateService";
 export type ToBTCLNOptions = {
+    /**
+     * HTLC expiration timeout in seconds to use when offering the HTLC to the LP. Larger expirations mean that more
+     *  lightning network payment paths can be considered (every hop in the lightning network payment adds additional
+     *  timeout requirement). On the other side, larger expiration also means that user's funds are locked for longer
+     *  in case of a non-cooperative LP.
+     *
+     * Uses 5 days as default.
+     */
     expirySeconds?: number;
-    maxFee?: bigint | Promise<bigint>;
-    expiryTimestamp?: bigint;
-    maxRoutingPPM?: bigint;
+    /**
+     * Maximum fee for routing the swap output payment through the lightning network. Higher fee percentages means that
+     *  more payment routes can be considered (every hop in the lightning network payment adds additional fee
+     *  requirements).
+     *
+     * The fee is express as percentage of the swap value, uses `0.2` by default which means the maximum
+     *  routing fee is capped at 0.2% of the swap value.
+     *
+     * The full fee also contains the base component (set by `maxRoutingBaseFee` option), the resulting maximum routing
+     *  fee rate is:
+     *
+     * `maxRoutingFee` = `maxRoutingBaseFee` sats + `value` * `maxRoutingFeePercentage`%
+     */
+    maxRoutingFeePercentage?: number;
+    /**
+     *
+     * Maximum base fee (in sats) for routing the swap output payment through the lightning network. Higher fee
+     *  percentages means that more payment routes can be considered (every hop in the lightning network payment adds additional fee
+     *  requirements).
+     *
+     * Uses 10 sats as a default.
+     *
+     * The full fee also contains the value percentage component (set by `maxRoutingFeePercentage` option), the
+     *  resulting maximum routing fee rate is:
+     *
+     * `maxRoutingFee` = `maxRoutingBaseFee` sats + (`value` * `maxRoutingFeePercentage`%)
+     */
     maxRoutingBaseFee?: bigint;
+    /**
+     * @deprecated Use `maxRoutingFeePercentage` and express the routing fee in percentage instead!
+     */
+    maxRoutingPPM?: bigint;
+    /**
+     * @deprecated Adjust fee with `maxRoutingFeePercentage` & `maxRoutingBaseFee` params!
+     */
+    maxFee?: bigint | Promise<bigint>;
+    /**
+     * @deprecated Pass desired HTLC expiration timeout as `expirySeconds`
+     */
+    expiryTimestamp?: bigint;
 };
 export type ToBTCLNWrapperOptions = ISwapWrapperOptions & {
     lightningBaseFee: number;
@@ -71,7 +115,7 @@ export declare class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T
      * @param parsedPr Parsed bolt11 lightning invoice
      * @param token Smart chain token to be used in the swap
      * @param lp
-     * @param options Swap options as passed to the swap create function
+     * @param calculatedOptions Swap options computed from the swap create options
      * @param data Parsed swap data returned by the LP
      * @param requiredTotal Required total to be paid on the input (for exactIn swaps)
      *
@@ -88,7 +132,7 @@ export declare class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T
      * @param lp Intermediary
      * @param pr bolt11 lightning network invoice
      * @param parsedPr Parsed bolt11 lightning network invoice
-     * @param options Options as passed to the swap create function
+     * @param calculatedOptions Swap options computed from the swap create options
      * @param preFetches
      * @param abort Abort signal or controller, if AbortController is passed it is used as-is, when AbortSignal is passed
      *  it is extended with extendAbortController and then used
@@ -110,7 +154,9 @@ export declare class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T
      * @param abortSignal Abort signal
      * @param preFetches Optional existing pre-fetch promises for the swap (only used internally for LNURL swaps)
      */
-    create(signer: string, recipient: string, amountData: Omit<AmountData, "amount">, lps: Intermediary[], options?: ToBTCLNOptions, additionalParams?: Record<string, any>, abortSignal?: AbortSignal, preFetches?: {
+    create(signer: string, recipient: string, amountData: Omit<AmountData, "amount"> & {
+        exactIn: false;
+    }, lps: Intermediary[], options?: ToBTCLNOptions, additionalParams?: Record<string, any>, abortSignal?: AbortSignal, preFetches?: {
         feeRatePromise: Promise<string | undefined>;
         pricePreFetchPromise: Promise<bigint | undefined>;
         usdPricePrefetchPromise: Promise<number | undefined>;
@@ -138,7 +184,7 @@ export declare class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T
      * @param lp Intermediary (LPs) to get the quote from
      * @param dummyPr Dummy minimum value bolt11 lightning invoice returned from the LNURL-pay, used to estimate
      *  network fees for an actual invoice
-     * @param options Optional additional quote options
+     * @param calculatedOptions Swap options computed from the swap create options
      * @param preFetches Optional existing pre-fetch promises for the swap (only used internally for LNURL swaps)
      * @param abortSignal Abort signal
      * @param additionalParams Additional params to be sent to the intermediary

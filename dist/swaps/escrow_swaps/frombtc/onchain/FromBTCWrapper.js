@@ -137,7 +137,7 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
                 feePerBlock: 0n,
                 safetyFactor: options.blockSafetyFactor,
                 startTimestamp: startTimestamp,
-                addBlock: 0,
+                addBlock: 0n,
                 addFee: 0n
             };
         }
@@ -155,11 +155,11 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
             const currentBtcRelayBlock = btcRelayData.blockheight;
             const addBlock = Math.max(currentBtcBlock - currentBtcRelayBlock, 0);
             return {
-                feePerBlock: feePerBlock * options.feeSafetyFactor,
+                feePerBlock: feePerBlock * options.feeSafetyFactorPPM / 1000000n,
                 safetyFactor: options.blockSafetyFactor,
                 startTimestamp: startTimestamp,
-                addBlock,
-                addFee: claimFeeRate * options.feeSafetyFactor
+                addBlock: BigInt(addBlock),
+                addFee: claimFeeRate * options.feeSafetyFactorPPM / 1000000n
             };
         }
         catch (e) {
@@ -178,8 +178,8 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
      */
     getClaimerBounty(data, options, claimerBounty) {
         const tsDelta = data.getExpiry() - claimerBounty.startTimestamp;
-        const blocksDelta = tsDelta / BigInt(this._options.bitcoinBlocktime) * BigInt(options.blockSafetyFactor);
-        const totalBlock = blocksDelta + BigInt(claimerBounty.addBlock);
+        const blocksDelta = tsDelta / BigInt(this._options.bitcoinBlocktime) * options.blockSafetyFactor;
+        const totalBlock = blocksDelta + claimerBounty.addBlock;
         return claimerBounty.addFee + (totalBlock * claimerBounty.feePerBlock);
     }
     /**
@@ -253,9 +253,16 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
      * @param abortSignal Abort signal
      */
     create(recipient, amountData, lps, options, additionalParams, abortSignal) {
+        let feeSafetyFactorPPM = 1500000n;
+        if (typeof (options?.feeSafetyFactor) === "bigint") {
+            feeSafetyFactorPPM = options.feeSafetyFactor * 1000000n;
+        }
+        else if (typeof (options?.feeSafetyFactor) === "number") {
+            feeSafetyFactorPPM = BigInt(Math.floor(options.feeSafetyFactor * 1000000));
+        }
         const _options = {
-            blockSafetyFactor: options?.blockSafetyFactor ?? 1,
-            feeSafetyFactor: options?.feeSafetyFactor ?? 2n,
+            blockSafetyFactor: options?.blockSafetyFactor != null ? BigInt(options.blockSafetyFactor) : 1n,
+            feeSafetyFactorPPM,
             unsafeZeroWatchtowerFee: options?.unsafeZeroWatchtowerFee ?? false
         };
         const sequence = this.getRandomSequence();

@@ -4,6 +4,8 @@ exports.ISwapWrapper = void 0;
 const events_1 = require("events");
 const IntermediaryError_1 = require("../errors/IntermediaryError");
 const Logger_1 = require("../utils/Logger");
+const TokenUtils_1 = require("../utils/TokenUtils");
+const UserError_1 = require("../errors/UserError");
 /**
  * Base abstract class for swap handler implementations
  *
@@ -35,6 +37,26 @@ class ISwapWrapper {
         this.events = events || new events_1.EventEmitter();
         this._options = options;
         this._tokens = tokens;
+    }
+    /**
+     * Parses the provided gas amount from its `string` or `bigint` representation to `bigint` base units.
+     *
+     * Defaults to `0n` if no gasAmount is provided
+     *
+     * @param gasAmount
+     * @internal
+     */
+    parseGasAmount(gasAmount) {
+        let result;
+        if (typeof (gasAmount) === "string") {
+            result = (0, TokenUtils_1.fromHumanReadableString)(gasAmount, this._getNativeToken());
+            if (result == null)
+                throw new UserError_1.UserError("Invalid `gasAmount` option provided, not a numerical string!");
+        }
+        else {
+            result = gasAmount;
+        }
+        return result ?? 0n;
     }
     /**
      * Pre-fetches swap price for a given swap

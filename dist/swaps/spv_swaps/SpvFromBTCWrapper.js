@@ -13,6 +13,7 @@ const RequestError_1 = require("../../errors/RequestError");
 const IntermediaryError_1 = require("../../errors/IntermediaryError");
 const btc_signer_1 = require("@scure/btc-signer");
 const RetryUtils_1 = require("../../utils/RetryUtils");
+const UserError_1 = require("../../errors/UserError");
 /**
  * New spv vault (UTXO-controlled vault) based swaps for Bitcoin -> Smart chain swaps not requiring
  *  any initiation on the destination chain, and with the added possibility for the user to receive
@@ -316,7 +317,7 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
                     if (resp.total !== adjustedAmount)
                         throw new IntermediaryError_1.IntermediaryError("Invalid total returned");
                 }
-                if (options.gasAmount == null || options.gasAmount === 0n) {
+                if (options.gasAmount === 0n) {
                     if (resp.totalGas !== 0n)
                         throw new IntermediaryError_1.IntermediaryError("Invalid gas total returned");
                 }
@@ -420,11 +421,13 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
      */
     create(recipient, amountData, lps, options, additionalParams, abortSignal) {
         const _options = {
-            gasAmount: options?.gasAmount ?? 0n,
+            gasAmount: this.parseGasAmount(options?.gasAmount),
             unsafeZeroWatchtowerFee: options?.unsafeZeroWatchtowerFee ?? false,
             feeSafetyFactor: options?.feeSafetyFactor ?? 1.25,
-            maxAllowedNetworkFeeRate: options?.maxAllowedNetworkFeeRate ?? Infinity
+            maxAllowedBitcoinFeeRate: options?.maxAllowedBitcoinFeeRate ?? options?.maxAllowedNetworkFeeRate ?? Infinity
         };
+        if (amountData.token === this._chain.getNativeCurrencyAddress() && _options.gasAmount !== 0n)
+            throw new UserError_1.UserError("Cannot specify `gasAmount` for swaps to a native token!");
         const _abortController = (0, Utils_1.extendAbortController)(abortSignal);
         const pricePrefetchPromise = this.preFetchPrice(amountData, _abortController.signal);
         const usdPricePrefetchPromise = this.preFetchUsdPrice(_abortController.signal);
@@ -434,8 +437,8 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
             undefined :
             this.preFetchPrice({ token: nativeTokenAddress }, _abortController.signal);
         const callerFeePrefetchPromise = this.preFetchCallerFeeShare(amountData, _options, pricePrefetchPromise, gasTokenPricePrefetchPromise, _abortController);
-        const bitcoinFeeRatePromise = _options.maxAllowedNetworkFeeRate != Infinity ?
-            Promise.resolve(_options.maxAllowedNetworkFeeRate) :
+        const bitcoinFeeRatePromise = _options.maxAllowedBitcoinFeeRate != Infinity ?
+            Promise.resolve(_options.maxAllowedBitcoinFeeRate) :
             this._btcRpc.getFeeRate().then(x => this._options.maxBtcFeeOffset + (x * this._options.maxBtcFeeMultiplier)).catch(e => {
                 _abortController.abort(e);
                 return undefined;

@@ -25,11 +25,17 @@ import {UnifiedSwapStorage} from "../../../../storage/UnifiedSwapStorage";
 import {ISwap} from "../../../ISwap";
 import {AmountData} from "../../../../types/AmountData";
 import {tryWithRetries} from "../../../../utils/RetryUtils";
-import {AllOptional, AllRequired} from "../../../../utils/TypeUtils";
+import {AllOptional} from "../../../../utils/TypeUtils";
 import {ToBTCSwapState} from "../IToBTCSwap";
 
 export type ToBTCOptions = {
+    /**
+     * @deprecated Ignored by the LP anyway
+     */
     confirmationTarget?: number,
+    /**
+     * @deprecated Default 2 confirmations should be enough for any currently supported amount by atomiq
+     */
     confirmations?: number
 }
 
@@ -154,7 +160,10 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
         resp: ToBTCResponseType,
         amountData: AmountData,
         lp: Intermediary,
-        options: AllRequired<ToBTCOptions>,
+        options: {
+            confirmations: number,
+            confirmationTarget: number
+        },
         data: T["Data"],
         hash: string
     ): void {
@@ -220,7 +229,7 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
         intermediary: Intermediary
     }[] {
         if(!this.isInitialized) throw new Error("Not initialized, call init() first!");
-        const _options: AllRequired<ToBTCOptions> = {
+        const _options = {
             confirmationTarget: options?.confirmationTarget ?? 3,
             confirmations: options?.confirmations ?? 2
         };

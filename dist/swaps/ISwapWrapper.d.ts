@@ -127,6 +127,15 @@ export declare abstract class ISwapWrapper<T extends ChainType, D extends SwapTy
         swapState: [ISwap];
     }>);
     /**
+     * Parses the provided gas amount from its `string` or `bigint` representation to `bigint` base units.
+     *
+     * Defaults to `0n` if no gasAmount is provided
+     *
+     * @param gasAmount
+     * @internal
+     */
+    protected parseGasAmount(gasAmount?: string | bigint): bigint;
+    /**
      * Pre-fetches swap price for a given swap
      *
      * @param amountData Amount data

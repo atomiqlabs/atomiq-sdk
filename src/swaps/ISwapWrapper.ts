@@ -10,6 +10,8 @@ import {UnifiedSwapStorage} from "../storage/UnifiedSwapStorage";
 import {SCToken} from "../types/Token";
 import {getLogger} from "../utils/Logger";
 import {PriceInfoType} from "../types/PriceInfoType";
+import {fromHumanReadableString} from "../utils/TokenUtils";
+import {UserError} from "../errors/UserError";
 
 /**
  * Options for swap wrapper configuration
@@ -161,6 +163,24 @@ export abstract class ISwapWrapper<
         this._tokens = tokens;
     }
 
+    /**
+     * Parses the provided gas amount from its `string` or `bigint` representation to `bigint` base units.
+     *
+     * Defaults to `0n` if no gasAmount is provided
+     *
+     * @param gasAmount
+     * @internal
+     */
+    protected parseGasAmount(gasAmount?: string | bigint): bigint {
+        let result: bigint | undefined | null;
+        if(typeof(gasAmount)==="string") {
+            result = fromHumanReadableString(gasAmount, this._getNativeToken());
+            if(result==null) throw new UserError("Invalid `gasAmount` option provided, not a numerical string!");
+        } else {
+            result = gasAmount;
+        }
+        return result ?? 0n;
+    }
 
     /**
      * Pre-fetches swap price for a given swap

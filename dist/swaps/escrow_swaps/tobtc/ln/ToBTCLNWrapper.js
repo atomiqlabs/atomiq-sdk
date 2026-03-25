@@ -23,7 +23,7 @@ const RetryUtils_1 = require("../../../../utils/RetryUtils");
 class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
     constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, options, events) {
         super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, {
-            paymentTimeoutSeconds: options?.paymentTimeoutSeconds ?? 4 * 24 * 60 * 60,
+            paymentTimeoutSeconds: options?.paymentTimeoutSeconds ?? 5 * 24 * 60 * 60,
             lightningBaseFee: options?.lightningBaseFee ?? 10,
             lightningFeePPM: options?.lightningFeePPM ?? 2000
         }, events);
@@ -36,7 +36,9 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
     toRequiredSwapOptions(amountData, options, pricePreFetchPromise, abortSignal) {
         const expirySeconds = options?.expirySeconds ?? this._options.paymentTimeoutSeconds;
         const maxRoutingBaseFee = options?.maxRoutingBaseFee ?? BigInt(this._options.lightningBaseFee);
-        const maxRoutingPPM = options?.maxRoutingPPM ?? BigInt(this._options.lightningFeePPM);
+        const maxRoutingPPM = options?.maxRoutingFeePercentage != null
+            ? BigInt(Math.floor(options.maxRoutingFeePercentage * 10000))
+            : options?.maxRoutingPPM ?? BigInt(this._options.lightningFeePPM);
         let maxFee;
         if (options?.maxFee != null) {
             maxFee = options.maxFee;
@@ -56,10 +58,7 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
             maxFee = this.calculateFeeForAmount(amountData.amount, maxRoutingBaseFee, maxRoutingPPM);
         }
         return {
-            expirySeconds,
             expiryTimestamp: options?.expiryTimestamp ?? BigInt(Math.floor(Date.now() / 1000) + expirySeconds),
-            maxRoutingBaseFee,
-            maxRoutingPPM,
             maxFee
         };
     }
@@ -101,7 +100,7 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
      * @param parsedPr Parsed bolt11 lightning invoice
      * @param token Smart chain token to be used in the swap
      * @param lp
-     * @param options Swap options as passed to the swap create function
+     * @param calculatedOptions Swap options computed from the swap create options
      * @param data Parsed swap data returned by the LP
      * @param requiredTotal Required total to be paid on the input (for exactIn swaps)
      *
@@ -109,8 +108,8 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
      *
      * @private
      */
-    async verifyReturnedData(signer, resp, parsedPr, token, lp, options, data, requiredTotal) {
-        if (resp.routingFeeSats > await options.maxFee)
+    async verifyReturnedData(signer, resp, parsedPr, token, lp, calculatedOptions, data, requiredTotal) {
+        if (resp.routingFeeSats > await calculatedOptions.maxFee)
             throw new IntermediaryError_1.IntermediaryError("Invalid max fee sats returned");
         if (requiredTotal != null && resp.total !== requiredTotal)
             throw new IntermediaryError_1.IntermediaryError("Invalid data returned - total amount");
@@ -119,7 +118,7 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
         const claimHash = this._contract.getHashForHtlc(Buffer.from(parsedPr.tagsObject.payment_hash, "hex"));
         if (data.getAmount() !== resp.total ||
             !Buffer.from(data.getClaimHash(), "hex").equals(claimHash) ||
-            data.getExpiry() !== options.expiryTimestamp ||
+            data.getExpiry() !== calculatedOptions.expiryTimestamp ||
             data.getType() !== base_1.ChainSwapType.HTLC ||
             !data.isPayIn() ||
             !data.isToken(token) ||
@@ -137,7 +136,7 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
      * @param lp Intermediary
      * @param pr bolt11 lightning network invoice
      * @param parsedPr Parsed bolt11 lightning network invoice
-     * @param options Options as passed to the swap create function
+     * @param calculatedOptions Swap options computed from the swap create options
      * @param preFetches
      * @param abort Abort signal or controller, if AbortController is passed it is used as-is, when AbortSignal is passed
      *  it is extended with extendAbortController and then used
@@ -145,7 +144,7 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
      *
      * @private
      */
-    async getIntermediaryQuote(signer, amountData, lp, pr, parsedPr, options, preFetches, abort, additionalParams) {
+    async getIntermediaryQuote(signer, amountData, lp, pr, parsedPr, calculatedOptions, preFetches, abort, additionalParams) {
         if (lp.services[SwapType_1.SwapType.TO_BTCLN] == null)
             throw new Error("LP service for processing to btcln swaps not found!");
         const abortController = abort instanceof AbortController ? abort : (0, Utils_1.extendAbortController)(abort);
@@ -155,8 +154,8 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                 const { signDataPrefetch, response } = IntermediaryAPI_1.IntermediaryAPI.initToBTCLN(this.chainIdentifier, lp.url, {
                     offerer: signer,
                     pr,
-                    maxFee: await options.maxFee,
-                    expiryTimestamp: options.expiryTimestamp,
+                    maxFee: await calculatedOptions.maxFee,
+                    expiryTimestamp: calculatedOptions.expiryTimestamp,
                     token: amountData.token,
                     feeRate: (0, Utils_1.throwIfUndefined)(preFetches.feeRatePromise),
                     additionalParams
@@ -172,7 +171,7 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
             const totalFee = resp.swapFee + resp.maxFee;
             const data = new this._swapDataDeserializer(resp.data);
             data.setOfferer(signer);
-            await this.verifyReturnedData(signer, resp, parsedPr, amountData.token, lp, options, data);
+            await this.verifyReturnedData(signer, resp, parsedPr, amountData.token, lp, calculatedOptions, data);
             const [pricingInfo, signatureExpiry, reputation] = await Promise.all([
                 this.verifyReturnedPrice(lp.services[SwapType_1.SwapType.TO_BTCLN], true, amountOut, data.getAmount(), amountData.token, { networkFee: resp.maxFee }, preFetches.pricePreFetchPromise, preFetches.usdPricePrefetchPromise, abortController.signal),
                 this.verifyReturnedSignature(signer, data, resp, preFetches.feeRatePromise, signDataPromise, abortController.signal),
@@ -223,16 +222,7 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
         if (parsedPr.millisatoshis == null)
             throw new UserError_1.UserError("Must be an invoice with amount");
         const amountOut = (BigInt(parsedPr.millisatoshis) + 999n) / 1000n;
-        const expirySeconds = options?.expirySeconds ?? this._options.paymentTimeoutSeconds;
-        const maxRoutingBaseFee = options?.maxRoutingBaseFee ?? BigInt(this._options.lightningBaseFee);
-        const maxRoutingPPM = options?.maxRoutingPPM ?? BigInt(this._options.lightningFeePPM);
-        const _options = {
-            expirySeconds,
-            expiryTimestamp: options?.expiryTimestamp ?? BigInt(Math.floor(Date.now() / 1000) + expirySeconds),
-            maxRoutingBaseFee,
-            maxRoutingPPM,
-            maxFee: options?.maxFee ?? this.calculateFeeForAmount(amountOut, maxRoutingBaseFee, maxRoutingPPM)
-        };
+        const _options = this.toRequiredSwapOptions({ ...amountData, amount: amountOut }, options);
         if (parsedPr.tagsObject.payment_hash == null)
             throw new Error("Provided lightning invoice doesn't contain payment hash field!");
         await this.checkPaymentHashWasPaid(parsedPr.tagsObject.payment_hash);
@@ -279,14 +269,14 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
      * @param lp Intermediary (LPs) to get the quote from
      * @param dummyPr Dummy minimum value bolt11 lightning invoice returned from the LNURL-pay, used to estimate
      *  network fees for an actual invoice
-     * @param options Optional additional quote options
+     * @param calculatedOptions Swap options computed from the swap create options
      * @param preFetches Optional existing pre-fetch promises for the swap (only used internally for LNURL swaps)
      * @param abortSignal Abort signal
      * @param additionalParams Additional params to be sent to the intermediary
      *
      * @private
      */
-    async getIntermediaryQuoteExactIn(signer, amountData, invoiceCreateService, lp, dummyPr, options, preFetches, abortSignal, additionalParams) {
+    async getIntermediaryQuoteExactIn(signer, amountData, invoiceCreateService, lp, dummyPr, calculatedOptions, preFetches, abortSignal, additionalParams) {
         if (lp.services[SwapType_1.SwapType.TO_BTCLN] == null)
             throw new Error("LP service for processing to btcln swaps not found!");
         const abortController = (0, Utils_1.extendAbortController)(abortSignal);
@@ -298,8 +288,8 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                     offerer: signer,
                     pr: dummyPr,
                     amount: amountData.amount,
-                    maxFee: await options.maxFee,
-                    expiryTimestamp: options.expiryTimestamp,
+                    maxFee: await calculatedOptions.maxFee,
+                    expiryTimestamp: calculatedOptions.expiryTimestamp,
                     additionalParams
                 }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined);
                 return {
@@ -331,7 +321,7 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
             const totalFee = resp.swapFee + resp.maxFee;
             const data = new this._swapDataDeserializer(resp.data);
             data.setOfferer(signer);
-            await this.verifyReturnedData(signer, resp, parsedInvoice, amountData.token, lp, options, data, amountData.amount);
+            await this.verifyReturnedData(signer, resp, parsedInvoice, amountData.token, lp, calculatedOptions, data, amountData.amount);
             const [pricingInfo, signatureExpiry, reputation] = await Promise.all([
                 this.verifyReturnedPrice(lp.services[SwapType_1.SwapType.TO_BTCLN], true, prepareResp.amount, data.getAmount(), amountData.token, { networkFee: resp.maxFee }, preFetches.pricePreFetchPromise, preFetches.usdPricePrefetchPromise, abortSignal),
                 this.verifyReturnedSignature(signer, data, resp, preFetches.feeRatePromise, signDataPromise, abortController.signal),
@@ -413,7 +403,7 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                         throw new UserError_1.UserError("Amount more than maximum");
                 }
                 const invoice = await invoiceCreateService.getInvoice(Number(amountData.amount), _abortController.signal);
-                return (await this.create(signer, invoice, amountData, lps, options, additionalParams, _abortController.signal, {
+                return (await this.create(signer, invoice, { ...amountData, exactIn: false }, lps, options, additionalParams, _abortController.signal, {
                     feeRatePromise,
                     pricePreFetchPromise,
                     usdPricePrefetchPromise,

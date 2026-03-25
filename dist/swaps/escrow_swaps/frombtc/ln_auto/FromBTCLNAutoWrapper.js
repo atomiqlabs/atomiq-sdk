@@ -221,22 +221,18 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
         if (!this.isInitialized)
             throw new Error("Not initialized, call init() first!");
         const _options = {
-            paymentHash: options?.paymentHash,
+            paymentHash: (0, Utils_1.parseHashValueExact32Bytes)(options?.paymentHash, "payment hash"),
             unsafeSkipLnNodeCheck: options?.unsafeSkipLnNodeCheck ?? this._options.unsafeSkipLnNodeCheck,
-            gasAmount: options?.gasAmount ?? 0n,
+            gasAmount: this.parseGasAmount(options?.gasAmount),
             feeSafetyFactor: options?.feeSafetyFactor ?? 1.25,
             unsafeZeroWatchtowerFee: options?.unsafeZeroWatchtowerFee ?? false,
             description: options?.description,
-            descriptionHash: options?.descriptionHash
+            descriptionHash: (0, Utils_1.parseHashValueExact32Bytes)(options?.descriptionHash, "description hash")
         };
-        if (_options.paymentHash != null && _options.paymentHash.length !== 32)
-            throw new UserError_1.UserError("Invalid payment hash length, must be exactly 32 bytes!");
-        if (_options.descriptionHash != null && _options.descriptionHash.length !== 32)
-            throw new UserError_1.UserError("Invalid description hash length");
+        if (amountData.token === this._chain.getNativeCurrencyAddress() && _options.gasAmount !== 0n)
+            throw new UserError_1.UserError("Cannot specify `gasAmount` for swaps to a native token!");
         if (_options.description != null && buffer_1.Buffer.byteLength(_options.description, "utf8") > 500)
             throw new UserError_1.UserError("Invalid description length");
-        if (preFetches == null)
-            preFetches = {};
         let secret;
         let paymentHash;
         if (_options?.paymentHash != null) {
@@ -248,6 +244,7 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
         const claimHash = this._contract.getHashForHtlc(paymentHash);
         const nativeTokenAddress = this._chain.getNativeCurrencyAddress();
         const _abortController = (0, Utils_1.extendAbortController)(abortSignal);
+        preFetches ??= {};
         const _preFetches = {
             pricePrefetchPromise: preFetches?.pricePrefetchPromise ?? this.preFetchPrice(amountData, _abortController.signal),
             usdPricePrefetchPromise: preFetches?.usdPricePrefetchPromise ?? this.preFetchUsdPrice(_abortController.signal),
@@ -348,16 +345,14 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
         if (!this.isInitialized)
             throw new Error("Not initialized, call init() first!");
         const _options = {
-            paymentHash: options?.paymentHash,
+            paymentHash: (0, Utils_1.parseHashValueExact32Bytes)(options?.paymentHash, "payment hash"),
             unsafeSkipLnNodeCheck: options?.unsafeSkipLnNodeCheck ?? this._options.unsafeSkipLnNodeCheck,
-            gasAmount: options?.gasAmount ?? 0n,
+            gasAmount: this.parseGasAmount(options?.gasAmount),
             feeSafetyFactor: options?.feeSafetyFactor ?? 1.25,
             unsafeZeroWatchtowerFee: options?.unsafeZeroWatchtowerFee ?? false,
             description: options?.description,
-            descriptionHash: options?.descriptionHash
+            descriptionHash: (0, Utils_1.parseHashValueExact32Bytes)(options?.descriptionHash, "description hash")
         };
-        if (_options.paymentHash != null && _options.paymentHash.length !== 32)
-            throw new UserError_1.UserError("Invalid payment hash length, must be exactly 32 bytes!");
         const abortController = (0, Utils_1.extendAbortController)(abortSignal);
         const preFetches = {
             pricePrefetchPromise: this.preFetchPrice(amountData, abortController.signal),

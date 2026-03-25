@@ -480,9 +480,6 @@ class Swapper extends events_1.EventEmitter {
         if (!this._chains[chainIdentifier].chainInterface.isValidAddress(signer, true))
             throw new Error("Invalid " + chainIdentifier + " address");
         signer = this._chains[chainIdentifier].chainInterface.normalizeAddress(signer);
-        options ??= {};
-        options.confirmationTarget ??= 3;
-        options.confirmations ??= 2;
         const amountData = {
             amount,
             token: tokenAddress,
@@ -504,7 +501,6 @@ class Swapper extends events_1.EventEmitter {
     async createToBTCLNSwap(chainIdentifier, signer, tokenAddress, paymentRequest, additionalParams = this.options.defaultAdditionalParameters, options) {
         if (this._chains[chainIdentifier] == null)
             throw new Error("Invalid chain identifier! Unknown chain: " + chainIdentifier);
-        options ??= {};
         if (paymentRequest.startsWith("lightning:"))
             paymentRequest = paymentRequest.substring(10);
         if (!this.Utils.isValidLightningInvoice(paymentRequest))
@@ -520,7 +516,6 @@ class Swapper extends events_1.EventEmitter {
             token: tokenAddress,
             exactIn: false
         };
-        options.expirySeconds ??= 5 * 24 * 3600;
         return this.createSwap(chainIdentifier, (candidates, abortSignal, chain) => chain.wrappers[SwapType_1.SwapType.TO_BTCLN].create(signer, paymentRequest, amountData, candidates, options, additionalParams, abortSignal), amountData, SwapType_1.SwapType.TO_BTCLN);
     }
     /**
@@ -548,8 +543,6 @@ class Swapper extends events_1.EventEmitter {
             token: tokenAddress,
             exactIn
         };
-        options ??= {};
-        options.expirySeconds ??= 5 * 24 * 3600;
         return this.createSwap(chainIdentifier, (candidates, abortSignal, chain) => chain.wrappers[SwapType_1.SwapType.TO_BTCLN].createViaLNURL(signer, typeof (lnurlPay) === "string" ? (lnurlPay.startsWith("lightning:") ? lnurlPay.substring(10) : lnurlPay) : lnurlPay.params, amountData, candidates, options, additionalParams, abortSignal), amountData, SwapType_1.SwapType.TO_BTCLN);
     }
     /**
@@ -570,13 +563,11 @@ class Swapper extends events_1.EventEmitter {
         if (!this._chains[chainIdentifier].chainInterface.isValidAddress(signer, true))
             throw new Error("Invalid " + chainIdentifier + " address");
         signer = this._chains[chainIdentifier].chainInterface.normalizeAddress(signer);
-        options ??= {};
         const amountData = {
             amount,
             token: tokenAddress,
             exactIn
         };
-        options.expirySeconds ??= 5 * 24 * 3600;
         return this.createSwap(chainIdentifier, (candidates, abortSignal, chain) => chain.wrappers[SwapType_1.SwapType.TO_BTCLN].createViaInvoiceCreateService(signer, Promise.resolve(service), amountData, candidates, options, additionalParams, abortSignal), amountData, SwapType_1.SwapType.TO_BTCLN);
     }
     /**

@@ -1,7 +1,9 @@
 import {Buffer} from "buffer";
 import {randomBytes as randomBytesNoble} from "@noble/hashes/utils";
 import {sha256} from "@noble/hashes/sha2";
-import {BigIntBufferUtils} from "@atomiqlabs/base";
+import {BigIntBufferUtils, ChainType} from "@atomiqlabs/base";
+import {IFromBTCLNWrapper} from "../swaps/escrow_swaps/frombtc/IFromBTCLNWrapper";
+import {UserError} from "../errors/UserError";
 
 /**
  * Returns a promise that rejects if the passed promise resolves to `undefined` or `null`
@@ -179,4 +181,18 @@ export function toDecimal(amount: bigint, decimalCount: number, cut?: boolean, d
     if (displayDecimals === 0) return amountStr.substring(0, splitPoint);
     if (displayDecimals != null && cutTo > displayDecimals) cutTo = displayDecimals;
     return amountStr.substring(0, splitPoint) + "." + decimalPart.substring(0, cutTo);
+}
+
+export function parseHashValueExact32Bytes(value?: Buffer | string, variableName?: string): Buffer | undefined {
+    let hash: Buffer | undefined;
+    if(typeof(value)==="string") {
+        if(value.length!==64)
+            throw new UserError(`Invalid ${variableName} length, must be exactly 64 hexadecimal characters!`)
+        hash = Buffer.from(value, "hex");
+    } else {
+        hash = value;
+    }
+    if(hash!=null && hash.length!==32)
+        throw new UserError(`Invalid ${variableName} length, must be exactly 32 bytes!`);
+    return hash;
 }

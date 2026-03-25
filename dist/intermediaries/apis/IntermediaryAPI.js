@@ -271,9 +271,9 @@ class IntermediaryAPI {
             claimerBounty: init.claimerBounty.then(claimerBounty => {
                 return {
                     feePerBlock: claimerBounty.feePerBlock.toString(10),
-                    safetyFactor: claimerBounty.safetyFactor,
+                    safetyFactor: claimerBounty.safetyFactor.toString(10),
                     startTimestamp: claimerBounty.startTimestamp.toString(10),
-                    addBlock: claimerBounty.addBlock,
+                    addBlock: claimerBounty.addBlock.toString(10),
                     addFee: claimerBounty.addFee.toString(10)
                 };
             }),

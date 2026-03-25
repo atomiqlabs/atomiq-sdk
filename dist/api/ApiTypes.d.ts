@@ -30,15 +30,7 @@ export declare function toApiAmount(tokenAmount: TokenAmount): ApiAmount;
  *
  * @category API
  */
-type TypeToSchemaType<T> = [
-    NonNullable<T>
-] extends [string] ? "string" : [
-    NonNullable<T>
-] extends [number] ? "number" : [
-    NonNullable<T>
-] extends [boolean] ? "boolean" : [
-    NonNullable<T>
-] extends [any[]] ? "array" : "object";
+type TypeToSchemaType<T> = NonNullable<T> extends string ? "string" : NonNullable<T> extends number ? "number" : NonNullable<T> extends boolean ? "boolean" : NonNullable<T> extends any[] ? "array" : "object";
 export type InputSchemaField<T = unknown> = {
     type: TypeToSchemaType<T>;
     required: boolean;

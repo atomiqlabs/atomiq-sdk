@@ -1,5 +1,7 @@
 import { Token } from "../types/Token";
 import { TokenAmount } from "../types/TokenAmount";
+import { LNURLPay, LNURLPayParamsWithUrl } from "../types/lnurl/LNURLPay";
+import { LNURLWithdraw, LNURLWithdrawParamsWithUrl } from "../types/lnurl/LNURLWithdraw";
 /**
  * Unified amount type for all API responses
  *
@@ -37,6 +39,38 @@ export type ApiToken = {
     address: string;
 };
 /**
+ * Serializable LNURL-pay representation for API responses
+ *
+ * @category API
+ */
+export type ApiLNURLPay = {
+    type: "pay";
+    min: string;
+    max: string;
+    commentMaxLength: number;
+    shortDescription?: string;
+    longDescription?: string;
+    icon?: string;
+    params: LNURLPayParamsWithUrl;
+};
+/**
+ * Serializable LNURL-withdraw representation for API responses
+ *
+ * @category API
+ */
+export type ApiLNURLWithdraw = {
+    type: "withdraw";
+    min: string;
+    max: string;
+    params: LNURLWithdrawParamsWithUrl;
+};
+/**
+ * Serializable LNURL representation for API responses
+ *
+ * @category API
+ */
+export type ApiLNURL = ApiLNURLPay | ApiLNURLWithdraw;
+/**
  * Converts a TokenAmount to the serializable ApiAmount format
  *
  * @category API
@@ -48,6 +82,12 @@ export declare function toApiAmount(tokenAmount: TokenAmount): ApiAmount;
  * @category API
  */
 export declare function toApiToken(token: Token): ApiToken;
+/**
+ * Converts LNURL data to the serializable API format
+ *
+ * @category API
+ */
+export declare function toApiLNURL(lnurl: LNURLPay | LNURLWithdraw): ApiLNURL;
 /**
  * Maps a TypeScript type to its schema type string representation
  *

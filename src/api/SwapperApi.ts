@@ -1,5 +1,5 @@
 import {MultiChain, Swapper} from "../swapper/Swapper";
-import {ApiEndpoint, toApiAmount, toApiToken} from "./ApiTypes";
+import {ApiEndpoint, toApiAmount, toApiLNURL, toApiToken} from "./ApiTypes";
 import {isSwapExecutionActionSignPSBT, isSwapExecutionActionSignSmartChainTx} from "../types/SwapExecutionAction";
 import {ISwap} from "../swaps/ISwap";
 import {serializeAction} from "./SerializedAction";
@@ -22,9 +22,13 @@ import {
     GetSwapCounterTokensOutput,
     GetSwapLimitsInput,
     GetSwapLimitsOutput,
+    GetSpendableBalanceInput,
+    GetSpendableBalanceOutput,
     ListSwapOutput,
     ListSwapsInput,
     ListSwapsOutput,
+    ParseAddressInput,
+    ParseAddressOutput,
     SubmitTransactionInput,
     SubmitTransactionOutput,
     SwapOutputBase
@@ -114,6 +118,8 @@ export class SwapperApi<T extends MultiChain> {
         getSupportedTokens: ApiEndpoint<GetSupportedTokensInput, GetSupportedTokensOutput, "GET">;
         getSwapCounterTokens: ApiEndpoint<GetSwapCounterTokensInput, GetSwapCounterTokensOutput, "GET">;
         getSwapLimits: ApiEndpoint<GetSwapLimitsInput, GetSwapLimitsOutput, "GET">;
+        parseAddress: ApiEndpoint<ParseAddressInput, ParseAddressOutput, "GET">;
+        getSpendableBalance: ApiEndpoint<GetSpendableBalanceInput, GetSpendableBalanceOutput, "GET">;
         getSwapStatus: ApiEndpoint<GetSwapStatusInput, GetSwapStatusOutput, "GET">;
         submitTransaction: ApiEndpoint<SubmitTransactionInput, SubmitTransactionOutput, "POST">;
     };
@@ -189,6 +195,26 @@ export class SwapperApi<T extends MultiChain> {
                     dstToken: { type: "string", required: true, description: "Destination token identifier accepted by the API, e.g. BTC, BTCLN, STARKNET-STRK" }
                 },
                 callback: (input) => this.getSwapLimits(input)
+            },
+            parseAddress: {
+                type: "GET",
+                inputSchema: {
+                    address: { type: "string", required: true, description: "Address, invoice, LNURL, or URI string to parse" }
+                },
+                callback: (input) => this.parseAddress(input)
+            },
+            getSpendableBalance: {
+                type: "GET",
+                inputSchema: {
+                    wallet: { type: "string", required: true, description: "Wallet address to query" },
+                    token: { type: "string", required: true, description: "Token identifier accepted by the API, e.g. BTC, STARKNET-STRK, or a token address" },
+                    targetChain: { type: "string", required: false, description: "Destination smart chain for Bitcoin SPV-vault fee estimation" },
+                    gasDrop: { type: "boolean", required: false, description: "Whether to include gas-drop footprint when estimating Bitcoin SPV-vault spendable balance" },
+                    feeRate: { type: "number", required: false, description: "Manual fee rate override" },
+                    minFeeRate: { type: "number", required: false, description: "Minimum Bitcoin fee rate to enforce" },
+                    feeMultiplier: { type: "number", required: false, description: "Multiplier applied to smart-chain native token commit fee estimate" }
+                },
+                callback: (input) => this.getSpendableBalance(input)
             },
             getSwapStatus: {
                 type: "GET",
@@ -325,6 +351,64 @@ export class SwapperApi<T extends MultiChain> {
                 min: toApiAmount(limits.output.min),
                 ...(limits.output.max != null ? {max: toApiAmount(limits.output.max)} : {})
             }
+        };
+    }
+
+    private async parseAddress(input: ParseAddressInput): Promise<ParseAddressOutput> {
+        const result = await this.swapper.Utils.parseAddress(input.address);
+        if(result == null) throw new Error("Invalid address");
+
+        return {
+            address: result.address,
+            type: result.type,
+            ...(result.lnurl != null ? {lnurl: toApiLNURL(result.lnurl)} : {}),
+            ...(result.min != null ? {min: toApiAmount(result.min)} : {}),
+            ...(result.max != null ? {max: toApiAmount(result.max)} : {}),
+            ...(result.amount != null ? {amount: toApiAmount(result.amount)} : {})
+        };
+    }
+
+    private async getSpendableBalance(input: GetSpendableBalanceInput): Promise<GetSpendableBalanceOutput> {
+        const token = this.swapper.getToken(input.token);
+
+        if(token.chainId === "LIGHTNING")
+            throw new Error("Lightning wallet spendable balance is not supported by this endpoint.");
+
+        if(token.chainId === "BITCOIN") {
+            if(input.feeMultiplier != null) throw new Error("`feeMultiplier` is only supported for smart-chain tokens.");
+            if(input.targetChain != null && !this.swapper.getSmartChains().includes(input.targetChain as any)) {
+                throw new Error("Unknown targetChain: " + input.targetChain);
+            }
+
+            if (!this.swapper.Utils.isValidBitcoinAddress(input.wallet))
+                throw new Error(`Invalid BITCOIN wallet address: ` + input.wallet);
+
+            const {balance, feeRate} = await this.swapper.Utils.getBitcoinSpendableBalance(input.wallet, input.targetChain as any, {
+                gasDrop: input.gasDrop,
+                feeRate: input.feeRate,
+                minFeeRate: input.minFeeRate
+            });
+
+            return {
+                balance: toApiAmount(balance),
+                feeRate
+            };
+        }
+
+        if(input.targetChain != null) throw new Error("`targetChain` is only supported for Bitcoin balances.");
+        if(input.gasDrop != null) throw new Error("`gasDrop` is only supported for Bitcoin balances.");
+        if(input.minFeeRate != null) throw new Error("`minFeeRate` is only supported for Bitcoin balances.");
+
+        if (!this.swapper.Utils.isValidSmartChainAddress(input.wallet, token.chainId))
+            throw new Error(`Invalid ${token.chainId} wallet address: ` + input.wallet);
+
+        const balance = await this.swapper.Utils.getSpendableBalance(input.wallet, token as any, {
+            feeMultiplier: input.feeMultiplier,
+            feeRate: input.feeRate
+        });
+
+        return {
+            balance: toApiAmount(balance)
         };
     }
 

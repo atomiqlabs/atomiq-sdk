@@ -1,6 +1,6 @@
 import { MultiChain, Swapper } from "../swapper/Swapper";
 import { ApiEndpoint } from "./ApiTypes";
-import { ListActionableSwapsInput, ListActionableSwapsOutput, CreateSwapInput, CreateSwapOutput, GetSwapStatusInput, GetSwapStatusOutput, GetSupportedTokensInput, GetSupportedTokensOutput, GetSwapCounterTokensInput, GetSwapCounterTokensOutput, GetSwapLimitsInput, GetSwapLimitsOutput, ListSwapsInput, ListSwapsOutput, SubmitTransactionInput, SubmitTransactionOutput } from "./ApiEndpoints";
+import { ListActionableSwapsInput, ListActionableSwapsOutput, CreateSwapInput, CreateSwapOutput, GetSwapStatusInput, GetSwapStatusOutput, GetSupportedTokensInput, GetSupportedTokensOutput, GetSwapCounterTokensInput, GetSwapCounterTokensOutput, GetSwapLimitsInput, GetSwapLimitsOutput, GetSpendableBalanceInput, GetSpendableBalanceOutput, ListSwapsInput, ListSwapsOutput, ParseAddressInput, ParseAddressOutput, SubmitTransactionInput, SubmitTransactionOutput } from "./ApiEndpoints";
 export declare class SwapperApi<T extends MultiChain> {
     private swapper;
     readonly endpoints: {
@@ -10,6 +10,8 @@ export declare class SwapperApi<T extends MultiChain> {
         getSupportedTokens: ApiEndpoint<GetSupportedTokensInput, GetSupportedTokensOutput, "GET">;
         getSwapCounterTokens: ApiEndpoint<GetSwapCounterTokensInput, GetSwapCounterTokensOutput, "GET">;
         getSwapLimits: ApiEndpoint<GetSwapLimitsInput, GetSwapLimitsOutput, "GET">;
+        parseAddress: ApiEndpoint<ParseAddressInput, ParseAddressOutput, "GET">;
+        getSpendableBalance: ApiEndpoint<GetSpendableBalanceInput, GetSpendableBalanceOutput, "GET">;
         getSwapStatus: ApiEndpoint<GetSwapStatusInput, GetSwapStatusOutput, "GET">;
         submitTransaction: ApiEndpoint<SubmitTransactionInput, SubmitTransactionOutput, "POST">;
     };
@@ -26,6 +28,8 @@ export declare class SwapperApi<T extends MultiChain> {
     private getSupportedTokens;
     private getSwapCounterTokens;
     private getSwapLimits;
+    private parseAddress;
+    private getSpendableBalance;
     private getSwapStatus;
     private submitTransaction;
 }

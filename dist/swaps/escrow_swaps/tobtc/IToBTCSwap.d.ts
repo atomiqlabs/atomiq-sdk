@@ -303,6 +303,7 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
      * @inheritDoc
      */
     getExecutionStatus(options?: {
+        skipBuildingAction?: boolean;
         skipChecks?: boolean;
         refundSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
     }): Promise<{

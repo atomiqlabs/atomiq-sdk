@@ -238,7 +238,9 @@ export declare class LnForGasSwap<T extends ChainType = ChainType> extends ISwap
     /**
      * @inheritDoc
      */
-    getExecutionStatus(): Promise<{
+    getExecutionStatus(options?: {
+        skipBuildingAction?: boolean;
+    }): Promise<{
         steps: [
             SwapExecutionStepPayment<"LIGHTNING">,
             SwapExecutionStepSettlement<T["ChainId"], never>

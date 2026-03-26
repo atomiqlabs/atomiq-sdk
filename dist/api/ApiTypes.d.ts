@@ -4,7 +4,7 @@ import { TokenAmount } from "../types/TokenAmount";
  *
  * @category API
  */
-export interface ApiAmount {
+export type ApiAmount = {
     /** Decimal format, e.g. "1.5" */
     amount: string;
     /** Raw base units as string, e.g. "1500000000000000000" */
@@ -15,7 +15,7 @@ export interface ApiAmount {
     symbol: string;
     /** Chain identifier, e.g. "STARKNET", "BITCOIN", "LIGHTNING" */
     chain: string;
-}
+};
 /**
  * Converts a TokenAmount to the serializable ApiAmount format
  *
@@ -46,9 +46,9 @@ export type InputSchema<TInput> = {
  *
  * @category API
  */
-export interface ApiEndpoint<TInput, TOutput, Type extends "GET" | "POST"> {
+export type ApiEndpoint<TInput, TOutput, Type extends "GET" | "POST"> = {
     type: Type;
     inputSchema: InputSchema<TInput>;
     callback: (input: TInput) => Promise<TOutput>;
-}
+};
 export {};

@@ -1,3 +1,4 @@
+import {Token} from "../types/Token";
 import {TokenAmount} from "../types/TokenAmount";
 
 /**
@@ -19,6 +20,26 @@ export type ApiAmount = {
 }
 
 /**
+ * Serializable token representation for API responses
+ *
+ * @category API
+ */
+export type ApiToken = {
+    /** Canonical token identifier accepted by the API, e.g. "BTC", "BTCLN", "STARKNET-STRK" */
+    id: string;
+    /** Chain identifier, e.g. "STARKNET", "BITCOIN", "LIGHTNING" */
+    chainId: string;
+    /** Token ticker, e.g. "STRK" */
+    ticker: string;
+    /** Full token name */
+    name: string;
+    /** Actual decimal places of the token */
+    decimals: number;
+    /** Token contract address, or empty string for Bitcoin */
+    address: string;
+}
+
+/**
  * Converts a TokenAmount to the serializable ApiAmount format
  *
  * @category API
@@ -30,6 +51,22 @@ export function toApiAmount(tokenAmount: TokenAmount): ApiAmount {
         decimals: tokenAmount.token.decimals,
         symbol: tokenAmount.token.ticker,
         chain: tokenAmount.token.chainId
+    };
+}
+
+/**
+ * Converts a Token to the serializable ApiToken format
+ *
+ * @category API
+ */
+export function toApiToken(token: Token): ApiToken {
+    return {
+        id: token.chain === "BTC" ? (token.lightning ? "BTCLN" : "BTC") : `${token.chainId}-${token.ticker}`,
+        chainId: token.chainId,
+        ticker: token.ticker,
+        name: token.name,
+        decimals: token.decimals,
+        address: token.address
     };
 }
 

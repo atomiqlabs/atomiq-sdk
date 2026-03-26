@@ -1,3 +1,4 @@
+import { Token } from "../types/Token";
 import { TokenAmount } from "../types/TokenAmount";
 /**
  * Unified amount type for all API responses
@@ -17,11 +18,36 @@ export type ApiAmount = {
     chain: string;
 };
 /**
+ * Serializable token representation for API responses
+ *
+ * @category API
+ */
+export type ApiToken = {
+    /** Canonical token identifier accepted by the API, e.g. "BTC", "BTCLN", "STARKNET-STRK" */
+    id: string;
+    /** Chain identifier, e.g. "STARKNET", "BITCOIN", "LIGHTNING" */
+    chainId: string;
+    /** Token ticker, e.g. "STRK" */
+    ticker: string;
+    /** Full token name */
+    name: string;
+    /** Actual decimal places of the token */
+    decimals: number;
+    /** Token contract address, or empty string for Bitcoin */
+    address: string;
+};
+/**
  * Converts a TokenAmount to the serializable ApiAmount format
  *
  * @category API
  */
 export declare function toApiAmount(tokenAmount: TokenAmount): ApiAmount;
+/**
+ * Converts a Token to the serializable ApiToken format
+ *
+ * @category API
+ */
+export declare function toApiToken(token: Token): ApiToken;
 /**
  * Maps a TypeScript type to its schema type string representation
  *

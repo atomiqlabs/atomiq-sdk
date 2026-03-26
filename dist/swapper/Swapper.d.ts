@@ -123,9 +123,15 @@ export type SwapperOptions = {
      */
     dontFetchLPs?: boolean;
     /**
-     * By setting this flag the SDK persists all created swaps. By default, the SDK only saves and persists swaps that
-     *  are considered initiated, i.e. when `commit()`, `execute()` or `waitTillPayment` is called (or their respective
-     *  txs... prefixed variations).
+     * Defaults to `true`, this means every swap regardless of it being initiated (i.e. when `commit()`, `execute()` or
+     *  `waitTillPayment` is called) is saved to the persistent storage. This is a reasonable default for when you
+     *  want to only create a swap, and then later on retrieve it with the `swapper.getSwapById()` function.
+     *
+     * Setting this to `false` means the SDK only saves and persists swaps that are considered initiated, i.e. when
+     *  `commit()`, `execute()` or `waitTillPayment` is called (or their respective txs... prefixed variations). This
+     *  might save calls to the persistent storage for swaps that are never initiated. This is useful in e.g.
+     *  frontend implementations where the frontend holds the swap object reference until it is initiated anyway, not
+     *  necessitating the saving of the swap data to the persistent storage until it is actually initiated.
      */
     saveUninitializedSwaps?: boolean;
     /**

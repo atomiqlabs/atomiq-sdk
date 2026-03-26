@@ -63,6 +63,7 @@ class Swapper extends events_1.EventEmitter {
         this.SwapTypeInfo = SwapUtils_1.SwapProtocolInfo;
         const storagePrefix = options?.storagePrefix ?? "atomiq-";
         options ??= {};
+        options.saveUninitializedSwaps ??= true;
         options.bitcoinNetwork = options.bitcoinNetwork == null ? base_1.BitcoinNetwork.TESTNET : options.bitcoinNetwork;
         const swapStorage = options.swapStorage ??= (name) => new IndexedDBUnifiedStorage_1.IndexedDBUnifiedStorage(name);
         this.options = options;

@@ -1,12 +1,14 @@
 import { MultiChain, Swapper } from "../swapper/Swapper";
 import { ApiEndpoint } from "./ApiTypes";
-import { ListActionableSwapsInput, ListActionableSwapsOutput, CreateSwapInput, CreateSwapOutput, GetSwapStatusInput, GetSwapStatusOutput, ListSwapsInput, ListSwapsOutput, SubmitTransactionInput, SubmitTransactionOutput } from "./ApiEndpoints";
+import { ListActionableSwapsInput, ListActionableSwapsOutput, CreateSwapInput, CreateSwapOutput, GetSwapStatusInput, GetSwapStatusOutput, GetSupportedTokensInput, GetSupportedTokensOutput, GetSwapCounterTokensInput, GetSwapCounterTokensOutput, ListSwapsInput, ListSwapsOutput, SubmitTransactionInput, SubmitTransactionOutput } from "./ApiEndpoints";
 export declare class SwapperApi<T extends MultiChain> {
     private swapper;
     readonly endpoints: {
         createSwap: ApiEndpoint<CreateSwapInput, CreateSwapOutput, "POST">;
         listSwaps: ApiEndpoint<ListSwapsInput, ListSwapsOutput, "GET">;
         listActionableSwaps: ApiEndpoint<ListActionableSwapsInput, ListActionableSwapsOutput, "GET">;
+        getSupportedTokens: ApiEndpoint<GetSupportedTokensInput, GetSupportedTokensOutput, "GET">;
+        getSwapCounterTokens: ApiEndpoint<GetSwapCounterTokensInput, GetSwapCounterTokensOutput, "GET">;
         getSwapStatus: ApiEndpoint<GetSwapStatusInput, GetSwapStatusOutput, "GET">;
         submitTransaction: ApiEndpoint<SubmitTransactionInput, SubmitTransactionOutput, "POST">;
     };
@@ -20,6 +22,8 @@ export declare class SwapperApi<T extends MultiChain> {
     private createListedSwapOutputs;
     private listSwaps;
     private listActionableSwaps;
+    private getSupportedTokens;
+    private getSwapCounterTokens;
     private getSwapStatus;
     private submitTransaction;
 }

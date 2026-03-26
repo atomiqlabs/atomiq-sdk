@@ -5,6 +5,7 @@ const ApiTypes_1 = require("./ApiTypes");
 const SwapExecutionAction_1 = require("../types/SwapExecutionAction");
 const SerializedAction_1 = require("./SerializedAction");
 const FeeType_1 = require("../enums/FeeType");
+const SwapSide_1 = require("../enums/SwapSide");
 const SwapType_1 = require("../enums/SwapType");
 const FromBTCLNSwap_1 = require("../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap");
 const FromBTCLNAutoSwap_1 = require("../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap");
@@ -61,6 +62,9 @@ function createListSwapOutput(swap, steps, stateInfo) {
         isExpired: swap.isQuoteExpired()
     };
 }
+function parseSwapSide(side) {
+    return side === "INPUT" ? SwapSide_1.SwapSide.INPUT : SwapSide_1.SwapSide.OUTPUT;
+}
 class SwapperApi {
     constructor(swapper) {
         this.swapper = swapper;
@@ -97,6 +101,35 @@ class SwapperApi {
                     chainId: { type: "string", required: false, description: "Optional smart chain identifier to filter actionable swaps" }
                 },
                 callback: (input) => this.listActionableSwaps(input)
+            },
+            getSupportedTokens: {
+                type: "GET",
+                inputSchema: {
+                    side: {
+                        type: "string",
+                        required: true,
+                        description: "Whether to list valid source tokens (INPUT) or destination tokens (OUTPUT)",
+                        allowedValues: ["INPUT", "OUTPUT"]
+                    }
+                },
+                callback: (input) => this.getSupportedTokens(input)
+            },
+            getSwapCounterTokens: {
+                type: "GET",
+                inputSchema: {
+                    token: {
+                        type: "string",
+                        required: true,
+                        description: "Token identifier accepted by the API, e.g. BTC, BTCLN, STARKNET-STRK, or a token address"
+                    },
+                    side: {
+                        type: "string",
+                        required: true,
+                        description: "Treat the provided token as a source token (INPUT) or destination token (OUTPUT)",
+                        allowedValues: ["INPUT", "OUTPUT"]
+                    }
+                },
+                callback: (input) => this.getSwapCounterTokens(input)
             },
             getSwapStatus: {
                 type: "GET",
@@ -186,6 +219,13 @@ class SwapperApi {
         this.validateSwapListInput(input);
         const swaps = await this.swapper.getActionableSwaps(input.chainId, input.signer);
         return this.createListedSwapOutputs(swaps);
+    }
+    async getSupportedTokens(input) {
+        return this.swapper.getSupportedTokens(parseSwapSide(input.side)).map(ApiTypes_1.toApiToken);
+    }
+    async getSwapCounterTokens(input) {
+        const token = this.swapper.getToken(input.token);
+        return this.swapper.getSwapCounterTokens(token, parseSwapSide(input.side)).map(ApiTypes_1.toApiToken);
     }
     async getSwapStatus(input) {
         const swap = await this.swapper.getSwapById(input.swapId);

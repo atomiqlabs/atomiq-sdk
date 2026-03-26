@@ -1,12 +1,6 @@
 import {MultiChain, Swapper} from "../swapper/Swapper";
-import {
-    ApiEndpoint,
-    toApiAmount
-} from "./ApiTypes";
-import {
-    isSwapExecutionActionSignPSBT,
-    isSwapExecutionActionSignSmartChainTx
-} from "../types/SwapExecutionAction";
+import {ApiEndpoint, toApiAmount} from "./ApiTypes";
+import {isSwapExecutionActionSignPSBT, isSwapExecutionActionSignSmartChainTx} from "../types/SwapExecutionAction";
 import {ISwap} from "../swaps/ISwap";
 import {serializeAction} from "./SerializedAction";
 import {FeeType} from "../enums/FeeType";
@@ -15,8 +9,15 @@ import {MinimalBitcoinWalletInterface} from "../types/wallets/MinimalBitcoinWall
 import {FromBTCLNSwap, FromBTCLNSwapState} from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap";
 import {FromBTCLNAutoSwap, FromBTCLNAutoSwapState} from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap";
 import {
-    CreateSwapInput, CreateSwapOutput,
-    GetSwapStatusInput, GetSwapStatusOutput,
+    ListActionableSwapsInput,
+    ListActionableSwapsOutput,
+    CreateSwapInput,
+    CreateSwapOutput,
+    GetSwapStatusInput,
+    GetSwapStatusOutput,
+    ListSwapOutput,
+    ListSwapsInput,
+    ListSwapsOutput,
     SubmitTransactionInput,
     SubmitTransactionOutput,
     SwapOutputBase
@@ -78,10 +79,27 @@ function createSwapOutputBase(
     };
 }
 
+function createListSwapOutput(
+    swap: ISwap,
+    steps: SwapExecutionStep[],
+    stateInfo: SwapStateInfo<number>
+): ListSwapOutput {
+    return {
+        ...createSwapOutputBase(swap, steps, stateInfo),
+
+        isFinished: swap.isFinished(),
+        isSuccess: swap.isSuccessful(),
+        isFailed: swap.isFailed(),
+        isExpired: swap.isQuoteExpired()
+    };
+}
+
 export class SwapperApi<T extends MultiChain> {
 
     readonly endpoints: {
         createSwap: ApiEndpoint<CreateSwapInput, CreateSwapOutput, "POST">;
+        listSwaps: ApiEndpoint<ListSwapsInput, ListSwapsOutput, "GET">;
+        listActionableSwaps: ApiEndpoint<ListActionableSwapsInput, ListActionableSwapsOutput, "GET">;
         getSwapStatus: ApiEndpoint<GetSwapStatusInput, GetSwapStatusOutput, "GET">;
         submitTransaction: ApiEndpoint<SubmitTransactionInput, SubmitTransactionOutput, "POST">;
     };
@@ -104,6 +122,22 @@ export class SwapperApi<T extends MultiChain> {
                     expirySeconds: { type: "number", required: false, description: "Custom expiry time in seconds" }
                 },
                 callback: (input) => this.createSwap(input)
+            },
+            listSwaps: {
+                type: "GET",
+                inputSchema: {
+                    signer: { type: "string", required: true, description: "Smart chain signer address to filter swaps for" },
+                    chainId: { type: "string", required: false, description: "Optional smart chain identifier to filter swaps" }
+                },
+                callback: (input) => this.listSwaps(input)
+            },
+            listActionableSwaps: {
+                type: "GET",
+                inputSchema: {
+                    signer: { type: "string", required: true, description: "Smart chain signer address to filter actionable swaps for" },
+                    chainId: { type: "string", required: false, description: "Optional smart chain identifier to filter actionable swaps" }
+                },
+                callback: (input) => this.listActionableSwaps(input)
             },
             getSwapStatus: {
                 type: "GET",
@@ -173,9 +207,48 @@ export class SwapperApi<T extends MultiChain> {
             Object.keys(options).length > 0 ? options : undefined
         );
 
-        const {steps, stateInfo} = await swap.getExecutionStatus();
+        const {steps, stateInfo} = await swap.getExecutionStatus({skipBuildingAction: true});
 
         return createSwapOutputBase(swap, steps, stateInfo);
+    }
+
+    private validateSwapListInput(input: ListSwapsInput): void {
+        if (input.chainId != null && !this.swapper.getSmartChains().includes(input.chainId as any)) {
+            throw new Error("Unknown chainId: " + input.chainId);
+        }
+
+        if (!this.swapper.Utils.isValidSmartChainAddress(input.signer, input.chainId as any)) {
+            throw new Error(
+                input.chainId != null
+                    ? `Invalid ${input.chainId} signer address: ` + input.signer
+                    : `Invalid smart chain signer address: ` + input.signer
+            );
+        }
+    }
+
+    private async createListedSwapOutputs(swaps: ISwap[]): Promise<ListSwapsOutput> {
+        return Promise.all(
+            swaps
+                .filter(swap => swap.getType() !== SwapType.TRUSTED_FROM_BTC)
+                .map(async swap => {
+                    const {steps, stateInfo} = await swap.getExecutionStatus({skipBuildingAction: true});
+                    return createListSwapOutput(swap, steps, stateInfo);
+                })
+        );
+    }
+
+    private async listSwaps(input: ListSwapsInput): Promise<ListSwapsOutput> {
+        this.validateSwapListInput(input);
+
+        const swaps = await this.swapper.getAllSwaps(input.chainId as any, input.signer);
+        return this.createListedSwapOutputs(swaps);
+    }
+
+    private async listActionableSwaps(input: ListActionableSwapsInput): Promise<ListActionableSwapsOutput> {
+        this.validateSwapListInput(input);
+
+        const swaps = await this.swapper.getActionableSwaps(input.chainId as any, input.signer);
+        return this.createListedSwapOutputs(swaps);
     }
 
     private async getSwapStatus(input: GetSwapStatusInput): Promise<GetSwapStatusOutput> {
@@ -222,17 +295,11 @@ export class SwapperApi<T extends MultiChain> {
         });
 
         return {
-            ...createSwapOutputBase(swap, steps, stateInfo),
-
-            isFinished: swap.isFinished(),
-            isSuccess: swap.isSuccessful(),
-            isFailed: swap.isFailed(),
-            isExpired: swap.isQuoteExpired(),
+            ...createListSwapOutput(swap, steps, stateInfo),
 
             currentAction: currentAction ? await serializeAction(currentAction, this.txSerializer.bind(this)) : null,
-
             requiresSecretReveal: requiresSecretRevealForApi(swap, stateInfo.state)
-        }
+        };
     }
 
     private async submitTransaction(input: SubmitTransactionInput): Promise<SubmitTransactionOutput> {

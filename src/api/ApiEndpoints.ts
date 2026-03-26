@@ -79,16 +79,53 @@ export type GetSwapStatusInput = {
  *
  * @category API
  */
-export type GetSwapStatusOutput = SwapOutputBase & {
+export type ListSwapOutput = SwapOutputBase & {
     isFinished: boolean;
     isSuccess: boolean;
     isFailed: boolean;
     isExpired: boolean;
+}
 
+/**
+ * Output from swap status getter
+ *
+ * @category API
+ */
+export type GetSwapStatusOutput = ListSwapOutput & {
     currentAction: SerializedAction<SwapExecutionAction> | null;
-
     requiresSecretReveal?: boolean;
 }
+
+/**
+ * Input for listing swaps
+ *
+ * @category API
+ */
+export type ListSwapsInput = {
+    signer: string;
+    chainId?: string;
+}
+
+/**
+ * Output from swap list endpoint
+ *
+ * @category API
+ */
+export type ListSwapsOutput = ListSwapOutput[];
+
+/**
+ * Input for listing actionable swaps
+ *
+ * @category API
+ */
+export type ListActionableSwapsInput = ListSwapsInput;
+
+/**
+ * Output from actionable swap list endpoint
+ *
+ * @category API
+ */
+export type ListActionableSwapsOutput = ListSwapsOutput;
 
 /**
  * Input for submitting signed transactions

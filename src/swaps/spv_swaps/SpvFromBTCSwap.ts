@@ -1381,6 +1381,7 @@ export class SpvFromBTCSwap<T extends ChainType>
      * @inheritDoc
      */
     async getExecutionStatus(options?: {
+        skipBuildingAction?: boolean,
         bitcoinFeeRate?: number,
         bitcoinWallet?: MinimalBitcoinWalletInterface,
         manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"],
@@ -1400,7 +1401,7 @@ export class SpvFromBTCSwap<T extends ChainType>
         const executionStatus = await this._getExecutionStatus(options);
         return {
             steps: executionStatus.steps,
-            currentAction: await executionStatus.buildCurrentAction(options),
+            currentAction: options?.skipBuildingAction ? undefined : await executionStatus.buildCurrentAction(options),
             stateInfo: this._getStateInfo(executionStatus.state)
         };
     }

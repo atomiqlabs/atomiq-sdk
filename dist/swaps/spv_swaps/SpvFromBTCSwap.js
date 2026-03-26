@@ -1044,7 +1044,7 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
         const executionStatus = await this._getExecutionStatus(options);
         return {
             steps: executionStatus.steps,
-            currentAction: await executionStatus.buildCurrentAction(options),
+            currentAction: options?.skipBuildingAction ? undefined : await executionStatus.buildCurrentAction(options),
             stateInfo: this._getStateInfo(executionStatus.state)
         };
     }

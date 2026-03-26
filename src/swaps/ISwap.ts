@@ -557,7 +557,7 @@ export abstract class ISwap<
      * @param options Optional options argument for the additional execution status context, see the actual type in
      *  the respective swap classes
      */
-    public abstract getExecutionStatus(options?: any): Promise<{
+    public abstract getExecutionStatus(options?: { skipBuildingAction?: boolean } & any): Promise<{
         steps: SwapExecutionStep[],
         currentAction: SwapExecutionAction | undefined,
         stateInfo: SwapStateInfo<S>

@@ -375,6 +375,7 @@ export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromB
      * @inheritDoc
      */
     getExecutionStatus(options?: {
+        skipBuildingAction?: boolean;
         bitcoinFeeRate?: number;
         bitcoinWallet?: MinimalBitcoinWalletInterface;
         skipChecks?: boolean;

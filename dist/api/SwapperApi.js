@@ -8,16 +8,16 @@ const FeeType_1 = require("../enums/FeeType");
 const SwapType_1 = require("../enums/SwapType");
 const FromBTCLNSwap_1 = require("../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap");
 const FromBTCLNAutoSwap_1 = require("../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap");
-function requiresSecretRevealForApi(swap) {
+function requiresSecretRevealForApi(swap, state) {
     if (swap instanceof FromBTCLNSwap_1.FromBTCLNSwap) {
         if (swap.hasSecretPreimage())
             return false;
-        return swap.getState() === FromBTCLNSwap_1.FromBTCLNSwapState.PR_PAID || swap.getState() === FromBTCLNSwap_1.FromBTCLNSwapState.CLAIM_COMMITED;
+        return state === FromBTCLNSwap_1.FromBTCLNSwapState.PR_PAID || state === FromBTCLNSwap_1.FromBTCLNSwapState.CLAIM_COMMITED;
     }
     if (swap instanceof FromBTCLNAutoSwap_1.FromBTCLNAutoSwap) {
         if (swap.hasSecretPreimage())
             return false;
-        return swap.getState() === FromBTCLNAutoSwap_1.FromBTCLNAutoSwapState.CLAIM_COMMITED;
+        return state === FromBTCLNAutoSwap_1.FromBTCLNAutoSwapState.CLAIM_COMMITED;
     }
 }
 async function buildSwapStatusResponse(swap, txSerializer, options) {
@@ -56,7 +56,7 @@ async function buildSwapStatusResponse(swap, txSerializer, options) {
         createdAt: swap.createdAt,
         steps,
         currentAction: currentAction ? await (0, SerializedAction_1.serializeAction)(currentAction, txSerializer) : null,
-        requiresSecretReveal: requiresSecretRevealForApi(swap)
+        requiresSecretReveal: requiresSecretRevealForApi(swap, stateInfo.state)
     };
 }
 class SwapperApi {

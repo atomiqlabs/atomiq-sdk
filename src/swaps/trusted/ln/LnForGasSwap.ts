@@ -561,7 +561,7 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
     /**
      * @inheritDoc
      */
-    async getExecutionStatus(): Promise<{
+    async getExecutionStatus(options?: {skipBuildingAction?: boolean}): Promise<{
         steps: [
             SwapExecutionStepPayment<"LIGHTNING">,
             SwapExecutionStepSettlement<T["ChainId"], never>
@@ -575,7 +575,7 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
         const executionStatus = await this._getExecutionStatus();
         return {
             steps: executionStatus.steps,
-            currentAction: await executionStatus.buildCurrentAction(),
+            currentAction: options?.skipBuildingAction ? undefined : await executionStatus.buildCurrentAction(),
             stateInfo: this._getStateInfo(executionStatus.state)
         };
     }

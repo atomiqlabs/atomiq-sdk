@@ -453,11 +453,11 @@ class LnForGasSwap extends ISwap_1.ISwap {
     /**
      * @inheritDoc
      */
-    async getExecutionStatus() {
+    async getExecutionStatus(options) {
         const executionStatus = await this._getExecutionStatus();
         return {
             steps: executionStatus.steps,
-            currentAction: await executionStatus.buildCurrentAction(),
+            currentAction: options?.skipBuildingAction ? undefined : await executionStatus.buildCurrentAction(),
             stateInfo: this._getStateInfo(executionStatus.state)
         };
     }

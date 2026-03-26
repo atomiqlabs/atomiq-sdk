@@ -327,6 +327,7 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
      * @inheritDoc
      */
     getExecutionStatus(options?: {
+        skipBuildingAction?: boolean;
         skipChecks?: boolean;
         secret?: string;
     }): Promise<{

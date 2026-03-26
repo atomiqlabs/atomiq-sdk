@@ -136,6 +136,30 @@ export type GetSwapCounterTokensInput = {
  */
 export type GetSwapCounterTokensOutput = ApiToken[];
 /**
+ * Input for querying swap limits between two tokens
+ *
+ * @category API
+ */
+export type GetSwapLimitsInput = {
+    srcToken: string;
+    dstToken: string;
+};
+/**
+ * Output from swap limits endpoint
+ *
+ * @category API
+ */
+export type GetSwapLimitsOutput = {
+    input: {
+        min: ApiAmount;
+        max?: ApiAmount;
+    };
+    output: {
+        min: ApiAmount;
+        max?: ApiAmount;
+    };
+};
+/**
  * Input for submitting signed transactions
  *
  * @category API

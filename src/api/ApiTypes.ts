@@ -1,6 +1,3 @@
-import {SwapExecutionStep} from "../types/SwapExecutionStep";
-import {SwapExecutionAction} from "../types/SwapExecutionAction";
-import {SerializedAction} from "./SerializedAction";
 import {TokenAmount} from "../types/TokenAmount";
 
 /**
@@ -44,6 +41,7 @@ export function toApiAmount(tokenAmount: TokenAmount): ApiAmount {
 type TypeToSchemaType<T> =
     NonNullable<T> extends string ? "string" :
     NonNullable<T> extends number ? "number" :
+    NonNullable<T> extends bigint ? "bigint" :
     NonNullable<T> extends boolean ? "boolean" :
     NonNullable<T> extends any[] ? "array" :
     "object";
@@ -55,8 +53,13 @@ export type InputSchemaField<T = unknown> = {
     properties?: T extends readonly any[] ? never :
         T extends object ? {
             [K in keyof T]-?: InputSchemaField<T[K]>;
-        } : never;
-    items?: T extends readonly (infer U)[] ? InputSchemaField<U> : never;
+        } : never; // Specifies nested object properties
+    items?: T extends readonly (infer U)[] ? InputSchemaField<U> : never; // Specifies type of the array items
+    allowedValues?: NonNullable<T> extends string | number | bigint ? NonNullable<T>[] : never; // An array of allowed values for a given field
+};
+
+export type InputSchema<TInput> = {
+    [K in keyof TInput]-?: InputSchemaField<TInput[K]>;
 };
 
 /**
@@ -66,105 +69,6 @@ export type InputSchemaField<T = unknown> = {
  */
 export interface ApiEndpoint<TInput, TOutput, Type extends "GET" | "POST"> {
     type: Type;
-    inputSchema: {
-        [K in keyof TInput]-?: InputSchemaField<TInput[K]>;
-    };
+    inputSchema: InputSchema<TInput>;
     callback: (input: TInput) => Promise<TOutput>;
-}
-
-/**
- * Input for creating a new swap
- *
- * @category API
- */
-export interface CreateSwapInput {
-    srcToken: string;
-    dstToken: string;
-    amount: string;
-    amountType: "EXACT_IN" | "EXACT_OUT";
-    srcAddress: string;
-    dstAddress: string;
-    gasAmount?: string;
-    paymentHash?: string;
-    options?: {
-        description?: string;
-        descriptionHash?: string;
-        expirySeconds?: number;
-    };
-}
-
-/**
- * Input for getting swap status
- *
- * @category API
- */
-export interface GetSwapStatusInput {
-    swapId: string;
-
-    // Additional optional params
-    secret?: string; // Swap secret pre-image for lightning network swaps
-
-    // Pass these if you want to get pre-funded PSBT from the endpoint
-    bitcoinAddress?: string;
-    bitcoinPublicKey?: string;
-    bitcoinFeeRate?: number; // Optional, otherwise the current economical fee rate is fetched
-
-    // Pass this if you want to change the signer to be used for claims / refunds
-    signer?: string; // Signer to use for creating claim / refund transactions
-}
-
-/**
- * Input for submitting signed transactions
- *
- * @category API
- */
-export interface SubmitTransactionInput {
-    swapId: string;
-    signedTxs: string[];
-}
-
-/**
- * Output from submitting transactions
- *
- * @category API
- */
-export interface SubmitTransactionOutput {
-    txHashes: string[];
-}
-
-/**
- * Shared response type for createSwap and getSwapStatus
- *
- * @category API
- */
-export interface SwapStatusResponse {
-    swapId: string;
-    swapType: string;
-
-    state: {
-        number: number;
-        name: string;
-        description: string;
-    };
-    isFinished: boolean;
-    isSuccess: boolean;
-    isFailed: boolean;
-    isExpired: boolean;
-
-    quote: {
-        inputAmount: ApiAmount;
-        outputAmount: ApiAmount;
-        fees: {
-            swap: ApiAmount;
-            networkOutput?: ApiAmount;
-        };
-        expiry: number;
-    };
-
-    createdAt: number;
-
-    steps: SwapExecutionStep[];
-    currentAction: SerializedAction<SwapExecutionAction> | null;
-
-    requiresSecretReveal?: boolean;
 }

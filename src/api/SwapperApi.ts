@@ -1,11 +1,6 @@
 import {MultiChain, Swapper} from "../swapper/Swapper";
 import {
     ApiEndpoint,
-    CreateSwapInput,
-    GetSwapStatusInput,
-    SubmitTransactionInput,
-    SubmitTransactionOutput,
-    SwapStatusResponse,
     toApiAmount
 } from "./ApiTypes";
 import {
@@ -19,6 +14,13 @@ import {SwapType} from "../enums/SwapType";
 import {MinimalBitcoinWalletInterface} from "../types/wallets/MinimalBitcoinWalletInterface";
 import {FromBTCLNSwap, FromBTCLNSwapState} from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap";
 import {FromBTCLNAutoSwap, FromBTCLNAutoSwapState} from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap";
+import {
+    CreateSwapInput,
+    GetSwapStatusInput,
+    SubmitTransactionInput,
+    SubmitTransactionOutput,
+    SwapStatusResponse
+} from "./ApiEndpoints";
 
 function requiresSecretRevealForApi(swap: ISwap): boolean | undefined {
     if(swap instanceof FromBTCLNSwap) {
@@ -95,24 +97,17 @@ export class SwapperApi<T extends MultiChain> {
             createSwap: {
                 type: "POST",
                 inputSchema: {
-                    srcToken: { type: "string", required: true, description: "Source token ticker (e.g. 'BTC', 'BTCLN', 'STRK')" },
+                    srcToken: { type: "string", required: true, description: "Source token ticker (e.g. 'BTC', 'BTCLN', 'STARKNET-STRK', 'SOLANA-SOL')" },
                     dstToken: { type: "string", required: true, description: "Destination token ticker" },
-                    amount: { type: "string", required: true, description: "Amount in base units as string" },
-                    amountType: { type: "string", required: true, description: "EXACT_IN or EXACT_OUT" },
+                    amount: { type: "bigint", required: true, description: "Amount in base units as an integer" },
+                    amountType: { type: "string", required: true, description: "EXACT_IN or EXACT_OUT", allowedValues: ["EXACT_IN", "EXACT_OUT"] },
                     srcAddress: { type: "string", required: true, description: "Source address or Lightning invoice" },
                     dstAddress: { type: "string", required: true, description: "Destination address" },
-                    gasAmount: { type: "string", required: false, description: "Gas token amount to receive on destination chain" },
+                    gasAmount: { type: "bigint", required: false, description: "Gas token amount to receive on destination chain, in base units" },
                     paymentHash: { type: "string", required: false, description: "Custom payment hash for Lightning swaps" },
-                    options: {
-                        type: "object",
-                        required: false,
-                        description: "Additional swap options",
-                        properties: {
-                            description: { type: "string", required: false, description: "Description for Lightning invoice" },
-                            descriptionHash: { type: "string", required: false, description: "Description hash for Lightning invoice (hex)" },
-                            expirySeconds: { type: "number", required: false, description: "Custom expiry time in seconds" }
-                        }
-                    }
+                    description: { type: "string", required: false, description: "Description for Lightning invoice" },
+                    descriptionHash: { type: "string", required: false, description: "Description hash for Lightning invoice (hex)" },
+                    expirySeconds: { type: "number", required: false, description: "Custom expiry time in seconds" }
                 },
                 callback: (input) => this.createSwap(input)
             },
@@ -132,7 +127,12 @@ export class SwapperApi<T extends MultiChain> {
                 type: "POST",
                 inputSchema: {
                     swapId: { type: "string", required: true, description: "The swap identifier" },
-                    signedTxs: { type: "array", required: true, description: "Array of signed transaction data" }
+                    signedTxs: {
+                        type: "array",
+                        required: true,
+                        description: "Array of signed transaction data",
+                        items: {type: "string", required: true, description: "Single string-serialized & signed transaction"}
+                    }
                 },
                 callback: (input) => this.submitTransaction(input)
             }
@@ -162,17 +162,17 @@ export class SwapperApi<T extends MultiChain> {
 
         // Build options from input
         const options: any = {};
-        if (input.gasAmount != null) options.gasAmount = BigInt(input.gasAmount);
+        if (input.gasAmount != null) options.gasAmount = input.gasAmount;
         if (input.paymentHash != null) options.paymentHash = Buffer.from(input.paymentHash, "hex");
-        if (input.options?.description != null) options.description = input.options.description;
-        if (input.options?.descriptionHash != null) options.descriptionHash = Buffer.from(input.options.descriptionHash, "hex");
-        if (input.options?.expirySeconds != null) options.expirySeconds = input.options.expirySeconds;
+        if (input.description != null) options.description = input.description;
+        if (input.descriptionHash != null) options.descriptionHash = Buffer.from(input.descriptionHash, "hex");
+        if (input.expirySeconds != null) options.expirySeconds = input.expirySeconds;
 
         // swapper.swap() handles routing based on token types
         const swap = await this.swapper.swap(
             input.srcToken,
             input.dstToken,
-            BigInt(input.amount),
+            input.amount,
             exactIn,
             input.srcAddress,
             input.dstAddress,

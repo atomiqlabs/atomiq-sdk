@@ -1,5 +1,6 @@
 import { MultiChain, Swapper } from "../swapper/Swapper";
-import { ApiEndpoint, CreateSwapInput, GetSwapStatusInput, SubmitTransactionInput, SubmitTransactionOutput, SwapStatusResponse } from "./ApiTypes";
+import { ApiEndpoint } from "./ApiTypes";
+import { CreateSwapInput, GetSwapStatusInput, SubmitTransactionInput, SubmitTransactionOutput, SwapStatusResponse } from "./ApiEndpoints";
 export declare class SwapperApi<T extends MultiChain> {
     private swapper;
     readonly endpoints: {

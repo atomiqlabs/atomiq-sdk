@@ -213,7 +213,7 @@ export class FromBTCLNAutoWrapper<
             swap._commitTxId = event.meta?.txId;
             swap._commitedAt ??= Date.now();
             swap._state = FromBTCLNAutoSwapState.CLAIM_COMMITED;
-            swap._broadcastSecret().catch(e => {
+            if(swap.hasSecretPreimage()) swap._broadcastSecret().catch(e => {
                 this.logger.error("processEventInitialize("+swap.getId()+"): Error when broadcasting swap secret: ", e);
             });
             return true;

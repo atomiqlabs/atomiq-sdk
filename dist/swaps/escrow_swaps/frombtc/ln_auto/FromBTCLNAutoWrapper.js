@@ -102,9 +102,10 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
             swap._commitTxId = event.meta?.txId;
             swap._commitedAt ??= Date.now();
             swap._state = FromBTCLNAutoSwap_1.FromBTCLNAutoSwapState.CLAIM_COMMITED;
-            swap._broadcastSecret().catch(e => {
-                this.logger.error("processEventInitialize(" + swap.getId() + "): Error when broadcasting swap secret: ", e);
-            });
+            if (swap.hasSecretPreimage())
+                swap._broadcastSecret().catch(e => {
+                    this.logger.error("processEventInitialize(" + swap.getId() + "): Error when broadcasting swap secret: ", e);
+                });
             return true;
         }
         return false;

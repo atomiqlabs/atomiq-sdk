@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.toApiAmount = void 0;
+exports.toApiToken = exports.toApiAmount = void 0;
 /**
  * Converts a TokenAmount to the serializable ApiAmount format
  *
@@ -16,3 +16,19 @@ function toApiAmount(tokenAmount) {
     };
 }
 exports.toApiAmount = toApiAmount;
+/**
+ * Converts a Token to the serializable ApiToken format
+ *
+ * @category API
+ */
+function toApiToken(token) {
+    return {
+        id: token.chain === "BTC" ? (token.lightning ? "BTCLN" : "BTC") : `${token.chainId}-${token.ticker}`,
+        chainId: token.chainId,
+        ticker: token.ticker,
+        name: token.name,
+        decimals: token.decimals,
+        address: token.address
+    };
+}
+exports.toApiToken = toApiToken;

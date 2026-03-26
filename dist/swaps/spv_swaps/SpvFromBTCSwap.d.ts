@@ -530,6 +530,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
      * @inheritDoc
      */
     getExecutionStatus(options?: {
+        skipBuildingAction?: boolean;
         bitcoinFeeRate?: number;
         bitcoinWallet?: MinimalBitcoinWalletInterface;
         manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];

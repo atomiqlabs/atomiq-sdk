@@ -1080,6 +1080,7 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
      * @inheritDoc
      */
     async getExecutionStatus(options?: {
+        skipBuildingAction?: boolean,
         manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"],
         maxWaitTillAutomaticSettlementSeconds?: number,
         secret?: string
@@ -1098,7 +1099,7 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
         const executionStatus = await this._getExecutionStatus(options);
         return {
             steps: executionStatus.steps,
-            currentAction: await executionStatus.buildCurrentAction(options),
+            currentAction: options?.skipBuildingAction ? undefined : await executionStatus.buildCurrentAction(options),
             stateInfo: this._getStateInfo(executionStatus.state)
         };
     }

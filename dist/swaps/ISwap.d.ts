@@ -332,7 +332,9 @@ export declare abstract class ISwap<T extends ChainType = ChainType, D extends S
      * @param options Optional options argument for the additional execution status context, see the actual type in
      *  the respective swap classes
      */
-    abstract getExecutionStatus(options?: any): Promise<{
+    abstract getExecutionStatus(options?: {
+        skipBuildingAction?: boolean;
+    } & any): Promise<{
         steps: SwapExecutionStep[];
         currentAction: SwapExecutionAction | undefined;
         stateInfo: SwapStateInfo<S>;

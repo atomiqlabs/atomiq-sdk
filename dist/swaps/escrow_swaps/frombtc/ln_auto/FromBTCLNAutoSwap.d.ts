@@ -443,6 +443,7 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
      * @inheritDoc
      */
     getExecutionStatus(options?: {
+        skipBuildingAction?: boolean;
         manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
         maxWaitTillAutomaticSettlementSeconds?: number;
         secret?: string;

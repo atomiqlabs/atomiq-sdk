@@ -566,7 +566,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
         const executionStatus = await this._getExecutionStatus();
         return {
             steps: executionStatus.steps,
-            currentAction: await executionStatus.buildCurrentAction(options),
+            currentAction: options?.skipBuildingAction ? undefined : await executionStatus.buildCurrentAction(options),
             stateInfo: this._getStateInfo(executionStatus.state)
         };
     }

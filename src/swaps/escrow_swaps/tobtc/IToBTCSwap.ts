@@ -735,6 +735,7 @@ export abstract class IToBTCSwap<
      * @inheritDoc
      */
     async getExecutionStatus(options?: {
+        skipBuildingAction?: boolean,
         skipChecks?: boolean,
         refundSmartChainSigner?: string | T["Signer"] | T["NativeSigner"]
     }): Promise<{
@@ -752,7 +753,7 @@ export abstract class IToBTCSwap<
         const executionStatus = await this._getExecutionStatus();
         return {
             steps: executionStatus.steps,
-            currentAction: await executionStatus.buildCurrentAction(options),
+            currentAction: options?.skipBuildingAction ? undefined : await executionStatus.buildCurrentAction(options),
             stateInfo: this._getStateInfo(executionStatus.state)
         };
     }

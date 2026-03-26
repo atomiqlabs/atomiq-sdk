@@ -22,14 +22,14 @@ import {
     SwapStatusResponse
 } from "./ApiEndpoints";
 
-function requiresSecretRevealForApi(swap: ISwap): boolean | undefined {
+function requiresSecretRevealForApi(swap: ISwap, state: number): boolean | undefined {
     if(swap instanceof FromBTCLNSwap) {
         if(swap.hasSecretPreimage()) return false;
-        return swap.getState()===FromBTCLNSwapState.PR_PAID || swap.getState()===FromBTCLNSwapState.CLAIM_COMMITED;
+        return state===FromBTCLNSwapState.PR_PAID || state===FromBTCLNSwapState.CLAIM_COMMITED;
     }
     if(swap instanceof FromBTCLNAutoSwap) {
         if(swap.hasSecretPreimage()) return false;
-        return swap.getState()===FromBTCLNAutoSwapState.CLAIM_COMMITED;
+        return state===FromBTCLNAutoSwapState.CLAIM_COMMITED;
     }
 }
 
@@ -80,7 +80,7 @@ async function buildSwapStatusResponse(
         steps,
         currentAction: currentAction ? await serializeAction(currentAction, txSerializer) : null,
 
-        requiresSecretReveal: requiresSecretRevealForApi(swap)
+        requiresSecretReveal: requiresSecretRevealForApi(swap, stateInfo.state)
     };
 }
 

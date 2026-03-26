@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.toApiToken = exports.toApiAmount = void 0;
+exports.toApiLNURL = exports.toApiToken = exports.toApiAmount = void 0;
 /**
  * Converts a TokenAmount to the serializable ApiAmount format
  *
@@ -32,3 +32,29 @@ function toApiToken(token) {
     };
 }
 exports.toApiToken = toApiToken;
+/**
+ * Converts LNURL data to the serializable API format
+ *
+ * @category API
+ */
+function toApiLNURL(lnurl) {
+    if (lnurl.type === "pay") {
+        return {
+            type: "pay",
+            min: lnurl.min.toString(),
+            max: lnurl.max.toString(),
+            commentMaxLength: lnurl.commentMaxLength,
+            ...(lnurl.shortDescription != null ? { shortDescription: lnurl.shortDescription } : {}),
+            ...(lnurl.longDescription != null ? { longDescription: lnurl.longDescription } : {}),
+            ...(lnurl.icon != null ? { icon: lnurl.icon } : {}),
+            params: lnurl.params
+        };
+    }
+    return {
+        type: "withdraw",
+        min: lnurl.min.toString(),
+        max: lnurl.max.toString(),
+        params: lnurl.params
+    };
+}
+exports.toApiLNURL = toApiLNURL;

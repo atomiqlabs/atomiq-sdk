@@ -1,9 +1,10 @@
 import {MultiChain, Swapper} from "../swapper/Swapper";
-import {ApiEndpoint, toApiAmount} from "./ApiTypes";
+import {ApiEndpoint, toApiAmount, toApiToken} from "./ApiTypes";
 import {isSwapExecutionActionSignPSBT, isSwapExecutionActionSignSmartChainTx} from "../types/SwapExecutionAction";
 import {ISwap} from "../swaps/ISwap";
 import {serializeAction} from "./SerializedAction";
 import {FeeType} from "../enums/FeeType";
+import {SwapSide} from "../enums/SwapSide";
 import {SwapType} from "../enums/SwapType";
 import {MinimalBitcoinWalletInterface} from "../types/wallets/MinimalBitcoinWalletInterface";
 import {FromBTCLNSwap, FromBTCLNSwapState} from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap";
@@ -15,6 +16,10 @@ import {
     CreateSwapOutput,
     GetSwapStatusInput,
     GetSwapStatusOutput,
+    GetSupportedTokensInput,
+    GetSupportedTokensOutput,
+    GetSwapCounterTokensInput,
+    GetSwapCounterTokensOutput,
     ListSwapOutput,
     ListSwapsInput,
     ListSwapsOutput,
@@ -94,12 +99,18 @@ function createListSwapOutput(
     };
 }
 
+function parseSwapSide(side: "INPUT" | "OUTPUT"): SwapSide {
+    return side === "INPUT" ? SwapSide.INPUT : SwapSide.OUTPUT;
+}
+
 export class SwapperApi<T extends MultiChain> {
 
     readonly endpoints: {
         createSwap: ApiEndpoint<CreateSwapInput, CreateSwapOutput, "POST">;
         listSwaps: ApiEndpoint<ListSwapsInput, ListSwapsOutput, "GET">;
         listActionableSwaps: ApiEndpoint<ListActionableSwapsInput, ListActionableSwapsOutput, "GET">;
+        getSupportedTokens: ApiEndpoint<GetSupportedTokensInput, GetSupportedTokensOutput, "GET">;
+        getSwapCounterTokens: ApiEndpoint<GetSwapCounterTokensInput, GetSwapCounterTokensOutput, "GET">;
         getSwapStatus: ApiEndpoint<GetSwapStatusInput, GetSwapStatusOutput, "GET">;
         submitTransaction: ApiEndpoint<SubmitTransactionInput, SubmitTransactionOutput, "POST">;
     };
@@ -138,6 +149,35 @@ export class SwapperApi<T extends MultiChain> {
                     chainId: { type: "string", required: false, description: "Optional smart chain identifier to filter actionable swaps" }
                 },
                 callback: (input) => this.listActionableSwaps(input)
+            },
+            getSupportedTokens: {
+                type: "GET",
+                inputSchema: {
+                    side: {
+                        type: "string",
+                        required: true,
+                        description: "Whether to list valid source tokens (INPUT) or destination tokens (OUTPUT)",
+                        allowedValues: ["INPUT", "OUTPUT"]
+                    }
+                },
+                callback: (input) => this.getSupportedTokens(input)
+            },
+            getSwapCounterTokens: {
+                type: "GET",
+                inputSchema: {
+                    token: {
+                        type: "string",
+                        required: true,
+                        description: "Token identifier accepted by the API, e.g. BTC, BTCLN, STARKNET-STRK, or a token address"
+                    },
+                    side: {
+                        type: "string",
+                        required: true,
+                        description: "Treat the provided token as a source token (INPUT) or destination token (OUTPUT)",
+                        allowedValues: ["INPUT", "OUTPUT"]
+                    }
+                },
+                callback: (input) => this.getSwapCounterTokens(input)
             },
             getSwapStatus: {
                 type: "GET",
@@ -249,6 +289,15 @@ export class SwapperApi<T extends MultiChain> {
 
         const swaps = await this.swapper.getActionableSwaps(input.chainId as any, input.signer);
         return this.createListedSwapOutputs(swaps);
+    }
+
+    private async getSupportedTokens(input: GetSupportedTokensInput): Promise<GetSupportedTokensOutput> {
+        return this.swapper.getSupportedTokens(parseSwapSide(input.side)).map(toApiToken);
+    }
+
+    private async getSwapCounterTokens(input: GetSwapCounterTokensInput): Promise<GetSwapCounterTokensOutput> {
+        const token = this.swapper.getToken(input.token);
+        return this.swapper.getSwapCounterTokens(token, parseSwapSide(input.side)).map(toApiToken);
     }
 
     private async getSwapStatus(input: GetSwapStatusInput): Promise<GetSwapStatusOutput> {

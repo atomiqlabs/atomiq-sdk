@@ -1,7 +1,7 @@
 import { SwapExecutionStep } from "../types/SwapExecutionStep";
 import { SerializedAction } from "./SerializedAction";
 import { SwapExecutionAction } from "../types/SwapExecutionAction";
-import { ApiAmount } from "./ApiTypes";
+import { ApiAmount, ApiToken } from "./ApiTypes";
 export type SwapOutputBase = {
     swapId: string;
     swapType: string;
@@ -106,6 +106,35 @@ export type ListActionableSwapsInput = ListSwapsInput;
  * @category API
  */
 export type ListActionableSwapsOutput = ListSwapsOutput;
+/**
+ * Input for listing supported tokens
+ *
+ * @category API
+ */
+export type GetSupportedTokensInput = {
+    side: "INPUT" | "OUTPUT";
+};
+/**
+ * Output from supported token list endpoint
+ *
+ * @category API
+ */
+export type GetSupportedTokensOutput = ApiToken[];
+/**
+ * Input for listing swap counter-tokens for a given token
+ *
+ * @category API
+ */
+export type GetSwapCounterTokensInput = {
+    token: string;
+    side: "INPUT" | "OUTPUT";
+};
+/**
+ * Output from swap counter-token list endpoint
+ *
+ * @category API
+ */
+export type GetSwapCounterTokensOutput = ApiToken[];
 /**
  * Input for submitting signed transactions
  *

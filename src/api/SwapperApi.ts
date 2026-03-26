@@ -20,6 +20,8 @@ import {
     GetSupportedTokensOutput,
     GetSwapCounterTokensInput,
     GetSwapCounterTokensOutput,
+    GetSwapLimitsInput,
+    GetSwapLimitsOutput,
     ListSwapOutput,
     ListSwapsInput,
     ListSwapsOutput,
@@ -111,6 +113,7 @@ export class SwapperApi<T extends MultiChain> {
         listActionableSwaps: ApiEndpoint<ListActionableSwapsInput, ListActionableSwapsOutput, "GET">;
         getSupportedTokens: ApiEndpoint<GetSupportedTokensInput, GetSupportedTokensOutput, "GET">;
         getSwapCounterTokens: ApiEndpoint<GetSwapCounterTokensInput, GetSwapCounterTokensOutput, "GET">;
+        getSwapLimits: ApiEndpoint<GetSwapLimitsInput, GetSwapLimitsOutput, "GET">;
         getSwapStatus: ApiEndpoint<GetSwapStatusInput, GetSwapStatusOutput, "GET">;
         submitTransaction: ApiEndpoint<SubmitTransactionInput, SubmitTransactionOutput, "POST">;
     };
@@ -178,6 +181,14 @@ export class SwapperApi<T extends MultiChain> {
                     }
                 },
                 callback: (input) => this.getSwapCounterTokens(input)
+            },
+            getSwapLimits: {
+                type: "GET",
+                inputSchema: {
+                    srcToken: { type: "string", required: true, description: "Source token identifier accepted by the API, e.g. BTC, BTCLN, STARKNET-STRK" },
+                    dstToken: { type: "string", required: true, description: "Destination token identifier accepted by the API, e.g. BTC, BTCLN, STARKNET-STRK" }
+                },
+                callback: (input) => this.getSwapLimits(input)
             },
             getSwapStatus: {
                 type: "GET",
@@ -298,6 +309,23 @@ export class SwapperApi<T extends MultiChain> {
     private async getSwapCounterTokens(input: GetSwapCounterTokensInput): Promise<GetSwapCounterTokensOutput> {
         const token = this.swapper.getToken(input.token);
         return this.swapper.getSwapCounterTokens(token, parseSwapSide(input.side)).map(toApiToken);
+    }
+
+    private async getSwapLimits(input: GetSwapLimitsInput): Promise<GetSwapLimitsOutput> {
+        const srcToken = this.swapper.getToken(input.srcToken);
+        const dstToken = this.swapper.getToken(input.dstToken);
+        const limits = this.swapper.getSwapLimits(srcToken, dstToken);
+
+        return {
+            input: {
+                min: toApiAmount(limits.input.min),
+                ...(limits.input.max != null ? {max: toApiAmount(limits.input.max)} : {})
+            },
+            output: {
+                min: toApiAmount(limits.output.min),
+                ...(limits.output.max != null ? {max: toApiAmount(limits.output.max)} : {})
+            }
+        };
     }
 
     private async getSwapStatus(input: GetSwapStatusInput): Promise<GetSwapStatusOutput> {

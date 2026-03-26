@@ -131,6 +131,14 @@ class SwapperApi {
                 },
                 callback: (input) => this.getSwapCounterTokens(input)
             },
+            getSwapLimits: {
+                type: "GET",
+                inputSchema: {
+                    srcToken: { type: "string", required: true, description: "Source token identifier accepted by the API, e.g. BTC, BTCLN, STARKNET-STRK" },
+                    dstToken: { type: "string", required: true, description: "Destination token identifier accepted by the API, e.g. BTC, BTCLN, STARKNET-STRK" }
+                },
+                callback: (input) => this.getSwapLimits(input)
+            },
             getSwapStatus: {
                 type: "GET",
                 inputSchema: {
@@ -226,6 +234,21 @@ class SwapperApi {
     async getSwapCounterTokens(input) {
         const token = this.swapper.getToken(input.token);
         return this.swapper.getSwapCounterTokens(token, parseSwapSide(input.side)).map(ApiTypes_1.toApiToken);
+    }
+    async getSwapLimits(input) {
+        const srcToken = this.swapper.getToken(input.srcToken);
+        const dstToken = this.swapper.getToken(input.dstToken);
+        const limits = this.swapper.getSwapLimits(srcToken, dstToken);
+        return {
+            input: {
+                min: (0, ApiTypes_1.toApiAmount)(limits.input.min),
+                ...(limits.input.max != null ? { max: (0, ApiTypes_1.toApiAmount)(limits.input.max) } : {})
+            },
+            output: {
+                min: (0, ApiTypes_1.toApiAmount)(limits.output.min),
+                ...(limits.output.max != null ? { max: (0, ApiTypes_1.toApiAmount)(limits.output.max) } : {})
+            }
+        };
     }
     async getSwapStatus(input) {
         const swap = await this.swapper.getSwapById(input.swapId);

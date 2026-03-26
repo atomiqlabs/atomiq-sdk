@@ -7,7 +7,7 @@ import { ApiAmount } from "./ApiTypes";
  *
  * @category API
  */
-export interface CreateSwapInput {
+export type CreateSwapInput = {
     srcToken: string;
     dstToken: string;
     amount: bigint;
@@ -19,43 +19,43 @@ export interface CreateSwapInput {
     description?: string;
     descriptionHash?: string;
     expirySeconds?: number;
-}
+};
 /**
  * Input for getting swap status
  *
  * @category API
  */
-export interface GetSwapStatusInput {
+export type GetSwapStatusInput = {
     swapId: string;
     secret?: string;
     bitcoinAddress?: string;
     bitcoinPublicKey?: string;
     bitcoinFeeRate?: number;
     signer?: string;
-}
+};
 /**
  * Input for submitting signed transactions
  *
  * @category API
  */
-export interface SubmitTransactionInput {
+export type SubmitTransactionInput = {
     swapId: string;
     signedTxs: string[];
-}
+};
 /**
  * Output from submitting transactions
  *
  * @category API
  */
-export interface SubmitTransactionOutput {
+export type SubmitTransactionOutput = {
     txHashes: string[];
-}
+};
 /**
  * Shared response type for createSwap and getSwapStatus
  *
  * @category API
  */
-export interface SwapStatusResponse {
+export type SwapStatusResponse = {
     swapId: string;
     swapType: string;
     state: {
@@ -80,4 +80,4 @@ export interface SwapStatusResponse {
     steps: SwapExecutionStep[];
     currentAction: SerializedAction<SwapExecutionAction> | null;
     requiresSecretReveal?: boolean;
-}
+};

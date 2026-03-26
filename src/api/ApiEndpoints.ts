@@ -8,7 +8,7 @@ import {ApiAmount} from "./ApiTypes";
  *
  * @category API
  */
-export interface CreateSwapInput {
+export type CreateSwapInput = {
     srcToken: string;
     dstToken: string;
     amount: bigint;
@@ -27,7 +27,7 @@ export interface CreateSwapInput {
  *
  * @category API
  */
-export interface GetSwapStatusInput {
+export type GetSwapStatusInput = {
     swapId: string;
 
     // Additional optional params
@@ -47,7 +47,7 @@ export interface GetSwapStatusInput {
  *
  * @category API
  */
-export interface SubmitTransactionInput {
+export type SubmitTransactionInput = {
     swapId: string;
     signedTxs: string[];
 }
@@ -57,7 +57,7 @@ export interface SubmitTransactionInput {
  *
  * @category API
  */
-export interface SubmitTransactionOutput {
+export type SubmitTransactionOutput = {
     txHashes: string[];
 }
 
@@ -66,7 +66,7 @@ export interface SubmitTransactionOutput {
  *
  * @category API
  */
-export interface SwapStatusResponse {
+export type SwapStatusResponse = {
     swapId: string;
     swapType: string;
 

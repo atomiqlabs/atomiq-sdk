@@ -1,5 +1,7 @@
 import {Token} from "../types/Token";
 import {TokenAmount} from "../types/TokenAmount";
+import {LNURLPay, LNURLPayParamsWithUrl} from "../types/lnurl/LNURLPay";
+import {LNURLWithdraw, LNURLWithdrawParamsWithUrl} from "../types/lnurl/LNURLWithdraw";
 
 /**
  * Unified amount type for all API responses
@@ -40,6 +42,41 @@ export type ApiToken = {
 }
 
 /**
+ * Serializable LNURL-pay representation for API responses
+ *
+ * @category API
+ */
+export type ApiLNURLPay = {
+    type: "pay";
+    min: string;
+    max: string;
+    commentMaxLength: number;
+    shortDescription?: string;
+    longDescription?: string;
+    icon?: string;
+    params: LNURLPayParamsWithUrl;
+}
+
+/**
+ * Serializable LNURL-withdraw representation for API responses
+ *
+ * @category API
+ */
+export type ApiLNURLWithdraw = {
+    type: "withdraw";
+    min: string;
+    max: string;
+    params: LNURLWithdrawParamsWithUrl;
+}
+
+/**
+ * Serializable LNURL representation for API responses
+ *
+ * @category API
+ */
+export type ApiLNURL = ApiLNURLPay | ApiLNURLWithdraw;
+
+/**
  * Converts a TokenAmount to the serializable ApiAmount format
  *
  * @category API
@@ -67,6 +104,33 @@ export function toApiToken(token: Token): ApiToken {
         name: token.name,
         decimals: token.decimals,
         address: token.address
+    };
+}
+
+/**
+ * Converts LNURL data to the serializable API format
+ *
+ * @category API
+ */
+export function toApiLNURL(lnurl: LNURLPay | LNURLWithdraw): ApiLNURL {
+    if(lnurl.type === "pay") {
+        return {
+            type: "pay",
+            min: lnurl.min.toString(),
+            max: lnurl.max.toString(),
+            commentMaxLength: lnurl.commentMaxLength,
+            ...(lnurl.shortDescription != null ? {shortDescription: lnurl.shortDescription} : {}),
+            ...(lnurl.longDescription != null ? {longDescription: lnurl.longDescription} : {}),
+            ...(lnurl.icon != null ? {icon: lnurl.icon} : {}),
+            params: lnurl.params
+        };
+    }
+
+    return {
+        type: "withdraw",
+        min: lnurl.min.toString(),
+        max: lnurl.max.toString(),
+        params: lnurl.params
     };
 }
 

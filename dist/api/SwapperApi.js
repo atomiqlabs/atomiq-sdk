@@ -52,6 +52,15 @@ function createSwapOutputBase(swap, steps, stateInfo) {
         steps
     };
 }
+function createListSwapOutput(swap, steps, stateInfo) {
+    return {
+        ...createSwapOutputBase(swap, steps, stateInfo),
+        isFinished: swap.isFinished(),
+        isSuccess: swap.isSuccessful(),
+        isFailed: swap.isFailed(),
+        isExpired: swap.isQuoteExpired()
+    };
+}
 class SwapperApi {
     constructor(swapper) {
         this.swapper = swapper;
@@ -72,6 +81,22 @@ class SwapperApi {
                     expirySeconds: { type: "number", required: false, description: "Custom expiry time in seconds" }
                 },
                 callback: (input) => this.createSwap(input)
+            },
+            listSwaps: {
+                type: "GET",
+                inputSchema: {
+                    signer: { type: "string", required: true, description: "Smart chain signer address to filter swaps for" },
+                    chainId: { type: "string", required: false, description: "Optional smart chain identifier to filter swaps" }
+                },
+                callback: (input) => this.listSwaps(input)
+            },
+            listActionableSwaps: {
+                type: "GET",
+                inputSchema: {
+                    signer: { type: "string", required: true, description: "Smart chain signer address to filter actionable swaps for" },
+                    chainId: { type: "string", required: false, description: "Optional smart chain identifier to filter actionable swaps" }
+                },
+                callback: (input) => this.listActionableSwaps(input)
             },
             getSwapStatus: {
                 type: "GET",
@@ -131,8 +156,36 @@ class SwapperApi {
             options.expirySeconds = input.expirySeconds;
         // swapper.swap() handles routing based on token types
         const swap = await this.swapper.swap(input.srcToken, input.dstToken, input.amount, exactIn, input.srcAddress, input.dstAddress, Object.keys(options).length > 0 ? options : undefined);
-        const { steps, stateInfo } = await swap.getExecutionStatus();
+        const { steps, stateInfo } = await swap.getExecutionStatus({ skipBuildingAction: true });
         return createSwapOutputBase(swap, steps, stateInfo);
+    }
+    validateSwapListInput(input) {
+        if (input.chainId != null && !this.swapper.getSmartChains().includes(input.chainId)) {
+            throw new Error("Unknown chainId: " + input.chainId);
+        }
+        if (!this.swapper.Utils.isValidSmartChainAddress(input.signer, input.chainId)) {
+            throw new Error(input.chainId != null
+                ? `Invalid ${input.chainId} signer address: ` + input.signer
+                : `Invalid smart chain signer address: ` + input.signer);
+        }
+    }
+    async createListedSwapOutputs(swaps) {
+        return Promise.all(swaps
+            .filter(swap => swap.getType() !== SwapType_1.SwapType.TRUSTED_FROM_BTC)
+            .map(async (swap) => {
+            const { steps, stateInfo } = await swap.getExecutionStatus({ skipBuildingAction: true });
+            return createListSwapOutput(swap, steps, stateInfo);
+        }));
+    }
+    async listSwaps(input) {
+        this.validateSwapListInput(input);
+        const swaps = await this.swapper.getAllSwaps(input.chainId, input.signer);
+        return this.createListedSwapOutputs(swaps);
+    }
+    async listActionableSwaps(input) {
+        this.validateSwapListInput(input);
+        const swaps = await this.swapper.getActionableSwaps(input.chainId, input.signer);
+        return this.createListedSwapOutputs(swaps);
     }
     async getSwapStatus(input) {
         const swap = await this.swapper.getSwapById(input.swapId);
@@ -174,11 +227,7 @@ class SwapperApi {
             refundSmartChainSigner: input.signer
         });
         return {
-            ...createSwapOutputBase(swap, steps, stateInfo),
-            isFinished: swap.isFinished(),
-            isSuccess: swap.isSuccessful(),
-            isFailed: swap.isFailed(),
-            isExpired: swap.isQuoteExpired(),
+            ...createListSwapOutput(swap, steps, stateInfo),
             currentAction: currentAction ? await (0, SerializedAction_1.serializeAction)(currentAction, this.txSerializer.bind(this)) : null,
             requiresSecretReveal: requiresSecretRevealForApi(swap, stateInfo.state)
         };

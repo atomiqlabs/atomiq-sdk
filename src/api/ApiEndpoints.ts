@@ -3,6 +3,31 @@ import {SerializedAction} from "./SerializedAction";
 import {SwapExecutionAction} from "../types/SwapExecutionAction";
 import {ApiAmount} from "./ApiTypes";
 
+export type SwapOutputBase = {
+    swapId: string;
+    swapType: string;
+
+    state: {
+        number: number;
+        name: string;
+        description: string;
+    };
+
+    quote: {
+        inputAmount: ApiAmount;
+        outputAmount: ApiAmount;
+        fees: {
+            swap: ApiAmount;
+            networkOutput?: ApiAmount;
+        };
+        expiry: number;
+    };
+
+    createdAt: number;
+
+    steps: SwapExecutionStep[];
+}
+
 /**
  * Input for creating a new swap
  *
@@ -21,6 +46,13 @@ export type CreateSwapInput = {
     descriptionHash?: string;
     expirySeconds?: number;
 }
+
+/**
+ * Output from create swap endpoint
+ *
+ * @category API
+ */
+export type CreateSwapOutput = SwapOutputBase;
 
 /**
  * Input for getting swap status
@@ -43,6 +75,22 @@ export type GetSwapStatusInput = {
 }
 
 /**
+ * Output from swap status getter
+ *
+ * @category API
+ */
+export type GetSwapStatusOutput = SwapOutputBase & {
+    isFinished: boolean;
+    isSuccess: boolean;
+    isFailed: boolean;
+    isExpired: boolean;
+
+    currentAction: SerializedAction<SwapExecutionAction> | null;
+
+    requiresSecretReveal?: boolean;
+}
+
+/**
  * Input for submitting signed transactions
  *
  * @category API
@@ -59,41 +107,4 @@ export type SubmitTransactionInput = {
  */
 export type SubmitTransactionOutput = {
     txHashes: string[];
-}
-
-/**
- * Shared response type for createSwap and getSwapStatus
- *
- * @category API
- */
-export type SwapStatusResponse = {
-    swapId: string;
-    swapType: string;
-
-    state: {
-        number: number;
-        name: string;
-        description: string;
-    };
-    isFinished: boolean;
-    isSuccess: boolean;
-    isFailed: boolean;
-    isExpired: boolean;
-
-    quote: {
-        inputAmount: ApiAmount;
-        outputAmount: ApiAmount;
-        fees: {
-            swap: ApiAmount;
-            networkOutput?: ApiAmount;
-        };
-        expiry: number;
-    };
-
-    createdAt: number;
-
-    steps: SwapExecutionStep[];
-    currentAction: SerializedAction<SwapExecutionAction> | null;
-
-    requiresSecretReveal?: boolean;
 }

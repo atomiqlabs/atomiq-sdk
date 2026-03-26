@@ -20,11 +20,10 @@ function requiresSecretRevealForApi(swap, state) {
         return state === FromBTCLNAutoSwap_1.FromBTCLNAutoSwapState.CLAIM_COMMITED;
     }
 }
-async function buildSwapStatusResponse(swap, txSerializer, options) {
+function createSwapOutputBase(swap, steps, stateInfo) {
     const input = swap.getInput();
     const output = swap.getOutput();
     const feeBreakdown = swap.getFeeBreakdown();
-    const { steps, currentAction, stateInfo } = await swap.getExecutionStatus(options);
     // Build fees from breakdown
     const swapFeeEntry = feeBreakdown.find(f => f.type === FeeType_1.FeeType.SWAP);
     const networkFeeEntry = feeBreakdown.find(f => f.type === FeeType_1.FeeType.NETWORK_OUTPUT);
@@ -36,10 +35,6 @@ async function buildSwapStatusResponse(swap, txSerializer, options) {
             name: stateInfo.name,
             description: stateInfo.description
         },
-        isFinished: swap.isFinished(),
-        isSuccess: swap.isSuccessful(),
-        isFailed: swap.isFailed(),
-        isExpired: swap.isQuoteExpired(),
         quote: {
             inputAmount: (0, ApiTypes_1.toApiAmount)(input),
             outputAmount: (0, ApiTypes_1.toApiAmount)(output),
@@ -54,9 +49,7 @@ async function buildSwapStatusResponse(swap, txSerializer, options) {
             expiry: swap.getQuoteExpiry()
         },
         createdAt: swap.createdAt,
-        steps,
-        currentAction: currentAction ? await (0, SerializedAction_1.serializeAction)(currentAction, txSerializer) : null,
-        requiresSecretReveal: requiresSecretRevealForApi(swap, stateInfo.state)
+        steps
     };
 }
 class SwapperApi {
@@ -138,7 +131,8 @@ class SwapperApi {
             options.expirySeconds = input.expirySeconds;
         // swapper.swap() handles routing based on token types
         const swap = await this.swapper.swap(input.srcToken, input.dstToken, input.amount, exactIn, input.srcAddress, input.dstAddress, Object.keys(options).length > 0 ? options : undefined);
-        return buildSwapStatusResponse(swap, this.txSerializer.bind(this));
+        const { steps, stateInfo } = await swap.getExecutionStatus();
+        return createSwapOutputBase(swap, steps, stateInfo);
     }
     async getSwapStatus(input) {
         const swap = await this.swapper.getSwapById(input.swapId);
@@ -172,13 +166,22 @@ class SwapperApi {
             if (input.bitcoinFeeRate <= 0)
                 throw new Error("Bitcoin fee rate passed cannot be negative or 0!");
         }
-        return buildSwapStatusResponse(swap, this.txSerializer.bind(this), {
+        const { steps, stateInfo, currentAction } = await swap.getExecutionStatus({
             secret: input.secret,
             bitcoinWallet,
             bitcoinFeeRate: input.bitcoinFeeRate,
             manualSettlementSmartChainSigner: input.signer,
             refundSmartChainSigner: input.signer
         });
+        return {
+            ...createSwapOutputBase(swap, steps, stateInfo),
+            isFinished: swap.isFinished(),
+            isSuccess: swap.isSuccessful(),
+            isFailed: swap.isFailed(),
+            isExpired: swap.isQuoteExpired(),
+            currentAction: currentAction ? await (0, SerializedAction_1.serializeAction)(currentAction, this.txSerializer.bind(this)) : null,
+            requiresSecretReveal: requiresSecretRevealForApi(swap, stateInfo.state)
+        };
     }
     async submitTransaction(input) {
         const swap = await this.swapper.getSwapById(input.swapId);

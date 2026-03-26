@@ -15,12 +15,14 @@ import {MinimalBitcoinWalletInterface} from "../types/wallets/MinimalBitcoinWall
 import {FromBTCLNSwap, FromBTCLNSwapState} from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap";
 import {FromBTCLNAutoSwap, FromBTCLNAutoSwapState} from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap";
 import {
-    CreateSwapInput,
-    GetSwapStatusInput,
+    CreateSwapInput, CreateSwapOutput,
+    GetSwapStatusInput, GetSwapStatusOutput,
     SubmitTransactionInput,
     SubmitTransactionOutput,
-    SwapStatusResponse
+    SwapOutputBase
 } from "./ApiEndpoints";
+import {SwapExecutionStep} from "../types/SwapExecutionStep";
+import {SwapStateInfo} from "../types/SwapStateInfo";
 
 function requiresSecretRevealForApi(swap: ISwap, state: number): boolean | undefined {
     if(swap instanceof FromBTCLNSwap) {
@@ -33,15 +35,14 @@ function requiresSecretRevealForApi(swap: ISwap, state: number): boolean | undef
     }
 }
 
-async function buildSwapStatusResponse(
+function createSwapOutputBase(
     swap: ISwap,
-    txSerializer: (chainId: string, tx: any) => Promise<string>,
-    options?: any
-): Promise<SwapStatusResponse> {
+    steps: SwapExecutionStep[],
+    stateInfo: SwapStateInfo<number>
+): SwapOutputBase {
     const input = swap.getInput();
     const output = swap.getOutput();
     const feeBreakdown = swap.getFeeBreakdown();
-    const {steps, currentAction, stateInfo} = await swap.getExecutionStatus(options);
 
     // Build fees from breakdown
     const swapFeeEntry = feeBreakdown.find(f => f.type === FeeType.SWAP);
@@ -56,10 +57,6 @@ async function buildSwapStatusResponse(
             name: stateInfo.name,
             description: stateInfo.description
         },
-        isFinished: swap.isFinished(),
-        isSuccess: swap.isSuccessful(),
-        isFailed: swap.isFailed(),
-        isExpired: swap.isQuoteExpired(),
 
         quote: {
             inputAmount: toApiAmount(input),
@@ -77,18 +74,15 @@ async function buildSwapStatusResponse(
 
         createdAt: swap.createdAt,
 
-        steps,
-        currentAction: currentAction ? await serializeAction(currentAction, txSerializer) : null,
-
-        requiresSecretReveal: requiresSecretRevealForApi(swap, stateInfo.state)
+        steps
     };
 }
 
 export class SwapperApi<T extends MultiChain> {
 
     readonly endpoints: {
-        createSwap: ApiEndpoint<CreateSwapInput, SwapStatusResponse, "POST">;
-        getSwapStatus: ApiEndpoint<GetSwapStatusInput, SwapStatusResponse, "GET">;
+        createSwap: ApiEndpoint<CreateSwapInput, CreateSwapOutput, "POST">;
+        getSwapStatus: ApiEndpoint<GetSwapStatusInput, GetSwapStatusOutput, "GET">;
         submitTransaction: ApiEndpoint<SubmitTransactionInput, SubmitTransactionOutput, "POST">;
     };
 
@@ -157,7 +151,7 @@ export class SwapperApi<T extends MultiChain> {
         await this.swapper._syncSwaps();
     }
 
-    private async createSwap(input: CreateSwapInput): Promise<SwapStatusResponse> {
+    private async createSwap(input: CreateSwapInput): Promise<CreateSwapOutput> {
         const exactIn = input.amountType === "EXACT_IN";
 
         // Build options from input
@@ -179,10 +173,12 @@ export class SwapperApi<T extends MultiChain> {
             Object.keys(options).length > 0 ? options : undefined
         );
 
-        return buildSwapStatusResponse(swap, this.txSerializer.bind(this));
+        const {steps, stateInfo} = await swap.getExecutionStatus();
+
+        return createSwapOutputBase(swap, steps, stateInfo);
     }
 
-    private async getSwapStatus(input: GetSwapStatusInput): Promise<SwapStatusResponse> {
+    private async getSwapStatus(input: GetSwapStatusInput): Promise<GetSwapStatusOutput> {
         const swap = await this.swapper.getSwapById(input.swapId);
         if (swap == null) {
             throw new Error("Swap not found: " + input.swapId);
@@ -215,7 +211,7 @@ export class SwapperApi<T extends MultiChain> {
             if(input.bitcoinFeeRate <= 0) throw new Error("Bitcoin fee rate passed cannot be negative or 0!");
         }
 
-        return buildSwapStatusResponse(swap, this.txSerializer.bind(this), {
+        const {steps, stateInfo, currentAction} = await swap.getExecutionStatus({
             secret: input.secret,
 
             bitcoinWallet,
@@ -224,6 +220,19 @@ export class SwapperApi<T extends MultiChain> {
             manualSettlementSmartChainSigner: input.signer,
             refundSmartChainSigner: input.signer
         });
+
+        return {
+            ...createSwapOutputBase(swap, steps, stateInfo),
+
+            isFinished: swap.isFinished(),
+            isSuccess: swap.isSuccessful(),
+            isFailed: swap.isFailed(),
+            isExpired: swap.isQuoteExpired(),
+
+            currentAction: currentAction ? await serializeAction(currentAction, this.txSerializer.bind(this)) : null,
+
+            requiresSecretReveal: requiresSecretRevealForApi(swap, stateInfo.state)
+        }
     }
 
     private async submitTransaction(input: SubmitTransactionInput): Promise<SubmitTransactionOutput> {

@@ -1,8 +1,12 @@
 import { MultiChain, Swapper } from "../swapper/Swapper";
 import { ApiEndpoint } from "./ApiTypes";
 import { ListActionableSwapsInput, ListActionableSwapsOutput, CreateSwapInput, CreateSwapOutput, GetSwapStatusInput, GetSwapStatusOutput, GetSupportedTokensInput, GetSupportedTokensOutput, GetSwapCounterTokensInput, GetSwapCounterTokensOutput, GetSwapLimitsInput, GetSwapLimitsOutput, GetSpendableBalanceInput, GetSpendableBalanceOutput, ListSwapsInput, ListSwapsOutput, ParseAddressInput, ParseAddressOutput, SubmitTransactionInput, SubmitTransactionOutput } from "./ApiEndpoints";
+export type SwapperApiConfig = {
+    syncOnGetStatus?: boolean;
+};
 export declare class SwapperApi<T extends MultiChain> {
     private swapper;
+    private readonly config?;
     readonly endpoints: {
         createSwap: ApiEndpoint<CreateSwapInput, CreateSwapOutput, "POST">;
         listSwaps: ApiEndpoint<ListSwapsInput, ListSwapsOutput, "GET">;
@@ -15,7 +19,7 @@ export declare class SwapperApi<T extends MultiChain> {
         getSwapStatus: ApiEndpoint<GetSwapStatusInput, GetSwapStatusOutput, "GET">;
         submitTransaction: ApiEndpoint<SubmitTransactionInput, SubmitTransactionOutput, "POST">;
     };
-    constructor(swapper: Swapper<T>);
+    constructor(swapper: Swapper<T>, config?: SwapperApiConfig | undefined);
     private txSerializer;
     init(): Promise<void>;
     poll(): Promise<void>;

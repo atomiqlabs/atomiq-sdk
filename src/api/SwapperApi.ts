@@ -109,6 +109,10 @@ function parseSwapSide(side: "INPUT" | "OUTPUT"): SwapSide {
     return side === "INPUT" ? SwapSide.INPUT : SwapSide.OUTPUT;
 }
 
+export type SwapperApiConfig = {
+    syncOnGetStatus?: boolean
+};
+
 export class SwapperApi<T extends MultiChain> {
 
     readonly endpoints: {
@@ -124,7 +128,9 @@ export class SwapperApi<T extends MultiChain> {
         submitTransaction: ApiEndpoint<SubmitTransactionInput, SubmitTransactionOutput, "POST">;
     };
 
-    constructor(private swapper: Swapper<T>) {
+    constructor(private swapper: Swapper<T>, private readonly config?: SwapperApiConfig) {
+        this.config ??= {};
+        this.config.syncOnGetStatus ??= true;
         this.endpoints = {
             createSwap: {
                 type: "POST",
@@ -328,6 +334,7 @@ export class SwapperApi<T extends MultiChain> {
         return this.createListedSwapOutputs(swaps);
     }
 
+    //TODO: Maybe reload the intermediaries every so often such that when one drops off due to some issue we can reconnect it again, this directly affects the getSupportedTokens endpoint
     private async getSupportedTokens(input: GetSupportedTokensInput): Promise<GetSupportedTokensOutput> {
         return this.swapper.getSupportedTokens(parseSwapSide(input.side)).map(toApiToken);
     }
@@ -337,6 +344,7 @@ export class SwapperApi<T extends MultiChain> {
         return this.swapper.getSwapCounterTokens(token, parseSwapSide(input.side)).map(toApiToken);
     }
 
+    //TODO: Swap limits might not be populated for non-bitcoin tokens in some routes, we can try to fix this by sending a swap request to probe for swap min/max in those cases
     private async getSwapLimits(input: GetSwapLimitsInput): Promise<GetSwapLimitsOutput> {
         const srcToken = this.swapper.getToken(input.srcToken);
         const dstToken = this.swapper.getToken(input.dstToken);
@@ -444,6 +452,8 @@ export class SwapperApi<T extends MultiChain> {
             if(isNaN(input.bitcoinFeeRate)) throw new Error("Bitcoin fee rate passed cannot be NaN!");
             if(input.bitcoinFeeRate <= 0) throw new Error("Bitcoin fee rate passed cannot be negative or 0!");
         }
+
+        if(this.config?.syncOnGetStatus) await swap._sync(true);
 
         const {steps, stateInfo, currentAction} = await swap.getExecutionStatus({
             secret: input.secret,

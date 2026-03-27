@@ -1025,7 +1025,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
             name: "Bitcoin confirmations",
             description: "Wait for bitcoin transaction to confirm",
             pollTimeSeconds: 10,
-            expectedTimeSeconds: confirmationDelay,
+            expectedTimeSeconds: confirmationDelay===-1 ? -1 : Math.floor(confirmationDelay/1000),
             wait: async (
                 maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal,
                 btcConfirmationsCallback?: (txId?: string, confirmations?: number, targetConfirmations?: number, txEtaMs?: number) => void

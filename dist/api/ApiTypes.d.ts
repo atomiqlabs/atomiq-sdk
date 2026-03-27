@@ -116,5 +116,7 @@ export type ApiEndpoint<TInput, TOutput, Type extends "GET" | "POST"> = {
     type: Type;
     inputSchema: InputSchema<TInput>;
     callback: (input: TInput) => Promise<TOutput>;
+    callbackRaw: (input: unknown) => Promise<TOutput>;
 };
+export declare function createApiEndpoint<TInput, TOutput, Type extends "GET" | "POST">(type: Type, callback: (input: TInput) => Promise<TOutput>, inputSchema: InputSchema<TInput>): ApiEndpoint<TInput, TOutput, Type>;
 export {};

@@ -976,7 +976,7 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
             name: "Bitcoin confirmations",
             description: "Wait for bitcoin transaction to confirm",
             pollTimeSeconds: 10,
-            expectedTimeSeconds: confirmationDelay,
+            expectedTimeSeconds: confirmationDelay === -1 ? -1 : Math.floor(confirmationDelay / 1000),
             wait: async (maxWaitTimeSeconds, pollIntervalSeconds, abortSignal, btcConfirmationsCallback) => {
                 const abortController = (0, Utils_1.extendAbortController)(abortSignal, maxWaitTimeSeconds, "Timed out waiting for bitcoin transaction");
                 await this.waitForBitcoinTransaction(btcConfirmationsCallback, pollIntervalSeconds, abortController.signal);

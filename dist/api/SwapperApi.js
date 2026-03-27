@@ -66,8 +66,11 @@ function parseSwapSide(side) {
     return side === "INPUT" ? SwapSide_1.SwapSide.INPUT : SwapSide_1.SwapSide.OUTPUT;
 }
 class SwapperApi {
-    constructor(swapper) {
+    constructor(swapper, config) {
         this.swapper = swapper;
+        this.config = config;
+        this.config ??= {};
+        this.config.syncOnGetStatus ??= true;
         this.endpoints = {
             createSwap: {
                 type: "POST",
@@ -248,6 +251,7 @@ class SwapperApi {
         const swaps = await this.swapper.getActionableSwaps(input.chainId, input.signer);
         return this.createListedSwapOutputs(swaps);
     }
+    //TODO: Maybe reload the intermediaries every so often such that when one drops off due to some issue we can reconnect it again, this directly affects the getSupportedTokens endpoint
     async getSupportedTokens(input) {
         return this.swapper.getSupportedTokens(parseSwapSide(input.side)).map(ApiTypes_1.toApiToken);
     }
@@ -255,6 +259,7 @@ class SwapperApi {
         const token = this.swapper.getToken(input.token);
         return this.swapper.getSwapCounterTokens(token, parseSwapSide(input.side)).map(ApiTypes_1.toApiToken);
     }
+    //TODO: Swap limits might not be populated for non-bitcoin tokens in some routes, we can try to fix this by sending a swap request to probe for swap min/max in those cases
     async getSwapLimits(input) {
         const srcToken = this.swapper.getToken(input.srcToken);
         const dstToken = this.swapper.getToken(input.dstToken);
@@ -353,6 +358,8 @@ class SwapperApi {
             if (input.bitcoinFeeRate <= 0)
                 throw new Error("Bitcoin fee rate passed cannot be negative or 0!");
         }
+        if (this.config?.syncOnGetStatus)
+            await swap._sync(true);
         const { steps, stateInfo, currentAction } = await swap.getExecutionStatus({
             secret: input.secret,
             bitcoinWallet,

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.toApiLNURL = exports.toApiToken = exports.toApiAmount = void 0;
+exports.createApiEndpoint = exports.toApiLNURL = exports.toApiToken = exports.toApiAmount = void 0;
+const ApiParser_1 = require("./ApiParser");
 /**
  * Converts a TokenAmount to the serializable ApiAmount format
  *
@@ -58,3 +59,14 @@ function toApiLNURL(lnurl) {
     };
 }
 exports.toApiLNURL = toApiLNURL;
+function createApiEndpoint(type, callback, inputSchema) {
+    return {
+        type,
+        callback,
+        inputSchema,
+        callbackRaw: input => {
+            return callback((0, ApiParser_1.parseApiInput)(inputSchema, input));
+        }
+    };
+}
+exports.createApiEndpoint = createApiEndpoint;

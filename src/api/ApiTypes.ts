@@ -2,6 +2,7 @@ import {Token} from "../types/Token";
 import {TokenAmount} from "../types/TokenAmount";
 import {LNURLPay, LNURLPayParamsWithUrl} from "../types/lnurl/LNURLPay";
 import {LNURLWithdraw, LNURLWithdrawParamsWithUrl} from "../types/lnurl/LNURLWithdraw";
+import {parseApiInput} from "./ApiParser";
 
 /**
  * Unified amount type for all API responses
@@ -172,4 +173,20 @@ export type ApiEndpoint<TInput, TOutput, Type extends "GET" | "POST"> = {
     type: Type;
     inputSchema: InputSchema<TInput>;
     callback: (input: TInput) => Promise<TOutput>;
+    callbackRaw: (input: unknown) => Promise<TOutput>;
+}
+
+export function createApiEndpoint<TInput, TOutput, Type extends "GET" | "POST">(
+    type: Type,
+    callback:  (input: TInput) => Promise<TOutput>,
+    inputSchema: InputSchema<TInput>
+): ApiEndpoint<TInput, TOutput, Type> {
+    return {
+        type,
+        callback,
+        inputSchema,
+        callbackRaw: input => {
+            return callback(parseApiInput(inputSchema, input));
+        }
+    }
 }

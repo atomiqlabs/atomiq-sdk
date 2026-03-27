@@ -150,7 +150,7 @@ export declare abstract class IFromBTCSelfInitSwap<T extends ChainType = ChainTy
     /**
      * @inheritDoc
      */
-    abstract txsClaim(signer?: T["Signer"]): Promise<T["TX"][]>;
+    abstract txsClaim(signer?: string | T["Signer"] | T["NativeSigner"]): Promise<T["TX"][]>;
     /**
      * @inheritDoc
      */

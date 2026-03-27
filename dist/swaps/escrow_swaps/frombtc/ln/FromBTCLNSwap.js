@@ -821,6 +821,18 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
      * @internal
      */
     async _txsClaim(_signer, secret) {
+        let address = undefined;
+        if (_signer != null) {
+            if (typeof (_signer) === "string") {
+                address = _signer;
+            }
+            else if ((0, base_1.isAbstractSigner)(_signer)) {
+                address = _signer.getAddress();
+            }
+            else {
+                address = (await this.wrapper._chain.wrapSigner(_signer)).getAddress();
+            }
+        }
         if (this._data == null)
             throw new Error("Unknown data, wrong state?");
         const useSecret = secret ?? this.secret;
@@ -828,9 +840,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             throw new Error("Swap secret pre-image not known and not provided, please provide the swap secret pre-image as an argument");
         if (!this.isValidSecretPreimage(useSecret))
             throw new Error("Invalid swap secret pre-image provided!");
-        return this.wrapper._contract.txsClaimWithSecret(_signer == null ?
-            this._getInitiator() :
-            ((0, base_1.isAbstractSigner)(_signer) ? _signer : await this.wrapper._chain.wrapSigner(_signer)), this._data, useSecret, true, true);
+        return this.wrapper._contract.txsClaimWithSecret(address ?? this._getInitiator(), this._data, useSecret, true, true);
     }
     /**
      * @inheritDoc

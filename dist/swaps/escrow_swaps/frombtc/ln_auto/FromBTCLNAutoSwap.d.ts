@@ -482,7 +482,7 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
      *
      * @throws {Error} If in invalid state (must be {@link FromBTCLNAutoSwapState.CLAIM_COMMITED})
      */
-    txsClaim(_signer?: T["Signer"] | T["NativeSigner"], secret?: string): Promise<T["TX"][]>;
+    txsClaim(_signer?: string | T["Signer"] | T["NativeSigner"], secret?: string): Promise<T["TX"][]>;
     /**
      * @inheritDoc
      *

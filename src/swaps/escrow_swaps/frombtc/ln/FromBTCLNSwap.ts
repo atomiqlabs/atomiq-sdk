@@ -953,7 +953,18 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
      *
      * @internal
      */
-    private async _txsClaim(_signer?: T["Signer"] | T["NativeSigner"], secret?: string): Promise<T["TX"][]> {
+    private async _txsClaim(_signer?: string | T["Signer"] | T["NativeSigner"], secret?: string): Promise<T["TX"][]> {
+        let address: string | undefined = undefined;
+        if(_signer!=null) {
+            if (typeof (_signer) === "string") {
+                address = _signer;
+            } else if (isAbstractSigner(_signer)) {
+                address = _signer.getAddress();
+            } else {
+                address = (await this.wrapper._chain.wrapSigner(_signer)).getAddress();
+            }
+        }
+
         if(this._data==null) throw new Error("Unknown data, wrong state?");
         const useSecret = secret ?? this.secret;
         if(useSecret==null)
@@ -962,9 +973,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
             throw new Error("Invalid swap secret pre-image provided!");
 
         return this.wrapper._contract.txsClaimWithSecret(
-            _signer==null ?
-                this._getInitiator() :
-                (isAbstractSigner(_signer) ? _signer : await this.wrapper._chain.wrapSigner(_signer)),
+            address ?? this._getInitiator(),
             this._data, useSecret, true, true
         );
     }
@@ -978,7 +987,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
      *
      * @throws {Error} If in invalid state (must be {@link FromBTCLNSwapState.CLAIM_COMMITED})
      */
-    async txsClaim(_signer?: T["Signer"] | T["NativeSigner"], secret?: string): Promise<T["TX"][]> {
+    async txsClaim(_signer?: string | T["Signer"] | T["NativeSigner"], secret?: string): Promise<T["TX"][]> {
         if(this._state!==FromBTCLNSwapState.CLAIM_COMMITED) throw new Error("Must be in CLAIM_COMMITED state!");
         return this._txsClaim(_signer, secret);
     }

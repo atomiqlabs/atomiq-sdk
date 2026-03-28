@@ -751,7 +751,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
             name: "Settle manually",
             description: "Create the HTLC escrow and settle the swap on the destination smart chain",
             chain: this.chainIdentifier,
-            txs: await this.txsCommitAndClaim(actionOptions?.skipChecks, actionOptions?.secret),
+            txs: await this.prepareTransactions(this.txsCommitAndClaim(actionOptions?.skipChecks, actionOptions?.secret)),
             submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => {
                 const parsedTxs: T["SignedTXType"][] = [];
                 for(let tx of txs) {

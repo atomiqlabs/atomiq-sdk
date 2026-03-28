@@ -198,6 +198,13 @@ export declare abstract class ISwap<T extends ChainType = ChainType, D extends S
      */
     protected checkSigner(signer: T["Signer"] | string): void;
     /**
+     * Await and prepares a list of passed transactions
+     *
+     * @param txsPromise
+     * @internal
+     */
+    protected prepareTransactions(txsPromise: Promise<T["TX"][]>): Promise<T["TX"][]>;
+    /**
      * Returns an escrow hash of the swap
      *
      * @internal

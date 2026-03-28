@@ -862,7 +862,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             name: "Initiate swap",
             description: `Opens up the bitcoin swap address on the ${this.chainIdentifier} side`,
             chain: this.chainIdentifier,
-            txs: await this.txsCommit(actionOptions?.skipChecks),
+            txs: await this.prepareTransactions(this.txsCommit(actionOptions?.skipChecks)),
             submitTransactions: async (txs, abortSignal) => {
                 if (!await this._verifyQuoteValid())
                     throw new Error("Quote is already expired!");
@@ -889,7 +889,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             name: "Settle manually",
             description: "Manually settle (claim) the swap on the destination smart chain",
             chain: this.chainIdentifier,
-            txs: await this.txsClaim(actionOptions?.manualSettlementSmartChainSigner),
+            txs: await this.prepareTransactions(this.txsClaim(actionOptions?.manualSettlementSmartChainSigner)),
             submitTransactions: async (txs, abortSignal) => {
                 const parsedTxs = [];
                 for (let tx of txs) {

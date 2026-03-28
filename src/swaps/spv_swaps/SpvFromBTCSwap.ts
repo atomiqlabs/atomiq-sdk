@@ -1336,7 +1336,7 @@ export class SpvFromBTCSwap<T extends ChainType>
             name: "Settle manually",
             description: "Manually settle the swap on the destination smart chain",
             chain: this.chainIdentifier,
-            txs: await this.txsClaim(actionOptions?.manualSettlementSmartChainSigner),
+            txs: await this.prepareTransactions(this.txsClaim(actionOptions?.manualSettlementSmartChainSigner)),
             submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => {
                 const parsedTxs: T["SignedTXType"][] = [];
                 for(let tx of txs) {

@@ -231,6 +231,18 @@ class ISwap {
             throw new Error("Invalid signer provided!");
     }
     /**
+     * Await and prepares a list of passed transactions
+     *
+     * @param txsPromise
+     * @internal
+     */
+    async prepareTransactions(txsPromise) {
+        const txs = await txsPromise;
+        if (this.wrapper._chain.prepareTxs == null)
+            return txs;
+        return await this.wrapper._chain.prepareTxs(txs);
+    }
+    /**
      * Sets this swap as initiated
      * @internal
      */

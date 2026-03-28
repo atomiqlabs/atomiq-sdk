@@ -1040,7 +1040,7 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
             name: "Settle manually",
             description: "Manually settle (claim) the swap on the destination smart chain",
             chain: this.chainIdentifier,
-            txs: await this.txsClaim(actionOptions?.manualSettlementSmartChainSigner, actionOptions?.secret),
+            txs: await this.prepareTransactions(this.txsClaim(actionOptions?.manualSettlementSmartChainSigner, actionOptions?.secret)),
             submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => {
                 const parsedTxs: T["SignedTXType"][] = [];
                 for(let tx of txs) {

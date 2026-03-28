@@ -400,6 +400,18 @@ export abstract class ISwap<
     }
 
     /**
+     * Await and prepares a list of passed transactions
+     *
+     * @param txsPromise
+     * @internal
+     */
+    protected async prepareTransactions(txsPromise: Promise<T["TX"][]>): Promise<T["TX"][]> {
+        const txs = await txsPromise;
+        if(this.wrapper._chain.prepareTxs==null) return txs;
+        return await this.wrapper._chain.prepareTxs(txs);
+    }
+
+    /**
      * Returns an escrow hash of the swap
      *
      * @internal

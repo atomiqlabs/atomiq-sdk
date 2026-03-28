@@ -160,8 +160,14 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                     feeRate: (0, Utils_1.throwIfUndefined)(preFetches.feeRatePromise),
                     additionalParams
                 }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined);
+                let signDataPromise = preFetches.signDataPrefetchPromise;
+                if (signDataPromise == null) {
+                    signDataPromise = this.preFetchSignData(signDataPrefetch);
+                }
+                else
+                    signDataPrefetch.catch(() => { });
                 return {
-                    signDataPromise: preFetches.signDataPrefetchPromise ?? this.preFetchSignData(signDataPrefetch),
+                    signDataPromise,
                     resp: await response
                 };
             }, undefined, e => e instanceof RequestError_1.RequestError, abortController.signal);

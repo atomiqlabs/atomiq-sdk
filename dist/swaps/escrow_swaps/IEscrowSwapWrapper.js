@@ -23,8 +23,11 @@ class IEscrowSwapWrapper extends ISwapWrapper_1.ISwapWrapper {
      * @internal
      */
     preFetchSignData(signDataPrefetch) {
-        if (this._contract.preFetchForInitSignatureVerification == null)
+        if (this._contract.preFetchForInitSignatureVerification == null) {
+            // Catch promise rejections, should they happen
+            signDataPrefetch.catch(() => { });
             return Promise.resolve(undefined);
+        }
         return signDataPrefetch.then(obj => {
             if (obj == null)
                 return undefined;

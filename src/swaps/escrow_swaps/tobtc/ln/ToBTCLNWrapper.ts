@@ -289,8 +289,13 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
                     additionalParams
                 }, this._options.postRequestTimeout, abortController.signal, retryCount>0 ? false : undefined);
 
+                let signDataPromise = preFetches.signDataPrefetchPromise;
+                if(signDataPromise==null) {
+                    signDataPromise = this.preFetchSignData(signDataPrefetch);
+                } else signDataPrefetch.catch(() => {});
+
                 return {
-                    signDataPromise: preFetches.signDataPrefetchPromise ?? this.preFetchSignData(signDataPrefetch),
+                    signDataPromise,
                     resp: await response
                 };
             }, undefined, e => e instanceof RequestError, abortController.signal);

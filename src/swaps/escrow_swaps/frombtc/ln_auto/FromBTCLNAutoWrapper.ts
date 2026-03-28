@@ -3,7 +3,7 @@ import {
     ChainSwapType,
     ChainType,
     ClaimEvent,
-    InitializeEvent, LightningNetworkApi, Messenger,
+    InitializeEvent, LightningNetworkApi, LNNodeLiquidity, Messenger,
     RefundEvent, SwapCommitState, SwapCommitStateType
 } from "@atomiqlabs/base";
 import {Intermediary} from "../../../../intermediaries/Intermediary";
@@ -435,8 +435,13 @@ export class FromBTCLNAutoWrapper<
                             this._options.postRequestTimeout, abortController.signal, retryCount>0 ? false : undefined
                         );
 
+                        let lnCapacityPromise: Promise<LNNodeLiquidity | null> | undefined;
+                        if(!_options.unsafeSkipLnNodeCheck) {
+                            lnCapacityPromise = this.preFetchLnCapacity(lnPublicKey);
+                        } else lnPublicKey.catch(() => {});
+
                         return {
-                            lnCapacityPromise: _options.unsafeSkipLnNodeCheck ? undefined : this.preFetchLnCapacity(lnPublicKey),
+                            lnCapacityPromise,
                             resp: await response
                         };
                     }, undefined, RequestError, abortController.signal);

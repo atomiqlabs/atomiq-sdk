@@ -199,8 +199,14 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
                             feeRate: (0, Utils_1.throwIfUndefined)(_preFetches.feeRatePromise),
                             additionalParams
                         }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined);
+                        let lnCapacityPromise;
+                        if (!_options.unsafeSkipLnNodeCheck) {
+                            lnCapacityPromise = this.preFetchLnCapacity(lnPublicKey);
+                        }
+                        else
+                            lnPublicKey.catch(() => { });
                         return {
-                            lnCapacityPromise: _options.unsafeSkipLnNodeCheck ? null : this.preFetchLnCapacity(lnPublicKey),
+                            lnCapacityPromise,
                             resp: await response
                         };
                     }, undefined, RequestError_1.RequestError, abortController.signal);

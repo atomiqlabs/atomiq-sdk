@@ -276,8 +276,14 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
                             gasAmount: _options.gasAmount,
                             claimerBounty: (0, Utils_1.throwIfUndefined)(_preFetches.claimerBountyPrefetch)
                         }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined);
+                        let lnCapacityPromise;
+                        if (!_options.unsafeSkipLnNodeCheck) {
+                            lnCapacityPromise = this.preFetchLnCapacity(lnPublicKey);
+                        }
+                        else
+                            lnPublicKey.catch(() => { });
                         return {
-                            lnCapacityPromise: _options.unsafeSkipLnNodeCheck ? undefined : this.preFetchLnCapacity(lnPublicKey),
+                            lnCapacityPromise,
                             resp: await response
                         };
                     }, undefined, RequestError_1.RequestError, abortController.signal);

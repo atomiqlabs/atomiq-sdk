@@ -179,8 +179,14 @@ class ToBTCWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                                 feeRate: (0, Utils_1.throwIfUndefined)(feeRatePromise),
                                 additionalParams
                             }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined);
+                            let signDataPromise = _signDataPromise;
+                            if (signDataPromise == null) {
+                                signDataPromise = this.preFetchSignData(signDataPrefetch);
+                            }
+                            else
+                                signDataPrefetch.catch(() => { });
                             return {
-                                signDataPromise: _signDataPromise ?? this.preFetchSignData(signDataPrefetch),
+                                signDataPromise,
                                 resp: await response
                             };
                         }, undefined, RequestError_1.RequestError, abortController.signal);

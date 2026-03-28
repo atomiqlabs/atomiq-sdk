@@ -613,7 +613,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             name: "Settle manually",
             description: "Create the HTLC escrow and settle the swap on the destination smart chain",
             chain: this.chainIdentifier,
-            txs: await this.txsCommitAndClaim(actionOptions?.skipChecks, actionOptions?.secret),
+            txs: await this.prepareTransactions(this.txsCommitAndClaim(actionOptions?.skipChecks, actionOptions?.secret)),
             submitTransactions: async (txs, abortSignal) => {
                 const parsedTxs = [];
                 for (let tx of txs) {

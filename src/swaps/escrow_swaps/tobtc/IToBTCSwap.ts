@@ -651,7 +651,7 @@ export abstract class IToBTCSwap<
             name: "Initiate swap",
             description: `Initiates the swap by commiting the funds to the escrow on the ${this.chainIdentifier} side`,
             chain: this.chainIdentifier,
-            txs: await this.txsCommit(actionOptions?.skipChecks),
+            txs: await this.prepareTransactions(this.txsCommit(actionOptions?.skipChecks)),
             submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => {
                 if(!await this._verifyQuoteValid()) throw new Error("Quote is already expired!");
                 const parsedTxs: T["SignedTXType"][] = [];
@@ -698,7 +698,7 @@ export abstract class IToBTCSwap<
             name: "Refund",
             description: "Refund the swap after it failed to execute",
             chain: this.chainIdentifier,
-            txs: await this.txsRefund(actionOptions?.refundSmartChainSigner),
+            txs: await this.prepareTransactions(this.txsRefund(actionOptions?.refundSmartChainSigner)),
             submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => {
                 const parsedTxs: T["SignedTXType"][] = [];
                 for(let tx of txs) {

@@ -35,6 +35,7 @@ class ToBTCWrapper extends IToBTCWrapper_1.IToBTCWrapper {
      */
     constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, btcRpc, options, events) {
         super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, {
+            ...options,
             bitcoinNetwork: options?.bitcoinNetwork ?? utils_1.TEST_NETWORK,
             safetyFactor: options?.safetyFactor ?? 2,
             maxConfirmations: options?.maxConfirmations ?? 6,

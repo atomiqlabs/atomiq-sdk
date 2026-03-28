@@ -9,6 +9,8 @@ import { SwapType } from "../enums/SwapType";
 import { UnifiedSwapStorage } from "../storage/UnifiedSwapStorage";
 import { SCToken } from "../types/Token";
 import { PriceInfoType } from "../types/PriceInfoType";
+export declare const DEFAULT_MAX_PARALLEL_SWAP_TICKS = 50;
+export declare const DEFAULT_MAX_PARALLEL_SWAP_SYNCS = 50;
 /**
  * Options for swap wrapper configuration
  *
@@ -17,6 +19,14 @@ import { PriceInfoType } from "../types/PriceInfoType";
 export type ISwapWrapperOptions = {
     getRequestTimeout?: number;
     postRequestTimeout?: number;
+    /**
+     * How many swaps to call `_tick()` for in parallel
+     */
+    maxParallelSwapTicks?: number;
+    /**
+     * How many swaps to call `_sync()` for in parallel
+     */
+    maxParallelSwapSyncs?: number;
 };
 /**
  * Token configuration for wrapper constructors
@@ -86,6 +96,11 @@ export declare abstract class ISwapWrapper<T extends ChainType, D extends SwapTy
      * @internal
      */
     protected tickInterval?: NodeJS.Timeout;
+    /**
+     * An internal abort controller for the running tick handler
+     * @internal
+     */
+    protected tickAbortController?: AbortController;
     /**
      * States of the swaps in pending (non-final state), these are checked automatically on initial swap synchronization
      * @internal
@@ -228,8 +243,9 @@ export declare abstract class ISwapWrapper<T extends ChainType, D extends SwapTy
      *
      * @param swaps Optional array of swaps to invoke `_tick()` on, otherwise all relevant swaps will be fetched
      *  from the persistent storage
+     * @param abortSignal Abort signal
      */
-    tick(swaps?: D["Swap"][]): Promise<void>;
+    tick(swaps?: D["Swap"][], abortSignal?: AbortSignal): Promise<void>;
     /**
      * Returns the smart chain's native token used to pay for fees
      * @internal

@@ -1,11 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ISwapWrapper = void 0;
+exports.ISwapWrapper = exports.DEFAULT_MAX_PARALLEL_SWAP_SYNCS = exports.DEFAULT_MAX_PARALLEL_SWAP_TICKS = void 0;
 const events_1 = require("events");
 const IntermediaryError_1 = require("../errors/IntermediaryError");
 const Logger_1 = require("../utils/Logger");
 const TokenUtils_1 = require("../utils/TokenUtils");
 const UserError_1 = require("../errors/UserError");
+exports.DEFAULT_MAX_PARALLEL_SWAP_TICKS = 50;
+exports.DEFAULT_MAX_PARALLEL_SWAP_SYNCS = 50;
 /**
  * Base abstract class for swap handler implementations
  *
@@ -29,6 +31,10 @@ class ISwapWrapper {
          * @internal
          */
         this.isInitialized = false;
+        if (options?.maxParallelSwapTicks != null && options.maxParallelSwapTicks < 1)
+            throw new Error("maxParallelSwapTicks must be at least 1!");
+        if (options?.maxParallelSwapSyncs != null && options.maxParallelSwapSyncs < 1)
+            throw new Error("maxParallelSwapSyncs must be at least 1!");
         this.unifiedStorage = unifiedStorage;
         this.unifiedChainEvents = unifiedChainEvents;
         this.chainIdentifier = chainIdentifier;
@@ -128,9 +134,25 @@ class ISwapWrapper {
     startTickInterval() {
         if (this.tickSwapState == null || this.tickSwapState.length === 0)
             return;
-        this.tickInterval = setInterval(() => {
-            this.tick();
-        }, 1000);
+        if (this.tickAbortController != null)
+            this.tickAbortController.abort("New tick interval has been started!");
+        const abortController = this.tickAbortController = new AbortController();
+        let run;
+        run = async () => {
+            if (!this.isInitialized)
+                return;
+            await this.tick(undefined, abortController.signal).catch(e => {
+                if (abortController.signal.aborted)
+                    return;
+                this.logger.warn("startTickInterval(): Tick on swaps failed, error: ", e);
+            });
+            if (abortController.signal.aborted)
+                return;
+            if (!this.isInitialized)
+                return;
+            this.tickInterval = setTimeout(run, 1000);
+        };
+        run();
     }
     /**
      * Runs checks on passed swaps, syncing their state from on-chain data
@@ -186,10 +208,10 @@ class ISwapWrapper {
         }
         if (this.processEvent != null)
             this.unifiedChainEvents.registerListener(this.TYPE, this.processEvent.bind(this), this._swapDeserializer.bind(null, this));
+        this.isInitialized = true;
         if (!noTimers)
             this.startTickInterval();
         // this.logger.info("init(): Swap wrapper initialized");
-        this.isInitialized = true;
     }
     /**
      * Un-subscribes from event listeners on the smart chain, terminates the tick interval and stops this wrapper
@@ -198,8 +220,14 @@ class ISwapWrapper {
         this.isInitialized = false;
         this.unifiedChainEvents.unregisterListener(this.TYPE);
         this.logger.info("stop(): Swap wrapper stopped");
-        if (this.tickInterval != null)
-            clearInterval(this.tickInterval);
+        if (this.tickInterval != null) {
+            clearTimeout(this.tickInterval);
+            delete this.tickInterval;
+        }
+        if (this.tickAbortController != null) {
+            this.tickAbortController.abort("Wrapper instance stopped!");
+            delete this.tickAbortController;
+        }
     }
     /**
      * Runs checks on all the known pending swaps, syncing their state from on-chain data
@@ -211,16 +239,23 @@ class ISwapWrapper {
     async checkPastSwaps(pastSwaps, noSave) {
         if (pastSwaps == null)
             pastSwaps = await this.unifiedStorage.query([[{ key: "type", value: this.TYPE }, { key: "state", value: this._pendingSwapStates }]], (val) => new this._swapDeserializer(this, val));
-        const { removeSwaps, changedSwaps } = await this._checkPastSwaps(pastSwaps);
-        if (!noSave) {
-            await this.unifiedStorage.removeAll(removeSwaps);
-            await this.unifiedStorage.saveAll(changedSwaps);
-            changedSwaps.forEach(swap => swap._emitEvent());
-            removeSwaps.forEach(swap => swap._emitEvent());
+        const maxParallelSyncs = this._options.maxParallelSwapSyncs ?? exports.DEFAULT_MAX_PARALLEL_SWAP_SYNCS;
+        const totalRemoveSwaps = [];
+        const totalChangedSwaps = [];
+        for (let i = 0; i < pastSwaps.length; i += maxParallelSyncs) {
+            const { removeSwaps, changedSwaps } = await this._checkPastSwaps(pastSwaps.slice(i, i + maxParallelSyncs));
+            if (!noSave) {
+                await this.unifiedStorage.removeAll(removeSwaps);
+                await this.unifiedStorage.saveAll(changedSwaps);
+                changedSwaps.forEach(swap => swap._emitEvent());
+                removeSwaps.forEach(swap => swap._emitEvent());
+            }
+            totalRemoveSwaps.push(...removeSwaps);
+            totalChangedSwaps.push(...changedSwaps);
         }
         return {
-            removeSwaps,
-            changedSwaps
+            removeSwaps: totalRemoveSwaps,
+            changedSwaps: totalChangedSwaps
         };
     }
     /**
@@ -228,18 +263,39 @@ class ISwapWrapper {
      *
      * @param swaps Optional array of swaps to invoke `_tick()` on, otherwise all relevant swaps will be fetched
      *  from the persistent storage
+     * @param abortSignal Abort signal
      */
-    async tick(swaps) {
+    async tick(swaps, abortSignal) {
         if (swaps == null)
             swaps = await this.unifiedStorage.query([[{ key: "type", value: this.TYPE }, { key: "state", value: this.tickSwapState }]], (val) => new this._swapDeserializer(this, val));
+        abortSignal?.throwIfAborted();
+        const parallelTicks = this._options.maxParallelSwapTicks ?? exports.DEFAULT_MAX_PARALLEL_SWAP_TICKS;
+        let promises = [];
         for (let pendingSwap of this.pendingSwaps.values()) {
             const value = pendingSwap.deref();
             if (value != null)
-                value._tick(true);
+                promises.push(value._tick(true).catch(e => {
+                    this.logger.warn(`tick(): Error ticking swap ${value.getId()}: `, e);
+                }));
+            if (promises.length >= parallelTicks) {
+                await Promise.all(promises);
+                abortSignal?.throwIfAborted();
+                promises = [];
+            }
         }
-        swaps.forEach(value => {
-            value._tick(true);
-        });
+        for (let value of swaps) {
+            promises.push(value._tick(true).catch(e => {
+                this.logger.warn(`tick(): Error ticking swap ${value.getId()}: `, e);
+            }));
+            if (promises.length >= parallelTicks) {
+                await Promise.all(promises);
+                abortSignal?.throwIfAborted();
+                promises = [];
+            }
+        }
+        if (promises.length > 0)
+            await Promise.all(promises);
+        abortSignal?.throwIfAborted();
     }
     /**
      * Returns the smart chain's native token used to pay for fees

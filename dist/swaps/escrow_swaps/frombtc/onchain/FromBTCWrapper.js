@@ -37,6 +37,7 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
      */
     constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, btcRelay, synchronizer, btcRpc, options, events) {
         super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, {
+            ...options,
             bitcoinNetwork: options?.bitcoinNetwork ?? utils_1.TEST_NETWORK,
             safetyFactor: options?.safetyFactor ?? 2,
             blocksTillTxConfirms: options?.blocksTillTxConfirms ?? 12,

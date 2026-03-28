@@ -23,6 +23,7 @@ const RetryUtils_1 = require("../../../../utils/RetryUtils");
 class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
     constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, options, events) {
         super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, {
+            ...options,
             paymentTimeoutSeconds: options?.paymentTimeoutSeconds ?? 5 * 24 * 60 * 60,
             lightningBaseFee: options?.lightningBaseFee ?? 10,
             lightningFeePPM: options?.lightningFeePPM ?? 2000

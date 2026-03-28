@@ -112,6 +112,7 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
         super(
             chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer,
             {
+                ...options,
                 paymentTimeoutSeconds: options?.paymentTimeoutSeconds ?? 5*24*60*60,
                 lightningBaseFee: options?.lightningBaseFee ?? 10,
                 lightningFeePPM: options?.lightningFeePPM ?? 2000

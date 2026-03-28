@@ -97,6 +97,7 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
         super(
             chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer,
             {
+                ...options,
                 bitcoinNetwork: options?.bitcoinNetwork ?? TEST_NETWORK,
                 safetyFactor: options?.safetyFactor ?? 2,
                 maxConfirmations: options?.maxConfirmations ?? 6,

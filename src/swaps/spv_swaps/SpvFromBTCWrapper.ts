@@ -186,6 +186,7 @@ export class SpvFromBTCWrapper<
         super(
             chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens,
             {
+                ...options,
                 bitcoinNetwork: options?.bitcoinNetwork ?? TEST_NETWORK,
                 maxConfirmations: options?.maxConfirmations ?? 6,
                 bitcoinBlocktime: options?.bitcoinBlocktime ?? 10*60,

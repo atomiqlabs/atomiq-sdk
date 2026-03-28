@@ -137,6 +137,7 @@ export class FromBTCLNWrapper<
         super(
             chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, lnApi,
             {
+                ...options,
                 safetyFactor: options?.safetyFactor ?? 2,
                 bitcoinBlocktime: options?.bitcoinBlocktime ?? 10*60,
                 unsafeSkipLnNodeCheck: options?.unsafeSkipLnNodeCheck ?? false

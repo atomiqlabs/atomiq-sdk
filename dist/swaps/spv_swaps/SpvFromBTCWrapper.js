@@ -39,6 +39,7 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
      */
     constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, spvWithdrawalDataDeserializer, btcRelay, synchronizer, btcRpc, options, events) {
         super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, {
+            ...options,
             bitcoinNetwork: options?.bitcoinNetwork ?? utils_1.TEST_NETWORK,
             maxConfirmations: options?.maxConfirmations ?? 6,
             bitcoinBlocktime: options?.bitcoinBlocktime ?? 10 * 60,

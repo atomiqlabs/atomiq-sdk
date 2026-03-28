@@ -420,6 +420,21 @@ class SwapperUtils {
         return this.root._chains[chainIdentifier].chainInterface.sendSignedAndConfirm(txs, true, abortSignal, false, onBeforePublish);
     }
     /**
+     * Prepares a set of unsigned transactions for signing, by adding required nonces or recent blockhashes, might
+     *  also add hints of account deployment on e.g. Starknet
+     *
+     * @param chainIdentifier A chain for which to prepare the txs
+     * @param txs Transactions to prepare
+     */
+    prepareUnsignedTransactions(chainIdentifier, txs) {
+        if (this.root._chains[chainIdentifier] == null)
+            throw new Error("Invalid chain identifier! Unknown chain: " + chainIdentifier);
+        const chainInterface = this.root._chains[chainIdentifier].chainInterface;
+        if (chainInterface.prepareTxs == null)
+            throw new Error("Chain doesn't support tx preparation, chainId: " + chainIdentifier);
+        return chainInterface.prepareTxs(txs);
+    }
+    /**
      * Serializes an unsigned smart chain transaction
      *
      * @param chainIdentifier Smart chain string identifier

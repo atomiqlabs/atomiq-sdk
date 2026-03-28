@@ -170,6 +170,14 @@ export declare class SwapperUtils<T extends MultiChain> {
      */
     sendSignedAndConfirm<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier, txs: T[ChainIdentifier]["SignedTXType"][], abortSignal?: AbortSignal, onBeforePublish?: (txId: string, rawTx: string) => Promise<void>): Promise<string[]>;
     /**
+     * Prepares a set of unsigned transactions for signing, by adding required nonces or recent blockhashes, might
+     *  also add hints of account deployment on e.g. Starknet
+     *
+     * @param chainIdentifier A chain for which to prepare the txs
+     * @param txs Transactions to prepare
+     */
+    prepareUnsignedTransactions<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier, txs: T[ChainIdentifier]["TX"][]): Promise<T[ChainIdentifier]["TX"][]>;
+    /**
      * Serializes an unsigned smart chain transaction
      *
      * @param chainIdentifier Smart chain string identifier

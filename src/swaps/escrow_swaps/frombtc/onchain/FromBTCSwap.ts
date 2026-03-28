@@ -1067,7 +1067,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
             name: "Initiate swap",
             description: `Opens up the bitcoin swap address on the ${this.chainIdentifier} side`,
             chain: this.chainIdentifier,
-            txs: await this.txsCommit(actionOptions?.skipChecks),
+            txs: await this.prepareTransactions(this.txsCommit(actionOptions?.skipChecks)),
             submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => {
                 if(!await this._verifyQuoteValid()) throw new Error("Quote is already expired!");
                 if(this.getTimeoutTime()<Date.now()) throw new Error("Swap address already expired or close to expiry!");
@@ -1098,7 +1098,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
             name: "Settle manually",
             description: "Manually settle (claim) the swap on the destination smart chain",
             chain: this.chainIdentifier,
-            txs: await this.txsClaim(actionOptions?.manualSettlementSmartChainSigner),
+            txs: await this.prepareTransactions(this.txsClaim(actionOptions?.manualSettlementSmartChainSigner)),
             submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => {
                 const parsedTxs: T["SignedTXType"][] = [];
                 for(let tx of txs) {

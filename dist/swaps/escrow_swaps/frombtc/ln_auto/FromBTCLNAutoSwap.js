@@ -817,7 +817,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
             name: "Settle manually",
             description: "Manually settle (claim) the swap on the destination smart chain",
             chain: this.chainIdentifier,
-            txs: await this.txsClaim(actionOptions?.manualSettlementSmartChainSigner, actionOptions?.secret),
+            txs: await this.prepareTransactions(this.txsClaim(actionOptions?.manualSettlementSmartChainSigner, actionOptions?.secret)),
             submitTransactions: async (txs, abortSignal) => {
                 const parsedTxs = [];
                 for (let tx of txs) {

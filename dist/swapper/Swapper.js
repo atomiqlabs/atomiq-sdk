@@ -803,6 +803,10 @@ class Swapper extends events_1.EventEmitter {
      * @param options Options for the swap
      */
     swap(_srcToken, _dstToken, _amount, exactIn, src, dst, options) {
+        if (typeof (src) === "string")
+            src = this.Utils.stripAddress(src);
+        if (typeof (dst) === "string")
+            dst = this.Utils.stripAddress(dst);
         const srcToken = typeof (_srcToken) === "string" ? this.getToken(_srcToken) : _srcToken;
         const dstToken = typeof (_dstToken) === "string" ? this.getToken(_dstToken) : _dstToken;
         const amount = _amount == null ? null : (typeof (_amount) === "bigint" ? _amount : (0, Utils_1.fromDecimal)(_amount, exactIn ? srcToken.decimals : dstToken.decimals));

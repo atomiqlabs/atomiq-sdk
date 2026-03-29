@@ -671,6 +671,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
     /**
      * @inheritDoc
      */
+    // TODO: Figure how we gonna trigger an LNURL-withdraw with the execution actions
     async getExecutionStatus(options) {
         const executionStatus = await this._getExecutionStatus(options);
         return {

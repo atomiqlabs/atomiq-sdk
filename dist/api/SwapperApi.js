@@ -8,6 +8,7 @@ const SwapSide_1 = require("../enums/SwapSide");
 const SwapType_1 = require("../enums/SwapType");
 const FromBTCLNSwap_1 = require("../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap");
 const FromBTCLNAutoSwap_1 = require("../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap");
+const IEscrowSwap_1 = require("../swaps/escrow_swaps/IEscrowSwap");
 function requiresSecretRevealForApi(swap, state) {
     if (swap instanceof FromBTCLNSwap_1.FromBTCLNSwap) {
         if (swap.hasSecretPreimage())
@@ -329,7 +330,11 @@ class SwapperApi {
         return {
             ...createListSwapOutput(swap, steps, stateInfo),
             currentAction: currentAction ? await (0, SerializedAction_1.serializeAction)(currentAction, this.txSerializer.bind(this)) : null,
-            requiresSecretReveal: requiresSecretRevealForApi(swap, stateInfo.state)
+            requiresSecretReveal: requiresSecretRevealForApi(swap, stateInfo.state),
+            escrow: swap instanceof IEscrowSwap_1.IEscrowSwap && swap._data != null ? {
+                data: swap._data.serialize(),
+                initTxId: swap._commitTxId
+            } : undefined
         };
     }
     async submitTransaction(input) {

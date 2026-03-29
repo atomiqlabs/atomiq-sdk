@@ -35,6 +35,7 @@ import {
 } from "./ApiEndpoints";
 import {SwapExecutionStep} from "../types/SwapExecutionStep";
 import {SwapStateInfo} from "../types/SwapStateInfo";
+import {IEscrowSwap} from "../swaps/escrow_swaps/IEscrowSwap";
 
 function requiresSecretRevealForApi(swap: ISwap, state: number): boolean | undefined {
     if(swap instanceof FromBTCLNSwap) {
@@ -429,7 +430,12 @@ export class SwapperApi<T extends MultiChain> {
             ...createListSwapOutput(swap, steps, stateInfo),
 
             currentAction: currentAction ? await serializeAction(currentAction, this.txSerializer.bind(this)) : null,
-            requiresSecretReveal: requiresSecretRevealForApi(swap, stateInfo.state)
+            requiresSecretReveal: requiresSecretRevealForApi(swap, stateInfo.state),
+
+            escrow: swap instanceof IEscrowSwap && swap._data!=null ? {
+                data: swap._data.serialize(),
+                initTxId: swap._commitTxId
+            } : undefined
         };
     }
 

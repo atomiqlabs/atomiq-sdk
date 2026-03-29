@@ -152,6 +152,7 @@ export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromB
      * @inheritDoc
      */
     getInputTxId(): string | null;
+    private _setSubmittedBitcoinTx;
     /**
      * Returns timeout time (in UNIX milliseconds) when the on-chain address will expire and no funds should be sent
      *  to that address anymore

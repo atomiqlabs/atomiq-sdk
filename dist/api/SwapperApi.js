@@ -76,7 +76,7 @@ class SwapperApi {
                 dstToken: { type: "string", required: true, description: "Destination token ticker" },
                 amount: { type: "bigint", required: true, description: "Amount in base units as an integer" },
                 amountType: { type: "string", required: true, description: "EXACT_IN or EXACT_OUT", allowedValues: ["EXACT_IN", "EXACT_OUT"] },
-                srcAddress: { type: "string", required: true, description: "Source address or Lightning invoice" },
+                srcAddress: { type: "string", required: false, description: "Source address (only required for Smart chain -> BTC/Lightning swaps)" },
                 dstAddress: { type: "string", required: true, description: "Destination address" },
                 gasAmount: { type: "bigint", required: false, description: "Gas token amount to receive on destination chain, in base units" },
                 paymentHash: { type: "string", required: false, description: "Custom payment hash for Lightning swaps" },

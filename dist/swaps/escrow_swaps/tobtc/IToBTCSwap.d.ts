@@ -277,6 +277,11 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
         state: ToBTCSwapState;
     }>;
     /**
+     * @inheritDoc
+     * @internal
+     */
+    _submitExecutionTransactions(txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal, requiredStates?: ToBTCSwapState[]): Promise<string[]>;
+    /**
      * @internal
      */
     private _buildInitSmartChainTxAction;

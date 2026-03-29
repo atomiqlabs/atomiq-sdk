@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SwapperApi = void 0;
 const ApiTypes_1 = require("./ApiTypes");
-const SwapExecutionAction_1 = require("../types/SwapExecutionAction");
 const SerializedAction_1 = require("./SerializedAction");
 const FeeType_1 = require("../enums/FeeType");
 const SwapSide_1 = require("../enums/SwapSide");
@@ -338,19 +337,9 @@ class SwapperApi {
         if (swap == null) {
             throw new Error("Swap not found: " + input.swapId);
         }
-        const action = await swap.getExecutionAction();
-        if (action == null) {
-            throw new Error("No current action for swap - re-fetch status");
-        }
-        if ((0, SwapExecutionAction_1.isSwapExecutionActionSignPSBT)(action)) {
-            const txHashes = await action.submitPsbt(input.signedTxs);
-            return { txHashes };
-        }
-        if ((0, SwapExecutionAction_1.isSwapExecutionActionSignSmartChainTx)(action)) {
-            const txHashes = await action.submitTransactions(input.signedTxs);
-            return { txHashes };
-        }
-        throw new Error("Current action is not submittable (type: " + action.type + ") - re-fetch status");
+        return {
+            txHashes: await swap._submitExecutionTransactions(input.signedTxs)
+        };
     }
 }
 exports.SwapperApi = SwapperApi;

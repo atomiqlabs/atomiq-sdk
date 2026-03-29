@@ -945,6 +945,48 @@ export class FromBTCSwap<T extends ChainType = ChainType>
     }
 
     /**
+     * @inheritDoc
+     * @internal
+     */
+    async _submitExecutionTransactions(txs: (T["SignedTXType"] | Transaction | string)[], abortSignal?: AbortSignal, requiredStates?: FromBTCSwapState[]): Promise<string[]> {
+        if(requiredStates!=null && !requiredStates.includes(this._state)) throw new Error("Swap state has changed before transactions were submitted!");
+
+        if(this._state===FromBTCSwapState.CLAIM_COMMITED) {
+            let psbt: string | Transaction;
+            if(txs.length!==1) throw new Error("Need to submit exactly 1 signed PSBT!");
+            if(typeof(txs[0])!=="string" && !(txs[0] instanceof Transaction))
+                throw new Error("Must submit a valid PSBT as hex/base64 string or `@scure/btc-signer` Transaction object!");
+            psbt = txs[0];
+            return [await this.submitPsbt(psbt)];
+        }
+
+        if(this._state===FromBTCSwapState.PR_CREATED || this._state===FromBTCSwapState.QUOTE_SOFT_EXPIRED) {
+            if(!await this._verifyQuoteValid()) throw new Error("Quote is already expired!");
+            if(this.getTimeoutTime()<Date.now()) throw new Error("Swap address already expired or close to expiry!");
+
+            const parsedTxs: T["SignedTXType"][] = [];
+            for(let tx of txs) {
+                parsedTxs.push(typeof(tx)==="string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
+            }
+            const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
+            await this.waitTillCommited(abortSignal);
+            return txIds;
+        }
+
+        if(this._state===FromBTCSwapState.BTC_TX_CONFIRMED) {
+            const parsedTxs: T["SignedTXType"][] = [];
+            for(let tx of txs) {
+                parsedTxs.push(typeof(tx)==="string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
+            }
+            const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
+            await this.waitTillClaimed(undefined, abortSignal);
+            return txIds;
+        }
+
+        throw new Error("Invalid swap state for transaction submission!");
+    }
+
+    /**
      * @internal
      */
     private async _buildSendToAddressOrSignPsbtAction(actionOptions?: {
@@ -1004,14 +1046,11 @@ export class FromBTCSwap<T extends ChainType = ChainType>
                 type: "FUNDED_PSBT"
             }],
             submitPsbt: async (signedPsbt: string | Transaction | (string | Transaction)[]) => {
-                let psbt: string | Transaction;
-                if(Array.isArray(signedPsbt)) {
-                    if(signedPsbt.length!==1) throw new Error("Need to submit exactly 1 signed PSBT!");
-                    psbt = signedPsbt[0];
-                } else {
-                    psbt = signedPsbt;
-                }
-                return [await this.submitPsbt(psbt)];
+                return this._submitExecutionTransactions(
+                    Array.isArray(signedPsbt) ? signedPsbt : [signedPsbt],
+                    undefined,
+                    [FromBTCSwapState.CLAIM_COMMITED]
+                );
             }
         } as SwapExecutionActionSignPSBT<"FUNDED_PSBT">;
     }
@@ -1069,22 +1108,18 @@ export class FromBTCSwap<T extends ChainType = ChainType>
             chain: this.chainIdentifier,
             txs: await this.prepareTransactions(this.txsCommit(actionOptions?.skipChecks)),
             submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => {
-                if(!await this._verifyQuoteValid()) throw new Error("Quote is already expired!");
-                if(this.getTimeoutTime()<Date.now()) throw new Error("Swap address already expired or close to expiry!");
-
-                const parsedTxs: T["SignedTXType"][] = [];
-                for(let tx of txs) {
-                    parsedTxs.push(typeof(tx)==="string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
-                }
-                const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
-                await this.waitTillCommited(abortSignal);
-                return txIds;
+                return this._submitExecutionTransactions(
+                    txs,
+                    abortSignal,
+                    [FromBTCSwapState.PR_CREATED, FromBTCSwapState.QUOTE_SOFT_EXPIRED]
+                );
             },
             requiredSigner: this._getInitiator()
         } as SwapExecutionActionSignSmartChainTx<T>;
     }
 
     /**
+     * @inheritDoc
      * @internal
      */
     private async _buildClaimSmartChainTxAction(actionOptions?: {
@@ -1100,13 +1135,11 @@ export class FromBTCSwap<T extends ChainType = ChainType>
             chain: this.chainIdentifier,
             txs: await this.prepareTransactions(this.txsClaim(actionOptions?.manualSettlementSmartChainSigner)),
             submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => {
-                const parsedTxs: T["SignedTXType"][] = [];
-                for(let tx of txs) {
-                    parsedTxs.push(typeof(tx)==="string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
-                }
-                const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
-                await this.waitTillClaimed(undefined, abortSignal);
-                return txIds;
+                return this._submitExecutionTransactions(
+                    txs,
+                    abortSignal,
+                    [FromBTCSwapState.BTC_TX_CONFIRMED]
+                );
             },
             requiredSigner: signerAddress ?? this._getInitiator()
         } as SwapExecutionActionSignSmartChainTx<T>;

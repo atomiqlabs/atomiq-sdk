@@ -439,24 +439,9 @@ export class SwapperApi<T extends MultiChain> {
             throw new Error("Swap not found: " + input.swapId);
         }
 
-        const action = await swap.getExecutionAction();
-        if (action == null) {
-            throw new Error("No current action for swap - re-fetch status");
+        return {
+            txHashes: await swap._submitExecutionTransactions(input.signedTxs)
         }
-
-        if (isSwapExecutionActionSignPSBT(action)) {
-            const txHashes = await action.submitPsbt(input.signedTxs);
-            return { txHashes };
-        }
-
-        if (isSwapExecutionActionSignSmartChainTx(action)) {
-            const txHashes = await action.submitTransactions(input.signedTxs);
-            return { txHashes };
-        }
-
-        throw new Error(
-            "Current action is not submittable (type: " + action.type + ") - re-fetch status"
-        );
     }
 
 }

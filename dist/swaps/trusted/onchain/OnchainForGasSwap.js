@@ -451,6 +451,13 @@ class OnchainForGasSwap extends ISwap_1.ISwap {
         throw new Error("Not supported");
     }
     /**
+     * @internal
+     * @inheritDoc
+     */
+    _submitExecutionTransactions() {
+        throw new Error("Not supported");
+    }
+    /**
      * @remark Not supported
      */
     async execute() {

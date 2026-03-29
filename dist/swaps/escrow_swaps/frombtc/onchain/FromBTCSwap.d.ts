@@ -332,6 +332,11 @@ export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromB
         state: FromBTCSwapState;
     }>;
     /**
+     * @inheritDoc
+     * @internal
+     */
+    _submitExecutionTransactions(txs: (T["SignedTXType"] | Transaction | string)[], abortSignal?: AbortSignal, requiredStates?: FromBTCSwapState[]): Promise<string[]>;
+    /**
      * @internal
      */
     private _buildSendToAddressOrSignPsbtAction;
@@ -348,6 +353,7 @@ export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromB
      */
     private _buildInitSmartChainTxAction;
     /**
+     * @inheritDoc
      * @internal
      */
     private _buildClaimSmartChainTxAction;

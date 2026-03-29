@@ -808,6 +808,24 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
         };
     }
     /**
+     * @inheritDoc
+     * @internal
+     */
+    async _submitExecutionTransactions(txs, abortSignal, requiredStates) {
+        if (requiredStates != null && !requiredStates.includes(this._state))
+            throw new Error("Swap state has changed before transactions were submitted!");
+        if (this._state === FromBTCLNAutoSwapState.CLAIM_COMMITED) {
+            const parsedTxs = [];
+            for (let tx of txs) {
+                parsedTxs.push(typeof (tx) === "string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
+            }
+            const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
+            await this.waitTillClaimed(undefined, abortSignal);
+            return txIds;
+        }
+        throw new Error("Invalid swap state for transaction submission!");
+    }
+    /**
      * @internal
      */
     async _buildClaimSmartChainTxAction(actionOptions) {
@@ -819,13 +837,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
             chain: this.chainIdentifier,
             txs: await this.prepareTransactions(this.txsClaim(actionOptions?.manualSettlementSmartChainSigner, actionOptions?.secret)),
             submitTransactions: async (txs, abortSignal) => {
-                const parsedTxs = [];
-                for (let tx of txs) {
-                    parsedTxs.push(typeof (tx) === "string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
-                }
-                const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
-                await this.waitTillClaimed(undefined, abortSignal, actionOptions?.secret);
-                return txIds;
+                return this._submitExecutionTransactions(txs, abortSignal, [FromBTCLNAutoSwapState.CLAIM_COMMITED]);
             },
             requiredSigner: signerAddress ?? this._getInitiator()
         };

@@ -306,6 +306,11 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
      */
     private _buildLightningPaymentAction;
     /**
+     * @inheritDoc
+     * @internal
+     */
+    _submitExecutionTransactions(txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal, requiredStates?: FromBTCLNSwapState[]): Promise<string[]>;
+    /**
      * @internal
      */
     private _buildClaimSmartChainTxAction;

@@ -487,6 +487,35 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
         };
     }
     /**
+     * @inheritDoc
+     * @internal
+     */
+    async _submitExecutionTransactions(txs, abortSignal, requiredStates) {
+        if (requiredStates != null && !requiredStates.includes(this._state))
+            throw new Error("Swap state has changed before transactions were submitted!");
+        if (this._state === ToBTCSwapState.CREATED || this._state === ToBTCSwapState.QUOTE_SOFT_EXPIRED) {
+            if (!await this._verifyQuoteValid())
+                throw new Error("Quote is already expired!");
+            const parsedTxs = [];
+            for (let tx of txs) {
+                parsedTxs.push(typeof (tx) === "string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
+            }
+            const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
+            await this.waitTillCommited(abortSignal);
+            return txIds;
+        }
+        if (this._state === ToBTCSwapState.REFUNDABLE) {
+            const parsedTxs = [];
+            for (let tx of txs) {
+                parsedTxs.push(typeof (tx) === "string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
+            }
+            const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
+            await this.waitTillRefunded(abortSignal);
+            return txIds;
+        }
+        throw new Error("Invalid swap state for transaction submission!");
+    }
+    /**
      * @internal
      */
     async _buildInitSmartChainTxAction(actionOptions) {
@@ -497,15 +526,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
             chain: this.chainIdentifier,
             txs: await this.prepareTransactions(this.txsCommit(actionOptions?.skipChecks)),
             submitTransactions: async (txs, abortSignal) => {
-                if (!await this._verifyQuoteValid())
-                    throw new Error("Quote is already expired!");
-                const parsedTxs = [];
-                for (let tx of txs) {
-                    parsedTxs.push(typeof (tx) === "string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
-                }
-                const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
-                await this.waitTillCommited(abortSignal);
-                return txIds;
+                return this._submitExecutionTransactions(txs, abortSignal, [ToBTCSwapState.CREATED, ToBTCSwapState.QUOTE_SOFT_EXPIRED]);
             },
             requiredSigner: this._getInitiator()
         };
@@ -537,13 +558,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
             chain: this.chainIdentifier,
             txs: await this.prepareTransactions(this.txsRefund(actionOptions?.refundSmartChainSigner)),
             submitTransactions: async (txs, abortSignal) => {
-                const parsedTxs = [];
-                for (let tx of txs) {
-                    parsedTxs.push(typeof (tx) === "string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
-                }
-                const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
-                await this.waitTillRefunded(abortSignal);
-                return txIds;
+                return this._submitExecutionTransactions(txs, abortSignal, [ToBTCSwapState.REFUNDABLE]);
             },
             requiredSigner: signerAddress ?? this._getInitiator()
         };

@@ -14,3 +14,5 @@ export declare function getDummyAddress(network: BTC_NETWORK, type: CoinselectAd
  * @param _psbt
  */
 export declare function parsePsbtTransaction(_psbt: Transaction | string): Transaction;
+export declare function getVoutIndex(psbt: Transaction, network: BTC_NETWORK, address: string, amount: bigint): number | undefined;
+export declare function getSenderAddress(psbt: Transaction, network: BTC_NETWORK, inputIndex?: number): string | undefined;

@@ -394,6 +394,13 @@ class LnForGasSwap extends ISwap_1.ISwap {
     }
     /**
      * @internal
+     * @inheritDoc
+     */
+    _submitExecutionTransactions() {
+        throw new Error("Invalid swap state for transaction submission!");
+    }
+    /**
+     * @internal
      */
     async _buildLightningPaymentAction() {
         return {

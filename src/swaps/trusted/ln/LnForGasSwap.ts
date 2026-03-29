@@ -487,6 +487,14 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
 
     /**
      * @internal
+     * @inheritDoc
+     */
+    _submitExecutionTransactions(): Promise<string[]> {
+        throw new Error("Invalid swap state for transaction submission!");
+    }
+
+    /**
+     * @internal
      */
     private async _buildLightningPaymentAction(): Promise<SwapExecutionActionSendToAddress<true>> {
         return {

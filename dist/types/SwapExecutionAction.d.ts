@@ -127,8 +127,12 @@ export type SwapExecutionActionSignSmartChainTx<T extends ChainType = ChainType>
     /**
      * Submits the signed transactions and waits for their confirmation
      *
-     * @remark This might not do any validation on the submitted transactions, make sure to only submit valid signed
-     *  transaction to avoid waiting indefinitely
+     * @remark This might not do any validation on the submitted transactions, so returned txids are informational
+     *  only and may not be persisted immediately. The swap may wait for an authoritative state transition before
+     *  considering the submitted transactions accepted.
+     *
+     *  Make sure to only submit valid signed transactions obtained from this action object, and pass an AbortSignal
+     *  if you need a timeout, otherwise this call can wait indefinitely when invalid transactions are submitted.
      */
     submitTransactions: (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => Promise<string[]>;
     /**

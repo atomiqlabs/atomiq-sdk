@@ -1253,6 +1253,35 @@ export class SpvFromBTCSwap<T extends ChainType>
     }
 
     /**
+     * @inheritDoc
+     * @internal
+     */
+    async _submitExecutionTransactions(txs: (T["SignedTXType"] | Transaction | string)[], abortSignal?: AbortSignal, requiredStates?: SpvFromBTCSwapState[]): Promise<string[]> {
+        if(requiredStates!=null && !requiredStates.includes(this._state)) throw new Error("Swap state has changed before transactions were submitted!");
+
+        if(this._state===SpvFromBTCSwapState.CREATED || this._state===SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED) {
+            let psbt: string | Transaction;
+            if(txs.length!==1) throw new Error("Need to submit exactly 1 signed PSBT!");
+            if(typeof(txs[0])!=="string" && !(txs[0] instanceof Transaction))
+                throw new Error("Must submit a valid PSBT as hex/base64 string or `@scure/btc-signer` Transaction object!");
+            psbt = txs[0];
+            return [await this.submitPsbt(psbt)];
+        }
+
+        if(this._state===SpvFromBTCSwapState.BTC_TX_CONFIRMED) {
+            const parsedTxs: T["SignedTXType"][] = [];
+            for(let tx of txs) {
+                parsedTxs.push(typeof(tx)==="string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
+            }
+            const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
+            await this.waitTillClaimed(undefined, abortSignal);
+            return txIds;
+        }
+
+        throw new Error("Invalid swap state for transaction submission!");
+    }
+
+    /**
      * @internal
      */
     private async _buildDepositPsbtAction(actionOptions?: {
@@ -1270,14 +1299,11 @@ export class SpvFromBTCSwap<T extends ChainType>
                     : {...await this.getFundedPsbt(actionOptions.bitcoinWallet, actionOptions?.bitcoinFeeRate), type: "FUNDED_PSBT"}
             ],
             submitPsbt: async (signedPsbt: string | Transaction | (string | Transaction)[]) => {
-                let psbt: string | Transaction;
-                if(Array.isArray(signedPsbt)) {
-                    if(signedPsbt.length!==1) throw new Error("Need to submit exactly 1 signed PSBT!");
-                    psbt = signedPsbt[0];
-                } else {
-                    psbt = signedPsbt;
-                }
-                return [await this.submitPsbt(psbt)];
+                return this._submitExecutionTransactions(
+                    Array.isArray(signedPsbt) ? signedPsbt : [signedPsbt],
+                    undefined,
+                    [SpvFromBTCSwapState.CREATED, SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED]
+                );
             }
         } as SwapExecutionActionSignPSBT;
     }
@@ -1338,13 +1364,11 @@ export class SpvFromBTCSwap<T extends ChainType>
             chain: this.chainIdentifier,
             txs: await this.prepareTransactions(this.txsClaim(actionOptions?.manualSettlementSmartChainSigner)),
             submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => {
-                const parsedTxs: T["SignedTXType"][] = [];
-                for(let tx of txs) {
-                    parsedTxs.push(typeof(tx)==="string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
-                }
-                const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
-                await this.waitTillClaimed(undefined, abortSignal);
-                return txIds;
+                return this._submitExecutionTransactions(
+                    txs,
+                    abortSignal,
+                    [SpvFromBTCSwapState.BTC_TX_CONFIRMED]
+                );
             },
             requiredSigner: signerAddress ?? this._getInitiator()
         } as SwapExecutionActionSignSmartChainTx<T>;

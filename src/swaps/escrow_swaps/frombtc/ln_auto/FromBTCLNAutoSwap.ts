@@ -1026,6 +1026,30 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
     }
 
     /**
+     * @inheritDoc
+     * @internal
+     */
+    async _submitExecutionTransactions(
+        txs: (T["SignedTXType"] | string)[],
+        abortSignal?: AbortSignal,
+        requiredStates?: FromBTCLNAutoSwapState[]
+    ): Promise<string[]> {
+        if(requiredStates!=null && !requiredStates.includes(this._state)) throw new Error("Swap state has changed before transactions were submitted!");
+
+        if(this._state===FromBTCLNAutoSwapState.CLAIM_COMMITED) {
+            const parsedTxs: T["SignedTXType"][] = [];
+            for(let tx of txs) {
+                parsedTxs.push(typeof(tx)==="string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
+            }
+            const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
+            await this.waitTillClaimed(undefined, abortSignal);
+            return txIds;
+        }
+
+        throw new Error("Invalid swap state for transaction submission!");
+    }
+
+    /**
      * @internal
      */
     private async _buildClaimSmartChainTxAction(actionOptions?: {
@@ -1042,13 +1066,11 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
             chain: this.chainIdentifier,
             txs: await this.prepareTransactions(this.txsClaim(actionOptions?.manualSettlementSmartChainSigner, actionOptions?.secret)),
             submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => {
-                const parsedTxs: T["SignedTXType"][] = [];
-                for(let tx of txs) {
-                    parsedTxs.push(typeof(tx)==="string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
-                }
-                const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
-                await this.waitTillClaimed(undefined, abortSignal, actionOptions?.secret);
-                return txIds;
+                return this._submitExecutionTransactions(
+                    txs,
+                    abortSignal,
+                    [FromBTCLNAutoSwapState.CLAIM_COMMITED]
+                );
             },
             requiredSigner: signerAddress ?? this._getInitiator()
         } as SwapExecutionActionSignSmartChainTx<T>;

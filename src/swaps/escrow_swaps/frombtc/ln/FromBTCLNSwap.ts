@@ -824,6 +824,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
     /**
      * @inheritDoc
      */
+    // TODO: Figure how we gonna trigger an LNURL-withdraw with the execution actions
     async getExecutionStatus(options?: {
         skipBuildingAction?: boolean,
         skipChecks?: boolean,

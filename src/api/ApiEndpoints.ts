@@ -94,6 +94,11 @@ export type ListSwapOutput = SwapOutputBase & {
 export type GetSwapStatusOutput = ListSwapOutput & {
     currentAction: SerializedAction<SwapExecutionAction> | null;
     requiresSecretReveal?: boolean;
+
+    escrow?: {
+        data: any,
+        initTxId?: string
+    }
 }
 
 /**

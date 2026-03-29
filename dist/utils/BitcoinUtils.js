@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.parsePsbtTransaction = exports.toCoinselectAddressType = exports.toOutputScript = exports.fromOutputScript = void 0;
+exports.getSenderAddress = exports.getVoutIndex = exports.parsePsbtTransaction = exports.toCoinselectAddressType = exports.toOutputScript = exports.fromOutputScript = void 0;
 const utils_1 = require("@scure/btc-signer/utils");
 const buffer_1 = require("buffer");
 const btc_signer_1 = require("@scure/btc-signer");
@@ -100,3 +100,36 @@ function parsePsbtTransaction(_psbt) {
     }
 }
 exports.parsePsbtTransaction = parsePsbtTransaction;
+function getVoutIndex(psbt, network, address, amount) {
+    const script = toOutputScript(network, address);
+    for (let i = 0; i < psbt.outputsLength; i++) {
+        const output = psbt.getOutput(i);
+        if (output.amount === amount &&
+            output.script != null &&
+            script.equals(buffer_1.Buffer.from(output.script))) {
+            return i;
+        }
+    }
+}
+exports.getVoutIndex = getVoutIndex;
+function getSenderAddress(psbt, network, inputIndex = 0) {
+    if (psbt.inputsLength <= inputIndex)
+        return undefined;
+    const input = psbt.getInput(inputIndex);
+    let script;
+    if (input.witnessUtxo?.script != null) {
+        script = input.witnessUtxo.script;
+    }
+    else if (input.nonWitnessUtxo != null && input.index != null) {
+        script = input.nonWitnessUtxo.outputs[input.index]?.script;
+    }
+    if (script == null)
+        return undefined;
+    try {
+        return (0, btc_signer_1.Address)(network).encode(btc_signer_1.OutScript.decode(script));
+    }
+    catch (e) {
+        return buffer_1.Buffer.from(script).toString("hex");
+    }
+}
+exports.getSenderAddress = getSenderAddress;

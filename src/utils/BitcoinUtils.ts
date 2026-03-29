@@ -89,3 +89,35 @@ export function parsePsbtTransaction(_psbt: Transaction | string): Transaction {
     }
 }
 
+export function getVoutIndex(psbt: Transaction, network: BTC_NETWORK, address: string, amount: bigint): number | undefined {
+    const script = toOutputScript(network, address);
+    for(let i=0;i<psbt.outputsLength;i++) {
+        const output = psbt.getOutput(i);
+        if(
+            output.amount===amount &&
+            output.script!=null &&
+            script.equals(Buffer.from(output.script))
+        ) {
+            return i;
+        }
+    }
+}
+
+export function getSenderAddress(psbt: Transaction, network: BTC_NETWORK, inputIndex: number = 0): string | undefined {
+    if(psbt.inputsLength<=inputIndex) return undefined;
+
+    const input = psbt.getInput(inputIndex);
+    let script: Uint8Array | undefined;
+    if(input.witnessUtxo?.script!=null) {
+        script = input.witnessUtxo.script as Uint8Array;
+    } else if(input.nonWitnessUtxo!=null && input.index!=null) {
+        script = input.nonWitnessUtxo.outputs[input.index]?.script;
+    }
+    if(script==null) return undefined;
+
+    try {
+        return Address(network).encode(OutScript.decode(script));
+    } catch (e) {
+        return Buffer.from(script).toString("hex");
+    }
+}

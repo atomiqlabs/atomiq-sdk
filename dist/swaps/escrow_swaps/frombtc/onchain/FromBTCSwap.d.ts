@@ -444,6 +444,7 @@ export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromB
      * @internal
      */
     _sync(save?: boolean, quoteDefinitelyExpired?: boolean, commitStatus?: SwapCommitState): Promise<boolean>;
+    private btcTxLastChecked?;
     /**
      * @inheritDoc
      * @internal

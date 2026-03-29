@@ -601,6 +601,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
      * @internal
      */
     _setBitcoinTxId(txId: string): Promise<void>;
+    private btcTxLastChecked?;
     /**
      * @internal
      */

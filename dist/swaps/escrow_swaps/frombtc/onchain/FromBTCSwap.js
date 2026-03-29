@@ -1045,6 +1045,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
                 }
                 if (this.address == null)
                     return save;
+                this.btcTxLastChecked = Date.now();
                 const res = await this.getBitcoinPayment();
                 if (res != null) {
                     if (this.txId !== res.txId) {
@@ -1086,10 +1087,11 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
                     return true;
                 }
             case FromBTCSwapState.EXPIRED:
-                //Check if bitcoin payment was received every 2 minutes
-                if (Math.floor(Date.now() / 1000) % 120 === 0) {
+                //Check if bitcoin payment was received at least every 2 minutes
+                if (this.btcTxLastChecked == null || Date.now() - this.btcTxLastChecked > 120000) {
                     if (this.address != null)
                         try {
+                            this.btcTxLastChecked = Date.now();
                             const res = await this.getBitcoinPayment();
                             if (res != null) {
                                 let shouldSave = false;

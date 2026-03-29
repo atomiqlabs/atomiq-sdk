@@ -1571,6 +1571,8 @@ export class SpvFromBTCSwap<T extends ChainType>
         this._senderAddress = btcTx.inputAddresses[1];
     }
 
+    private btcTxLastChecked?: number;
+
     /**
      * @internal
      */
@@ -1578,6 +1580,7 @@ export class SpvFromBTCSwap<T extends ChainType>
         if(this._data?.btcTx==null) return false;
 
         //Check if bitcoin payment was confirmed
+        this.btcTxLastChecked = Date.now();
         const res = await this.getBitcoinPayment();
         if(res==null) {
             //Check inputs double-spent
@@ -1724,7 +1727,7 @@ export class SpvFromBTCSwap<T extends ChainType>
             }
         }
 
-        if(Math.floor(Date.now()/1000)%120===0) {
+        if(this.btcTxLastChecked==null || Date.now() - this.btcTxLastChecked > 120_000) {
             if (
                 this._state === SpvFromBTCSwapState.POSTED ||
                 this._state === SpvFromBTCSwapState.BROADCASTED

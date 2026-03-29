@@ -1244,6 +1244,7 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
         if (this._data?.btcTx == null)
             return false;
         //Check if bitcoin payment was confirmed
+        this.btcTxLastChecked = Date.now();
         const res = await this.getBitcoinPayment();
         if (res == null) {
             //Check inputs double-spent
@@ -1379,7 +1380,7 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
                 return true;
             }
         }
-        if (Math.floor(Date.now() / 1000) % 120 === 0) {
+        if (this.btcTxLastChecked == null || Date.now() - this.btcTxLastChecked > 120000) {
             if (this._state === SpvFromBTCSwapState.POSTED ||
                 this._state === SpvFromBTCSwapState.BROADCASTED) {
                 try {

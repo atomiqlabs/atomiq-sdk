@@ -1479,6 +1479,9 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         dst: string |  LNURLPay | LightningInvoiceCreateService,
         options?: FromBTCLNOptions | SpvFromBTCOptions | FromBTCOptions | ToBTCOptions | (ToBTCLNOptions & {comment?: string}) | FromBTCLNAutoOptions
     ): Promise<ISwap<T[C]>> {
+        if(typeof(src)==="string") src = this.Utils.stripAddress(src);
+        if(typeof(dst)==="string") dst = this.Utils.stripAddress(dst);
+
         const srcToken = typeof(_srcToken)==="string" ? this.getToken(_srcToken) as Token<C> : _srcToken;
         const dstToken = typeof(_dstToken)==="string" ? this.getToken(_dstToken) as Token<C> : _dstToken;
         const amount = _amount==null ? null : (typeof(_amount)==="bigint" ? _amount : fromDecimal(_amount, exactIn ? srcToken.decimals : dstToken.decimals));

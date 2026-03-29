@@ -101,6 +101,14 @@ export declare class SwapperUtils<T extends MultiChain> {
         amount?: TokenAmount;
     } | null;
     /**
+     * Strips the URL encoding around `bitcoin:` and `lightning:` addresses, leaving just the raw address
+     *
+     * @param addressString Address to strip
+     *
+     * @returns Raw clean address
+     */
+    stripAddress(addressString: string): string;
+    /**
      * Returns a random PSBT that can be used for fee estimation for SPV vault (UTXO-controlled vault) based swaps
      *  {@link SwapType.SPV_VAULT_FROM_BTC}, the last output (the LP output) is omitted to allow for coinselection
      *  algorithm to determine maximum sendable amount there

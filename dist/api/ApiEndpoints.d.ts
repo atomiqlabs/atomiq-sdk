@@ -32,7 +32,7 @@ export type CreateSwapInput = {
     dstToken: string;
     amount: bigint;
     amountType: "EXACT_IN" | "EXACT_OUT";
-    srcAddress: string;
+    srcAddress?: string;
     dstAddress: string;
     gasAmount?: bigint;
     paymentHash?: string;

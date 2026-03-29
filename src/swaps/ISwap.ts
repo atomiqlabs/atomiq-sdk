@@ -583,6 +583,24 @@ export abstract class ISwap<
         stateInfo: SwapStateInfo<S>
     }>;
 
+    /**
+     * Submits signed transactions obtained from the execution action back to the swap.
+     *
+     * @remarks This endpoint will also wait till the submitted transactions are confirmed (on a smart-chain side)
+     *  and till the swap state change is observed from the authoritative chain/intermediary state.
+     *
+     *  If invalid transactions are submitted, i.e. sending a simple noop or transfer transaction instead of the
+     *  expected tx, this call may wait indefinitely unless aborted via the AbortSignal.
+     *
+     * @param txs Signed transactions
+     * @param abortSignal Abort signal
+     * @param requiredStates Optional list of states that the swap has to be in for the transactions to be
+     *  submitted, else throws
+     *
+     * @internal
+     */
+    abstract _submitExecutionTransactions(txs: (T["SignedTXType"] | string | any)[], abortSignal?: AbortSignal, requiredStates?: S[]): Promise<string[]>;
+
     //////////////////////////////
     //// Amounts & fees
 

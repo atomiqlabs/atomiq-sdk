@@ -493,6 +493,11 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
         state: number;
     }>;
     /**
+     * @inheritDoc
+     * @internal
+     */
+    _submitExecutionTransactions(txs: (T["SignedTXType"] | Transaction | string)[], abortSignal?: AbortSignal, requiredStates?: SpvFromBTCSwapState[]): Promise<string[]>;
+    /**
      * @internal
      */
     private _buildDepositPsbtAction;

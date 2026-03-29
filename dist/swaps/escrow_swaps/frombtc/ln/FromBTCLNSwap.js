@@ -605,6 +605,36 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
         };
     }
     /**
+     * @inheritDoc
+     * @internal
+     */
+    async _submitExecutionTransactions(txs, abortSignal, requiredStates) {
+        if (requiredStates != null && !requiredStates.includes(this._state))
+            throw new Error("Swap state has changed before transactions were submitted!");
+        if (this._state === FromBTCLNSwapState.PR_PAID || this._state === FromBTCLNSwapState.QUOTE_SOFT_EXPIRED) {
+            if (!await this._verifyQuoteValid())
+                throw new Error("Quote is already expired!");
+            const parsedTxs = [];
+            for (let tx of txs) {
+                parsedTxs.push(typeof (tx) === "string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
+            }
+            const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
+            await this.waitTillCommited(abortSignal);
+            await this.waitTillClaimed(undefined, abortSignal);
+            return txIds;
+        }
+        if (this._state === FromBTCLNSwapState.CLAIM_COMMITED) {
+            const parsedTxs = [];
+            for (let tx of txs) {
+                parsedTxs.push(typeof (tx) === "string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
+            }
+            const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
+            await this.waitTillClaimed(undefined, abortSignal);
+            return txIds;
+        }
+        throw new Error("Invalid swap state for transaction submission!");
+    }
+    /**
      * @internal
      */
     async _buildClaimSmartChainTxAction(actionOptions) {
@@ -615,14 +645,11 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             chain: this.chainIdentifier,
             txs: await this.prepareTransactions(this.txsCommitAndClaim(actionOptions?.skipChecks, actionOptions?.secret)),
             submitTransactions: async (txs, abortSignal) => {
-                const parsedTxs = [];
-                for (let tx of txs) {
-                    parsedTxs.push(typeof (tx) === "string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
-                }
-                const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
-                await this.waitTillCommited(abortSignal);
-                await this.waitTillClaimed(undefined, abortSignal);
-                return txIds;
+                return this._submitExecutionTransactions(txs, abortSignal, [
+                    FromBTCLNSwapState.PR_PAID,
+                    FromBTCLNSwapState.QUOTE_SOFT_EXPIRED,
+                    FromBTCLNSwapState.CLAIM_COMMITED
+                ]);
             },
             requiredSigner: this._getInitiator()
         };

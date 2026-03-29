@@ -225,6 +225,11 @@ export declare class LnForGasSwap<T extends ChainType = ChainType> extends ISwap
     }>;
     /**
      * @internal
+     * @inheritDoc
+     */
+    _submitExecutionTransactions(): Promise<string[]>;
+    /**
+     * @internal
      */
     private _buildLightningPaymentAction;
     /**

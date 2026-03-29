@@ -1101,6 +1101,7 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
     /**
      * @inheritDoc
      */
+    // TODO: Figure how we gonna trigger an LNURL-withdraw with the execution actions
     async getExecutionStatus(options?: {
         skipBuildingAction?: boolean,
         manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"],

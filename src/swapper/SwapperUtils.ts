@@ -338,6 +338,22 @@ export class SwapperUtils<T extends MultiChain> {
     }
 
     /**
+     * Strips the URL encoding around `bitcoin:` and `lightning:` addresses, leaving just the raw address
+     *
+     * @param addressString Address to strip
+     *
+     * @returns Raw clean address
+     */
+    stripAddress(addressString: string): string {
+        if(addressString.startsWith("lightning:") || addressString.startsWith("bitcoin:")) {
+            addressString = addressString.substring(addressString.indexOf(":")+1);
+            const delimeterIndex = addressString.indexOf("?");
+            if(delimeterIndex!==-1) addressString = addressString.substring(0, delimeterIndex);
+        }
+        return addressString;
+    }
+
+    /**
      * Returns a random PSBT that can be used for fee estimation for SPV vault (UTXO-controlled vault) based swaps
      *  {@link SwapType.SPV_VAULT_FROM_BTC}, the last output (the LP output) is omitted to allow for coinselection
      *  algorithm to determine maximum sendable amount there

@@ -1,5 +1,5 @@
 import { ISwap, ISwapInit } from "../ISwap";
-import { ChainType, SpvWithdrawalClaimedState, SpvWithdrawalClosedState, SpvWithdrawalFrontedState } from "@atomiqlabs/base";
+import { BtcTx, ChainType, SpvWithdrawalClaimedState, SpvWithdrawalClosedState, SpvWithdrawalFrontedState } from "@atomiqlabs/base";
 import { SwapType } from "../../enums/SwapType";
 import { SpvFromBTCTypeDefinition, SpvFromBTCWrapper } from "./SpvFromBTCWrapper";
 import { Transaction } from "@scure/btc-signer";
@@ -565,6 +565,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
         txId: string;
         confirmations: number;
         targetConfirmations: number;
+        btcTx: BtcTx;
         inputAddresses?: string[];
     } | null>;
     /**

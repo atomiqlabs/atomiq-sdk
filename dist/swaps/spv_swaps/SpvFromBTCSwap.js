@@ -853,8 +853,8 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
                     if (bitcoinPayment.confirmations >= bitcoinPayment.targetConfirmations) {
                         knownBitcoinPaymentStatus = "confirmed";
                     }
-                    else if (this._data != null) {
-                        const result = await this.wrapper._btcRpc.getConfirmationDelay(this._data?.btcTx, bitcoinPayment.targetConfirmations);
+                    else {
+                        const result = await this.wrapper._btcRpc.getConfirmationDelay(bitcoinPayment.btcTx, bitcoinPayment.targetConfirmations);
                         confirmations = {
                             current: bitcoinPayment.confirmations,
                             target: bitcoinPayment.targetConfirmations,
@@ -1082,6 +1082,7 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
             txId: result.txid,
             confirmations: result.confirmations ?? 0,
             targetConfirmations: this.vaultRequiredConfirmations,
+            btcTx: result,
             inputAddresses: result.inputAddresses
         };
     }

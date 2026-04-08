@@ -1,5 +1,6 @@
 import {isISwapInit, ISwap, ISwapInit} from "../ISwap";
 import {
+    BtcTx,
     BtcTxWithBlockheight,
     ChainType,
     isAbstractSigner,
@@ -1152,9 +1153,9 @@ export class SpvFromBTCSwap<T extends ChainType>
                 if(bitcoinPayment!=null) {
                     if(bitcoinPayment.confirmations >= bitcoinPayment.targetConfirmations) {
                         knownBitcoinPaymentStatus = "confirmed";
-                    } else if(this._data!=null) {
+                    } else {
                         const result = await this.wrapper._btcRpc.getConfirmationDelay(
-                            this._data?.btcTx,
+                            bitcoinPayment.btcTx,
                             bitcoinPayment.targetConfirmations
                         );
                         confirmations = {
@@ -1454,6 +1455,7 @@ export class SpvFromBTCSwap<T extends ChainType>
         txId: string,
         confirmations: number,
         targetConfirmations: number,
+        btcTx: BtcTx,
         inputAddresses?: string[]
     } | null> {
         if(this._data?.btcTx?.txid==null) return null;
@@ -1465,6 +1467,7 @@ export class SpvFromBTCSwap<T extends ChainType>
             txId: result.txid,
             confirmations: result.confirmations ?? 0,
             targetConfirmations: this.vaultRequiredConfirmations,
+            btcTx: result,
             inputAddresses: result.inputAddresses
         }
     }

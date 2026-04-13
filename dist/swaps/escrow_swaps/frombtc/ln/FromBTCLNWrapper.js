@@ -236,7 +236,6 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
                             secret: secret?.toString("hex"),
                             exactIn: amountData.exactIn ?? true
                         });
-                        await quote._save();
                         return quote;
                     }
                     catch (e) {

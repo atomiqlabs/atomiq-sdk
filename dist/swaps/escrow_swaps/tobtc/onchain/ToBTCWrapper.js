@@ -225,7 +225,6 @@ class ToBTCWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                             requiredConfirmations: _options.confirmations,
                             nonce
                         });
-                        await quote._save();
                         return quote;
                     }
                     catch (e) {

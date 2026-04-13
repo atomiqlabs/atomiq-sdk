@@ -330,7 +330,6 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
                             exactIn: amountData.exactIn ?? true,
                             requiredConfirmations: resp.confirmations
                         });
-                        await quote._save();
                         return quote;
                     }
                     catch (e) {

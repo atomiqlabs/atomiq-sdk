@@ -76,7 +76,6 @@ class LnForGasWrapper extends ISwapWrapper_1.ISwapWrapper {
             exactIn: false
         };
         const quote = new LnForGasSwap_1.LnForGasSwap(this, quoteInit);
-        await quote._save();
         return quote;
     }
 }

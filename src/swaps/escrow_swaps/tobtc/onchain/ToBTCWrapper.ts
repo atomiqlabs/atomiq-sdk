@@ -325,7 +325,6 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
                             requiredConfirmations: _options.confirmations,
                             nonce
                         } as ToBTCSwapInit<T["Data"]>);
-                        await quote._save();
                         return quote;
                     } catch (e) {
                         abortController.abort(e);

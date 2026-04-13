@@ -203,7 +203,6 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                 pr,
                 exactIn: false
             });
-            await quote._save();
             return quote;
         }
         catch (e) {
@@ -353,7 +352,6 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                 pr: invoice,
                 exactIn: true
             });
-            await quote._save();
             return quote;
         }
         catch (e) {

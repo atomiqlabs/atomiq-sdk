@@ -362,7 +362,6 @@ export class FromBTCLNWrapper<
                             secret: secret?.toString("hex"),
                             exactIn: amountData.exactIn ?? true
                         } as FromBTCLNSwapInit<T["Data"]>);
-                        await quote._save();
                         return quote;
                     } catch (e) {
                         abortController.abort(e);

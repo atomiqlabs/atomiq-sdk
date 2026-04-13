@@ -709,7 +709,6 @@ export class SpvFromBTCWrapper<
                             )
                         };
                         const quote = new SpvFromBTCSwap<T>(this, swapInit);
-                        await quote._save();
                         return quote;
                     } catch (e) {
                         abortController.abort(e);

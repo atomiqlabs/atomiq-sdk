@@ -1322,13 +1322,15 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
      * @param trustedIntermediaryOrUrl  URL or Intermediary object of the trusted intermediary to use, otherwise uses default
      * @throws {Error} If no trusted intermediary specified
      */
-    createTrustedLNForGasSwap<C extends ChainIds<T>>(chainIdentifier: C, recipient: string, amount: bigint, trustedIntermediaryOrUrl?: Intermediary | string): Promise<LnForGasSwap<T[C]>> {
+    async createTrustedLNForGasSwap<C extends ChainIds<T>>(chainIdentifier: C, recipient: string, amount: bigint, trustedIntermediaryOrUrl?: Intermediary | string): Promise<LnForGasSwap<T[C]>> {
         if(this._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
         if(!this._chains[chainIdentifier].chainInterface.isValidAddress(recipient, true)) throw new Error("Invalid "+chainIdentifier+" address");
         recipient = this._chains[chainIdentifier].chainInterface.normalizeAddress(recipient);
         const useUrl = trustedIntermediaryOrUrl ?? this.defaultTrustedIntermediary ?? this.options.defaultTrustedIntermediaryUrl;
         if(useUrl==null) throw new Error("No trusted intermediary specified!");
-        return this._chains[chainIdentifier as C].wrappers[SwapType.TRUSTED_FROM_BTCLN].create(recipient, amount, useUrl);
+        const swap = await this._chains[chainIdentifier as C].wrappers[SwapType.TRUSTED_FROM_BTCLN].create(recipient, amount, useUrl);
+        await swap._save();
+        return swap;
     }
 
     /**
@@ -1341,7 +1343,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
      * @param trustedIntermediaryOrUrl URL or Intermediary object of the trusted intermediary to use, otherwise uses default
      * @throws {Error} If no trusted intermediary specified
      */
-    createTrustedOnchainForGasSwap<C extends ChainIds<T>>(
+    async createTrustedOnchainForGasSwap<C extends ChainIds<T>>(
         chainIdentifier: C, recipient: string,
         amount: bigint, refundAddress?: string,
         trustedIntermediaryOrUrl?: Intermediary | string
@@ -1351,7 +1353,9 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         recipient = this._chains[chainIdentifier].chainInterface.normalizeAddress(recipient);
         const useUrl = trustedIntermediaryOrUrl ?? this.defaultTrustedIntermediary ?? this.options.defaultTrustedIntermediaryUrl;
         if(useUrl==null) throw new Error("No trusted intermediary specified!");
-        return this._chains[chainIdentifier as C].wrappers[SwapType.TRUSTED_FROM_BTC].create(recipient, amount, useUrl, refundAddress);
+        const swap = await this._chains[chainIdentifier as C].wrappers[SwapType.TRUSTED_FROM_BTC].create(recipient, amount, useUrl, refundAddress);
+        await swap._save();
+        return swap;
     }
 
     /**

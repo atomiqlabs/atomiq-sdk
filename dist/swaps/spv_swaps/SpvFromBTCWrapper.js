@@ -507,7 +507,6 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
                             genesisSmartChainBlockHeight: await (0, Utils_1.throwIfUndefined)(finalizedBlockHeightPrefetchPromise, "Finalize block height promise failed!")
                         };
                         const quote = new SpvFromBTCSwap_1.SpvFromBTCSwap(this, swapInit);
-                        await quote._save();
                         return quote;
                     }
                     catch (e) {

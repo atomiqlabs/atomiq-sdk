@@ -512,7 +512,6 @@ export class FromBTCWrapper<
                             exactIn: amountData.exactIn ?? true,
                             requiredConfirmations: resp.confirmations
                         } as FromBTCSwapInit<T["Data"]>);
-                        await quote._save();
                         return quote;
                     } catch (e) {
                         abortController.abort(e);

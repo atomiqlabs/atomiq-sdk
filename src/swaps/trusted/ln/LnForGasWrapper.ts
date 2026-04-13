@@ -84,7 +84,6 @@ export class LnForGasWrapper<T extends ChainType> extends ISwapWrapper<T, LnForG
             exactIn: false
         };
         const quote = new LnForGasSwap(this, quoteInit);
-        await quote._save();
         return quote;
     }
 

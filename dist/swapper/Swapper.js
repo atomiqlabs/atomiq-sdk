@@ -720,7 +720,7 @@ class Swapper extends events_1.EventEmitter {
      * @param trustedIntermediaryOrUrl  URL or Intermediary object of the trusted intermediary to use, otherwise uses default
      * @throws {Error} If no trusted intermediary specified
      */
-    createTrustedLNForGasSwap(chainIdentifier, recipient, amount, trustedIntermediaryOrUrl) {
+    async createTrustedLNForGasSwap(chainIdentifier, recipient, amount, trustedIntermediaryOrUrl) {
         if (this._chains[chainIdentifier] == null)
             throw new Error("Invalid chain identifier! Unknown chain: " + chainIdentifier);
         if (!this._chains[chainIdentifier].chainInterface.isValidAddress(recipient, true))
@@ -729,7 +729,9 @@ class Swapper extends events_1.EventEmitter {
         const useUrl = trustedIntermediaryOrUrl ?? this.defaultTrustedIntermediary ?? this.options.defaultTrustedIntermediaryUrl;
         if (useUrl == null)
             throw new Error("No trusted intermediary specified!");
-        return this._chains[chainIdentifier].wrappers[SwapType_1.SwapType.TRUSTED_FROM_BTCLN].create(recipient, amount, useUrl);
+        const swap = await this._chains[chainIdentifier].wrappers[SwapType_1.SwapType.TRUSTED_FROM_BTCLN].create(recipient, amount, useUrl);
+        await swap._save();
+        return swap;
     }
     /**
      * Creates a trusted Bitcoin -> Smart chain ({@link SwapType.TRUSTED_FROM_BTC}) gas swap
@@ -741,7 +743,7 @@ class Swapper extends events_1.EventEmitter {
      * @param trustedIntermediaryOrUrl URL or Intermediary object of the trusted intermediary to use, otherwise uses default
      * @throws {Error} If no trusted intermediary specified
      */
-    createTrustedOnchainForGasSwap(chainIdentifier, recipient, amount, refundAddress, trustedIntermediaryOrUrl) {
+    async createTrustedOnchainForGasSwap(chainIdentifier, recipient, amount, refundAddress, trustedIntermediaryOrUrl) {
         if (this._chains[chainIdentifier] == null)
             throw new Error("Invalid chain identifier! Unknown chain: " + chainIdentifier);
         if (!this._chains[chainIdentifier].chainInterface.isValidAddress(recipient, true))
@@ -750,7 +752,9 @@ class Swapper extends events_1.EventEmitter {
         const useUrl = trustedIntermediaryOrUrl ?? this.defaultTrustedIntermediary ?? this.options.defaultTrustedIntermediaryUrl;
         if (useUrl == null)
             throw new Error("No trusted intermediary specified!");
-        return this._chains[chainIdentifier].wrappers[SwapType_1.SwapType.TRUSTED_FROM_BTC].create(recipient, amount, useUrl, refundAddress);
+        const swap = await this._chains[chainIdentifier].wrappers[SwapType_1.SwapType.TRUSTED_FROM_BTC].create(recipient, amount, useUrl, refundAddress);
+        await swap._save();
+        return swap;
     }
     /**
      * Creates a swap from srcToken to dstToken, of a specific token amount, either specifying input amount (exactIn=true)

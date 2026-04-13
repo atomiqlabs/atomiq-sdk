@@ -341,7 +341,6 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
                 pr,
                 exactIn: false
             } as IToBTCSwapInit<T["Data"]>);
-            await quote._save();
             return quote;
         } catch (e) {
             abortController.abort(e);
@@ -545,7 +544,6 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
                 pr: invoice,
                 exactIn: true
             } as IToBTCSwapInit<T["Data"]>);
-            await quote._save();
             return quote;
         } catch (e) {
             abortController.abort(e);

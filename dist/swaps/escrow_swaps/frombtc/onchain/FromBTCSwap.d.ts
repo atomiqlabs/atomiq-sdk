@@ -191,7 +191,7 @@ export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromB
      * @inheritDoc
      * @internal
      */
-    protected canCommit(): boolean;
+    protected canCommit(skipQuoteExpiryChecks?: boolean): boolean;
     /**
      * @inheritDoc
      */

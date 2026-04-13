@@ -593,7 +593,7 @@ export abstract class IToBTCSwap<
      * @throws {Error} When in invalid state (not {@link ToBTCSwapState.CREATED})
      */
     async txsCommit(skipChecks?: boolean): Promise<T["TX"][]> {
-        if(this._state!==ToBTCSwapState.CREATED) throw new Error("Must be in CREATED state!");
+        if(this._state!==ToBTCSwapState.CREATED && (!skipChecks || this._state!==ToBTCSwapState.QUOTE_SOFT_EXPIRED)) throw new Error("Must be in CREATED state!");
         if(this.signatureData==null) throw new Error("Init signature data not known, cannot commit!");
 
         if(!this.initiated) {

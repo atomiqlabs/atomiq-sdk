@@ -71,7 +71,7 @@ export abstract class IFromBTCSelfInitSwap<
      * Returns if the swap can be committed
      * @internal
      */
-    protected abstract canCommit(): boolean;
+    protected abstract canCommit(skipQuoteExpiryChecks?: boolean): boolean;
 
     /**
      * @inheritDoc
@@ -239,7 +239,7 @@ export abstract class IFromBTCSelfInitSwap<
      * @throws {Error} When in invalid state to commit the swap
      */
     async txsCommit(skipChecks?: boolean): Promise<T["TX"][]> {
-        if(!this.canCommit()) throw new Error("Must be in CREATED state!");
+        if(!this.canCommit(skipChecks)) throw new Error("Must be in CREATED state!");
         if(this._data==null || this.signatureData==null) throw new Error("data or signature data is null, invalid state?");
 
         if(!this.initiated) {

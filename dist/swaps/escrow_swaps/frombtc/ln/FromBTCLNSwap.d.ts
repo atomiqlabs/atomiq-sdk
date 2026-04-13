@@ -152,7 +152,7 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
      * @inheritDoc
      * @internal
      */
-    protected canCommit(): boolean;
+    protected canCommit(skipQuoteExpiryChecks?: boolean): boolean;
     /**
      * @inheritDoc
      */

@@ -166,7 +166,7 @@ class IFromBTCSelfInitSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
      * @throws {Error} When in invalid state to commit the swap
      */
     async txsCommit(skipChecks) {
-        if (!this.canCommit())
+        if (!this.canCommit(skipChecks))
             throw new Error("Must be in CREATED state!");
         if (this._data == null || this.signatureData == null)
             throw new Error("data or signature data is null, invalid state?");

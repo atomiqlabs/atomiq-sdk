@@ -260,8 +260,8 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
      * @inheritDoc
      * @internal
      */
-    canCommit() {
-        if (this._state !== FromBTCSwapState.PR_CREATED)
+    canCommit(skipQuoteExpiryChecks) {
+        if (this._state !== FromBTCSwapState.PR_CREATED && (!skipQuoteExpiryChecks || this._state !== FromBTCSwapState.QUOTE_SOFT_EXPIRED))
             return false;
         if (this.requiredConfirmations == null)
             return false;
@@ -742,7 +742,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             return Promise.resolve();
         });
         this._commitTxId = result[result.length - 1];
-        if (this._state === FromBTCSwapState.PR_CREATED || this._state === FromBTCSwapState.QUOTE_SOFT_EXPIRED) {
+        if (this._state === FromBTCSwapState.PR_CREATED || this._state === FromBTCSwapState.QUOTE_SOFT_EXPIRED || this._state === FromBTCSwapState.QUOTE_EXPIRED) {
             await this._saveAndEmit(FromBTCSwapState.CLAIM_COMMITED);
         }
         return this._commitTxId;

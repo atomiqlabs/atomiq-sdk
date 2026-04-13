@@ -282,8 +282,8 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
      * @inheritDoc
      * @internal
      */
-    protected canCommit(): boolean {
-        return this._state===FromBTCLNSwapState.PR_PAID;
+    protected canCommit(skipQuoteExpiryChecks?: boolean): boolean {
+        return this._state===FromBTCLNSwapState.PR_PAID || (!!skipQuoteExpiryChecks && this._state===FromBTCLNSwapState.QUOTE_SOFT_EXPIRED);
     }
 
     /**
@@ -899,7 +899,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
         );
 
         this._commitTxId = result[result.length-1];
-        if(this._state===FromBTCLNSwapState.PR_PAID || this._state===FromBTCLNSwapState.QUOTE_SOFT_EXPIRED) {
+        if(this._state===FromBTCLNSwapState.PR_PAID || this._state===FromBTCLNSwapState.QUOTE_SOFT_EXPIRED || this._state===FromBTCLNSwapState.QUOTE_EXPIRED) {
             await this._saveAndEmit(FromBTCLNSwapState.CLAIM_COMMITED);
         }
         return this._commitTxId;

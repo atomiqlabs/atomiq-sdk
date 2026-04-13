@@ -42,7 +42,7 @@ export declare abstract class IFromBTCSelfInitSwap<T extends ChainType = ChainTy
      * Returns if the swap can be committed
      * @internal
      */
-    protected abstract canCommit(): boolean;
+    protected abstract canCommit(skipQuoteExpiryChecks?: boolean): boolean;
     /**
      * @inheritDoc
      * @internal

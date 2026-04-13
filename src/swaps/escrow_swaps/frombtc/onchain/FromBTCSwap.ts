@@ -333,8 +333,8 @@ export class FromBTCSwap<T extends ChainType = ChainType>
      * @inheritDoc
      * @internal
      */
-    protected canCommit(): boolean {
-        if(this._state!==FromBTCSwapState.PR_CREATED) return false;
+    protected canCommit(skipQuoteExpiryChecks?: boolean): boolean {
+        if(this._state!==FromBTCSwapState.PR_CREATED && (!skipQuoteExpiryChecks || this._state!==FromBTCSwapState.QUOTE_SOFT_EXPIRED)) return false;
         if(this.requiredConfirmations==null) return false;
         const expiry = this.wrapper._getOnchainSendTimeout(this._data, this.requiredConfirmations);
         const currentTimestamp = BigInt(Math.floor(Date.now()/1000));
@@ -900,7 +900,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
         );
 
         this._commitTxId = result[result.length - 1];
-        if(this._state===FromBTCSwapState.PR_CREATED || this._state===FromBTCSwapState.QUOTE_SOFT_EXPIRED) {
+        if(this._state===FromBTCSwapState.PR_CREATED || this._state===FromBTCSwapState.QUOTE_SOFT_EXPIRED || this._state===FromBTCSwapState.QUOTE_EXPIRED) {
             await this._saveAndEmit(FromBTCSwapState.CLAIM_COMMITED);
         }
         return this._commitTxId;

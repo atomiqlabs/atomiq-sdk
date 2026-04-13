@@ -50,6 +50,14 @@ class ISwap {
          */
         this._state = 0;
         /**
+         * Whether the swap is saved in the persistent storage or not.
+         *
+         * @remarks This field itself is not persisted but is instead derived during runtime
+         *
+         * @internal
+         */
+        this._persisted = false;
+        /**
          * Event emitter emitting `"swapState"` event when swap's state changes
          */
         this.events = new events_1.EventEmitter();

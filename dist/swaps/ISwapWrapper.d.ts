@@ -230,6 +230,8 @@ export declare abstract class ISwapWrapper<T extends ChainType, D extends SwapTy
     /**
      * Runs checks on all the known pending swaps, syncing their state from on-chain data
      *
+     * @remarks Doesn't work properly if you pass non-persisted swaps
+     *
      * @param pastSwaps Optional array of past swaps to check, otherwise all relevant swaps will be fetched
      *  from the persistent storage
      * @param noSave Whether to skip saving the swap changes in the persistent storage

@@ -112,6 +112,14 @@ export declare abstract class ISwap<T extends ChainType = ChainType, D extends S
      */
     _randomNonce: string;
     /**
+     * Whether the swap is saved in the persistent storage or not.
+     *
+     * @remarks This field itself is not persisted but is instead derived during runtime
+     *
+     * @internal
+     */
+    _persisted: boolean;
+    /**
      * Event emitter emitting `"swapState"` event when swap's state changes
      */
     readonly events: EventEmitter<{

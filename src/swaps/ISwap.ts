@@ -132,6 +132,14 @@ export abstract class ISwap<
      * @internal
      */
     _randomNonce: string;
+    /**
+     * Whether the swap is saved in the persistent storage or not.
+     *
+     * @remarks This field itself is not persisted but is instead derived during runtime
+     *
+     * @internal
+     */
+    _persisted: boolean = false;
 
 
     /**

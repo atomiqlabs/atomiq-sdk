@@ -402,6 +402,8 @@ export abstract class ISwapWrapper<
     /**
      * Runs checks on all the known pending swaps, syncing their state from on-chain data
      *
+     * @remarks Doesn't work properly if you pass non-persisted swaps
+     *
      * @param pastSwaps Optional array of past swaps to check, otherwise all relevant swaps will be fetched
      *  from the persistent storage
      * @param noSave Whether to skip saving the swap changes in the persistent storage
@@ -513,7 +515,7 @@ export abstract class ISwapWrapper<
      */
     _removeSwapData(swap: D["Swap"]): Promise<void> {
         this.pendingSwaps.delete(swap.getId());
-        if(!swap.isInitiated()) return Promise.resolve();
+        if(!swap._persisted) return Promise.resolve();
         return this.unifiedStorage.remove(swap);
     }
 

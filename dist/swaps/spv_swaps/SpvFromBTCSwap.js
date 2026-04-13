@@ -227,7 +227,7 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
      */
     upgradeVersion() {
         if (this.version === 1) {
-            this.posted = this.initiated;
+            this.posted = this.initiated && this._data != null;
             this.version = 2;
         }
     }

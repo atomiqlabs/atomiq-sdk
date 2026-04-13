@@ -113,6 +113,7 @@ export declare class SwapperFactory<T extends readonly ChainInitializer<any, Cha
      * Token resolvers for various smart chains supported by the SDK, allow fetching tokens based on their addresses
      */
     TokenResolver: TypedTokenResolvers<T>;
+    private smartChainTokens;
     constructor(initializers: T);
     /**
      * Returns a new swapper instance with the passed options.

@@ -82,22 +82,10 @@ class Swapper extends events_1.EventEmitter {
         this._tokens = {};
         this._tokensByTicker = {};
         for (let tokenData of tokens) {
-            for (let chainId in tokenData.chains) {
-                const chainData = tokenData.chains[chainId];
-                this._tokens[chainId] ??= {};
-                this._tokensByTicker[chainId] ??= {};
-                this._tokens[chainId][chainData.address] = this._tokensByTicker[chainId][tokenData.ticker] = {
-                    chain: "SC",
-                    chainId,
-                    ticker: tokenData.ticker,
-                    name: tokenData.name,
-                    decimals: chainData.decimals,
-                    displayDecimals: chainData.displayDecimals,
-                    address: chainData.address,
-                    equals: (other) => other.chainId === chainId && other.ticker === tokenData.ticker && other.address === chainData.address,
-                    toString: () => `${chainId}-${tokenData.ticker}`
-                };
-            }
+            const chainId = tokenData.chainId;
+            this._tokens[chainId] ??= {};
+            this._tokensByTicker[chainId] ??= {};
+            this._tokens[chainId][tokenData.address] = this._tokensByTicker[chainId][tokenData.ticker] = tokenData;
         }
         this.swapStateListener = (swap) => {
             this.emit("swapState", swap);

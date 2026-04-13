@@ -64,21 +64,26 @@ class SwapperFactory {
          * Token resolvers for various smart chains supported by the SDK, allow fetching tokens based on their addresses
          */
         this.TokenResolver = {};
+        this.smartChainTokens = [];
         this.initializers = initializers;
         initializers.forEach(initializer => {
             const addressMap = {};
             const tokens = (this.Tokens[initializer.chainId] = {});
             for (let ticker in initializer.tokens) {
                 const assetData = initializer.tokens[ticker];
-                tokens[ticker] = addressMap[assetData.address] = {
+                const token = {
                     chain: "SC",
                     chainId: initializer.chainId,
-                    address: assetData.address,
+                    ticker,
                     name: SmartChainAssets_1.SmartChainAssets[ticker]?.name ?? ticker,
                     decimals: assetData.decimals,
                     displayDecimals: assetData.displayDecimals,
-                    ticker
+                    address: assetData.address,
+                    equals: (other) => other.chainId === initializer.chainId && other.ticker === ticker && other.address === assetData.address,
+                    toString: () => `${initializer.chainId}-${ticker}`
                 };
+                this.smartChainTokens.push(token);
+                tokens[ticker] = addressMap[assetData.address] = token;
             }
             this.TokenResolver[initializer.chainId] = {
                 getToken: (address) => addressMap[address]
@@ -140,7 +145,7 @@ class SwapperFactory {
                 };
             }), options.getPriceFn)) :
             RedundantSwapPrice_1.RedundantSwapPrice.createFromTokenMap(options.pricingFeeDifferencePPM ?? 10000n, pricingAssets);
-        return new Swapper_1.Swapper(bitcoinRpc, bitcoinRpc, (btcRelay) => new btc_mempool_1.MempoolBtcRelaySynchronizer(btcRelay, bitcoinRpc), chains, swapPricing, pricingAssets, options.messenger, options);
+        return new Swapper_1.Swapper(bitcoinRpc, bitcoinRpc, (btcRelay) => new btc_mempool_1.MempoolBtcRelaySynchronizer(btcRelay, bitcoinRpc), chains, swapPricing, this.smartChainTokens, options.messenger, options);
     }
     /**
      * Returns a new and already initialized swapper instance with the passed options. There is no need

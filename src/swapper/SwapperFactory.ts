@@ -9,7 +9,7 @@ import {SmartChainAssets, SmartChainAssetTickers} from "../SmartChainAssets";
 import {NostrMessenger} from "@atomiqlabs/messenger-nostr";
 import {Swapper, SwapperOptions} from "./Swapper";
 import {CustomPriceProvider} from "../prices/providers/CustomPriceProvider";
-import {BitcoinTokens, BtcToken, SCToken} from "../types/Token";
+import {BitcoinTokens, BtcToken, SCToken, Token} from "../types/Token";
 import {SwapType} from "../enums/SwapType";
 import {SwapTypeMapping} from "../utils/SwapUtils";
 import {RedundantSwapPrice, RedundantSwapPriceAssets} from "../prices/RedundantSwapPrice";
@@ -191,6 +191,8 @@ export class SwapperFactory<T extends readonly ChainInitializer<any, ChainType, 
      */
     TokenResolver: TypedTokenResolvers<T> = {} as any;
 
+    private smartChainTokens: SCToken[] = [];
+
     constructor(readonly initializers: T) {
         this.initializers = initializers;
         initializers.forEach(initializer => {
@@ -200,15 +202,19 @@ export class SwapperFactory<T extends readonly ChainInitializer<any, ChainType, 
 
             for(let ticker in initializer.tokens) {
                 const assetData = initializer.tokens[ticker] as any;
-                tokens[ticker] = addressMap[assetData.address] = {
+                const token: SCToken = {
                     chain: "SC",
                     chainId: initializer.chainId,
-                    address: assetData.address,
+                    ticker,
                     name: SmartChainAssets[ticker as SmartChainAssetTickers]?.name ?? ticker,
                     decimals: assetData.decimals,
                     displayDecimals: assetData.displayDecimals,
-                    ticker
-                } as any;
+                    address: assetData.address,
+                    equals: (other: Token) => other.chainId===initializer.chainId && other.ticker===ticker && other.address===assetData.address,
+                    toString: () => `${initializer.chainId}-${ticker}`
+                };
+                this.smartChainTokens.push(token);
+                tokens[ticker] = addressMap[assetData.address] = token;
             }
 
             this.TokenResolver[initializer.chainId as keyof TypedTokenResolvers<T>] = {
@@ -280,7 +286,7 @@ export class SwapperFactory<T extends readonly ChainInitializer<any, ChainType, 
             (btcRelay: BtcRelay<any, any, any>) => new MempoolBtcRelaySynchronizer(btcRelay, bitcoinRpc),
             chains as any,
             swapPricing,
-            pricingAssets,
+            this.smartChainTokens,
             options.messenger,
             options
         );

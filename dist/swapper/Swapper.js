@@ -100,35 +100,42 @@ class Swapper extends events_1.EventEmitter {
             wrappers[SwapType_1.SwapType.TO_BTCLN] = new ToBTCLNWrapper_1.ToBTCLNWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, swapContract, pricing, this._tokens[chainId], chainData.swapDataConstructor, {
                 getRequestTimeout: this.options.getRequestTimeout,
                 postRequestTimeout: this.options.postRequestTimeout,
+                saveUninitializedSwaps: this.options.saveUninitializedSwaps,
             });
             wrappers[SwapType_1.SwapType.TO_BTC] = new ToBTCWrapper_1.ToBTCWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, swapContract, pricing, this._tokens[chainId], chainData.swapDataConstructor, this._bitcoinRpc, {
                 getRequestTimeout: this.options.getRequestTimeout,
                 postRequestTimeout: this.options.postRequestTimeout,
+                saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                 bitcoinNetwork: this._btcNetwork
             });
             wrappers[SwapType_1.SwapType.FROM_BTCLN] = new FromBTCLNWrapper_1.FromBTCLNWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, swapContract, pricing, this._tokens[chainId], chainData.swapDataConstructor, lightningApi, {
                 getRequestTimeout: this.options.getRequestTimeout,
                 postRequestTimeout: this.options.postRequestTimeout,
+                saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                 unsafeSkipLnNodeCheck: this.bitcoinNetwork === base_1.BitcoinNetwork.TESTNET4 || this.bitcoinNetwork === base_1.BitcoinNetwork.REGTEST
             });
             wrappers[SwapType_1.SwapType.FROM_BTC] = new FromBTCWrapper_1.FromBTCWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, swapContract, pricing, this._tokens[chainId], chainData.swapDataConstructor, btcRelay, synchronizer, this._bitcoinRpc, {
                 getRequestTimeout: this.options.getRequestTimeout,
                 postRequestTimeout: this.options.postRequestTimeout,
+                saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                 bitcoinNetwork: this._btcNetwork
             });
             wrappers[SwapType_1.SwapType.TRUSTED_FROM_BTCLN] = new LnForGasWrapper_1.LnForGasWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], {
                 getRequestTimeout: this.options.getRequestTimeout,
-                postRequestTimeout: this.options.postRequestTimeout
+                postRequestTimeout: this.options.postRequestTimeout,
+                saveUninitializedSwaps: this.options.saveUninitializedSwaps,
             });
             wrappers[SwapType_1.SwapType.TRUSTED_FROM_BTC] = new OnchainForGasWrapper_1.OnchainForGasWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], bitcoinRpc, {
                 getRequestTimeout: this.options.getRequestTimeout,
                 postRequestTimeout: this.options.postRequestTimeout,
+                saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                 bitcoinNetwork: this._btcNetwork
             });
             if (spvVaultContract != null) {
                 wrappers[SwapType_1.SwapType.SPV_VAULT_FROM_BTC] = new SpvFromBTCWrapper_1.SpvFromBTCWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, spvVaultContract, pricing, this._tokens[chainId], spvVaultWithdrawalDataConstructor, btcRelay, synchronizer, bitcoinRpc, {
                     getRequestTimeout: this.options.getRequestTimeout,
                     postRequestTimeout: this.options.postRequestTimeout,
+                    saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                     bitcoinNetwork: this._btcNetwork
                 });
             }
@@ -136,6 +143,7 @@ class Swapper extends events_1.EventEmitter {
                 wrappers[SwapType_1.SwapType.FROM_BTCLN_AUTO] = new FromBTCLNAutoWrapper_1.FromBTCLNAutoWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, swapContract, pricing, this._tokens[chainId], chainData.swapDataConstructor, lightningApi, this.messenger, {
                     getRequestTimeout: this.options.getRequestTimeout,
                     postRequestTimeout: this.options.postRequestTimeout,
+                    saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                     unsafeSkipLnNodeCheck: this.bitcoinNetwork === base_1.BitcoinNetwork.TESTNET4 || this.bitcoinNetwork === base_1.BitcoinNetwork.REGTEST
                 });
             }
@@ -434,10 +442,7 @@ class Swapper extends events_1.EventEmitter {
             if (swapLimitsChanged)
                 this.emit("swapLimitsChanged");
             const quote = quotes[0].quote;
-            if (this.options.saveUninitializedSwaps) {
-                quote._setInitiated();
-                await quote._save();
-            }
+            await quote._save();
             return quote;
         }
         catch (e) {

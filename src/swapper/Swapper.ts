@@ -383,6 +383,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 {
                     getRequestTimeout: this.options.getRequestTimeout,
                     postRequestTimeout: this.options.postRequestTimeout,
+                    saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                 }
             );
             wrappers[SwapType.TO_BTC] = new ToBTCWrapper<T[InputKey]>(
@@ -398,6 +399,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 {
                     getRequestTimeout: this.options.getRequestTimeout,
                     postRequestTimeout: this.options.postRequestTimeout,
+                    saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                     bitcoinNetwork: this._btcNetwork
                 }
             );
@@ -414,6 +416,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 {
                     getRequestTimeout: this.options.getRequestTimeout,
                     postRequestTimeout: this.options.postRequestTimeout,
+                    saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                     unsafeSkipLnNodeCheck: this.bitcoinNetwork===BitcoinNetwork.TESTNET4 || this.bitcoinNetwork===BitcoinNetwork.REGTEST
                 }
             );
@@ -432,6 +435,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 {
                     getRequestTimeout: this.options.getRequestTimeout,
                     postRequestTimeout: this.options.postRequestTimeout,
+                    saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                     bitcoinNetwork: this._btcNetwork
                 }
             );
@@ -444,7 +448,8 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 this._tokens[chainId],
                 {
                     getRequestTimeout: this.options.getRequestTimeout,
-                    postRequestTimeout: this.options.postRequestTimeout
+                    postRequestTimeout: this.options.postRequestTimeout,
+                    saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                 }
             );
             wrappers[SwapType.TRUSTED_FROM_BTC] = new OnchainForGasWrapper<T[InputKey]>(
@@ -458,6 +463,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 {
                     getRequestTimeout: this.options.getRequestTimeout,
                     postRequestTimeout: this.options.postRequestTimeout,
+                    saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                     bitcoinNetwork: this._btcNetwork
                 }
             );
@@ -478,6 +484,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                     {
                         getRequestTimeout: this.options.getRequestTimeout,
                         postRequestTimeout: this.options.postRequestTimeout,
+                        saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                         bitcoinNetwork: this._btcNetwork
                     }
                 );
@@ -498,6 +505,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                     {
                         getRequestTimeout: this.options.getRequestTimeout,
                         postRequestTimeout: this.options.postRequestTimeout,
+                        saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                         unsafeSkipLnNodeCheck: this.bitcoinNetwork===BitcoinNetwork.TESTNET4 || this.bitcoinNetwork===BitcoinNetwork.REGTEST
                     }
                 );
@@ -844,10 +852,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
             if(swapLimitsChanged) this.emit("swapLimitsChanged");
 
             const quote = quotes[0].quote;
-            if(this.options.saveUninitializedSwaps) {
-                quote._setInitiated();
-                await quote._save();
-            }
+            await quote._save();
             return quote;
         } catch (e) {
             if(swapLimitsChanged) this.emit("swapLimitsChanged");

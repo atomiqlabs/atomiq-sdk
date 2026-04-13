@@ -31,7 +31,11 @@ export type ISwapWrapperOptions = {
     /**
      * How many swaps to call `_sync()` for in parallel
      */
-    maxParallelSwapSyncs?: number
+    maxParallelSwapSyncs?: number,
+    /**
+     * Whether to save swaps that are not initialized into the persistent storage
+     */
+    saveUninitializedSwaps?: boolean
 };
 
 /**
@@ -496,12 +500,14 @@ export abstract class ISwapWrapper<
      * @internal
      */
     _saveSwapData(swap: D["Swap"]): Promise<void> {
-        if(!swap.isInitiated()) {
-            this.logger.debug("saveSwapData(): Swap "+swap.getId()+" not initiated, saving to pending swaps");
-            this.pendingSwaps.set(swap.getId(), new WeakRef<D["Swap"]>(swap));
-            return Promise.resolve();
-        } else {
-            this.pendingSwaps.delete(swap.getId());
+        if(!this._options.saveUninitializedSwaps) {
+            if(!swap.isInitiated()) {
+                this.logger.debug("saveSwapData(): Swap "+swap.getId()+" not initiated, saving to pending swaps");
+                this.pendingSwaps.set(swap.getId(), new WeakRef<D["Swap"]>(swap));
+                return Promise.resolve();
+            } else {
+                this.pendingSwaps.delete(swap.getId());
+            }
         }
         return this.unifiedStorage.save(swap);
     }

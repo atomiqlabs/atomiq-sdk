@@ -27,6 +27,10 @@ export type ISwapWrapperOptions = {
      * How many swaps to call `_sync()` for in parallel
      */
     maxParallelSwapSyncs?: number;
+    /**
+     * Whether to save swaps that are not initialized into the persistent storage
+     */
+    saveUninitializedSwaps?: boolean;
 };
 /**
  * Token configuration for wrapper constructors

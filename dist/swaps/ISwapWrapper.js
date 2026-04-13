@@ -314,13 +314,15 @@ class ISwapWrapper {
      * @internal
      */
     _saveSwapData(swap) {
-        if (!swap.isInitiated()) {
-            this.logger.debug("saveSwapData(): Swap " + swap.getId() + " not initiated, saving to pending swaps");
-            this.pendingSwaps.set(swap.getId(), new WeakRef(swap));
-            return Promise.resolve();
-        }
-        else {
-            this.pendingSwaps.delete(swap.getId());
+        if (!this._options.saveUninitializedSwaps) {
+            if (!swap.isInitiated()) {
+                this.logger.debug("saveSwapData(): Swap " + swap.getId() + " not initiated, saving to pending swaps");
+                this.pendingSwaps.set(swap.getId(), new WeakRef(swap));
+                return Promise.resolve();
+            }
+            else {
+                this.pendingSwaps.delete(swap.getId());
+            }
         }
         return this.unifiedStorage.save(swap);
     }

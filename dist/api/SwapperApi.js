@@ -9,6 +9,7 @@ const SwapType_1 = require("../enums/SwapType");
 const FromBTCLNSwap_1 = require("../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap");
 const FromBTCLNAutoSwap_1 = require("../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap");
 const IEscrowSwap_1 = require("../swaps/escrow_swaps/IEscrowSwap");
+const ToBTCLNSwap_1 = require("../swaps/escrow_swaps/tobtc/ln/ToBTCLNSwap");
 function requiresSecretRevealForApi(swap, state) {
     if (swap instanceof FromBTCLNSwap_1.FromBTCLNSwap) {
         if (swap.hasSecretPreimage())
@@ -47,10 +48,21 @@ function createSwapOutputBase(swap, steps, stateInfo) {
                     networkOutput: (0, ApiTypes_1.toApiAmount)(networkFeeEntry.fee.amountInSrcToken)
                 } : {})
             },
-            expiry: swap.getQuoteExpiry()
+            expiry: swap.getQuoteExpiry(),
+            outputAddress: swap.getOutputAddress() ?? undefined
         },
         createdAt: swap.createdAt,
-        steps
+        steps,
+        ...(swap instanceof ToBTCLNSwap_1.ToBTCLNSwap && swap.isLNURL() ? {
+            lnurl: {
+                pay: swap.getLNURL(),
+                successAction: swap.getSuccessAction() ?? undefined
+            }
+        } : (swap instanceof FromBTCLNSwap_1.FromBTCLNSwap || swap instanceof FromBTCLNAutoSwap_1.FromBTCLNAutoSwap) && swap.isLNURL() ? {
+            lnurl: {
+                withdraw: swap.getLNURL(),
+            }
+        } : {})
     };
 }
 function createListSwapOutput(swap, steps, stateInfo) {
@@ -146,6 +158,10 @@ class SwapperApi {
                     description: "Array of signed transaction data",
                     items: { type: "string", required: true, description: "Single string-serialized & signed transaction" }
                 }
+            }),
+            settleWithLnurl: (0, ApiTypes_1.createApiEndpoint)("POST", this.settleWithLnurl.bind(this), {
+                swapId: { type: "string", required: true, description: "The swap identifier" },
+                lnurlWithdraw: { type: "string", required: false, description: "LNURL-withdraw link to use to settle the Lightning network swap, if the swap was already created with the LNURL-withdraw link, this is optional" }
             })
         };
     }
@@ -344,6 +360,47 @@ class SwapperApi {
         }
         return {
             txHashes: await swap._submitExecutionTransactions(input.signedTxs)
+        };
+    }
+    async settleWithLnurl(input) {
+        const swap = await this.swapper.getSwapById(input.swapId);
+        if (swap == null)
+            throw new Error("Swap not found: " + input.swapId);
+        if (swap instanceof FromBTCLNAutoSwap_1.FromBTCLNAutoSwap) {
+            if (swap._state !== FromBTCLNAutoSwap_1.FromBTCLNAutoSwapState.PR_CREATED)
+                throw new Error("Invalid swap state, must be in PR_CREATED state!");
+        }
+        else if (swap instanceof FromBTCLNSwap_1.FromBTCLNSwap) {
+            if (swap._state !== FromBTCLNSwap_1.FromBTCLNSwapState.PR_CREATED)
+                throw new Error("Invalid swap state, must be in PR_CREATED state!");
+        }
+        else {
+            throw new Error("Endpoint only supports swaps from Lightning");
+        }
+        if (!swap.isLNURL()) {
+            if (input.lnurlWithdraw == null)
+                throw new Error("The swap is not configured to use LNURL, please pass the `lnurlWithdraw` parameter!");
+            if (!this.swapper.Utils.isValidLNURL(input.lnurlWithdraw))
+                throw new Error("Invalid LNURL-withdraw link provided: " + input.lnurlWithdraw);
+            await swap.settleWithLNURLWithdraw(input.lnurlWithdraw);
+        }
+        else {
+            if (input.lnurlWithdraw != null)
+                throw new Error("The swap is already configured with an LNURL link, don't pass the `lnurlWithdraw` parameter!");
+        }
+        let success;
+        if (swap instanceof FromBTCLNAutoSwap_1.FromBTCLNAutoSwap) {
+            // For non-legacy swap, we don't need to wait till the swap advances all the way to committed state
+            success = await swap._waitForLpPaymentReceived(2);
+        }
+        else {
+            // For legacy swap waitForPayment waits just for the swap to transition into PR_PAID
+            success = await swap.waitForPayment(undefined, 2);
+        }
+        if (!success)
+            throw new Error("Failed to settle the swap with the LNURL-withdraw link!");
+        return {
+            paymentHash: swap.getInputTxId()
         };
     }
 }

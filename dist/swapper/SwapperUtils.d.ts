@@ -153,11 +153,11 @@ export declare class SwapperUtils<T extends MultiChain> {
      */
     randomSigner<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier): T[ChainIdentifier]["Signer"];
     /**
-     * Returns a random address for a given smart chain
+     * Returns a random address for a given smart chain or bitcoin
      *
      * @param chainIdentifier
      */
-    randomAddress<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier): string;
+    randomAddress<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier | "BITCOIN"): string;
     /**
      * Signs and broadcasts the supplied smart chain transaction
      *

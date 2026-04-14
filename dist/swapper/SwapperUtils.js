@@ -399,11 +399,18 @@ class SwapperUtils {
         return this.root._chains[chainIdentifier].chainInterface.randomSigner();
     }
     /**
-     * Returns a random address for a given smart chain
+     * Returns a random address for a given smart chain or bitcoin
      *
      * @param chainIdentifier
      */
     randomAddress(chainIdentifier) {
+        if (chainIdentifier === "BITCOIN") {
+            // Return random p2wkh address
+            return (0, btc_signer_1.Address)(this.bitcoinNetwork).encode({
+                type: "wpkh",
+                hash: (0, Utils_1.randomBytes)(20)
+            });
+        }
         if (this.root._chains[chainIdentifier] == null)
             throw new Error("Invalid chain identifier! Unknown chain: " + chainIdentifier);
         return this.root._chains[chainIdentifier].chainInterface.randomAddress();

@@ -240,8 +240,20 @@ export class SwapperApi<T extends MultiChain> {
         await this.swapper.init();
     }
 
+    /**
+     * Should be ran periodically, this synchronizes the swap's state with the on-chain data and also purges
+     *  expired swaps from the persistent storage
+     */
     async sync(): Promise<void> {
         await this.swapper._syncSwaps();
+    }
+
+    /**
+     * Optionally good to run this periodically, such that any LPs that are dropped off because they are unresponsive
+     *  can be found again.
+     */
+    async reloadLps(): Promise<void> {
+        await this.swapper.intermediaryDiscovery.reloadIntermediaries();
     }
 
     private async createSwap(input: CreateSwapInput): Promise<CreateSwapOutput> {
@@ -310,7 +322,6 @@ export class SwapperApi<T extends MultiChain> {
         return this.createListedSwapOutputs(swaps);
     }
 
-    //TODO: Maybe reload the intermediaries every so often such that when one drops off due to some issue we can reconnect it again, this directly affects the getSupportedTokens endpoint
     private async getSupportedTokens(input: GetSupportedTokensInput): Promise<GetSupportedTokensOutput> {
         return this.swapper.getSupportedTokens(parseSwapSide(input.side)).map(toApiToken);
     }
@@ -320,11 +331,25 @@ export class SwapperApi<T extends MultiChain> {
         return this.swapper.getSwapCounterTokens(token, parseSwapSide(input.side)).map(toApiToken);
     }
 
-    //TODO: Swap limits might not be populated for non-bitcoin tokens in some routes, we can try to fix this by sending a swap request to probe for swap min/max in those cases
     private async getSwapLimits(input: GetSwapLimitsInput): Promise<GetSwapLimitsOutput> {
         const srcToken = this.swapper.getToken(input.srcToken);
         const dstToken = this.swapper.getToken(input.dstToken);
-        const limits = this.swapper.getSwapLimits(srcToken, dstToken);
+        let limits = this.swapper.getSwapLimits(srcToken, dstToken);
+
+        if(dstToken.chainId!=="LIGHTNING") {
+            if(limits.input.min.rawAmount===1n || limits.output.min.rawAmount===1n) {
+                // Execute a dummy swap to get the proper limits
+                try {
+                    await this.swapper.swap(
+                        srcToken, dstToken,
+                        1n, limits.input.min.rawAmount===1n,
+                        srcToken.chainId==="LIGHTNING" ? undefined : this.swapper.Utils.randomAddress(srcToken.chainId),
+                        this.swapper.Utils.randomAddress(dstToken.chainId)
+                    );
+                } catch (e) {}
+                limits = this.swapper.getSwapLimits(srcToken, dstToken);
+            }
+        }
 
         return {
             input: {

@@ -566,7 +566,7 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
      * @internal
      */
     protected getInputAmountWithoutFee(): bigint | null {
-        if(this.btcAmountGas==null || this.btcAmountSwap) return null;
+        if(this.btcAmountGas==null || this.btcAmountSwap==null) return null;
         return this.getInputSwapAmountWithoutFee()! + this.getInputGasAmountWithoutFee()! - this.getWatchtowerFeeAmountBtc()!;
     }
 

@@ -441,7 +441,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
      * @internal
      */
     getInputAmountWithoutFee() {
-        if (this.btcAmountGas == null || this.btcAmountSwap)
+        if (this.btcAmountGas == null || this.btcAmountSwap == null)
             return null;
         return this.getInputSwapAmountWithoutFee() + this.getInputGasAmountWithoutFee() - this.getWatchtowerFeeAmountBtc();
     }

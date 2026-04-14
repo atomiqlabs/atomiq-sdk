@@ -55,3 +55,4 @@ export declare function randomBytes(bytesLength: number): Buffer;
 export declare function getTxoHash(outputScriptHex: string, value: number): Buffer;
 export declare function fromDecimal(amount: string, decimalCount: number): bigint;
 export declare function toDecimal(amount: bigint, decimalCount: number, cut?: boolean, displayDecimals?: number): string;
+export declare function parseHashValueExact32Bytes(value?: Buffer | string, variableName?: string): Buffer | undefined;

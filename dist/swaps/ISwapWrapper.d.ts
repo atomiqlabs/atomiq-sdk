@@ -4,12 +4,13 @@ import { ChainEvent, ChainType } from "@atomiqlabs/base";
 import { EventEmitter } from "events";
 import { ISwap } from "./ISwap";
 import { ISwapPrice } from "../prices/abstract/ISwapPrice";
-import { ChainIds, MultiChain } from "../swapper/Swapper";
 import { UnifiedSwapEventListener } from "../events/UnifiedSwapEventListener";
 import { SwapType } from "../enums/SwapType";
 import { UnifiedSwapStorage } from "../storage/UnifiedSwapStorage";
 import { SCToken } from "../types/Token";
 import { PriceInfoType } from "../types/PriceInfoType";
+export declare const DEFAULT_MAX_PARALLEL_SWAP_TICKS = 50;
+export declare const DEFAULT_MAX_PARALLEL_SWAP_SYNCS = 50;
 /**
  * Options for swap wrapper configuration
  *
@@ -18,23 +19,27 @@ import { PriceInfoType } from "../types/PriceInfoType";
 export type ISwapWrapperOptions = {
     getRequestTimeout?: number;
     postRequestTimeout?: number;
+    /**
+     * How many swaps to call `_tick()` for in parallel
+     */
+    maxParallelSwapTicks?: number;
+    /**
+     * How many swaps to call `_sync()` for in parallel
+     */
+    maxParallelSwapSyncs?: number;
+    /**
+     * Whether to save swaps that are not initialized into the persistent storage
+     */
+    saveUninitializedSwaps?: boolean;
 };
 /**
  * Token configuration for wrapper constructors
  *
  * @category Swaps/Base
  */
-export type WrapperCtorTokens<T extends MultiChain = MultiChain> = {
-    ticker: string;
-    name: string;
-    chains: {
-        [chainId in ChainIds<T>]?: {
-            address: string;
-            decimals: number;
-            displayDecimals?: number;
-        };
-    };
-}[];
+export type WrapperCtorTokens<T extends ChainType = ChainType> = {
+    [tokenAddress: string]: SCToken<T["ChainId"]>;
+};
 /**
  * Type definition linking wrapper and swap types
  *
@@ -96,6 +101,11 @@ export declare abstract class ISwapWrapper<T extends ChainType, D extends SwapTy
      */
     protected tickInterval?: NodeJS.Timeout;
     /**
+     * An internal abort controller for the running tick handler
+     * @internal
+     */
+    protected tickAbortController?: AbortController;
+    /**
      * States of the swaps in pending (non-final state), these are checked automatically on initial swap synchronization
      * @internal
      */
@@ -135,6 +145,15 @@ export declare abstract class ISwapWrapper<T extends ChainType, D extends SwapTy
     constructor(chainIdentifier: T["ChainId"], unifiedStorage: UnifiedSwapStorage<T>, unifiedChainEvents: UnifiedSwapEventListener<T>, chain: T["ChainInterface"], prices: ISwapPrice, tokens: WrapperCtorTokens, options: O, events?: EventEmitter<{
         swapState: [ISwap];
     }>);
+    /**
+     * Parses the provided gas amount from its `string` or `bigint` representation to `bigint` base units.
+     *
+     * Defaults to `0n` if no gasAmount is provided
+     *
+     * @param gasAmount
+     * @internal
+     */
+    protected parseGasAmount(gasAmount?: string | bigint): bigint;
     /**
      * Pre-fetches swap price for a given swap
      *
@@ -215,6 +234,8 @@ export declare abstract class ISwapWrapper<T extends ChainType, D extends SwapTy
     /**
      * Runs checks on all the known pending swaps, syncing their state from on-chain data
      *
+     * @remarks Doesn't work properly if you pass non-persisted swaps
+     *
      * @param pastSwaps Optional array of past swaps to check, otherwise all relevant swaps will be fetched
      *  from the persistent storage
      * @param noSave Whether to skip saving the swap changes in the persistent storage
@@ -228,8 +249,9 @@ export declare abstract class ISwapWrapper<T extends ChainType, D extends SwapTy
      *
      * @param swaps Optional array of swaps to invoke `_tick()` on, otherwise all relevant swaps will be fetched
      *  from the persistent storage
+     * @param abortSignal Abort signal
      */
-    tick(swaps?: D["Swap"][]): Promise<void>;
+    tick(swaps?: D["Swap"][], abortSignal?: AbortSignal): Promise<void>;
     /**
      * Returns the smart chain's native token used to pay for fees
      * @internal

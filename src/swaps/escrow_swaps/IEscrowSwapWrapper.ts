@@ -66,7 +66,11 @@ export abstract class IEscrowSwapWrapper<
      * @internal
      */
     protected preFetchSignData(signDataPrefetch: Promise<any | null>): Promise<T["PreFetchVerification"] | undefined> {
-        if(this._contract.preFetchForInitSignatureVerification==null) return Promise.resolve(undefined);
+        if(this._contract.preFetchForInitSignatureVerification==null) {
+            // Catch promise rejections, should they happen
+            signDataPrefetch.catch(() => {});
+            return Promise.resolve(undefined);
+        }
         return signDataPrefetch.then(obj => {
             if(obj==null) return undefined;
             return this._contract.preFetchForInitSignatureVerification!(obj);

@@ -119,6 +119,7 @@ export declare function isSpvFromBTCSwapInit(obj: any): obj is SpvFromBTCSwapIni
  * @category Swaps/Bitcoin → Smart chain
  */
 export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFromBTCTypeDefinition<T>> implements IBTCWalletSwap, ISwapWithGasDrop<T>, IClaimableSwap<T, SpvFromBTCTypeDefinition<T>, SpvFromBTCSwapState> {
+    protected readonly currentVersion: number;
     readonly TYPE: SwapType.SPV_VAULT_FROM_BTC;
     /**
      * @internal
@@ -169,6 +170,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
     private readonly frontingFeeShare;
     private readonly executionFeeShare;
     private readonly gasPricingInfo?;
+    private posted?;
     /**
      * @internal
      */
@@ -323,7 +325,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
      *
      * @internal
      */
-    protected getOutputWithoutFee(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+    protected getOutputWithoutFee(): TokenAmount<SCToken<T["ChainId"]>, true>;
     /**
      * Returns the swap fee charged by the intermediary (LP) on this swap
      *
@@ -361,15 +363,15 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
     /**
      * @inheritDoc
      */
-    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+    getOutput(): TokenAmount<SCToken<T["ChainId"]>, true>;
     /**
      * @inheritDoc
      */
-    getGasDropOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+    getGasDropOutput(): TokenAmount<SCToken<T["ChainId"]>, true>;
     /**
      * @inheritDoc
      */
-    getInputWithoutFee(): TokenAmount<T["ChainId"], BtcToken<false>, true>;
+    getInputWithoutFee(): TokenAmount<BtcToken<false>, true>;
     /**
      * @inheritDoc
      */
@@ -377,7 +379,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
     /**
      * @inheritDoc
      */
-    getInput(): TokenAmount<T["ChainId"], BtcToken<false>, true>;
+    getInput(): TokenAmount<BtcToken<false>, true>;
     /**
      * @inheritDoc
      */
@@ -440,7 +442,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
     /**
      * @inheritDoc
      */
-    estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<any, BtcToken<false>, true> | null>;
+    estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<BtcToken<false>, true> | null>;
     /**
      * @inheritDoc
      */
@@ -599,6 +601,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
      * @internal
      */
     _setBitcoinTxId(txId: string): Promise<void>;
+    private btcTxLastChecked?;
     /**
      * @internal
      */

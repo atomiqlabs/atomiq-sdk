@@ -33,12 +33,32 @@ import {IClaimableSwapWrapper} from "../../../IClaimableSwapWrapper";
 import {IFromBTCSelfInitDefinition} from "../IFromBTCSelfInitSwap";
 import {AmountData} from "../../../../types/AmountData";
 import {tryWithRetries} from "../../../../utils/RetryUtils";
-import {AllOptional, AllRequired} from "../../../../utils/TypeUtils";
+import {AllOptional} from "../../../../utils/TypeUtils";
+import {UserError} from "../../../../errors/UserError";
 
 export type FromBTCOptions = {
-    feeSafetyFactor?: bigint,
-    blockSafetyFactor?: number,
-    unsafeZeroWatchtowerFee?: boolean
+    /**
+     * A flag to attach 0 watchtower fee to the swap, this would make the settlement unattractive for the watchtowers
+     *  and therefore automatic settlement for such swaps will not be possible, you will have to settle manually
+     *  with {@link FromBTCLNSwap.claim} or {@link FromBTCLNSwap.txsClaim} functions.
+     */
+    unsafeZeroWatchtowerFee?: boolean,
+    /**
+     * A safety factor to use when estimating the watchtower fee to attach to the swap (this has to cover the gas fee
+     *  of watchtowers settling the swap). A higher multiple here would mean that a swap is more attractive for
+     *  watchtowers to settle automatically.
+     *
+     * Uses a `1.5` multiple by default (i.e. the current network fee is multiplied by 1.5 and then used to estimate
+     *  the settlement gas fee cost).
+     *
+     * Also accepts `bigint` for legacy reasons.
+     */
+    feeSafetyFactor?: number | bigint,
+
+    /**
+     * @deprecated Removed as it is deemed not necessary
+     */
+    blockSafetyFactor?: number
 };
 
 export type FromBTCWrapperOptions = ISwapWrapperOptions & {
@@ -130,6 +150,7 @@ export class FromBTCWrapper<
         super(
             chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer,
             {
+                ...options,
                 bitcoinNetwork: options?.bitcoinNetwork ?? TEST_NETWORK,
                 safetyFactor: options?.safetyFactor ?? 2,
                 blocksTillTxConfirms: options?.blocksTillTxConfirms ?? 12,
@@ -210,13 +231,17 @@ export class FromBTCWrapper<
     private async preFetchClaimerBounty(
         signer: string,
         amountData: AmountData,
-        options: AllRequired<FromBTCOptions>,
+        options: {
+            feeSafetyFactorPPM: bigint,
+            blockSafetyFactor: bigint,
+            unsafeZeroWatchtowerFee: boolean
+        },
         abortController: AbortController
     ): Promise<{
         feePerBlock: bigint,
-        safetyFactor: number,
+        safetyFactor: bigint,
         startTimestamp: bigint,
-        addBlock: number,
+        addBlock: bigint,
         addFee: bigint
     } | undefined> {
         const startTimestamp = BigInt(Math.floor(Date.now()/1000));
@@ -226,7 +251,7 @@ export class FromBTCWrapper<
                 feePerBlock: 0n,
                 safetyFactor: options.blockSafetyFactor,
                 startTimestamp: startTimestamp,
-                addBlock: 0,
+                addBlock: 0n,
                 addFee: 0n
             }
         }
@@ -252,11 +277,11 @@ export class FromBTCWrapper<
             const currentBtcRelayBlock = btcRelayData.blockheight;
             const addBlock = Math.max(currentBtcBlock-currentBtcRelayBlock, 0);
             return {
-                feePerBlock: feePerBlock * options.feeSafetyFactor,
+                feePerBlock: feePerBlock * options.feeSafetyFactorPPM / 1_000_000n,
                 safetyFactor: options.blockSafetyFactor,
                 startTimestamp: startTimestamp,
-                addBlock,
-                addFee: claimFeeRate * options.feeSafetyFactor
+                addBlock: BigInt(addBlock),
+                addFee: claimFeeRate * options.feeSafetyFactorPPM / 1_000_000n
             }
         } catch (e) {
             abortController.abort(e);
@@ -275,18 +300,20 @@ export class FromBTCWrapper<
      */
     private getClaimerBounty(
         data: T["Data"],
-        options: AllRequired<FromBTCOptions>,
+        options: {
+            blockSafetyFactor: bigint
+        },
         claimerBounty: {
             feePerBlock: bigint,
-            safetyFactor: number,
+            safetyFactor: bigint,
             startTimestamp: bigint,
-            addBlock: number,
+            addBlock: bigint,
             addFee: bigint
         }
     ) : bigint {
         const tsDelta = data.getExpiry() - claimerBounty.startTimestamp;
-        const blocksDelta = tsDelta / BigInt(this._options.bitcoinBlocktime) * BigInt(options.blockSafetyFactor);
-        const totalBlock = blocksDelta + BigInt(claimerBounty.addBlock);
+        const blocksDelta = tsDelta / BigInt(this._options.bitcoinBlocktime) * options.blockSafetyFactor;
+        const totalBlock = blocksDelta + claimerBounty.addBlock;
         return claimerBounty.addFee + (totalBlock * claimerBounty.feePerBlock);
     }
 
@@ -312,14 +339,16 @@ export class FromBTCWrapper<
         resp: FromBTCResponseType,
         amountData: AmountData,
         lp: Intermediary,
-        options: AllRequired<FromBTCOptions>,
+        options: {
+            blockSafetyFactor: bigint
+        },
         data: T["Data"],
         sequence: bigint,
         claimerBounty: {
             feePerBlock: bigint,
-            safetyFactor: number,
+            safetyFactor: bigint,
             startTimestamp: bigint,
-            addBlock: number,
+            addBlock: bigint,
             addFee: bigint
         },
         depositToken: string
@@ -391,9 +420,16 @@ export class FromBTCWrapper<
         quote: Promise<FromBTCSwap<T>>,
         intermediary: Intermediary
     }[] {
-        const _options: AllRequired<FromBTCOptions> = {
-            blockSafetyFactor: options?.blockSafetyFactor ?? 1,
-            feeSafetyFactor: options?.feeSafetyFactor ?? 2n,
+        let feeSafetyFactorPPM: bigint = 1_500_000n;
+        if(typeof(options?.feeSafetyFactor)==="bigint") {
+            feeSafetyFactorPPM = options.feeSafetyFactor * 1_000_000n;
+        } else if(typeof(options?.feeSafetyFactor)==="number") {
+            feeSafetyFactorPPM = BigInt(Math.floor(options.feeSafetyFactor * 1_000_000));
+        }
+
+        const _options = {
+            blockSafetyFactor: options?.blockSafetyFactor!=null ? BigInt(options.blockSafetyFactor) : 1n,
+            feeSafetyFactorPPM,
             unsafeZeroWatchtowerFee: options?.unsafeZeroWatchtowerFee ?? false
         };
 
@@ -437,8 +473,13 @@ export class FromBTCWrapper<
                                 this._options.postRequestTimeout, abortController.signal, retryCount>0 ? false : undefined
                             );
 
+                            let signDataPromise = _signDataPromise;
+                            if(signDataPromise==null) {
+                                signDataPromise = this.preFetchSignData(signDataPrefetch);
+                            } else signDataPrefetch.catch(() => {});
+
                             return {
-                                signDataPromise: _signDataPromise ?? this.preFetchSignData(signDataPrefetch),
+                                signDataPromise,
                                 resp: await response
                             };
                         }, undefined, e => e instanceof RequestError, abortController.signal);
@@ -471,7 +512,6 @@ export class FromBTCWrapper<
                             exactIn: amountData.exactIn ?? true,
                             requiredConfirmations: resp.confirmations
                         } as FromBTCSwapInit<T["Data"]>);
-                        await quote._save();
                         return quote;
                     } catch (e) {
                         abortController.abort(e);

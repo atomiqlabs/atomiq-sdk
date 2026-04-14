@@ -3,7 +3,7 @@ import {
     ChainSwapType,
     ChainType,
     ClaimEvent,
-    InitializeEvent, LightningNetworkApi, Messenger,
+    InitializeEvent, LightningNetworkApi, LNNodeLiquidity, Messenger,
     RefundEvent, SwapCommitState, SwapCommitStateType
 } from "@atomiqlabs/base";
 import {Intermediary} from "../../../../intermediaries/Intermediary";
@@ -12,7 +12,7 @@ import {UserError} from "../../../../errors/UserError";
 import {IntermediaryError} from "../../../../errors/IntermediaryError";
 import {SwapType} from "../../../../enums/SwapType";
 import {
-    extendAbortController,
+    extendAbortController, parseHashValueExact32Bytes,
     randomBytes,
     throwIfUndefined
 } from "../../../../utils/Utils";
@@ -35,14 +35,56 @@ import {LNURLWithdrawParamsWithUrl} from "../../../../types/lnurl/LNURLWithdraw"
 import {tryWithRetries} from "../../../../utils/RetryUtils";
 import {AllOptional} from "../../../../utils/TypeUtils";
 import {sha256} from "@noble/hashes/sha2";
+import {fromHumanReadableString} from "../../../../utils/TokenUtils";
 
 export type FromBTCLNAutoOptions = {
-    paymentHash?: Buffer,
+    /**
+     * Instead of letting the SDK generate the preimage/paymentHash pair internally you can pass your computed
+     *  paymentHash here, this will create the swap with the provided payment hash. Note that swaps created this way
+     *  won't settle automatically (as the SDK is missing the preimage). Once the HTLC towards the user is created in
+     *  the {@link FromBTCLNAutoSwapState.CLAIM_COMMITED} state, you should pass the secret preimage manually in the
+     *  {@link FromBTCLNAutoSwap.waitTillClaimed}, {@link FromBTCLNAutoSwap.claim} or {@link FromBTCLNAutoSwap.txsClaim}
+     *  functions.
+     *
+     * Accepts both, a {@link Buffer} and a hexadecimal `string`
+     */
+    paymentHash?: Buffer | string,
+    /**
+     * Optional description to use for the swap lightning network invoice, keep the invoice length below 500 characters
+     */
     description?: string,
-    descriptionHash?: Buffer,
+    /**
+     * Optional description hash to use for the lightning network invoice, useful when returning the invoice as part of
+     *  an LNURL-pay service endpoint.
+     *
+     * Accepts both, a {@link Buffer} and a hexadecimal `string`
+     */
+    descriptionHash?: Buffer | string,
+    /**
+     * Optional additional native token to receive as an output of the swap (e.g. STRK on Starknet or cBTC on Citrea).
+     *  When passed as a `bigint` it is specified in base units of the token and in `string` it is the human readable
+     *  decimal format.
+     */
+    gasAmount?: bigint | string,
+    /**
+     * A flag to skip checking whether the lightning network node of the LP has enough channel liquidity to facilitate
+     *  the swap.
+     */
     unsafeSkipLnNodeCheck?: boolean,
-    gasAmount?: bigint,
+    /**
+     * A flag to attach 0 watchtower fee to the swap, this would make the settlement unattractive for the watchtowers
+     *  and therefore automatic settlement for such swaps will not be possible, you will have to settle manually
+     *  with {@link FromBTCLNSwap.claim} or {@link FromBTCLNSwap.txsClaim} functions.
+     */
     unsafeZeroWatchtowerFee?: boolean,
+    /**
+     * A safety factor to use when estimating the watchtower fee to attach to the swap (this has to cover the gas fee
+     *  of watchtowers settling the swap). A higher multiple here would mean that a swap is more attractive for
+     *  watchtowers to settle automatically.
+     *
+     * Uses a `1.25` multiple by default (i.e. the current network fee is multiplied by 1.25 and then used to estimate
+     *  the settlement gas fee cost)
+     */
     feeSafetyFactor?: number
 };
 
@@ -132,6 +174,7 @@ export class FromBTCLNAutoWrapper<
         super(
             chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, lnApi,
             {
+                ...options,
                 safetyFactor: options?.safetyFactor ?? 2,
                 bitcoinBlocktime: options?.bitcoinBlocktime ?? 10*60,
                 unsafeSkipLnNodeCheck: options?.unsafeSkipLnNodeCheck ?? false
@@ -168,10 +211,9 @@ export class FromBTCLNAutoWrapper<
                 return false;
             }
 
-            swap._commitTxId = event.meta?.txId;
             swap._commitedAt ??= Date.now();
             swap._state = FromBTCLNAutoSwapState.CLAIM_COMMITED;
-            swap._broadcastSecret().catch(e => {
+            if(swap.hasSecretPreimage()) swap._broadcastSecret().catch(e => {
                 this.logger.error("processEventInitialize("+swap.getId()+"): Error when broadcasting swap secret: ", e);
             });
             return true;
@@ -185,7 +227,6 @@ export class FromBTCLNAutoWrapper<
      */
     protected processEventClaim(swap: FromBTCLNAutoSwap<T>, event: ClaimEvent<T["Data"]>): Promise<boolean> {
         if(swap._state!==FromBTCLNAutoSwapState.FAILED && swap._state!==FromBTCLNAutoSwapState.CLAIM_CLAIMED) {
-            swap._claimTxId = event.meta?.txId;
             swap._state = FromBTCLNAutoSwapState.CLAIM_CLAIMED;
             swap._setSwapSecret(event.result);
             return Promise.resolve(true);
@@ -199,7 +240,6 @@ export class FromBTCLNAutoWrapper<
      */
     protected processEventRefund(swap: FromBTCLNAutoSwap<T>, event: RefundEvent<T["Data"]>): Promise<boolean> {
         if(swap._state!==FromBTCLNAutoSwapState.CLAIM_CLAIMED && swap._state!==FromBTCLNAutoSwapState.FAILED) {
-            swap._refundTxId ??= event.meta?.txId;
             swap._state = FromBTCLNAutoSwapState.FAILED;
             return Promise.resolve(true);
         }
@@ -326,25 +366,20 @@ export class FromBTCLNAutoWrapper<
         if(!this.isInitialized) throw new Error("Not initialized, call init() first!");
 
         const _options = {
-            paymentHash: options?.paymentHash,
+            paymentHash: parseHashValueExact32Bytes(options?.paymentHash, "payment hash"),
             unsafeSkipLnNodeCheck: options?.unsafeSkipLnNodeCheck ?? this._options.unsafeSkipLnNodeCheck,
-            gasAmount: options?.gasAmount ?? 0n,
+            gasAmount: this.parseGasAmount(options?.gasAmount),
             feeSafetyFactor: options?.feeSafetyFactor ?? 1.25, //No need to add much of a margin, since the claim should happen rather soon
             unsafeZeroWatchtowerFee: options?.unsafeZeroWatchtowerFee ?? false,
             description: options?.description,
-            descriptionHash: options?.descriptionHash
+            descriptionHash: parseHashValueExact32Bytes(options?.descriptionHash, "description hash")
         };
 
-        if(_options.paymentHash!=null && _options.paymentHash.length!==32)
-            throw new UserError("Invalid payment hash length, must be exactly 32 bytes!");
-
-        if(_options.descriptionHash!=null && _options.descriptionHash.length!==32)
-            throw new UserError("Invalid description hash length");
+        if(amountData.token===this._chain.getNativeCurrencyAddress() && _options.gasAmount!==0n)
+            throw new UserError("Cannot specify `gasAmount` for swaps to a native token!");
 
         if(_options.description!=null && Buffer.byteLength(_options.description, "utf8") > 500)
             throw new UserError("Invalid description length");
-
-        if(preFetches==null) preFetches = {};
 
         let secret: Buffer | undefined;
         let paymentHash: Buffer;
@@ -358,6 +393,8 @@ export class FromBTCLNAutoWrapper<
         const nativeTokenAddress = this._chain.getNativeCurrencyAddress();
 
         const _abortController = extendAbortController(abortSignal);
+
+        preFetches ??= {};
         const _preFetches = {
             pricePrefetchPromise: preFetches?.pricePrefetchPromise ?? this.preFetchPrice(amountData, _abortController.signal),
             usdPricePrefetchPromise: preFetches?.usdPricePrefetchPromise ?? this.preFetchUsdPrice(_abortController.signal),
@@ -396,8 +433,13 @@ export class FromBTCLNAutoWrapper<
                             this._options.postRequestTimeout, abortController.signal, retryCount>0 ? false : undefined
                         );
 
+                        let lnCapacityPromise: Promise<LNNodeLiquidity | null> | undefined;
+                        if(!_options.unsafeSkipLnNodeCheck) {
+                            lnCapacityPromise = this.preFetchLnCapacity(lnPublicKey);
+                        } else lnPublicKey.catch(() => {});
+
                         return {
-                            lnCapacityPromise: _options.unsafeSkipLnNodeCheck ? undefined : this.preFetchLnCapacity(lnPublicKey),
+                            lnCapacityPromise,
                             resp: await response
                         };
                     }, undefined, RequestError, abortController.signal);
@@ -454,8 +496,6 @@ export class FromBTCLNAutoWrapper<
                             exactIn: amountData.exactIn ?? true
                         };
                         const quote = new FromBTCLNAutoSwap<T>(this, swapInit);
-                        await quote._save();
-                        this.logger.debug("create(): Created new FromBTCLNAutoSwap quote, claimHash (pseudo escrowHash): ", quote._getEscrowHash());
                         return quote;
                     } catch (e) {
                         abortController.abort(e);
@@ -497,17 +537,14 @@ export class FromBTCLNAutoWrapper<
         if(!this.isInitialized) throw new Error("Not initialized, call init() first!");
 
         const _options = {
-            paymentHash: options?.paymentHash,
+            paymentHash: parseHashValueExact32Bytes(options?.paymentHash, "payment hash"),
             unsafeSkipLnNodeCheck: options?.unsafeSkipLnNodeCheck ?? this._options.unsafeSkipLnNodeCheck,
-            gasAmount: options?.gasAmount ?? 0n,
+            gasAmount: this.parseGasAmount(options?.gasAmount),
             feeSafetyFactor: options?.feeSafetyFactor ?? 1.25, //No need to add much of a margin, since the claim should happen rather soon
             unsafeZeroWatchtowerFee: options?.unsafeZeroWatchtowerFee ?? false,
             description: options?.description,
-            descriptionHash: options?.descriptionHash
+            descriptionHash: parseHashValueExact32Bytes(options?.descriptionHash, "description hash")
         };
-
-        if(_options.paymentHash!=null && _options.paymentHash.length!==32)
-            throw new UserError("Invalid payment hash length, must be exactly 32 bytes!");
 
         const abortController = extendAbortController(abortSignal);
         const preFetches = {

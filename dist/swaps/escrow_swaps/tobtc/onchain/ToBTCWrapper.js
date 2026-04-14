@@ -35,6 +35,7 @@ class ToBTCWrapper extends IToBTCWrapper_1.IToBTCWrapper {
      */
     constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, btcRpc, options, events) {
         super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, {
+            ...options,
             bitcoinNetwork: options?.bitcoinNetwork ?? utils_1.TEST_NETWORK,
             safetyFactor: options?.safetyFactor ?? 2,
             maxConfirmations: options?.maxConfirmations ?? 6,
@@ -179,8 +180,14 @@ class ToBTCWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                                 feeRate: (0, Utils_1.throwIfUndefined)(feeRatePromise),
                                 additionalParams
                             }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined);
+                            let signDataPromise = _signDataPromise;
+                            if (signDataPromise == null) {
+                                signDataPromise = this.preFetchSignData(signDataPrefetch);
+                            }
+                            else
+                                signDataPrefetch.catch(() => { });
                             return {
-                                signDataPromise: _signDataPromise ?? this.preFetchSignData(signDataPrefetch),
+                                signDataPromise,
                                 resp: await response
                             };
                         }, undefined, RequestError_1.RequestError, abortController.signal);
@@ -218,7 +225,6 @@ class ToBTCWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                             requiredConfirmations: _options.confirmations,
                             nonce
                         });
-                        await quote._save();
                         return quote;
                     }
                     catch (e) {

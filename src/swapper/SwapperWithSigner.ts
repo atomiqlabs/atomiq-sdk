@@ -31,6 +31,7 @@ import {LightningInvoiceCreateService} from "../types/wallets/LightningInvoiceCr
 import {Intermediary} from "../intermediaries/Intermediary";
 import {SpvFromBTCOptions} from "../swaps/spv_swaps/SpvFromBTCWrapper";
 import {SwapTypeMapping} from "../utils/SwapUtils";
+import {SwapSide} from "../enums/SwapSide";
 
 /**
  * Chain and signer-specific wrapper for automatic signer injection into swap methods
@@ -426,6 +427,10 @@ export class SwapperWithSigner<T extends MultiChain, ChainIdentifier extends Cha
         return this.swapper.recoverSwaps(this.signer.getAddress(), startBlockheight);
     }
 
+    getToken(ticker: "BTC" | "BITCOIN-BTC"): BtcToken<false>;
+    getToken(ticker: "BTCLN" | "BTC-LN" | "LIGHTNING-BTC"): BtcToken<true>;
+    getToken(ticker: `${ChainIdentifier}-${string}`): SCToken<ChainIdentifier>;
+    getToken(tickerOrAddress: string): Token<ChainIdentifier>;
     /**
      * Returns the {@link Token} object for a given token
      *
@@ -489,8 +494,8 @@ export class SwapperWithSigner<T extends MultiChain, ChainIdentifier extends Cha
      * @param dstToken Destination token
      */
     getSwapLimits<A extends Token<ChainIdentifier>, B extends Token<ChainIdentifier>>(srcToken: A, dstToken: B): {
-        input: {min: TokenAmount<string, A>, max?: TokenAmount<string, A>},
-        output: {min: TokenAmount<string, B>, max?: TokenAmount<string, B>}
+        input: {min: TokenAmount<A>, max?: TokenAmount<A>},
+        output: {min: TokenAmount<B>, max?: TokenAmount<B>}
     } {
         return this.swapper.getSwapLimits<A, B>(srcToken, dstToken);
     }
@@ -499,7 +504,7 @@ export class SwapperWithSigner<T extends MultiChain, ChainIdentifier extends Cha
      * Returns tokens that you can swap to (if input=true) from a given token,
      *  or tokens that you can swap from (if input=false) to a given token
      */
-    getSwapCounterTokens(token: Token, input: boolean): Token<ChainIdentifier>[] {
+    getSwapCounterTokens(token: Token, input: SwapSide | boolean): Token<ChainIdentifier>[] {
         return this.swapper.getSwapCounterTokens(token, input);
     }
 

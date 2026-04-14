@@ -566,7 +566,7 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
      * @internal
      */
     protected getInputAmountWithoutFee(): bigint | null {
-        if(this.btcAmountGas==null || this.btcAmountSwap) return null;
+        if(this.btcAmountGas==null || this.btcAmountSwap==null) return null;
         return this.getInputSwapAmountWithoutFee()! + this.getInputGasAmountWithoutFee()! - this.getWatchtowerFeeAmountBtc()!;
     }
 
@@ -589,14 +589,14 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
     /**
      * @inheritDoc
      */
-    getInput(): TokenAmount<T["ChainId"], BtcToken<true>> {
+    getInput(): TokenAmount<BtcToken<true>> {
         return toTokenAmount(this.getLightningInvoiceSats(), this.inputToken, this.wrapper._prices, this.pricingInfo);
     }
 
     /**
      * @inheritDoc
      */
-    getInputWithoutFee(): TokenAmount<T["ChainId"], BtcToken<true>> {
+    getInputWithoutFee(): TokenAmount<BtcToken<true>> {
         return toTokenAmount(this.getInputAmountWithoutFee(), this.inputToken, this.wrapper._prices, this.pricingInfo);
     }
 
@@ -610,14 +610,14 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
     /**
      * @inheritDoc
      */
-    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
+    getOutput(): TokenAmount<SCToken<T["ChainId"]>, true> {
         return toTokenAmount(this.getSwapData().getAmount(), this.wrapper._tokens[this.getSwapData().getToken()], this.wrapper._prices, this.pricingInfo);
     }
 
     /**
      * @inheritDoc
      */
-    getGasDropOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
+    getGasDropOutput(): TokenAmount<SCToken<T["ChainId"]>, true> {
         return toTokenAmount(
             this.getSwapData().getSecurityDeposit() - this.getSwapData().getClaimerBounty(),
             this.wrapper._tokens[this.getSwapData().getDepositToken()], this.wrapper._prices, this.gasPricingInfo
@@ -1144,7 +1144,17 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
      *
      * @throws {Error} If in invalid state (must be {@link FromBTCLNAutoSwapState.CLAIM_COMMITED})
      */
-    async txsClaim(_signer?: T["Signer"] | T["NativeSigner"], secret?: string): Promise<T["TX"][]> {
+    async txsClaim(_signer?: string | T["Signer"] | T["NativeSigner"], secret?: string): Promise<T["TX"][]> {
+        let address: string | undefined = undefined;
+        if(_signer!=null) {
+            if (typeof (_signer) === "string") {
+                address = _signer;
+            } else if (isAbstractSigner(_signer)) {
+                address = _signer.getAddress();
+            } else {
+                address = (await this.wrapper._chain.wrapSigner(_signer)).getAddress();
+            }
+        }
         if(this._state!==FromBTCLNAutoSwapState.CLAIM_COMMITED) throw new Error("Must be in CLAIM_COMMITED state!");
         if(this._data==null) throw new Error("Unknown data, wrong state?");
 
@@ -1155,9 +1165,7 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
             throw new Error("Invalid swap secret pre-image provided!");
 
         return await this.wrapper._contract.txsClaimWithSecret(
-            _signer==null ?
-                this._getInitiator() :
-                (isAbstractSigner(_signer) ? _signer : await this.wrapper._chain.wrapSigner(_signer)),
+            address ?? this._getInitiator(),
             this._data, useSecret, true, true
         );
     }

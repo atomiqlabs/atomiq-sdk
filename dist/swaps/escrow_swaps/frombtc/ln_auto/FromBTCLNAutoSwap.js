@@ -441,7 +441,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
      * @internal
      */
     getInputAmountWithoutFee() {
-        if (this.btcAmountGas == null || this.btcAmountSwap)
+        if (this.btcAmountGas == null || this.btcAmountSwap == null)
             return null;
         return this.getInputSwapAmountWithoutFee() + this.getInputGasAmountWithoutFee() - this.getWatchtowerFeeAmountBtc();
     }
@@ -963,6 +963,18 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
      * @throws {Error} If in invalid state (must be {@link FromBTCLNAutoSwapState.CLAIM_COMMITED})
      */
     async txsClaim(_signer, secret) {
+        let address = undefined;
+        if (_signer != null) {
+            if (typeof (_signer) === "string") {
+                address = _signer;
+            }
+            else if ((0, base_1.isAbstractSigner)(_signer)) {
+                address = _signer.getAddress();
+            }
+            else {
+                address = (await this.wrapper._chain.wrapSigner(_signer)).getAddress();
+            }
+        }
         if (this._state !== FromBTCLNAutoSwapState.CLAIM_COMMITED)
             throw new Error("Must be in CLAIM_COMMITED state!");
         if (this._data == null)
@@ -972,9 +984,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
             throw new Error("Swap secret pre-image not known and not provided, please provide the swap secret pre-image as an argument");
         if (!this.isValidSecretPreimage(useSecret))
             throw new Error("Invalid swap secret pre-image provided!");
-        return await this.wrapper._contract.txsClaimWithSecret(_signer == null ?
-            this._getInitiator() :
-            ((0, base_1.isAbstractSigner)(_signer) ? _signer : await this.wrapper._chain.wrapSigner(_signer)), this._data, useSecret, true, true);
+        return await this.wrapper._contract.txsClaimWithSecret(address ?? this._getInitiator(), this._data, useSecret, true, true);
     }
     /**
      * @inheritDoc

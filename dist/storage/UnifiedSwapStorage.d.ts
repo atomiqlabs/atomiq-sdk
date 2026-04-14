@@ -36,6 +36,7 @@ declare const indexes: readonly [{
  * Simple index types for SDK swap storage
  *
  * @category Storage
+ * @useDeclaredType
  */
 export type UnifiedSwapStorageIndexes = typeof indexes;
 declare const compositeIndexes: readonly [{
@@ -55,6 +56,7 @@ declare const compositeIndexes: readonly [{
  * Composite index types for SDK swap storage
  *
  * @category Storage
+ * @useDeclaredType
  */
 export type UnifiedSwapStorageCompositeIndexes = typeof compositeIndexes;
 /**

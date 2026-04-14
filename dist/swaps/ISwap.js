@@ -50,6 +50,14 @@ class ISwap {
          */
         this._state = 0;
         /**
+         * Whether the swap is saved in the persistent storage or not.
+         *
+         * @remarks This field itself is not persisted but is instead derived during runtime
+         *
+         * @internal
+         */
+        this._persisted = false;
+        /**
          * Event emitter emitting `"swapState"` event when swap's state changes
          */
         this.events = new events_1.EventEmitter();
@@ -105,10 +113,12 @@ class ISwap {
      * @internal
      */
     waitTillState(targetState, type = "eq", abortSignal) {
+        //TODO: This doesn't hold strong reference to the swap, hence if no other strong reference to the
+        // swap exists, it will just never resolve!
         return new Promise((resolve, reject) => {
             let listener;
-            listener = (swap) => {
-                if (type === "eq" ? swap._state === targetState : type === "gte" ? swap._state >= targetState : swap._state != targetState) {
+            listener = () => {
+                if (type === "eq" ? this._state === targetState : type === "gte" ? this._state >= targetState : this._state != targetState) {
                     resolve();
                     this.events.removeListener("swapState", listener);
                 }

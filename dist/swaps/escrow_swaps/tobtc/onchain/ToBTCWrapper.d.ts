@@ -14,7 +14,13 @@ import { ISwap } from "../../../ISwap";
 import { AmountData } from "../../../../types/AmountData";
 import { AllOptional } from "../../../../utils/TypeUtils";
 export type ToBTCOptions = {
+    /**
+     * @deprecated Ignored by the LP anyway
+     */
     confirmationTarget?: number;
+    /**
+     * @deprecated Default 2 confirmations should be enough for any currently supported amount by atomiq
+     */
     confirmations?: number;
 };
 export type ToBTCWrapperOptions = ISwapWrapperOptions & {

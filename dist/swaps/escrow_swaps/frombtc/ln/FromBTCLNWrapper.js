@@ -36,6 +36,7 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
      */
     constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, lnApi, options, events) {
         super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, lnApi, {
+            ...options,
             safetyFactor: options?.safetyFactor ?? 2,
             bitcoinBlocktime: options?.bitcoinBlocktime ?? 10 * 60,
             unsafeSkipLnNodeCheck: options?.unsafeSkipLnNodeCheck ?? false
@@ -155,19 +156,18 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
     create(recipient, amountData, lps, options, additionalParams, abortSignal, preFetches) {
         if (!this.isInitialized)
             throw new Error("Not initialized, call init() first!");
-        if (options == null)
-            options = {};
-        options.unsafeSkipLnNodeCheck ??= this._options.unsafeSkipLnNodeCheck;
-        if (options.paymentHash != null && options.paymentHash.length !== 32)
-            throw new UserError_1.UserError("Invalid payment hash length, must be exactly 32 bytes!");
-        if (options.descriptionHash != null && options.descriptionHash.length !== 32)
-            throw new UserError_1.UserError("Invalid description hash length");
-        if (options.description != null && buffer_1.Buffer.byteLength(options.description, "utf8") > 500)
+        const _options = {
+            paymentHash: (0, Utils_1.parseHashValueExact32Bytes)(options?.paymentHash, "payment hash"),
+            description: options?.description,
+            descriptionHash: (0, Utils_1.parseHashValueExact32Bytes)(options?.descriptionHash, "description hash"),
+            unsafeSkipLnNodeCheck: options?.unsafeSkipLnNodeCheck ?? this._options.unsafeSkipLnNodeCheck
+        };
+        if (_options.description != null && buffer_1.Buffer.byteLength(_options.description, "utf8") > 500)
             throw new UserError_1.UserError("Invalid description length");
         let secret;
         let paymentHash;
-        if (options?.paymentHash != null) {
-            paymentHash = options.paymentHash;
+        if (_options.paymentHash != null) {
+            paymentHash = _options.paymentHash;
         }
         else {
             ({ secret, paymentHash } = this.getSecretAndHash());
@@ -194,14 +194,20 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
                             amount: amountData.amount,
                             claimer: recipient,
                             token: amountData.token.toString(),
-                            description: options?.description,
-                            descriptionHash: options?.descriptionHash,
+                            description: _options.description,
+                            descriptionHash: _options.descriptionHash,
                             exactOut: !amountData.exactIn,
                             feeRate: (0, Utils_1.throwIfUndefined)(_preFetches.feeRatePromise),
                             additionalParams
                         }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined);
+                        let lnCapacityPromise;
+                        if (!_options.unsafeSkipLnNodeCheck) {
+                            lnCapacityPromise = this.preFetchLnCapacity(lnPublicKey);
+                        }
+                        else
+                            lnPublicKey.catch(() => { });
                         return {
-                            lnCapacityPromise: options?.unsafeSkipLnNodeCheck ? null : this.preFetchLnCapacity(lnPublicKey),
+                            lnCapacityPromise,
                             resp: await response
                         };
                     }, undefined, RequestError_1.RequestError, abortController.signal);
@@ -212,7 +218,7 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
                         throw new IntermediaryError_1.IntermediaryError("Invalid returned swap invoice, no expiry date field");
                     const amountIn = (BigInt(decodedPr.millisatoshis) + 999n) / 1000n;
                     try {
-                        this.verifyReturnedData(resp, amountData, lp, options ?? {}, decodedPr, paymentHash);
+                        this.verifyReturnedData(resp, amountData, lp, _options, decodedPr, paymentHash);
                         const [pricingInfo] = await Promise.all([
                             this.verifyReturnedPrice(lp.services[SwapType_1.SwapType.FROM_BTCLN], false, amountIn, resp.total, amountData.token, {}, _preFetches.pricePrefetchPromise, _preFetches.usdPricePrefetchPromise, abortController.signal),
                             this.verifyIntermediaryLiquidity(resp.total, (0, Utils_1.throwIfUndefined)(liquidityPromise)),
@@ -230,7 +236,6 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
                             secret: secret?.toString("hex"),
                             exactIn: amountData.exactIn ?? true
                         });
-                        await quote._save();
                         return quote;
                     }
                     catch (e) {
@@ -259,8 +264,12 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
     async createViaLNURL(recipient, lnurl, amountData, lps, options, additionalParams, abortSignal) {
         if (!this.isInitialized)
             throw new Error("Not initialized, call init() first!");
-        if (options?.paymentHash != null && options.paymentHash.length !== 32)
-            throw new UserError_1.UserError("Invalid payment hash length, must be exactly 32 bytes!");
+        const _options = {
+            paymentHash: (0, Utils_1.parseHashValueExact32Bytes)(options?.paymentHash, "payment hash"),
+            description: options?.description,
+            descriptionHash: (0, Utils_1.parseHashValueExact32Bytes)(options?.descriptionHash, "description hash"),
+            unsafeSkipLnNodeCheck: options?.unsafeSkipLnNodeCheck ?? this._options.unsafeSkipLnNodeCheck
+        };
         const abortController = (0, Utils_1.extendAbortController)(abortSignal);
         const preFetches = {
             pricePrefetchPromise: this.preFetchPrice(amountData, abortController.signal),
@@ -289,7 +298,7 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
                 if ((amount * 105n / 100n) > max)
                     throw new UserError_1.UserError("Amount more than LNURL-withdraw maximum");
             }
-            return this.create(recipient, amountData, lps, options, additionalParams, abortSignal, preFetches).map(data => {
+            return this.create(recipient, amountData, lps, _options, additionalParams, abortSignal, preFetches).map(data => {
                 return {
                     quote: data.quote.then(quote => {
                         quote._setLNURLData(withdrawRequest.url, withdrawRequest.k1, withdrawRequest.callback);

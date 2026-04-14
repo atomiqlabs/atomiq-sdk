@@ -37,6 +37,7 @@ __exportStar(require("./bitcoin/wallet/SingleAddressBitcoinWallet"), exports);
 __exportStar(require("./enums/FeeType"), exports);
 __exportStar(require("./enums/SwapAmountType"), exports);
 __exportStar(require("./enums/SwapDirection"), exports);
+__exportStar(require("./enums/SwapSide"), exports);
 __exportStar(require("./enums/SwapType"), exports);
 __exportStar(require("./errors/IntermediaryError"), exports);
 __exportStar(require("./errors/RequestError"), exports);

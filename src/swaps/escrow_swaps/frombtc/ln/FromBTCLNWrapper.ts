@@ -4,7 +4,7 @@ import {
     ChainSwapType,
     ChainType,
     ClaimEvent,
-    InitializeEvent, LightningNetworkApi,
+    InitializeEvent, LightningNetworkApi, LNNodeLiquidity,
     RefundEvent, SwapCommitState, SwapCommitStateType
 } from "@atomiqlabs/base";
 import {Intermediary} from "../../../../intermediaries/Intermediary";
@@ -13,7 +13,7 @@ import {UserError} from "../../../../errors/UserError";
 import {IntermediaryError} from "../../../../errors/IntermediaryError";
 import {SwapType} from "../../../../enums/SwapType";
 import {
-    extendAbortController,
+    extendAbortController, parseHashValueExact32Bytes,
     throwIfUndefined
 } from "../../../../utils/Utils";
 import {FromBTCLNResponseType, IntermediaryAPI} from "../../../../intermediaries/apis/IntermediaryAPI";
@@ -33,9 +33,30 @@ import {AllOptional} from "../../../../utils/TypeUtils";
 import {sha256} from "@noble/hashes/sha2";
 
 export type FromBTCLNOptions = {
-    paymentHash?: Buffer,
+    /**
+     * Instead of letting the SDK generate the preimage/paymentHash pair internally you can pass your computed
+     *  paymentHash here, this will create the swap with the provided payment hash. Note that you would then
+     *  have to reveal the preimage by passing it to the {@link FromBTCLNSwap.claim} or {@link FromBTCLNSwap.txsClaim}
+     *  functions
+     *
+     * Accepts both, a {@link Buffer} and a hexadecimal `string`
+     */
+    paymentHash?: Buffer | string,
+    /**
+     * Optional description to use for the swap lightning network invoice, keep the invoice length below 500 characters
+     */
     description?: string,
-    descriptionHash?: Buffer,
+    /**
+     * Optional description hash to use for the lightning network invoice, useful when returning the invoice as part of
+     *  an LNURL-pay service endpoint.
+     *
+     * Accepts both, a {@link Buffer} and a hexadecimal `string`
+     */
+    descriptionHash?: Buffer | string,
+    /**
+     * A flag to skip checking whether the lightning network node of the LP has enough channel liquidity to facilitate
+     *  the swap.
+     */
     unsafeSkipLnNodeCheck?: boolean
 };
 
@@ -116,6 +137,7 @@ export class FromBTCLNWrapper<
         super(
             chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, lnApi,
             {
+                ...options,
                 safetyFactor: options?.safetyFactor ?? 2,
                 bitcoinBlocktime: options?.bitcoinBlocktime ?? 10*60,
                 unsafeSkipLnNodeCheck: options?.unsafeSkipLnNodeCheck ?? false
@@ -179,7 +201,10 @@ export class FromBTCLNWrapper<
         resp: FromBTCLNResponseType,
         amountData: AmountData,
         lp: Intermediary,
-        options: FromBTCLNOptions,
+        options: {
+            descriptionHash?: Buffer,
+            description?: string
+        },
         decodedPr: PaymentRequestObject & {tagsObject: TagsObject},
         paymentHash: Buffer
     ): void {
@@ -238,22 +263,20 @@ export class FromBTCLNWrapper<
     }[] {
         if(!this.isInitialized) throw new Error("Not initialized, call init() first!");
 
-        if(options==null) options = {};
-        options.unsafeSkipLnNodeCheck ??= this._options.unsafeSkipLnNodeCheck;
+        const _options = {
+            paymentHash: parseHashValueExact32Bytes(options?.paymentHash, "payment hash"),
+            description: options?.description,
+            descriptionHash: parseHashValueExact32Bytes(options?.descriptionHash, "description hash"),
+            unsafeSkipLnNodeCheck: options?.unsafeSkipLnNodeCheck ?? this._options.unsafeSkipLnNodeCheck
+        };
 
-        if(options.paymentHash!=null && options.paymentHash.length!==32)
-            throw new UserError("Invalid payment hash length, must be exactly 32 bytes!");
-
-        if(options.descriptionHash!=null && options.descriptionHash.length!==32)
-            throw new UserError("Invalid description hash length");
-
-        if(options.description!=null && Buffer.byteLength(options.description, "utf8") > 500)
+        if(_options.description!=null && Buffer.byteLength(_options.description, "utf8") > 500)
             throw new UserError("Invalid description length");
 
         let secret: Buffer | undefined;
         let paymentHash: Buffer;
-        if(options?.paymentHash!=null) {
-            paymentHash = options.paymentHash;
+        if(_options.paymentHash!=null) {
+            paymentHash = _options.paymentHash;
         } else {
             ({secret, paymentHash} = this.getSecretAndHash());
         }
@@ -286,8 +309,8 @@ export class FromBTCLNWrapper<
                                 amount: amountData.amount,
                                 claimer: recipient,
                                 token: amountData.token.toString(),
-                                description: options?.description,
-                                descriptionHash: options?.descriptionHash,
+                                description: _options.description,
+                                descriptionHash: _options.descriptionHash,
                                 exactOut: !amountData.exactIn,
                                 feeRate: throwIfUndefined(_preFetches.feeRatePromise),
                                 additionalParams
@@ -295,8 +318,13 @@ export class FromBTCLNWrapper<
                             this._options.postRequestTimeout, abortController.signal, retryCount>0 ? false : undefined
                         );
 
+                        let lnCapacityPromise: Promise<LNNodeLiquidity | null> | undefined;
+                        if(!_options.unsafeSkipLnNodeCheck) {
+                            lnCapacityPromise = this.preFetchLnCapacity(lnPublicKey);
+                        } else lnPublicKey.catch(() => {});
+
                         return {
-                            lnCapacityPromise: options?.unsafeSkipLnNodeCheck ? null : this.preFetchLnCapacity(lnPublicKey),
+                            lnCapacityPromise,
                             resp: await response
                         };
                     }, undefined, RequestError, abortController.signal);
@@ -307,7 +335,7 @@ export class FromBTCLNWrapper<
                     const amountIn = (BigInt(decodedPr.millisatoshis) + 999n) / 1000n;
 
                     try {
-                        this.verifyReturnedData(resp, amountData, lp, options ?? {}, decodedPr, paymentHash);
+                        this.verifyReturnedData(resp, amountData, lp, _options, decodedPr, paymentHash);
                         const [pricingInfo] = await Promise.all([
                             this.verifyReturnedPrice(
                                 lp.services[SwapType.FROM_BTCLN], false, amountIn, resp.total,
@@ -334,7 +362,6 @@ export class FromBTCLNWrapper<
                             secret: secret?.toString("hex"),
                             exactIn: amountData.exactIn ?? true
                         } as FromBTCLNSwapInit<T["Data"]>);
-                        await quote._save();
                         return quote;
                     } catch (e) {
                         abortController.abort(e);
@@ -374,8 +401,12 @@ export class FromBTCLNWrapper<
     }[]> {
         if(!this.isInitialized) throw new Error("Not initialized, call init() first!");
 
-        if(options?.paymentHash!=null && options.paymentHash.length!==32)
-            throw new UserError("Invalid payment hash length, must be exactly 32 bytes!");
+        const _options = {
+            paymentHash: parseHashValueExact32Bytes(options?.paymentHash, "payment hash"),
+            description: options?.description,
+            descriptionHash: parseHashValueExact32Bytes(options?.descriptionHash, "description hash"),
+            unsafeSkipLnNodeCheck: options?.unsafeSkipLnNodeCheck ?? this._options.unsafeSkipLnNodeCheck
+        };
 
         const abortController = extendAbortController(abortSignal);
         const preFetches = {
@@ -408,7 +439,7 @@ export class FromBTCLNWrapper<
                 if((amount * 105n / 100n) > max) throw new UserError("Amount more than LNURL-withdraw maximum");
             }
 
-            return this.create(recipient, amountData, lps, options, additionalParams, abortSignal, preFetches).map(data => {
+            return this.create(recipient, amountData, lps, _options, additionalParams, abortSignal, preFetches).map(data => {
                 return {
                     quote: data.quote.then(quote => {
                         quote._setLNURLData(

@@ -90,7 +90,6 @@ export abstract class IToBTCWrapper<
     protected async processEventInitialize(swap: D["Swap"], event: InitializeEvent<T["Data"]>): Promise<boolean> {
         if(swap._state===ToBTCSwapState.CREATED || swap._state===ToBTCSwapState.QUOTE_SOFT_EXPIRED) {
             swap._state = ToBTCSwapState.COMMITED;
-            if(swap._commitTxId==null) swap._commitTxId = event.meta?.txId;
             return true;
         }
         return false;
@@ -108,7 +107,6 @@ export abstract class IToBTCWrapper<
                 this.logger.warn(`processEventClaim(): Failed to set payment result ${event.result}: `, e);
             });
             swap._state = ToBTCSwapState.CLAIMED;
-            if(swap._claimTxId==null) swap._claimTxId = event.meta?.txId;
             return true;
         }
         return false;
@@ -120,7 +118,6 @@ export abstract class IToBTCWrapper<
     protected processEventRefund(swap: D["Swap"], event: RefundEvent<T["Data"]>): Promise<boolean> {
         if(swap._state!==ToBTCSwapState.CLAIMED && swap._state!==ToBTCSwapState.REFUNDED) {
             swap._state = ToBTCSwapState.REFUNDED;
-            if(swap._refundTxId==null) swap._refundTxId = event.meta?.txId;
             return Promise.resolve(true);
         }
         return Promise.resolve(false);

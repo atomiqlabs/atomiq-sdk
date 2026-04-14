@@ -18,6 +18,7 @@ const indexes = [
  * Simple index types for SDK swap storage
  *
  * @category Storage
+ * @useDeclaredType
  */
 export type UnifiedSwapStorageIndexes = typeof indexes;
 
@@ -31,6 +32,7 @@ const compositeIndexes = [
  * Composite index types for SDK swap storage
  *
  * @category Storage
+ * @useDeclaredType
  */
 export type UnifiedSwapStorageCompositeIndexes = typeof compositeIndexes;
 
@@ -87,6 +89,7 @@ export class UnifiedSwapStorage<T extends ChainType> {
             }
             const value = reviver(rawObj);
             if(value==null) return;
+            value._persisted = true;
             if(!this.noWeakRefMap) this.weakRefCache.set(rawObj.id, new WeakRef<ISwap<T>>(value));
             result.push(value);
         });
@@ -99,36 +102,40 @@ export class UnifiedSwapStorage<T extends ChainType> {
      *
      * @param value Swap to save
      */
-    save<S extends ISwap<T>>(value: S): Promise<void> {
+    async save<S extends ISwap<T>>(value: S): Promise<void> {
         if(!this.noWeakRefMap) this.weakRefCache.set(value.getId(), new WeakRef<ISwap<T>>(value));
-        return this.storage.save(value.serialize());
+        await this.storage.save(value.serialize());
+        value._persisted = true;
     }
 
     /**
      * Saves multiple swaps to storage in a batch operation
      * @param values Array of swaps to save
      */
-    saveAll<S extends ISwap<T>>(values: S[]): Promise<void> {
+    async saveAll<S extends ISwap<T>>(values: S[]): Promise<void> {
         if(!this.noWeakRefMap) values.forEach(value => this.weakRefCache.set(value.getId(), new WeakRef<ISwap<T>>(value)));
-        return this.storage.saveAll(values.map(obj => obj.serialize()));
+        await this.storage.saveAll(values.map(obj => obj.serialize()));
+        values.forEach(value => value._persisted = true);
     }
 
     /**
      * Removes a swap from storage
      * @param value Swap to remove
      */
-    remove<S extends ISwap<T>>(value: S): Promise<void> {
+    async remove<S extends ISwap<T>>(value: S): Promise<void> {
         if(!this.noWeakRefMap) this.weakRefCache.delete(value.getId());
-        return this.storage.remove(value.serialize());
+        await this.storage.remove(value.serialize());
+        value._persisted = false;
     }
 
     /**
      * Removes multiple swaps from storage in a batch operation
      * @param values Array of swaps to remove
      */
-    removeAll<S extends ISwap<T>>(values: S[]): Promise<void> {
+    async removeAll<S extends ISwap<T>>(values: S[]): Promise<void> {
         if(!this.noWeakRefMap) values.forEach(value => this.weakRefCache.delete(value.getId()));
-        return this.storage.removeAll(values.map(obj => obj.serialize()));
+        await this.storage.removeAll(values.map(obj => obj.serialize()));
+        values.forEach(value => value._persisted = false);
     }
 
 }

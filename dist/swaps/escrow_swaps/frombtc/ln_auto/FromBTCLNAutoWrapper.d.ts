@@ -18,12 +18,53 @@ import { AmountData } from "../../../../types/AmountData";
 import { LNURLWithdrawParamsWithUrl } from "../../../../types/lnurl/LNURLWithdraw";
 import { AllOptional } from "../../../../utils/TypeUtils";
 export type FromBTCLNAutoOptions = {
-    paymentHash?: Buffer;
+    /**
+     * Instead of letting the SDK generate the preimage/paymentHash pair internally you can pass your computed
+     *  paymentHash here, this will create the swap with the provided payment hash. Note that swaps created this way
+     *  won't settle automatically (as the SDK is missing the preimage). Once the HTLC towards the user is created in
+     *  the {@link FromBTCLNAutoSwapState.CLAIM_COMMITED} state, you should pass the secret preimage manually in the
+     *  {@link FromBTCLNAutoSwap.waitTillClaimed}, {@link FromBTCLNAutoSwap.claim} or {@link FromBTCLNAutoSwap.txsClaim}
+     *  functions.
+     *
+     * Accepts both, a {@link Buffer} and a hexadecimal `string`
+     */
+    paymentHash?: Buffer | string;
+    /**
+     * Optional description to use for the swap lightning network invoice, keep the invoice length below 500 characters
+     */
     description?: string;
-    descriptionHash?: Buffer;
+    /**
+     * Optional description hash to use for the lightning network invoice, useful when returning the invoice as part of
+     *  an LNURL-pay service endpoint.
+     *
+     * Accepts both, a {@link Buffer} and a hexadecimal `string`
+     */
+    descriptionHash?: Buffer | string;
+    /**
+     * Optional additional native token to receive as an output of the swap (e.g. STRK on Starknet or cBTC on Citrea).
+     *  When passed as a `bigint` it is specified in base units of the token and in `string` it is the human readable
+     *  decimal format.
+     */
+    gasAmount?: bigint | string;
+    /**
+     * A flag to skip checking whether the lightning network node of the LP has enough channel liquidity to facilitate
+     *  the swap.
+     */
     unsafeSkipLnNodeCheck?: boolean;
-    gasAmount?: bigint;
+    /**
+     * A flag to attach 0 watchtower fee to the swap, this would make the settlement unattractive for the watchtowers
+     *  and therefore automatic settlement for such swaps will not be possible, you will have to settle manually
+     *  with {@link FromBTCLNSwap.claim} or {@link FromBTCLNSwap.txsClaim} functions.
+     */
     unsafeZeroWatchtowerFee?: boolean;
+    /**
+     * A safety factor to use when estimating the watchtower fee to attach to the swap (this has to cover the gas fee
+     *  of watchtowers settling the swap). A higher multiple here would mean that a swap is more attractive for
+     *  watchtowers to settle automatically.
+     *
+     * Uses a `1.25` multiple by default (i.e. the current network fee is multiplied by 1.25 and then used to estimate
+     *  the settlement gas fee cost)
+     */
     feeSafetyFactor?: number;
 };
 export type FromBTCLNAutoWrapperOptions = ISwapWrapperOptions & {

@@ -132,6 +132,14 @@ export abstract class ISwap<
      * @internal
      */
     _randomNonce: string;
+    /**
+     * Whether the swap is saved in the persistent storage or not.
+     *
+     * @remarks This field itself is not persisted but is instead derived during runtime
+     *
+     * @internal
+     */
+    _persisted: boolean = false;
 
 
     /**
@@ -226,10 +234,12 @@ export abstract class ISwap<
      * @internal
      */
     protected waitTillState(targetState: S, type: "eq" | "gte" | "neq" = "eq", abortSignal?: AbortSignal): Promise<void> {
+        //TODO: This doesn't hold strong reference to the swap, hence if no other strong reference to the
+        // swap exists, it will just never resolve!
         return new Promise((resolve, reject) => {
-            let listener: (swap: D["Swap"]) => void;
-            listener = (swap) => {
-                if(type==="eq" ? swap._state===targetState : type==="gte" ? swap._state>=targetState : swap._state!=targetState) {
+            let listener: () => void;
+            listener = () => {
+                if(type==="eq" ? this._state===targetState : type==="gte" ? this._state>=targetState : this._state!=targetState) {
                     resolve();
                     this.events.removeListener("swapState", listener);
                 }

@@ -61,7 +61,7 @@ export declare class ToBTCLNSwap<T extends ChainType = ChainType> extends IToBTC
     /**
      * @inheritDoc
      */
-    getOutput(): TokenAmount<T["ChainId"], BtcToken<true>>;
+    getOutput(): TokenAmount<BtcToken<true>>;
     /**
      * @inheritDoc
      */

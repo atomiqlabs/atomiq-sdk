@@ -64,6 +64,7 @@ class UnifiedSwapStorage {
             const value = reviver(rawObj);
             if (value == null)
                 return;
+            value._persisted = true;
             if (!this.noWeakRefMap)
                 this.weakRefCache.set(rawObj.id, new WeakRef(value));
             result.push(value);
@@ -75,37 +76,41 @@ class UnifiedSwapStorage {
      *
      * @param value Swap to save
      */
-    save(value) {
+    async save(value) {
         if (!this.noWeakRefMap)
             this.weakRefCache.set(value.getId(), new WeakRef(value));
-        return this.storage.save(value.serialize());
+        await this.storage.save(value.serialize());
+        value._persisted = true;
     }
     /**
      * Saves multiple swaps to storage in a batch operation
      * @param values Array of swaps to save
      */
-    saveAll(values) {
+    async saveAll(values) {
         if (!this.noWeakRefMap)
             values.forEach(value => this.weakRefCache.set(value.getId(), new WeakRef(value)));
-        return this.storage.saveAll(values.map(obj => obj.serialize()));
+        await this.storage.saveAll(values.map(obj => obj.serialize()));
+        values.forEach(value => value._persisted = true);
     }
     /**
      * Removes a swap from storage
      * @param value Swap to remove
      */
-    remove(value) {
+    async remove(value) {
         if (!this.noWeakRefMap)
             this.weakRefCache.delete(value.getId());
-        return this.storage.remove(value.serialize());
+        await this.storage.remove(value.serialize());
+        value._persisted = false;
     }
     /**
      * Removes multiple swaps from storage in a batch operation
      * @param values Array of swaps to remove
      */
-    removeAll(values) {
+    async removeAll(values) {
         if (!this.noWeakRefMap)
             values.forEach(value => this.weakRefCache.delete(value.getId()));
-        return this.storage.removeAll(values.map(obj => obj.serialize()));
+        await this.storage.removeAll(values.map(obj => obj.serialize()));
+        values.forEach(value => value._persisted = false);
     }
 }
 exports.UnifiedSwapStorage = UnifiedSwapStorage;

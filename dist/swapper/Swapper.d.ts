@@ -16,7 +16,6 @@ import { LnForGasWrapper } from "../swaps/trusted/ln/LnForGasWrapper";
 import { LnForGasSwap } from "../swaps/trusted/ln/LnForGasSwap";
 import { EventEmitter } from "events";
 import { Intermediary } from "../intermediaries/Intermediary";
-import { WrapperCtorTokens } from "../swaps/ISwapWrapper";
 import { SwapperWithChain } from "./SwapperWithChain";
 import { OnchainForGasSwap } from "../swaps/trusted/onchain/OnchainForGasSwap";
 import { OnchainForGasWrapper } from "../swaps/trusted/onchain/OnchainForGasWrapper";
@@ -39,6 +38,7 @@ import { LNURLWithdraw } from "../types/lnurl/LNURLWithdraw";
 import { LNURLPay } from "../types/lnurl/LNURLPay";
 import { NotNever } from "../utils/TypeUtils";
 import { LightningInvoiceCreateService } from "../types/wallets/LightningInvoiceCreateService";
+import { SwapSide } from "../enums/SwapSide";
 /**
  * Configuration options for the Swapper
  * @category Core
@@ -123,9 +123,15 @@ export type SwapperOptions = {
      */
     dontFetchLPs?: boolean;
     /**
-     * By setting this flag the SDK persists all created swaps. By default, the SDK only saves and persists swaps that
-     *  are considered initiated, i.e. when `commit()`, `execute()` or `waitTillPayment` is called (or their respective
-     *  txs... prefixed variations).
+     * Defaults to `true`, this means every swap regardless of it being initiated (i.e. when `commit()`, `execute()` or
+     *  `waitTillPayment` is called) is saved to the persistent storage. This is a reasonable default for when you
+     *  want to only create a swap, and then later on retrieve it with the `swapper.getSwapById()` function.
+     *
+     * Setting this to `false` means the SDK only saves and persists swaps that are considered initiated, i.e. when
+     *  `commit()`, `execute()` or `waitTillPayment` is called (or their respective txs... prefixed variations). This
+     *  might save calls to the persistent storage for swaps that are never initiated. This is useful in e.g.
+     *  frontend implementations where the frontend holds the swap object reference until it is initiated anyway, not
+     *  necessitating the saving of the swap data to the persistent storage until it is actually initiated.
      */
     saveUninitializedSwaps?: boolean;
     /**
@@ -246,7 +252,7 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
     /**
      * @internal
      */
-    constructor(bitcoinRpc: BitcoinRpcWithAddressIndex<any>, lightningApi: LightningNetworkApi, bitcoinSynchronizer: (btcRelay: BtcRelay<any, any, any>) => RelaySynchronizer<any, any, any>, chainsData: CtorMultiChainData<T>, pricing: ISwapPrice<T>, tokens: WrapperCtorTokens<T>, messenger: Messenger, options?: SwapperOptions);
+    constructor(bitcoinRpc: BitcoinRpcWithAddressIndex<any>, lightningApi: LightningNetworkApi, bitcoinSynchronizer: (btcRelay: BtcRelay<any, any, any>) => RelaySynchronizer<any, any, any>, chainsData: CtorMultiChainData<T>, pricing: ISwapPrice<T>, tokens: SCToken[], messenger: Messenger, options?: SwapperOptions);
     private _init;
     private initPromise?;
     private initialized;
@@ -459,25 +465,25 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
     /**
      * @internal
      */
-    swap<C extends ChainIds<T>>(srcToken: BtcToken<true>, dstToken: SCToken<C>, amount: bigint | string, exactIn: boolean | SwapAmountType, src: undefined | string | LNURLWithdraw, dstSmartchainWallet: string, options?: (SupportsSwapType<T[C], SwapType.FROM_BTCLN_AUTO> extends true ? FromBTCLNAutoOptions : FromBTCLNOptions)): Promise<(SupportsSwapType<T[C], SwapType.FROM_BTCLN_AUTO> extends true ? FromBTCLNAutoSwap<T[C]> : FromBTCLNSwap<T[C]>)>;
+    swap<C extends ChainIds<T>>(srcToken: BtcToken<true> | "BTCLN" | "BTC-LN" | "LIGHTNING-BTC", dstToken: SCToken<C> | string, amount: bigint | string, exactIn: boolean | SwapAmountType, src: undefined | string | LNURLWithdraw, dstSmartchainWallet: string, options?: (SupportsSwapType<T[C], SwapType.FROM_BTCLN_AUTO> extends true ? FromBTCLNAutoOptions : FromBTCLNOptions)): Promise<(SupportsSwapType<T[C], SwapType.FROM_BTCLN_AUTO> extends true ? FromBTCLNAutoSwap<T[C]> : FromBTCLNSwap<T[C]>)>;
     /**
      * @internal
      */
-    swap<C extends ChainIds<T>>(srcToken: BtcToken<false>, dstToken: SCToken<C>, amount: bigint | string, exactIn: boolean | SwapAmountType, src: undefined | string, dstSmartchainWallet: string, options?: (SupportsSwapType<T[C], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCOptions : FromBTCOptions)): Promise<(SupportsSwapType<T[C], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCSwap<T[C]> : FromBTCSwap<T[C]>)>;
+    swap<C extends ChainIds<T>>(srcToken: BtcToken<false> | "BTC" | "BITCOIN-BTC", dstToken: SCToken<C> | string, amount: bigint | string, exactIn: boolean | SwapAmountType, src: undefined | string, dstSmartchainWallet: string, options?: (SupportsSwapType<T[C], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCOptions : FromBTCOptions)): Promise<(SupportsSwapType<T[C], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCSwap<T[C]> : FromBTCSwap<T[C]>)>;
     /**
      * @internal
      */
-    swap<C extends ChainIds<T>>(srcToken: SCToken<C>, dstToken: BtcToken<false>, amount: bigint | string, exactIn: boolean | SwapAmountType, src: string, dstAddress: string, options?: ToBTCOptions): Promise<ToBTCSwap<T[C]>>;
+    swap<C extends ChainIds<T>>(srcToken: SCToken<C> | string, dstToken: BtcToken<false> | "BTC" | "BITCOIN-BTC", amount: bigint | string, exactIn: boolean | SwapAmountType, src: string, dstAddress: string, options?: ToBTCOptions): Promise<ToBTCSwap<T[C]>>;
     /**
      * @internal
      */
-    swap<C extends ChainIds<T>>(srcToken: SCToken<C>, dstToken: BtcToken<true>, amount: bigint | string, exactIn: boolean | SwapAmountType, src: string, dstLnurlPayOrInvoiceCreateService: string | LNURLPay | LightningInvoiceCreateService, options?: ToBTCLNOptions & {
+    swap<C extends ChainIds<T>>(srcToken: SCToken<C> | string, dstToken: BtcToken<true> | "BTCLN" | "BTC-LN" | "LIGHTNING-BTC", amount: bigint | string, exactIn: boolean | SwapAmountType, src: string, dstLnurlPayOrInvoiceCreateService: string | LNURLPay | LightningInvoiceCreateService, options?: ToBTCLNOptions & {
         comment?: string;
     }): Promise<ToBTCLNSwap<T[C]>>;
     /**
      * @internal
      */
-    swap<C extends ChainIds<T>>(srcToken: SCToken<C>, dstToken: BtcToken<true>, amount: undefined, exactIn: false | SwapAmountType.EXACT_OUT, src: string, dstLightningInvoice: string, options?: ToBTCLNOptions): Promise<ToBTCLNSwap<T[C]>>;
+    swap<C extends ChainIds<T>>(srcToken: SCToken<C> | string, dstToken: BtcToken<true> | "BTCLN" | "BTC-LN" | "LIGHTNING-BTC", amount: undefined, exactIn: false | SwapAmountType.EXACT_OUT, src: string, dstLightningInvoice: string, options?: ToBTCLNOptions): Promise<ToBTCLNSwap<T[C]>>;
     /**
      * Creates a swap from srcToken to dstToken, of a specific token amount, either specifying input amount (if `exactIn=true`)
      *  or output amount (if `exactIn=false`), NOTE: For regular Smart chain -> BTC-LN (lightning) swaps the passed amount is ignored and
@@ -576,14 +582,9 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
      *  initiated after this blockheight
      */
     recoverSwaps<C extends ChainIds<T>>(chainId: C, signer: string, startBlockheight?: number): Promise<ISwap<T[C]>[]>;
-    /**
-     * Returns the {@link Token} object for a given token
-     *
-     * @param tickerOrAddress Token to return the object for, can use multiple formats:
-     *  - a) token ticker, such as `"BTC"`, `"SOL"`, etc.
-     *  - b) token ticker prefixed with smart chain identifier, such as `"SOLANA-SOL"`, `"SOLANA-USDC"`, etc.
-     *  - c) token address
-     */
+    getToken(ticker: "BTC" | "BITCOIN-BTC"): BtcToken<false>;
+    getToken(ticker: "BTCLN" | "BTC-LN" | "LIGHTNING-BTC"): BtcToken<true>;
+    getToken<ChainIdentifier extends ChainIds<T>>(ticker: `${ChainIdentifier}-${string}`): SCToken<ChainIdentifier>;
     getToken(tickerOrAddress: string): Token<ChainIds<T>>;
     /**
      * Creates a child swapper instance with a given smart chain
@@ -650,12 +651,12 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
      */
     getSwapLimits<C extends ChainIds<T>, A extends Token<C>, B extends Token<C>>(srcToken: A, dstToken: B): {
         input: {
-            min: TokenAmount<string, A>;
-            max?: TokenAmount<string, A>;
+            min: TokenAmount<A>;
+            max?: TokenAmount<A>;
         };
         output: {
-            min: TokenAmount<string, B>;
-            max?: TokenAmount<string, B>;
+            min: TokenAmount<B>;
+            max?: TokenAmount<B>;
         };
     };
     /**
@@ -663,7 +664,7 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
      *
      * @param input Whether to return input tokens or output tokens
      */
-    getSupportedTokens(input: boolean): Token[];
+    getSupportedTokens(input: SwapSide | boolean): Token[];
     /**
      * Returns a set of supported tokens by all the intermediaries offering a specific swap service
      *
@@ -681,6 +682,6 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
      * Returns tokens that you can swap to (if input=true) from a given token,
      *  or tokens that you can swap from (if input=false) to a given token
      */
-    getSwapCounterTokens(token: Token, input: boolean): Token[];
+    getSwapCounterTokens(token: Token, input: SwapSide | boolean): Token[];
 }
 export {};

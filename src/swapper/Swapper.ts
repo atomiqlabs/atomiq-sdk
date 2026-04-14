@@ -64,6 +64,7 @@ import {tryWithRetries} from "../utils/RetryUtils";
 import {NotNever} from "../utils/TypeUtils";
 import {IEscrowSwap} from "../swaps/escrow_swaps/IEscrowSwap";
 import {LightningInvoiceCreateService, isLightningInvoiceCreateService} from "../types/wallets/LightningInvoiceCreateService";
+import {SwapSide} from "../enums/SwapSide";
 
 /**
  * Configuration options for the Swapper
@@ -151,9 +152,15 @@ export type SwapperOptions = {
      */
     dontFetchLPs?: boolean,
     /**
-     * By setting this flag the SDK persists all created swaps. By default, the SDK only saves and persists swaps that
-     *  are considered initiated, i.e. when `commit()`, `execute()` or `waitTillPayment` is called (or their respective
-     *  txs... prefixed variations).
+     * Defaults to `true`, this means every swap regardless of it being initiated (i.e. when `commit()`, `execute()` or
+     *  `waitTillPayment` is called) is saved to the persistent storage. This is a reasonable default for when you
+     *  want to only create a swap, and then later on retrieve it with the `swapper.getSwapById()` function.
+     *
+     * Setting this to `false` means the SDK only saves and persists swaps that are considered initiated, i.e. when
+     *  `commit()`, `execute()` or `waitTillPayment` is called (or their respective txs... prefixed variations). This
+     *  might save calls to the persistent storage for swaps that are never initiated. This is useful in e.g.
+     *  frontend implementations where the frontend holds the swap object reference until it is initiated anyway, not
+     *  necessitating the saving of the swap data to the persistent storage until it is actually initiated.
      */
     saveUninitializedSwaps?: boolean,
     /**
@@ -200,6 +207,16 @@ type MultiChainData<T extends MultiChain> = {
 type CtorMultiChainData<T extends MultiChain> = {
     [chainIdentifier in keyof T]: ChainData<T[chainIdentifier]>
 };
+
+type SwapperCtorTokens<T extends MultiChain = MultiChain> = {
+    ticker: string,
+    name: string,
+    chains: {[chainId in ChainIds<T>]?: {
+        address: string,
+        decimals: number,
+        displayDecimals?: number
+    }}
+}[];
 
 /**
  * Type extracting chain identifiers from a MultiChain type
@@ -299,7 +316,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         bitcoinSynchronizer: (btcRelay: BtcRelay<any, any, any>) => RelaySynchronizer<any, any, any>,
         chainsData: CtorMultiChainData<T>,
         pricing: ISwapPrice<T>,
-        tokens: WrapperCtorTokens<T>,
+        tokens: SCToken[],
         messenger: Messenger,
         options?: SwapperOptions
     ) {
@@ -307,6 +324,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         const storagePrefix = options?.storagePrefix ?? "atomiq-";
 
         options ??= {};
+        options.saveUninitializedSwaps ??= true;
         options.bitcoinNetwork = options.bitcoinNetwork==null ? BitcoinNetwork.TESTNET : options.bitcoinNetwork;
         const swapStorage = options.swapStorage ??= (name: string) => new IndexedDBUnifiedStorage(name);
 
@@ -329,20 +347,10 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         this._tokens = {};
         this._tokensByTicker = {};
         for(let tokenData of tokens) {
-            for(let chainId in tokenData.chains) {
-                const chainData = tokenData.chains[chainId]!;
-                this._tokens[chainId] ??= {};
-                this._tokensByTicker[chainId] ??= {};
-                this._tokens[chainId][chainData.address] = this._tokensByTicker[chainId][tokenData.ticker] = {
-                    chain: "SC",
-                    chainId,
-                    ticker: tokenData.ticker,
-                    name: tokenData.name,
-                    decimals: chainData.decimals,
-                    displayDecimals: chainData.displayDecimals,
-                    address: chainData.address
-                }
-            }
+            const chainId = tokenData.chainId;
+            this._tokens[chainId] ??= {};
+            this._tokensByTicker[chainId] ??= {};
+            this._tokens[chainId][tokenData.address] = this._tokensByTicker[chainId][tokenData.ticker] = tokenData;
         }
 
         this.swapStateListener = (swap: ISwap) => {
@@ -352,11 +360,12 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         this._chains = objectMap<CtorMultiChainData<T>, MultiChainData<T>>(chainsData, <InputKey extends keyof CtorMultiChainData<T>>(chainData: CtorMultiChainData<T>[InputKey], key: string) => {
             const {
                 swapContract, chainEvents, btcRelay,
-                chainInterface, spvVaultContract, spvVaultWithdrawalDataConstructor
+                chainInterface, spvVaultContract, spvVaultWithdrawalDataConstructor,
+                chainId
             } = chainData;
             const synchronizer = bitcoinSynchronizer(btcRelay);
 
-            const storageHandler = swapStorage(storagePrefix + chainData.chainId);
+            const storageHandler = swapStorage(storagePrefix + chainId);
             const unifiedSwapStorage = new UnifiedSwapStorage<T[InputKey]>(storageHandler, this.options.noSwapCache);
             const unifiedChainEvents = new UnifiedSwapEventListener<T[InputKey]>(unifiedSwapStorage, chainEvents);
 
@@ -369,11 +378,12 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 chainInterface,
                 swapContract,
                 pricing,
-                tokens,
+                this._tokens[chainId],
                 chainData.swapDataConstructor,
                 {
                     getRequestTimeout: this.options.getRequestTimeout,
                     postRequestTimeout: this.options.postRequestTimeout,
+                    saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                 }
             );
             wrappers[SwapType.TO_BTC] = new ToBTCWrapper<T[InputKey]>(
@@ -383,12 +393,13 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 chainInterface,
                 swapContract,
                 pricing,
-                tokens,
+                this._tokens[chainId],
                 chainData.swapDataConstructor,
                 this._bitcoinRpc,
                 {
                     getRequestTimeout: this.options.getRequestTimeout,
                     postRequestTimeout: this.options.postRequestTimeout,
+                    saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                     bitcoinNetwork: this._btcNetwork
                 }
             );
@@ -399,12 +410,13 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 chainInterface,
                 swapContract,
                 pricing,
-                tokens,
+                this._tokens[chainId],
                 chainData.swapDataConstructor,
                 lightningApi,
                 {
                     getRequestTimeout: this.options.getRequestTimeout,
                     postRequestTimeout: this.options.postRequestTimeout,
+                    saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                     unsafeSkipLnNodeCheck: this.bitcoinNetwork===BitcoinNetwork.TESTNET4 || this.bitcoinNetwork===BitcoinNetwork.REGTEST
                 }
             );
@@ -415,7 +427,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 chainInterface,
                 swapContract,
                 pricing,
-                tokens,
+                this._tokens[chainId],
                 chainData.swapDataConstructor,
                 btcRelay,
                 synchronizer,
@@ -423,6 +435,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 {
                     getRequestTimeout: this.options.getRequestTimeout,
                     postRequestTimeout: this.options.postRequestTimeout,
+                    saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                     bitcoinNetwork: this._btcNetwork
                 }
             );
@@ -432,10 +445,11 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 unifiedChainEvents,
                 chainInterface,
                 pricing,
-                tokens,
+                this._tokens[chainId],
                 {
                     getRequestTimeout: this.options.getRequestTimeout,
-                    postRequestTimeout: this.options.postRequestTimeout
+                    postRequestTimeout: this.options.postRequestTimeout,
+                    saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                 }
             );
             wrappers[SwapType.TRUSTED_FROM_BTC] = new OnchainForGasWrapper<T[InputKey]>(
@@ -444,11 +458,12 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 unifiedChainEvents,
                 chainInterface,
                 pricing,
-                tokens,
+                this._tokens[chainId],
                 bitcoinRpc,
                 {
                     getRequestTimeout: this.options.getRequestTimeout,
                     postRequestTimeout: this.options.postRequestTimeout,
+                    saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                     bitcoinNetwork: this._btcNetwork
                 }
             );
@@ -461,7 +476,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                     chainInterface,
                     spvVaultContract,
                     pricing,
-                    tokens,
+                    this._tokens[chainId],
                     spvVaultWithdrawalDataConstructor,
                     btcRelay,
                     synchronizer,
@@ -469,6 +484,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                     {
                         getRequestTimeout: this.options.getRequestTimeout,
                         postRequestTimeout: this.options.postRequestTimeout,
+                        saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                         bitcoinNetwork: this._btcNetwork
                     }
                 );
@@ -482,13 +498,14 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                     chainInterface,
                     swapContract,
                     pricing,
-                    tokens,
+                    this._tokens[chainId],
                     chainData.swapDataConstructor,
                     lightningApi,
                     this.messenger,
                     {
                         getRequestTimeout: this.options.getRequestTimeout,
                         postRequestTimeout: this.options.postRequestTimeout,
+                        saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                         unsafeSkipLnNodeCheck: this.bitcoinNetwork===BitcoinNetwork.TESTNET4 || this.bitcoinNetwork===BitcoinNetwork.REGTEST
                     }
                 );
@@ -835,10 +852,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
             if(swapLimitsChanged) this.emit("swapLimitsChanged");
 
             const quote = quotes[0].quote;
-            if(this.options.saveUninitializedSwaps) {
-                quote._setInitiated();
-                await quote._save();
-            }
+            await quote._save();
             return quote;
         } catch (e) {
             if(swapLimitsChanged) this.emit("swapLimitsChanged");
@@ -875,9 +889,6 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         if(!this.Utils.isValidBitcoinAddress(address)) throw new Error("Invalid bitcoin address");
         if(!this._chains[chainIdentifier].chainInterface.isValidAddress(signer, true)) throw new Error("Invalid "+chainIdentifier+" address");
         signer = this._chains[chainIdentifier].chainInterface.normalizeAddress(signer);
-        options ??= {};
-        options.confirmationTarget ??= 3;
-        options.confirmations ??= 2;
         const amountData = {
             amount,
             token: tokenAddress,
@@ -919,7 +930,6 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         options?: ToBTCLNOptions
     ): Promise<ToBTCLNSwap<T[ChainIdentifier]>> {
         if(this._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
-        options ??= {};
         if(paymentRequest.startsWith("lightning:")) paymentRequest = paymentRequest.substring(10);
         if(!this.Utils.isValidLightningInvoice(paymentRequest)) throw new Error("Invalid lightning network invoice");
         if(!this._chains[chainIdentifier].chainInterface.isValidAddress(signer, true)) throw new Error("Invalid "+chainIdentifier+" address");
@@ -929,9 +939,8 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         const amountData = {
             amount: (BigInt(parsedPR.millisatoshis) + 999n) / 1000n,
             token: tokenAddress,
-            exactIn: false
+            exactIn: false as const
         };
-        options.expirySeconds ??= 5*24*3600;
         return this.createSwap(
             chainIdentifier as ChainIdentifier,
             (candidates: Intermediary[], abortSignal: AbortSignal, chain) => chain.wrappers[SwapType.TO_BTCLN].create(
@@ -979,8 +988,6 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
             token: tokenAddress,
             exactIn
         };
-        options ??= {};
-        options.expirySeconds ??= 5*24*3600;
         return this.createSwap(
             chainIdentifier as ChainIdentifier,
             (candidates: Intermediary[], abortSignal: AbortSignal, chain) => chain.wrappers[SwapType.TO_BTCLN].createViaLNURL(
@@ -1022,13 +1029,11 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         if(this._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
         if(!this._chains[chainIdentifier].chainInterface.isValidAddress(signer, true)) throw new Error("Invalid "+chainIdentifier+" address");
         signer = this._chains[chainIdentifier].chainInterface.normalizeAddress(signer);
-        options ??= {};
         const amountData = {
             amount,
             token: tokenAddress,
             exactIn
         };
-        options.expirySeconds ??= 5*24*3600;
         return this.createSwap(
             chainIdentifier as ChainIdentifier,
             (candidates: Intermediary[], abortSignal: AbortSignal, chain) => chain.wrappers[SwapType.TO_BTCLN].createViaInvoiceCreateService(
@@ -1322,13 +1327,15 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
      * @param trustedIntermediaryOrUrl  URL or Intermediary object of the trusted intermediary to use, otherwise uses default
      * @throws {Error} If no trusted intermediary specified
      */
-    createTrustedLNForGasSwap<C extends ChainIds<T>>(chainIdentifier: C, recipient: string, amount: bigint, trustedIntermediaryOrUrl?: Intermediary | string): Promise<LnForGasSwap<T[C]>> {
+    async createTrustedLNForGasSwap<C extends ChainIds<T>>(chainIdentifier: C, recipient: string, amount: bigint, trustedIntermediaryOrUrl?: Intermediary | string): Promise<LnForGasSwap<T[C]>> {
         if(this._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
         if(!this._chains[chainIdentifier].chainInterface.isValidAddress(recipient, true)) throw new Error("Invalid "+chainIdentifier+" address");
         recipient = this._chains[chainIdentifier].chainInterface.normalizeAddress(recipient);
         const useUrl = trustedIntermediaryOrUrl ?? this.defaultTrustedIntermediary ?? this.options.defaultTrustedIntermediaryUrl;
         if(useUrl==null) throw new Error("No trusted intermediary specified!");
-        return this._chains[chainIdentifier as C].wrappers[SwapType.TRUSTED_FROM_BTCLN].create(recipient, amount, useUrl);
+        const swap = await this._chains[chainIdentifier as C].wrappers[SwapType.TRUSTED_FROM_BTCLN].create(recipient, amount, useUrl);
+        await swap._save();
+        return swap;
     }
 
     /**
@@ -1341,7 +1348,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
      * @param trustedIntermediaryOrUrl URL or Intermediary object of the trusted intermediary to use, otherwise uses default
      * @throws {Error} If no trusted intermediary specified
      */
-    createTrustedOnchainForGasSwap<C extends ChainIds<T>>(
+    async createTrustedOnchainForGasSwap<C extends ChainIds<T>>(
         chainIdentifier: C, recipient: string,
         amount: bigint, refundAddress?: string,
         trustedIntermediaryOrUrl?: Intermediary | string
@@ -1351,7 +1358,9 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         recipient = this._chains[chainIdentifier].chainInterface.normalizeAddress(recipient);
         const useUrl = trustedIntermediaryOrUrl ?? this.defaultTrustedIntermediary ?? this.options.defaultTrustedIntermediaryUrl;
         if(useUrl==null) throw new Error("No trusted intermediary specified!");
-        return this._chains[chainIdentifier as C].wrappers[SwapType.TRUSTED_FROM_BTC].create(recipient, amount, useUrl, refundAddress);
+        const swap = await this._chains[chainIdentifier as C].wrappers[SwapType.TRUSTED_FROM_BTC].create(recipient, amount, useUrl, refundAddress);
+        await swap._save();
+        return swap;
     }
 
     /**
@@ -1414,23 +1423,23 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
     /**
      * @internal
      */
-    swap<C extends ChainIds<T>>(srcToken: BtcToken<true>, dstToken: SCToken<C>, amount: bigint | string, exactIn: boolean | SwapAmountType, src: undefined | string | LNURLWithdraw, dstSmartchainWallet: string, options?: (SupportsSwapType<T[C], SwapType.FROM_BTCLN_AUTO> extends true ? FromBTCLNAutoOptions : FromBTCLNOptions)): Promise<(SupportsSwapType<T[C], SwapType.FROM_BTCLN_AUTO> extends true ? FromBTCLNAutoSwap<T[C]> : FromBTCLNSwap<T[C]>)>;
+    swap<C extends ChainIds<T>>(srcToken: BtcToken<true> | "BTCLN" | "BTC-LN" | "LIGHTNING-BTC", dstToken: SCToken<C> | string, amount: bigint | string, exactIn: boolean | SwapAmountType, src: undefined | string | LNURLWithdraw, dstSmartchainWallet: string, options?: (SupportsSwapType<T[C], SwapType.FROM_BTCLN_AUTO> extends true ? FromBTCLNAutoOptions : FromBTCLNOptions)): Promise<(SupportsSwapType<T[C], SwapType.FROM_BTCLN_AUTO> extends true ? FromBTCLNAutoSwap<T[C]> : FromBTCLNSwap<T[C]>)>;
     /**
      * @internal
      */
-    swap<C extends ChainIds<T>>(srcToken: BtcToken<false>, dstToken: SCToken<C>, amount: bigint | string, exactIn: boolean | SwapAmountType, src: undefined | string, dstSmartchainWallet: string, options?: (SupportsSwapType<T[C], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCOptions : FromBTCOptions)): Promise<(SupportsSwapType<T[C], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCSwap<T[C]> : FromBTCSwap<T[C]>)>;
+    swap<C extends ChainIds<T>>(srcToken: BtcToken<false> | "BTC" | "BITCOIN-BTC", dstToken: SCToken<C> | string, amount: bigint | string, exactIn: boolean | SwapAmountType, src: undefined | string, dstSmartchainWallet: string, options?: (SupportsSwapType<T[C], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCOptions : FromBTCOptions)): Promise<(SupportsSwapType<T[C], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCSwap<T[C]> : FromBTCSwap<T[C]>)>;
     /**
      * @internal
      */
-    swap<C extends ChainIds<T>>(srcToken: SCToken<C>, dstToken: BtcToken<false>, amount: bigint | string, exactIn: boolean | SwapAmountType, src: string, dstAddress: string, options?: ToBTCOptions): Promise<ToBTCSwap<T[C]>>;
+    swap<C extends ChainIds<T>>(srcToken: SCToken<C> | string, dstToken: BtcToken<false> | "BTC" | "BITCOIN-BTC", amount: bigint | string, exactIn: boolean | SwapAmountType, src: string, dstAddress: string, options?: ToBTCOptions): Promise<ToBTCSwap<T[C]>>;
     /**
      * @internal
      */
-    swap<C extends ChainIds<T>>(srcToken: SCToken<C>, dstToken: BtcToken<true>, amount: bigint | string, exactIn: boolean | SwapAmountType, src: string, dstLnurlPayOrInvoiceCreateService: string | LNURLPay | LightningInvoiceCreateService, options?: ToBTCLNOptions & {comment?: string}): Promise<ToBTCLNSwap<T[C]>>;
+    swap<C extends ChainIds<T>>(srcToken: SCToken<C> | string, dstToken: BtcToken<true> | "BTCLN" | "BTC-LN" | "LIGHTNING-BTC", amount: bigint | string, exactIn: boolean | SwapAmountType, src: string, dstLnurlPayOrInvoiceCreateService: string | LNURLPay | LightningInvoiceCreateService, options?: ToBTCLNOptions & {comment?: string}): Promise<ToBTCLNSwap<T[C]>>;
     /**
      * @internal
      */
-    swap<C extends ChainIds<T>>(srcToken: SCToken<C>, dstToken: BtcToken<true>, amount: undefined, exactIn: false | SwapAmountType.EXACT_OUT, src: string, dstLightningInvoice: string, options?: ToBTCLNOptions): Promise<ToBTCLNSwap<T[C]>>;
+    swap<C extends ChainIds<T>>(srcToken: SCToken<C> | string, dstToken: BtcToken<true> | "BTCLN" | "BTC-LN" | "LIGHTNING-BTC", amount: undefined, exactIn: false | SwapAmountType.EXACT_OUT, src: string, dstLightningInvoice: string, options?: ToBTCLNOptions): Promise<ToBTCLNSwap<T[C]>>;
     /**
      * Creates a swap from srcToken to dstToken, of a specific token amount, either specifying input amount (if `exactIn=true`)
      *  or output amount (if `exactIn=false`), NOTE: For regular Smart chain -> BTC-LN (lightning) swaps the passed amount is ignored and
@@ -1470,8 +1479,8 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         const srcToken = typeof(_srcToken)==="string" ? this.getToken(_srcToken) as Token<C> : _srcToken;
         const dstToken = typeof(_dstToken)==="string" ? this.getToken(_dstToken) as Token<C> : _dstToken;
         const amount = _amount==null ? null : (typeof(_amount)==="bigint" ? _amount : fromDecimal(_amount, exactIn ? srcToken.decimals : dstToken.decimals));
-        if(srcToken.chain==="BTC") {
-            if(dstToken.chain==="SC") {
+        if(isBtcToken(srcToken)) {
+            if(isSCToken<C>(dstToken)) {
                 if(typeof(dst)!=="string") throw new Error("Destination for BTC/BTC-LN -> smart chain swaps must be a smart chain address!");
                 if(amount==null) throw new Error("Amount cannot be null for from btc swaps!");
                 if(srcToken.lightning) {
@@ -1495,8 +1504,8 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                     }
                 }
             }
-        } else {
-            if(dstToken.chain==="BTC") {
+        } else if(isSCToken<C>(srcToken)) {
+            if(isBtcToken(dstToken)) {
                 if(typeof(src)!=="string") throw new Error("Source address for BTC/BTC-LN -> smart chain swaps must be a smart chain address!");
                 if(dstToken.lightning) {
                     //TO_BTCLN
@@ -1985,6 +1994,10 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         return recoveredSwaps;
     }
 
+    getToken(ticker: "BTC" | "BITCOIN-BTC"): BtcToken<false>;
+    getToken(ticker: "BTCLN" | "BTC-LN" | "LIGHTNING-BTC"): BtcToken<true>;
+    getToken<ChainIdentifier extends ChainIds<T>>(ticker: `${ChainIdentifier}-${string}`): SCToken<ChainIdentifier>;
+    getToken(tickerOrAddress: string): Token<ChainIds<T>>;
     /**
      * Returns the {@link Token} object for a given token
      *
@@ -1995,8 +2008,8 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
      */
     getToken(tickerOrAddress: string): Token<ChainIds<T>> {
         //Btc tokens - BTC, BTCLN, BTC-LN
-        if(tickerOrAddress==="BTC") return BitcoinTokens.BTC;
-        if(tickerOrAddress==="BTCLN" || tickerOrAddress==="BTC-LN") return BitcoinTokens.BTCLN;
+        if(tickerOrAddress==="BTC" || tickerOrAddress==="BITCOIN-BTC") return BitcoinTokens.BTC;
+        if(tickerOrAddress==="BTCLN" || tickerOrAddress==="BTC-LN" || tickerOrAddress==="LIGHTNING-BTC") return BitcoinTokens.BTCLN;
 
         //Check if the ticker is in format <chainId>-<ticker>, i.e. SOLANA-USDC, STARKNET-WBTC
         if(tickerOrAddress.includes("-")) {
@@ -2137,8 +2150,8 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
      * @param dstToken Destination token
      */
     getSwapLimits<C extends ChainIds<T>, A extends Token<C>, B extends Token<C>>(srcToken: A, dstToken: B): {
-        input: {min: TokenAmount<string, A>, max?: TokenAmount<string, A>},
-        output: {min: TokenAmount<string, B>, max?: TokenAmount<string, B>}
+        input: {min: TokenAmount<A>, max?: TokenAmount<A>},
+        output: {min: TokenAmount<B>, max?: TokenAmount<B>}
     } {
         const swapType = this.getSwapType(srcToken, dstToken);
         const scToken = isSCToken(srcToken) ? srcToken : isSCToken(dstToken) ? dstToken : null;
@@ -2172,7 +2185,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
      *
      * @param input Whether to return input tokens or output tokens
      */
-    getSupportedTokens(input: boolean): Token[] {
+    getSupportedTokens(input: SwapSide | boolean): Token[] {
         const tokens: {[chainId: string]: Set<string>} = {};
         let lightning = false;
         let btc = false;
@@ -2275,7 +2288,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
      * Returns tokens that you can swap to (if input=true) from a given token,
      *  or tokens that you can swap from (if input=false) to a given token
      */
-    getSwapCounterTokens(token: Token, input: boolean): Token[] {
+    getSwapCounterTokens(token: Token, input: SwapSide | boolean): Token[] {
         if(isSCToken(token)) {
             const result: Token[] = [];
             if(input) {

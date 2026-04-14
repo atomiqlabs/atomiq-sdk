@@ -191,7 +191,7 @@ export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromB
      * @inheritDoc
      * @internal
      */
-    protected canCommit(): boolean;
+    protected canCommit(skipQuoteExpiryChecks?: boolean): boolean;
     /**
      * @inheritDoc
      */
@@ -199,13 +199,13 @@ export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromB
     /**
      * @inheritDoc
      */
-    getInput(): TokenAmount<T["ChainId"], BtcToken<false>>;
+    getInput(): TokenAmount<BtcToken<false>>;
     /**
      * Returns claimer bounty, acting as a reward for watchtowers to claim the swap automatically,
      *  this amount is pre-funded by the user on the destination chain when the swap escrow
      *  is initiated. For total pre-funded deposit amount see {@link getTotalDeposit}.
      */
-    getClaimerBounty(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+    getClaimerBounty(): TokenAmount<SCToken<T["ChainId"]>, true>;
     /**
      * If the required number of confirmations is not known, this function tries to infer it by looping through
      *  possible confirmation targets and comparing the claim hashes
@@ -281,7 +281,7 @@ export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromB
     /**
      * @inheritDoc
      */
-    estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<any, BtcToken<false>, true> | null>;
+    estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<BtcToken<false>, true> | null>;
     /**
      * @inheritDoc
      */
@@ -444,6 +444,7 @@ export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromB
      * @internal
      */
     _sync(save?: boolean, quoteDefinitelyExpired?: boolean, commitStatus?: SwapCommitState): Promise<boolean>;
+    private btcTxLastChecked?;
     /**
      * @inheritDoc
      * @internal

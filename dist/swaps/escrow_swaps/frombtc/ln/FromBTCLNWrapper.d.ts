@@ -18,9 +18,30 @@ import { AmountData } from "../../../../types/AmountData";
 import { LNURLWithdrawParamsWithUrl } from "../../../../types/lnurl/LNURLWithdraw";
 import { AllOptional } from "../../../../utils/TypeUtils";
 export type FromBTCLNOptions = {
-    paymentHash?: Buffer;
+    /**
+     * Instead of letting the SDK generate the preimage/paymentHash pair internally you can pass your computed
+     *  paymentHash here, this will create the swap with the provided payment hash. Note that you would then
+     *  have to reveal the preimage by passing it to the {@link FromBTCLNSwap.claim} or {@link FromBTCLNSwap.txsClaim}
+     *  functions
+     *
+     * Accepts both, a {@link Buffer} and a hexadecimal `string`
+     */
+    paymentHash?: Buffer | string;
+    /**
+     * Optional description to use for the swap lightning network invoice, keep the invoice length below 500 characters
+     */
     description?: string;
-    descriptionHash?: Buffer;
+    /**
+     * Optional description hash to use for the lightning network invoice, useful when returning the invoice as part of
+     *  an LNURL-pay service endpoint.
+     *
+     * Accepts both, a {@link Buffer} and a hexadecimal `string`
+     */
+    descriptionHash?: Buffer | string;
+    /**
+     * A flag to skip checking whether the lightning network node of the LP has enough channel liquidity to facilitate
+     *  the swap.
+     */
     unsafeSkipLnNodeCheck?: boolean;
 };
 export type FromBTCLNWrapperOptions = ISwapWrapperOptions & {

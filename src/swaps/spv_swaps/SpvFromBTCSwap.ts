@@ -193,6 +193,8 @@ export class SpvFromBTCSwap<T extends ChainType>
     extends ISwap<T, SpvFromBTCTypeDefinition<T>>
     implements IBTCWalletSwap, ISwapWithGasDrop<T>, IClaimableSwap<T, SpvFromBTCTypeDefinition<T>, SpvFromBTCSwapState> {
 
+    protected readonly currentVersion: number = 2;
+
     readonly TYPE: SwapType.SPV_VAULT_FROM_BTC = SwapType.SPV_VAULT_FROM_BTC;
 
     /**
@@ -239,6 +241,8 @@ export class SpvFromBTCSwap<T extends ChainType>
     private readonly executionFeeShare: bigint;
 
     private readonly gasPricingInfo?: PriceInfoType;
+
+    private posted?: boolean;
 
     /**
      * @internal
@@ -337,6 +341,7 @@ export class SpvFromBTCSwap<T extends ChainType>
             this._frontTxId = initOrObject.frontTxId;
             this.gasPricingInfo = deserializePriceInfoType(initOrObject.gasPricingInfo);
             this.btcTxConfirmedAt = initOrObject.btcTxConfirmedAt;
+            this.posted = initOrObject.posted;
             if(initOrObject.data!=null) this._data = new this.wrapper._spvWithdrawalDataDeserializer(initOrObject.data);
         }
         this.tryCalculateSwapFee();
@@ -347,7 +352,12 @@ export class SpvFromBTCSwap<T extends ChainType>
      * @inheritDoc
      * @internal
      */
-    protected upgradeVersion() { /*NOOP*/ }
+    protected upgradeVersion() {
+        if(this.version===1) {
+            this.posted = this.initiated && this._data!=null;
+            this.version = 2;
+        }
+    }
 
     /**
      * @inheritDoc
@@ -582,7 +592,7 @@ export class SpvFromBTCSwap<T extends ChainType>
      *
      * @internal
      */
-    protected getOutputWithoutFee(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
+    protected getOutputWithoutFee(): TokenAmount<SCToken<T["ChainId"]>, true> {
         return toTokenAmount(
             (this.outputTotalSwap * (100_000n + this.callerFeeShare + this.frontingFeeShare + this.executionFeeShare) / 100_000n) + (this.swapFee ?? 0n),
             this.wrapper._tokens[this.outputSwapToken], this.wrapper._prices, this.pricingInfo
@@ -704,21 +714,21 @@ export class SpvFromBTCSwap<T extends ChainType>
     /**
      * @inheritDoc
      */
-    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
+    getOutput(): TokenAmount<SCToken<T["ChainId"]>, true> {
         return toTokenAmount(this.outputTotalSwap, this.wrapper._tokens[this.outputSwapToken], this.wrapper._prices, this.pricingInfo);
     }
 
     /**
      * @inheritDoc
      */
-    getGasDropOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
+    getGasDropOutput(): TokenAmount<SCToken<T["ChainId"]>, true> {
         return toTokenAmount(this.outputTotalGas, this.wrapper._tokens[this.outputGasToken], this.wrapper._prices, this.gasPricingInfo);
     }
 
     /**
      * @inheritDoc
      */
-    getInputWithoutFee(): TokenAmount<T["ChainId"], BtcToken<false>, true> {
+    getInputWithoutFee(): TokenAmount<BtcToken<false>, true> {
         return toTokenAmount(this.getInputAmountWithoutFee(), BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo);
     }
 
@@ -732,7 +742,7 @@ export class SpvFromBTCSwap<T extends ChainType>
     /**
      * @inheritDoc
      */
-    getInput(): TokenAmount<T["ChainId"], BtcToken<false>, true> {
+    getInput(): TokenAmount<BtcToken<false>, true> {
         return toTokenAmount(this.btcAmount, BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo);
     }
 
@@ -973,6 +983,7 @@ export class SpvFromBTCSwap<T extends ChainType>
 
         this._data = data;
         this.initiated = true;
+        this.posted = true;
         await this._saveAndEmit(SpvFromBTCSwapState.SIGNED);
 
         try {
@@ -996,7 +1007,7 @@ export class SpvFromBTCSwap<T extends ChainType>
     /**
      * @inheritDoc
      */
-    async estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<any, BtcToken<false>, true> | null> {
+    async estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<BtcToken<false>, true> | null> {
         const bitcoinWallet: IBitcoinWallet = toBitcoinWallet(_bitcoinWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
         const txFee = await bitcoinWallet.getFundedPsbtFee((await this.getPsbt()).psbt, feeRate);
         if(txFee==null) return null;
@@ -1186,7 +1197,7 @@ export class SpvFromBTCSwap<T extends ChainType>
         if(
             this._state!==SpvFromBTCSwapState.POSTED &&
             this._state!==SpvFromBTCSwapState.BROADCASTED &&
-            !(this._state===SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED && this.initiated)
+            !(this._state===SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED && this.posted)
         ) throw new Error("Must be in POSTED or BROADCASTED state!");
         if(this._data==null) throw new Error("Expected swap to have withdrawal data filled!");
 
@@ -1529,6 +1540,7 @@ export class SpvFromBTCSwap<T extends ChainType>
             executionFeeShare: this.executionFeeShare.toString(10),
             genesisSmartChainBlockHeight: this._genesisSmartChainBlockHeight,
             gasPricingInfo: serializePriceInfoType(this.gasPricingInfo),
+            posted: this.posted,
 
             senderAddress: this._senderAddress,
             claimTxId: this._claimTxId,
@@ -1559,6 +1571,8 @@ export class SpvFromBTCSwap<T extends ChainType>
         this._senderAddress = btcTx.inputAddresses[1];
     }
 
+    private btcTxLastChecked?: number;
+
     /**
      * @internal
      */
@@ -1566,6 +1580,7 @@ export class SpvFromBTCSwap<T extends ChainType>
         if(this._data?.btcTx==null) return false;
 
         //Check if bitcoin payment was confirmed
+        this.btcTxLastChecked = Date.now();
         const res = await this.getBitcoinPayment();
         if(res==null) {
             //Check inputs double-spent
@@ -1704,7 +1719,7 @@ export class SpvFromBTCSwap<T extends ChainType>
             }
         }
 
-        if(this._state===SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED && !this.initiated) {
+        if(this._state===SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED && !this.posted) {
             if(this.expiry<Date.now()) {
                 this._state = SpvFromBTCSwapState.QUOTE_EXPIRED;
                 if(save) await this._saveAndEmit();
@@ -1712,7 +1727,7 @@ export class SpvFromBTCSwap<T extends ChainType>
             }
         }
 
-        if(Math.floor(Date.now()/1000)%120===0) {
+        if(this.btcTxLastChecked==null || Date.now() - this.btcTxLastChecked > 120_000) {
             if (
                 this._state === SpvFromBTCSwapState.POSTED ||
                 this._state === SpvFromBTCSwapState.BROADCASTED

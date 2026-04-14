@@ -199,7 +199,7 @@ export declare class OnchainForGasSwap<T extends ChainType = ChainType> extends 
     /**
      * @inheritDoc
      */
-    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true>;
+    getOutput(): TokenAmount<SCToken<T["ChainId"]>, true>;
     /**
      * @inheritDoc
      */
@@ -207,11 +207,11 @@ export declare class OnchainForGasSwap<T extends ChainType = ChainType> extends 
     /**
      * @inheritDoc
      */
-    getInput(): TokenAmount<T["ChainId"], BtcToken<false>, true>;
+    getInput(): TokenAmount<BtcToken<false>, true>;
     /**
      * @inheritDoc
      */
-    getInputWithoutFee(): TokenAmount<T["ChainId"], BtcToken<false>, true>;
+    getInputWithoutFee(): TokenAmount<BtcToken<false>, true>;
     /**
      * Returns the swap fee charged by the intermediary (LP) on this swap
      *
@@ -255,7 +255,7 @@ export declare class OnchainForGasSwap<T extends ChainType = ChainType> extends 
     /**
      * @inheritDoc
      */
-    estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<any, BtcToken<false>, true> | null>;
+    estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<BtcToken<false>, true> | null>;
     /**
      * @inheritDoc
      */

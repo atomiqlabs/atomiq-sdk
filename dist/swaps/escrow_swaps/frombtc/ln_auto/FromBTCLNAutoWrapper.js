@@ -39,6 +39,7 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
      */
     constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, lnApi, messenger, options, events) {
         super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, lnApi, {
+            ...options,
             safetyFactor: options?.safetyFactor ?? 2,
             bitcoinBlocktime: options?.bitcoinBlocktime ?? 10 * 60,
             unsafeSkipLnNodeCheck: options?.unsafeSkipLnNodeCheck ?? false
@@ -99,12 +100,12 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
                 this.logger.error("processEventInitialize(" + swap.getId() + "): Error when processing event, escrow hashes don't match!");
                 return false;
             }
-            swap._commitTxId = event.meta?.txId;
             swap._commitedAt ??= Date.now();
             swap._state = FromBTCLNAutoSwap_1.FromBTCLNAutoSwapState.CLAIM_COMMITED;
-            swap._broadcastSecret().catch(e => {
-                this.logger.error("processEventInitialize(" + swap.getId() + "): Error when broadcasting swap secret: ", e);
-            });
+            if (swap.hasSecretPreimage())
+                swap._broadcastSecret().catch(e => {
+                    this.logger.error("processEventInitialize(" + swap.getId() + "): Error when broadcasting swap secret: ", e);
+                });
             return true;
         }
         return false;
@@ -115,7 +116,6 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
      */
     processEventClaim(swap, event) {
         if (swap._state !== FromBTCLNAutoSwap_1.FromBTCLNAutoSwapState.FAILED && swap._state !== FromBTCLNAutoSwap_1.FromBTCLNAutoSwapState.CLAIM_CLAIMED) {
-            swap._claimTxId = event.meta?.txId;
             swap._state = FromBTCLNAutoSwap_1.FromBTCLNAutoSwapState.CLAIM_CLAIMED;
             swap._setSwapSecret(event.result);
             return Promise.resolve(true);
@@ -128,7 +128,6 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
      */
     processEventRefund(swap, event) {
         if (swap._state !== FromBTCLNAutoSwap_1.FromBTCLNAutoSwapState.CLAIM_CLAIMED && swap._state !== FromBTCLNAutoSwap_1.FromBTCLNAutoSwapState.FAILED) {
-            swap._refundTxId ??= event.meta?.txId;
             swap._state = FromBTCLNAutoSwap_1.FromBTCLNAutoSwapState.FAILED;
             return Promise.resolve(true);
         }
@@ -221,22 +220,18 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
         if (!this.isInitialized)
             throw new Error("Not initialized, call init() first!");
         const _options = {
-            paymentHash: options?.paymentHash,
+            paymentHash: (0, Utils_1.parseHashValueExact32Bytes)(options?.paymentHash, "payment hash"),
             unsafeSkipLnNodeCheck: options?.unsafeSkipLnNodeCheck ?? this._options.unsafeSkipLnNodeCheck,
-            gasAmount: options?.gasAmount ?? 0n,
+            gasAmount: this.parseGasAmount(options?.gasAmount),
             feeSafetyFactor: options?.feeSafetyFactor ?? 1.25,
             unsafeZeroWatchtowerFee: options?.unsafeZeroWatchtowerFee ?? false,
             description: options?.description,
-            descriptionHash: options?.descriptionHash
+            descriptionHash: (0, Utils_1.parseHashValueExact32Bytes)(options?.descriptionHash, "description hash")
         };
-        if (_options.paymentHash != null && _options.paymentHash.length !== 32)
-            throw new UserError_1.UserError("Invalid payment hash length, must be exactly 32 bytes!");
-        if (_options.descriptionHash != null && _options.descriptionHash.length !== 32)
-            throw new UserError_1.UserError("Invalid description hash length");
+        if (amountData.token === this._chain.getNativeCurrencyAddress() && _options.gasAmount !== 0n)
+            throw new UserError_1.UserError("Cannot specify `gasAmount` for swaps to a native token!");
         if (_options.description != null && buffer_1.Buffer.byteLength(_options.description, "utf8") > 500)
             throw new UserError_1.UserError("Invalid description length");
-        if (preFetches == null)
-            preFetches = {};
         let secret;
         let paymentHash;
         if (_options?.paymentHash != null) {
@@ -248,6 +243,7 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
         const claimHash = this._contract.getHashForHtlc(paymentHash);
         const nativeTokenAddress = this._chain.getNativeCurrencyAddress();
         const _abortController = (0, Utils_1.extendAbortController)(abortSignal);
+        preFetches ??= {};
         const _preFetches = {
             pricePrefetchPromise: preFetches?.pricePrefetchPromise ?? this.preFetchPrice(amountData, _abortController.signal),
             usdPricePrefetchPromise: preFetches?.usdPricePrefetchPromise ?? this.preFetchUsdPrice(_abortController.signal),
@@ -278,8 +274,14 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
                             gasAmount: _options.gasAmount,
                             claimerBounty: (0, Utils_1.throwIfUndefined)(_preFetches.claimerBountyPrefetch)
                         }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined);
+                        let lnCapacityPromise;
+                        if (!_options.unsafeSkipLnNodeCheck) {
+                            lnCapacityPromise = this.preFetchLnCapacity(lnPublicKey);
+                        }
+                        else
+                            lnPublicKey.catch(() => { });
                         return {
-                            lnCapacityPromise: _options.unsafeSkipLnNodeCheck ? undefined : this.preFetchLnCapacity(lnPublicKey),
+                            lnCapacityPromise,
                             resp: await response
                         };
                     }, undefined, RequestError_1.RequestError, abortController.signal);
@@ -316,8 +318,6 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
                             exactIn: amountData.exactIn ?? true
                         };
                         const quote = new FromBTCLNAutoSwap_1.FromBTCLNAutoSwap(this, swapInit);
-                        await quote._save();
-                        this.logger.debug("create(): Created new FromBTCLNAutoSwap quote, claimHash (pseudo escrowHash): ", quote._getEscrowHash());
                         return quote;
                     }
                     catch (e) {
@@ -348,16 +348,14 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
         if (!this.isInitialized)
             throw new Error("Not initialized, call init() first!");
         const _options = {
-            paymentHash: options?.paymentHash,
+            paymentHash: (0, Utils_1.parseHashValueExact32Bytes)(options?.paymentHash, "payment hash"),
             unsafeSkipLnNodeCheck: options?.unsafeSkipLnNodeCheck ?? this._options.unsafeSkipLnNodeCheck,
-            gasAmount: options?.gasAmount ?? 0n,
+            gasAmount: this.parseGasAmount(options?.gasAmount),
             feeSafetyFactor: options?.feeSafetyFactor ?? 1.25,
             unsafeZeroWatchtowerFee: options?.unsafeZeroWatchtowerFee ?? false,
             description: options?.description,
-            descriptionHash: options?.descriptionHash
+            descriptionHash: (0, Utils_1.parseHashValueExact32Bytes)(options?.descriptionHash, "description hash")
         };
-        if (_options.paymentHash != null && _options.paymentHash.length !== 32)
-            throw new UserError_1.UserError("Invalid payment hash length, must be exactly 32 bytes!");
         const abortController = (0, Utils_1.extendAbortController)(abortSignal);
         const preFetches = {
             pricePrefetchPromise: this.preFetchPrice(amountData, abortController.signal),

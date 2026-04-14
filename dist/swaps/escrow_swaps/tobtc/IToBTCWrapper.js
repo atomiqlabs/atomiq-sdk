@@ -78,8 +78,6 @@ class IToBTCWrapper extends IEscrowSwapWrapper_1.IEscrowSwapWrapper {
     async processEventInitialize(swap, event) {
         if (swap._state === IToBTCSwap_1.ToBTCSwapState.CREATED || swap._state === IToBTCSwap_1.ToBTCSwapState.QUOTE_SOFT_EXPIRED) {
             swap._state = IToBTCSwap_1.ToBTCSwapState.COMMITED;
-            if (swap._commitTxId == null)
-                swap._commitTxId = event.meta?.txId;
             return true;
         }
         return false;
@@ -96,8 +94,6 @@ class IToBTCWrapper extends IEscrowSwapWrapper_1.IEscrowSwapWrapper {
                 this.logger.warn(`processEventClaim(): Failed to set payment result ${event.result}: `, e);
             });
             swap._state = IToBTCSwap_1.ToBTCSwapState.CLAIMED;
-            if (swap._claimTxId == null)
-                swap._claimTxId = event.meta?.txId;
             return true;
         }
         return false;
@@ -108,8 +104,6 @@ class IToBTCWrapper extends IEscrowSwapWrapper_1.IEscrowSwapWrapper {
     processEventRefund(swap, event) {
         if (swap._state !== IToBTCSwap_1.ToBTCSwapState.CLAIMED && swap._state !== IToBTCSwap_1.ToBTCSwapState.REFUNDED) {
             swap._state = IToBTCSwap_1.ToBTCSwapState.REFUNDED;
-            if (swap._refundTxId == null)
-                swap._refundTxId = event.meta?.txId;
             return Promise.resolve(true);
         }
         return Promise.resolve(false);

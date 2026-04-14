@@ -260,8 +260,8 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
      * @inheritDoc
      * @internal
      */
-    canCommit() {
-        if (this._state !== FromBTCSwapState.PR_CREATED)
+    canCommit(skipQuoteExpiryChecks) {
+        if (this._state !== FromBTCSwapState.PR_CREATED && (!skipQuoteExpiryChecks || this._state !== FromBTCSwapState.QUOTE_SOFT_EXPIRED))
             return false;
         if (this.requiredConfirmations == null)
             return false;
@@ -742,7 +742,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             return Promise.resolve();
         });
         this._commitTxId = result[result.length - 1];
-        if (this._state === FromBTCSwapState.PR_CREATED || this._state === FromBTCSwapState.QUOTE_SOFT_EXPIRED) {
+        if (this._state === FromBTCSwapState.PR_CREATED || this._state === FromBTCSwapState.QUOTE_SOFT_EXPIRED || this._state === FromBTCSwapState.QUOTE_EXPIRED) {
             await this._saveAndEmit(FromBTCSwapState.CLAIM_COMMITED);
         }
         return this._commitTxId;
@@ -1045,6 +1045,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
                 }
                 if (this.address == null)
                     return save;
+                this.btcTxLastChecked = Date.now();
                 const res = await this.getBitcoinPayment();
                 if (res != null) {
                     if (this.txId !== res.txId) {
@@ -1086,10 +1087,11 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
                     return true;
                 }
             case FromBTCSwapState.EXPIRED:
-                //Check if bitcoin payment was received every 2 minutes
-                if (Math.floor(Date.now() / 1000) % 120 === 0) {
+                //Check if bitcoin payment was received at least every 2 minutes
+                if (this.btcTxLastChecked == null || Date.now() - this.btcTxLastChecked > 120000) {
                     if (this.address != null)
                         try {
+                            this.btcTxLastChecked = Date.now();
                             const res = await this.getBitcoinPayment();
                             if (res != null) {
                                 let shouldSave = false;

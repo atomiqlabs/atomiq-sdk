@@ -51,8 +51,8 @@ Set Solana & Starknet RPC URL to use
 
 ```typescript
 const solanaRpc = "https://api.mainnet-beta.solana.com";
-const starknetRpc = "https://starknet-mainnet.public.blastapi.io/rpc/v0_8";
-const citreaRpc = "https://rpc.testnet.citrea.xyz";
+const starknetRpc = "https://rpc.starknet.lava.build/"; //Alternatively: https://starknet.api.onfinality.io/public or https://api.zan.top/public/starknet-mainnet
+const citreaRpc = "https://rpc.mainnet.citrea.xyz";
 ```
 
 Create swapper factory, here we can pick and choose which chains we want to have supported in the SDK, ensure the "as const" keyword is used such that the typescript compiler can properly infer the types.
@@ -87,10 +87,10 @@ const swapper: TypedSwapper<SupportedChains> = Factory.newSwapper({
       rpcUrl: starknetRpc //You can also pass Provider object here           
     },
     CITREA: {
-      rpcUrl: citreaRpc, //You can also pass JsonApiProvider object here
+      rpcUrl: citreaRpc, //You can also pass JsonRpcApiProvider object here
     }
   },
-  bitcoinNetwork: BitcoinNetwork.TESTNET //or BitcoinNetwork.MAINNET, BitcoinNetwork.TESTNET4 - this also sets the network to use for Solana (solana devnet for bitcoin testnet) & Starknet (sepolia for bitcoin testnet)
+  bitcoinNetwork: BitcoinNetwork.MAINNET //or BitcoinNetwork.TESTNET3, BitcoinNetwork.TESTNET4 - this also sets the network to use for Solana (solana devnet for bitcoin testnet) & Starknet (sepolia for bitcoin testnet)
 });
 ```
 
@@ -122,7 +122,7 @@ const swapper: TypedSwapper<SupportedChains> = Factory.newSwapper({
             rpcUrl: citreaRpc, //You can also pass JsonApiProvider object here
         }
     },
-    bitcoinNetwork: BitcoinNetwork.TESTNET, //or BitcoinNetwork.MAINNET - this also sets the network to use for Solana (solana devnet for bitcoin testnet) & Starknet (sepolia for bitcoin testnet)
+    bitcoinNetwork: BitcoinNetwork.MAINNET //or BitcoinNetwork.TESTNET3, BitcoinNetwork.TESTNET4 - this also sets the network to use for Solana (solana devnet for bitcoin testnet) & Starknet (sepolia for bitcoin testnet)
     //The following lines are important for running on backend node.js,
     // because the SDK by default uses browser's Indexed DB
     swapStorage: chainId => new SqliteUnifiedStorage("CHAIN_"+chainId+".sqlite3"),
@@ -143,7 +143,7 @@ const wallet = new SolanaSigner(anchorWallet);
 
 ```typescript
 import {WalletAccount} from "starknet";
-import {StarknetSigner} from "@atomiqlabs/chain-starknet";
+import {StarknetBrowserSigner} from "@atomiqlabs/chain-starknet";
 //Browser, using get-starknet
 const swo = await connect();
 const wallet = new StarknetBrowserSigner(new WalletAccount(starknetRpc, swo.wallet));
@@ -1609,13 +1609,13 @@ Returns swaps that are ready to be claimed by the client, this can happen if cli
 
 ```typescript
 //Get the swaps
-const claimableSolanaSwaps = await solanaSwapper.getClaimableSwaps("SOLANA", solanaSigner.getAddress());
+const claimableSolanaSwaps = await swapper.getClaimableSwaps("SOLANA", solanaSigner.getAddress());
 //Claim all the claimable swaps
 for(let swap of claimableSolanaSwaps) {
     await swap.claim(solanaSigner);
 }
 //Get the swaps
-const claimableStarknetSwaps = await solanaSwapper.getClaimableSwaps("STARKNET", starknetSigner.getAddress());
+const claimableStarknetSwaps = await swapper.getClaimableSwaps("STARKNET", starknetSigner.getAddress());
 //Claim all the claimable swaps
 for(let swap of claimableStarknetSwaps) {
   await swap.claim(starknetSigner);

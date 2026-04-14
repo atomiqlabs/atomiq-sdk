@@ -169,9 +169,9 @@ export type FromBTCInit = BaseFromBTCSwapInit & {
     sequence: bigint;
     claimerBounty: Promise<{
         feePerBlock: bigint;
-        safetyFactor: number;
+        safetyFactor: bigint;
         startTimestamp: bigint;
-        addBlock: number;
+        addBlock: bigint;
         addFee: bigint;
     }>;
 };

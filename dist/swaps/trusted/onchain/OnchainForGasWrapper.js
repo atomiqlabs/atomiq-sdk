@@ -86,7 +86,6 @@ class OnchainForGasWrapper extends ISwapWrapper_1.ISwapWrapper {
             exactIn: false,
             token
         });
-        await quote._save();
         return quote;
     }
 }

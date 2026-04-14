@@ -124,7 +124,6 @@ export class OnchainForGasWrapper<T extends ChainType> extends ISwapWrapper<T, O
             exactIn: false,
             token
         } as OnchainForGasSwapInit);
-        await quote._save();
         return quote;
     }
 

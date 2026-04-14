@@ -16,9 +16,27 @@ import { IFromBTCSelfInitDefinition } from "../IFromBTCSelfInitSwap";
 import { AmountData } from "../../../../types/AmountData";
 import { AllOptional } from "../../../../utils/TypeUtils";
 export type FromBTCOptions = {
-    feeSafetyFactor?: bigint;
-    blockSafetyFactor?: number;
+    /**
+     * A flag to attach 0 watchtower fee to the swap, this would make the settlement unattractive for the watchtowers
+     *  and therefore automatic settlement for such swaps will not be possible, you will have to settle manually
+     *  with {@link FromBTCLNSwap.claim} or {@link FromBTCLNSwap.txsClaim} functions.
+     */
     unsafeZeroWatchtowerFee?: boolean;
+    /**
+     * A safety factor to use when estimating the watchtower fee to attach to the swap (this has to cover the gas fee
+     *  of watchtowers settling the swap). A higher multiple here would mean that a swap is more attractive for
+     *  watchtowers to settle automatically.
+     *
+     * Uses a `1.5` multiple by default (i.e. the current network fee is multiplied by 1.5 and then used to estimate
+     *  the settlement gas fee cost).
+     *
+     * Also accepts `bigint` for legacy reasons.
+     */
+    feeSafetyFactor?: number | bigint;
+    /**
+     * @deprecated Removed as it is deemed not necessary
+     */
+    blockSafetyFactor?: number;
 };
 export type FromBTCWrapperOptions = ISwapWrapperOptions & {
     safetyFactor: number;

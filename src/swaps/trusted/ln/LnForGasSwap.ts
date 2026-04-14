@@ -318,7 +318,7 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
     /**
      * @inheritDoc
      */
-    getOutput(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
+    getOutput(): TokenAmount<SCToken<T["ChainId"]>, true> {
         return toTokenAmount(
             this.outputAmount, this.wrapper._tokens[this.wrapper._chain.getNativeCurrencyAddress()],
             this.wrapper._prices, this.pricingInfo
@@ -335,7 +335,7 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
     /**
      * @inheritDoc
      */
-    getInput(): TokenAmount<T["ChainId"], BtcToken<true>, true> {
+    getInput(): TokenAmount<BtcToken<true>, true> {
         const parsed = bolt11Decode(this.pr);
         const msats = parsed.millisatoshis;
         if(msats==null) throw new Error("Swap lightning invoice has no msat amount field!");
@@ -346,7 +346,7 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
     /**
      * @inheritDoc
      */
-    getInputWithoutFee(): TokenAmount<T["ChainId"], BtcToken<true>, true> {
+    getInputWithoutFee(): TokenAmount<BtcToken<true>, true> {
         const parsed = bolt11Decode(this.pr);
         const msats = parsed.millisatoshis;
         if(msats==null) throw new Error("Swap lightning invoice has no msat amount field!");

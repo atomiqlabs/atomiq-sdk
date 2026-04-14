@@ -10,6 +10,11 @@ import {UnifiedSwapStorage} from "../storage/UnifiedSwapStorage";
 import {SCToken} from "../types/Token";
 import {getLogger} from "../utils/Logger";
 import {PriceInfoType} from "../types/PriceInfoType";
+import {fromHumanReadableString} from "../utils/TokenUtils";
+import {UserError} from "../errors/UserError";
+
+export const DEFAULT_MAX_PARALLEL_SWAP_TICKS = 50;
+export const DEFAULT_MAX_PARALLEL_SWAP_SYNCS = 50;
 
 /**
  * Options for swap wrapper configuration
@@ -18,7 +23,19 @@ import {PriceInfoType} from "../types/PriceInfoType";
  */
 export type ISwapWrapperOptions = {
     getRequestTimeout?: number,
-    postRequestTimeout?: number
+    postRequestTimeout?: number,
+    /**
+     * How many swaps to call `_tick()` for in parallel
+     */
+    maxParallelSwapTicks?: number,
+    /**
+     * How many swaps to call `_sync()` for in parallel
+     */
+    maxParallelSwapSyncs?: number,
+    /**
+     * Whether to save swaps that are not initialized into the persistent storage
+     */
+    saveUninitializedSwaps?: boolean
 };
 
 /**
@@ -26,15 +43,9 @@ export type ISwapWrapperOptions = {
  *
  * @category Swaps/Base
  */
-export type WrapperCtorTokens<T extends MultiChain = MultiChain> = {
-    ticker: string,
-    name: string,
-    chains: {[chainId in ChainIds<T>]?: {
-        address: string,
-        decimals: number,
-        displayDecimals?: number
-    }}
-}[];
+export type WrapperCtorTokens<T extends ChainType = ChainType> = {
+    [tokenAddress: string]: SCToken<T["ChainId"]>
+};
 
 /**
  * Type definition linking wrapper and swap types
@@ -105,6 +116,11 @@ export abstract class ISwapWrapper<
      * @internal
      */
     protected tickInterval?: NodeJS.Timeout;
+    /**
+     * An internal abort controller for the running tick handler
+     * @internal
+     */
+    protected tickAbortController?: AbortController;
 
 
     /**
@@ -156,6 +172,11 @@ export abstract class ISwapWrapper<
         options: O,
         events?: EventEmitter<{swapState: [ISwap]}>
     ) {
+        if(options?.maxParallelSwapTicks!=null && options.maxParallelSwapTicks < 1)
+            throw new Error("maxParallelSwapTicks must be at least 1!");
+        if(options?.maxParallelSwapSyncs!=null && options.maxParallelSwapSyncs < 1)
+            throw new Error("maxParallelSwapSyncs must be at least 1!");
+
         this.unifiedStorage = unifiedStorage;
         this.unifiedChainEvents = unifiedChainEvents;
 
@@ -164,22 +185,27 @@ export abstract class ISwapWrapper<
         this._prices = prices;
         this.events = events || new EventEmitter();
         this._options = options;
-        this._tokens = {};
-        for(let tokenData of tokens) {
-            const chainData = tokenData.chains[chainIdentifier];
-            if(chainData==null) continue;
-            this._tokens[chainData.address] = {
-                chain: "SC",
-                chainId: this.chainIdentifier,
-                address: chainData.address,
-                decimals: chainData.decimals,
-                ticker: tokenData.ticker,
-                name: tokenData.name,
-                displayDecimals: chainData.displayDecimals
-            };
-        }
+        this._tokens = tokens;
     }
 
+    /**
+     * Parses the provided gas amount from its `string` or `bigint` representation to `bigint` base units.
+     *
+     * Defaults to `0n` if no gasAmount is provided
+     *
+     * @param gasAmount
+     * @internal
+     */
+    protected parseGasAmount(gasAmount?: string | bigint): bigint {
+        let result: bigint | undefined | null;
+        if(typeof(gasAmount)==="string") {
+            result = fromHumanReadableString(gasAmount, this._getNativeToken());
+            if(result==null) throw new UserError("Invalid `gasAmount` option provided, not a numerical string!");
+        } else {
+            result = gasAmount;
+        }
+        return result ?? 0n;
+    }
 
     /**
      * Pre-fetches swap price for a given swap
@@ -273,9 +299,20 @@ export abstract class ISwapWrapper<
      */
     protected startTickInterval(): void {
         if(this.tickSwapState==null || this.tickSwapState.length===0) return;
-        this.tickInterval = setInterval(() => {
-            this.tick();
-        }, 1000);
+        if(this.tickAbortController!=null) this.tickAbortController.abort("New tick interval has been started!");
+        const abortController = this.tickAbortController = new AbortController();
+        let run: () => Promise<void>;
+        run = async () => {
+            if(!this.isInitialized) return;
+            await this.tick(undefined, abortController.signal).catch(e => {
+                if(abortController.signal.aborted) return;
+                this.logger.warn("startTickInterval(): Tick on swaps failed, error: ", e);
+            });
+            if(abortController.signal.aborted) return;
+            if(!this.isInitialized) return;
+            this.tickInterval = setTimeout(run, 1000);
+        }
+        run();
     }
 
     /**
@@ -342,11 +379,11 @@ export abstract class ISwapWrapper<
 
         if(this.processEvent!=null) this.unifiedChainEvents.registerListener(this.TYPE, this.processEvent.bind(this), this._swapDeserializer.bind(null, this));
 
+        this.isInitialized = true;
+
         if(!noTimers) this.startTickInterval();
 
         // this.logger.info("init(): Swap wrapper initialized");
-
-        this.isInitialized = true;
     }
 
     /**
@@ -356,11 +393,20 @@ export abstract class ISwapWrapper<
         this.isInitialized = false;
         this.unifiedChainEvents.unregisterListener(this.TYPE);
         this.logger.info("stop(): Swap wrapper stopped");
-        if(this.tickInterval!=null) clearInterval(this.tickInterval);
+        if(this.tickInterval!=null) {
+            clearTimeout(this.tickInterval);
+            delete this.tickInterval;
+        }
+        if(this.tickAbortController!=null) {
+            this.tickAbortController.abort("Wrapper instance stopped!");
+            delete this.tickAbortController;
+        }
     }
 
     /**
      * Runs checks on all the known pending swaps, syncing their state from on-chain data
+     *
+     * @remarks Doesn't work properly if you pass non-persisted swaps
      *
      * @param pastSwaps Optional array of past swaps to check, otherwise all relevant swaps will be fetched
      *  from the persistent storage
@@ -372,18 +418,25 @@ export abstract class ISwapWrapper<
             (val: any) => new this._swapDeserializer(this, val)
         );
 
-        const {removeSwaps, changedSwaps} = await this._checkPastSwaps(pastSwaps);
+        const maxParallelSyncs = this._options.maxParallelSwapSyncs ?? DEFAULT_MAX_PARALLEL_SWAP_SYNCS;
 
-        if (!noSave) {
-            await this.unifiedStorage.removeAll(removeSwaps);
-            await this.unifiedStorage.saveAll(changedSwaps);
-            changedSwaps.forEach(swap => swap._emitEvent());
-            removeSwaps.forEach(swap => swap._emitEvent());
+        const totalRemoveSwaps: D["Swap"][] = [];
+        const totalChangedSwaps: D["Swap"][] = [];
+        for(let i=0; i<pastSwaps.length; i+=maxParallelSyncs) {
+            const {removeSwaps, changedSwaps} = await this._checkPastSwaps(pastSwaps.slice(i, i+maxParallelSyncs));
+            if (!noSave) {
+                await this.unifiedStorage.removeAll(removeSwaps);
+                await this.unifiedStorage.saveAll(changedSwaps);
+                changedSwaps.forEach(swap => swap._emitEvent());
+                removeSwaps.forEach(swap => swap._emitEvent());
+            }
+            totalRemoveSwaps.push(...removeSwaps);
+            totalChangedSwaps.push(...changedSwaps);
         }
 
         return {
-            removeSwaps,
-            changedSwaps
+            removeSwaps: totalRemoveSwaps,
+            changedSwaps: totalChangedSwaps
         }
     }
 
@@ -392,21 +445,43 @@ export abstract class ISwapWrapper<
      *
      * @param swaps Optional array of swaps to invoke `_tick()` on, otherwise all relevant swaps will be fetched
      *  from the persistent storage
+     * @param abortSignal Abort signal
      */
-    public async tick(swaps?: D["Swap"][]): Promise<void> {
+    public async tick(swaps?: D["Swap"][], abortSignal?: AbortSignal): Promise<void> {
         if(swaps==null) swaps = await this.unifiedStorage.query<D["Swap"]>(
             [[{key: "type", value: this.TYPE}, {key: "state", value: this.tickSwapState}]],
             (val: any) => new this._swapDeserializer(this, val)
         );
+        abortSignal?.throwIfAborted();
 
+        const parallelTicks = this._options.maxParallelSwapTicks ?? DEFAULT_MAX_PARALLEL_SWAP_TICKS;
+
+        let promises: Promise<any>[] = [];
         for(let pendingSwap of this.pendingSwaps.values()) {
             const value = pendingSwap.deref();
-            if(value != null) value._tick(true);
+            if(value != null) promises.push(value._tick(true).catch(e => {
+                this.logger.warn(`tick(): Error ticking swap ${value.getId()}: `, e);
+            }));
+            if(promises.length >= parallelTicks) {
+                await Promise.all(promises);
+                abortSignal?.throwIfAborted();
+                promises = [];
+            }
         }
 
-        swaps.forEach(value => {
-            value._tick(true)
-        });
+        for(let value of swaps) {
+            promises.push(value._tick(true).catch(e => {
+                this.logger.warn(`tick(): Error ticking swap ${value.getId()}: `, e);
+            }));
+            if(promises.length >= parallelTicks) {
+                await Promise.all(promises);
+                abortSignal?.throwIfAborted();
+                promises = [];
+            }
+        }
+
+        if(promises.length>0) await Promise.all(promises);
+        abortSignal?.throwIfAborted();
     }
 
     /**
@@ -425,12 +500,14 @@ export abstract class ISwapWrapper<
      * @internal
      */
     _saveSwapData(swap: D["Swap"]): Promise<void> {
-        if(!swap.isInitiated()) {
-            this.logger.debug("saveSwapData(): Swap "+swap.getId()+" not initiated, saving to pending swaps");
-            this.pendingSwaps.set(swap.getId(), new WeakRef<D["Swap"]>(swap));
-            return Promise.resolve();
-        } else {
-            this.pendingSwaps.delete(swap.getId());
+        if(!this._options.saveUninitializedSwaps) {
+            if(!swap.isInitiated()) {
+                this.logger.debug("saveSwapData(): Swap "+swap.getId()+" not initiated, saving to pending swaps");
+                this.pendingSwaps.set(swap.getId(), new WeakRef<D["Swap"]>(swap));
+                return Promise.resolve();
+            } else {
+                this.pendingSwaps.delete(swap.getId());
+            }
         }
         return this.unifiedStorage.save(swap);
     }
@@ -444,7 +521,7 @@ export abstract class ISwapWrapper<
      */
     _removeSwapData(swap: D["Swap"]): Promise<void> {
         this.pendingSwaps.delete(swap.getId());
-        if(!swap.isInitiated()) return Promise.resolve();
+        if(!swap._persisted) return Promise.resolve();
         return this.unifiedStorage.remove(swap);
     }
 

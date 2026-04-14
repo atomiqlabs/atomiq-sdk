@@ -333,8 +333,8 @@ export class FromBTCSwap<T extends ChainType = ChainType>
      * @inheritDoc
      * @internal
      */
-    protected canCommit(): boolean {
-        if(this._state!==FromBTCSwapState.PR_CREATED) return false;
+    protected canCommit(skipQuoteExpiryChecks?: boolean): boolean {
+        if(this._state!==FromBTCSwapState.PR_CREATED && (!skipQuoteExpiryChecks || this._state!==FromBTCSwapState.QUOTE_SOFT_EXPIRED)) return false;
         if(this.requiredConfirmations==null) return false;
         const expiry = this.wrapper._getOnchainSendTimeout(this._data, this.requiredConfirmations);
         const currentTimestamp = BigInt(Math.floor(Date.now()/1000));
@@ -356,7 +356,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
     /**
      * @inheritDoc
      */
-    getInput(): TokenAmount<T["ChainId"], BtcToken<false>> {
+    getInput(): TokenAmount<BtcToken<false>> {
         return toTokenAmount(this.amount ?? null, this.inputToken, this.wrapper._prices);
     }
 
@@ -365,7 +365,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
      *  this amount is pre-funded by the user on the destination chain when the swap escrow
      *  is initiated. For total pre-funded deposit amount see {@link getTotalDeposit}.
      */
-    getClaimerBounty(): TokenAmount<T["ChainId"], SCToken<T["ChainId"]>, true> {
+    getClaimerBounty(): TokenAmount<SCToken<T["ChainId"]>, true> {
         return toTokenAmount(this._data.getClaimerBounty(), this.wrapper._tokens[this._data.getDepositToken()], this.wrapper._prices);
     }
 
@@ -661,7 +661,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
     /**
      * @inheritDoc
      */
-    async estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<any, BtcToken<false>, true> | null> {
+    async estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<BtcToken<false>, true> | null> {
         if(this.address==null || this.amount==null) return null;
         const bitcoinWallet: IBitcoinWallet = toBitcoinWallet(_bitcoinWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
         const txFee = await bitcoinWallet.getTransactionFee(this.address, this.amount, feeRate);
@@ -900,7 +900,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
         );
 
         this._commitTxId = result[result.length - 1];
-        if(this._state===FromBTCSwapState.PR_CREATED || this._state===FromBTCSwapState.QUOTE_SOFT_EXPIRED) {
+        if(this._state===FromBTCSwapState.PR_CREATED || this._state===FromBTCSwapState.QUOTE_SOFT_EXPIRED || this._state===FromBTCSwapState.QUOTE_EXPIRED) {
             await this._saveAndEmit(FromBTCSwapState.CLAIM_COMMITED);
         }
         return this._commitTxId;
@@ -1191,6 +1191,8 @@ export class FromBTCSwap<T extends ChainType = ChainType>
         return changed;
     }
 
+    private btcTxLastChecked?: number;
+
     /**
      * @inheritDoc
      * @internal
@@ -1222,6 +1224,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
                 }
                 if(this.address==null) return save;
 
+                this.btcTxLastChecked = Date.now();
                 const res = await this.getBitcoinPayment();
                 if(res!=null) {
                     if(this.txId!==res.txId) {
@@ -1261,9 +1264,10 @@ export class FromBTCSwap<T extends ChainType = ChainType>
                     return true;
                 }
             case FromBTCSwapState.EXPIRED:
-                //Check if bitcoin payment was received every 2 minutes
-                if(Math.floor(Date.now()/1000)%120===0) {
+                //Check if bitcoin payment was received at least every 2 minutes
+                if(this.btcTxLastChecked==null || Date.now() - this.btcTxLastChecked > 120_000) {
                     if(this.address!=null) try {
+                        this.btcTxLastChecked = Date.now();
                         const res = await this.getBitcoinPayment();
                         if(res!=null) {
                             let shouldSave: boolean = false;

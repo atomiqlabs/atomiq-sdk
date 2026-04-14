@@ -453,7 +453,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
      * @throws {Error} When in invalid state (not {@link ToBTCSwapState.CREATED})
      */
     async txsCommit(skipChecks) {
-        if (this._state !== ToBTCSwapState.CREATED)
+        if (this._state !== ToBTCSwapState.CREATED && (!skipChecks || this._state !== ToBTCSwapState.QUOTE_SOFT_EXPIRED))
             throw new Error("Must be in CREATED state!");
         if (this.signatureData == null)
             throw new Error("Init signature data not known, cannot commit!");

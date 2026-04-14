@@ -45,6 +45,7 @@ export {CoinselectAddressTypes} from "./bitcoin/coinselect2";
 export * from "./enums/FeeType";
 export * from "./enums/SwapAmountType";
 export * from "./enums/SwapDirection";
+export * from "./enums/SwapSide";
 export * from "./enums/SwapType";
 
 export * from "./errors/IntermediaryError";

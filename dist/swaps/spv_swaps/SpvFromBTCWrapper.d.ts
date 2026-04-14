@@ -15,9 +15,40 @@ import { IClaimableSwapWrapper } from "../IClaimableSwapWrapper";
 import { AmountData } from "../../types/AmountData";
 import { AllOptional } from "../../utils/TypeUtils";
 export type SpvFromBTCOptions = {
-    gasAmount?: bigint;
+    /**
+     * Optional additional native token to receive as an output of the swap (e.g. STRK on Starknet or cBTC on Citrea).
+     *
+     * When passed as a `bigint` it is specified in base units of the token and in `string` it is the human readable
+     *  decimal format.
+     */
+    gasAmount?: bigint | string;
+    /**
+     * The LP enforces a minimum bitcoin fee rate in sats/vB for the swap transaction. With this config you can optionally
+     *  limit how high of a minimum fee rate would you accept.
+     *
+     * By default the maximum allowed fee rate is calculated dynamically based on current bitcoin fee rate as:
+     *
+     * `maxAllowedBitcoinFeeRate` = 10 + `currentBitcoinFeeRate` * 1.5
+     */
+    maxAllowedBitcoinFeeRate?: number;
+    /**
+     * A flag to attach 0 watchtower fee to the swap, this would make the settlement unattractive for the watchtowers
+     *  and therefore automatic settlement for such swaps will not be possible, you will have to settle manually
+     *  with {@link FromBTCLNSwap.claim} or {@link FromBTCLNSwap.txsClaim} functions.
+     */
     unsafeZeroWatchtowerFee?: boolean;
+    /**
+     * A safety factor to use when estimating the watchtower fee to attach to the swap (this has to cover the gas fee
+     *  of watchtowers settling the swap). A higher multiple here would mean that a swap is more attractive for
+     *  watchtowers to settle automatically.
+     *
+     * Uses a `1.25` multiple by default (i.e. the current network fee is multiplied by 1.25 and then used to estimate
+     *  the settlement gas fee cost)
+     */
     feeSafetyFactor?: number;
+    /**
+     * @deprecated Use `maxAllowedBitcoinFeeRate` instead!
+     */
     maxAllowedNetworkFeeRate?: number;
 };
 export type SpvFromBTCWrapperOptions = ISwapWrapperOptions & {

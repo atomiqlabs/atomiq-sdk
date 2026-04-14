@@ -37,6 +37,7 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
      */
     constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, btcRelay, synchronizer, btcRpc, options, events) {
         super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, {
+            ...options,
             bitcoinNetwork: options?.bitcoinNetwork ?? utils_1.TEST_NETWORK,
             safetyFactor: options?.safetyFactor ?? 2,
             blocksTillTxConfirms: options?.blocksTillTxConfirms ?? 12,
@@ -137,7 +138,7 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
                 feePerBlock: 0n,
                 safetyFactor: options.blockSafetyFactor,
                 startTimestamp: startTimestamp,
-                addBlock: 0,
+                addBlock: 0n,
                 addFee: 0n
             };
         }
@@ -155,11 +156,11 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
             const currentBtcRelayBlock = btcRelayData.blockheight;
             const addBlock = Math.max(currentBtcBlock - currentBtcRelayBlock, 0);
             return {
-                feePerBlock: feePerBlock * options.feeSafetyFactor,
+                feePerBlock: feePerBlock * options.feeSafetyFactorPPM / 1000000n,
                 safetyFactor: options.blockSafetyFactor,
                 startTimestamp: startTimestamp,
-                addBlock,
-                addFee: claimFeeRate * options.feeSafetyFactor
+                addBlock: BigInt(addBlock),
+                addFee: claimFeeRate * options.feeSafetyFactorPPM / 1000000n
             };
         }
         catch (e) {
@@ -178,8 +179,8 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
      */
     getClaimerBounty(data, options, claimerBounty) {
         const tsDelta = data.getExpiry() - claimerBounty.startTimestamp;
-        const blocksDelta = tsDelta / BigInt(this._options.bitcoinBlocktime) * BigInt(options.blockSafetyFactor);
-        const totalBlock = blocksDelta + BigInt(claimerBounty.addBlock);
+        const blocksDelta = tsDelta / BigInt(this._options.bitcoinBlocktime) * options.blockSafetyFactor;
+        const totalBlock = blocksDelta + claimerBounty.addBlock;
         return claimerBounty.addFee + (totalBlock * claimerBounty.feePerBlock);
     }
     /**
@@ -253,9 +254,16 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
      * @param abortSignal Abort signal
      */
     create(recipient, amountData, lps, options, additionalParams, abortSignal) {
+        let feeSafetyFactorPPM = 1500000n;
+        if (typeof (options?.feeSafetyFactor) === "bigint") {
+            feeSafetyFactorPPM = options.feeSafetyFactor * 1000000n;
+        }
+        else if (typeof (options?.feeSafetyFactor) === "number") {
+            feeSafetyFactorPPM = BigInt(Math.floor(options.feeSafetyFactor * 1000000));
+        }
         const _options = {
-            blockSafetyFactor: options?.blockSafetyFactor ?? 1,
-            feeSafetyFactor: options?.feeSafetyFactor ?? 2n,
+            blockSafetyFactor: options?.blockSafetyFactor != null ? BigInt(options.blockSafetyFactor) : 1n,
+            feeSafetyFactorPPM,
             unsafeZeroWatchtowerFee: options?.unsafeZeroWatchtowerFee ?? false
         };
         const sequence = this.getRandomSequence();
@@ -288,8 +296,14 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
                                 feeRate: (0, Utils_1.throwIfUndefined)(feeRatePromise),
                                 additionalParams
                             }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined);
+                            let signDataPromise = _signDataPromise;
+                            if (signDataPromise == null) {
+                                signDataPromise = this.preFetchSignData(signDataPrefetch);
+                            }
+                            else
+                                signDataPrefetch.catch(() => { });
                             return {
-                                signDataPromise: _signDataPromise ?? this.preFetchSignData(signDataPrefetch),
+                                signDataPromise,
                                 resp: await response
                             };
                         }, undefined, e => e instanceof RequestError_1.RequestError, abortController.signal);
@@ -316,7 +330,6 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
                             exactIn: amountData.exactIn ?? true,
                             requiredConfirmations: resp.confirmations
                         });
-                        await quote._save();
                         return quote;
                     }
                     catch (e) {

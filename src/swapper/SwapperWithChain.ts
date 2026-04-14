@@ -33,6 +33,7 @@ import {LightningInvoiceCreateService} from "../types/wallets/LightningInvoiceCr
 import {Messenger} from "@atomiqlabs/base";
 import {Intermediary} from "../intermediaries/Intermediary";
 import {SwapTypeMapping} from "../utils/SwapUtils";
+import {SwapSide} from "../enums/SwapSide";
 
 /**
  * Chain-specific wrapper around Swapper for a particular blockchain
@@ -386,23 +387,23 @@ export class SwapperWithChain<T extends MultiChain, ChainIdentifier extends Chai
     /**
      * @internal
      */
-    swap(srcToken: BtcToken<true>, dstToken: SCToken<ChainIdentifier>, amount: bigint | string, exactIn: boolean | SwapAmountType, src: undefined | string | LNURLWithdraw, dstSmartchainWallet: string, options?: (SupportsSwapType<T[ChainIdentifier], SwapType.FROM_BTCLN_AUTO> extends true ? FromBTCLNAutoOptions : FromBTCLNOptions)): Promise<SupportsSwapType<T[ChainIdentifier], SwapType.FROM_BTCLN_AUTO> extends true ? FromBTCLNAutoSwap<T[ChainIdentifier]> : FromBTCLNSwap<T[ChainIdentifier]>>;
+    swap(srcToken: BtcToken<true> | "BTCLN" | "BTC-LN" | "LIGHTNING-BTC", dstToken: SCToken<ChainIdentifier>, amount: bigint | string, exactIn: boolean | SwapAmountType, src: undefined | string | LNURLWithdraw, dstSmartchainWallet: string, options?: (SupportsSwapType<T[ChainIdentifier], SwapType.FROM_BTCLN_AUTO> extends true ? FromBTCLNAutoOptions : FromBTCLNOptions)): Promise<SupportsSwapType<T[ChainIdentifier], SwapType.FROM_BTCLN_AUTO> extends true ? FromBTCLNAutoSwap<T[ChainIdentifier]> : FromBTCLNSwap<T[ChainIdentifier]>>;
     /**
      * @internal
      */
-    swap(srcToken: BtcToken<false>, dstToken: SCToken<ChainIdentifier>, amount: bigint | string, exactIn: boolean | SwapAmountType, src: undefined | string, dstSmartchainWallet: string, options?: (SupportsSwapType<T[ChainIdentifier], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCOptions : FromBTCOptions)): Promise<(SupportsSwapType<T[ChainIdentifier], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCSwap<T[ChainIdentifier]> : FromBTCSwap<T[ChainIdentifier]>)>;
+    swap(srcToken: BtcToken<false> | "BTC" | "BITCOIN-BTC", dstToken: SCToken<ChainIdentifier>, amount: bigint | string, exactIn: boolean | SwapAmountType, src: undefined | string, dstSmartchainWallet: string, options?: (SupportsSwapType<T[ChainIdentifier], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCOptions : FromBTCOptions)): Promise<(SupportsSwapType<T[ChainIdentifier], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCSwap<T[ChainIdentifier]> : FromBTCSwap<T[ChainIdentifier]>)>;
     /**
      * @internal
      */
-    swap(srcToken: SCToken<ChainIdentifier>, dstToken: BtcToken<false>, amount: bigint | string, exactIn: boolean | SwapAmountType, src: string, dstAddress: string, options?: ToBTCOptions): Promise<ToBTCSwap<T[ChainIdentifier]>>;
+    swap(srcToken: SCToken<ChainIdentifier>, dstToken: BtcToken<false> | "BTC" | "BITCOIN-BTC", amount: bigint | string, exactIn: boolean | SwapAmountType, src: string, dstAddress: string, options?: ToBTCOptions): Promise<ToBTCSwap<T[ChainIdentifier]>>;
     /**
      * @internal
      */
-    swap(srcToken: SCToken<ChainIdentifier>, dstToken: BtcToken<true>, amount: bigint | string, exactIn: boolean | SwapAmountType, src: string, dstLnurlPayOrInvoiceCreateService: string | LNURLPay | LightningInvoiceCreateService, options?: ToBTCLNOptions & {comment?: string}): Promise<ToBTCLNSwap<T[ChainIdentifier]>>;
+    swap(srcToken: SCToken<ChainIdentifier>, dstToken: BtcToken<true> | "BTCLN" | "BTC-LN" | "LIGHTNING-BTC", amount: bigint | string, exactIn: boolean | SwapAmountType, src: string, dstLnurlPayOrInvoiceCreateService: string | LNURLPay | LightningInvoiceCreateService, options?: ToBTCLNOptions & {comment?: string}): Promise<ToBTCLNSwap<T[ChainIdentifier]>>;
     /**
      * @internal
      */
-    swap(srcToken: SCToken<ChainIdentifier>, dstToken: BtcToken<true>, amount: undefined, exactIn: false | SwapAmountType.EXACT_OUT, src: string, dstLightningInvoice: string, options?: ToBTCLNOptions): Promise<ToBTCLNSwap<T[ChainIdentifier]>>;
+    swap(srcToken: SCToken<ChainIdentifier>, dstToken: BtcToken<true> | "BTCLN" | "BTC-LN" | "LIGHTNING-BTC", amount: undefined, exactIn: false | SwapAmountType.EXACT_OUT, src: string, dstLightningInvoice: string, options?: ToBTCLNOptions): Promise<ToBTCLNSwap<T[ChainIdentifier]>>;
     /**
      * Creates a swap from srcToken to dstToken, of a specific token amount, either specifying input amount (exactIn=true)
      *  or output amount (exactIn=false), NOTE: For regular SmartChain -> BTC-LN (lightning) swaps the passed amount is ignored and
@@ -517,6 +518,10 @@ export class SwapperWithChain<T extends MultiChain, ChainIdentifier extends Chai
         return this.swapper.recoverSwaps(this.chainIdentifier, signer, startBlockheight);
     }
 
+    getToken(ticker: "BTC" | "BITCOIN-BTC"): BtcToken<false>;
+    getToken(ticker: "BTCLN" | "BTC-LN" | "LIGHTNING-BTC"): BtcToken<true>;
+    getToken(ticker: `${ChainIdentifier}-${string}`): SCToken<ChainIdentifier>;
+    getToken(tickerOrAddress: string): Token<ChainIdentifier>;
     /**
      * Returns the {@link Token} object for a given token
      *
@@ -527,8 +532,8 @@ export class SwapperWithChain<T extends MultiChain, ChainIdentifier extends Chai
      */
     getToken(tickerOrAddress: string): Token<ChainIdentifier> {
         //Btc tokens - BTC, BTCLN, BTC-LN
-        if(tickerOrAddress==="BTC") return BitcoinTokens.BTC;
-        if(tickerOrAddress==="BTCLN" || tickerOrAddress==="BTC-LN") return BitcoinTokens.BTCLN;
+        if(tickerOrAddress==="BTC" || tickerOrAddress==="BITCOIN-BTC") return BitcoinTokens.BTC;
+        if(tickerOrAddress==="BTCLN" || tickerOrAddress==="BTC-LN" || tickerOrAddress==="LIGHTNING-BTC") return BitcoinTokens.BTCLN;
 
         //Check if the ticker is in format <chainId>-<ticker>, i.e. SOLANA-USDC, STARKNET-WBTC
         if(tickerOrAddress.includes("-")) {
@@ -604,8 +609,8 @@ export class SwapperWithChain<T extends MultiChain, ChainIdentifier extends Chai
      * @param dstToken Destination token
      */
     getSwapLimits<A extends Token<ChainIdentifier>, B extends Token<ChainIdentifier>>(srcToken: A, dstToken: B): {
-        input: {min: TokenAmount<string, A>, max?: TokenAmount<string, A>},
-        output: {min: TokenAmount<string, B>, max?: TokenAmount<string, B>}
+        input: {min: TokenAmount<A>, max?: TokenAmount<A>},
+        output: {min: TokenAmount<B>, max?: TokenAmount<B>}
     } {
         return this.swapper.getSwapLimits<ChainIdentifier, A, B>(srcToken, dstToken);
     }
@@ -650,7 +655,7 @@ export class SwapperWithChain<T extends MultiChain, ChainIdentifier extends Chai
      * Returns tokens that you can swap to (if input=true) from a given token,
      *  or tokens that you can swap from (if input=false) to a given token
      */
-    getSwapCounterTokens(token: Token, input: boolean): Token<ChainIdentifier>[] {
+    getSwapCounterTokens(token: Token, input: SwapSide | boolean): Token<ChainIdentifier>[] {
         if(isSCToken(token)) {
             const result: Token<ChainIdentifier>[] = [];
             if(input) {

@@ -100,7 +100,6 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
                 this.logger.error("processEventInitialize(" + swap.getId() + "): Error when processing event, escrow hashes don't match!");
                 return false;
             }
-            swap._commitTxId = event.meta?.txId;
             swap._commitedAt ??= Date.now();
             swap._state = FromBTCLNAutoSwap_1.FromBTCLNAutoSwapState.CLAIM_COMMITED;
             if (swap.hasSecretPreimage())
@@ -117,7 +116,6 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
      */
     processEventClaim(swap, event) {
         if (swap._state !== FromBTCLNAutoSwap_1.FromBTCLNAutoSwapState.FAILED && swap._state !== FromBTCLNAutoSwap_1.FromBTCLNAutoSwapState.CLAIM_CLAIMED) {
-            swap._claimTxId = event.meta?.txId;
             swap._state = FromBTCLNAutoSwap_1.FromBTCLNAutoSwapState.CLAIM_CLAIMED;
             swap._setSwapSecret(event.result);
             return Promise.resolve(true);
@@ -130,7 +128,6 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
      */
     processEventRefund(swap, event) {
         if (swap._state !== FromBTCLNAutoSwap_1.FromBTCLNAutoSwapState.CLAIM_CLAIMED && swap._state !== FromBTCLNAutoSwap_1.FromBTCLNAutoSwapState.FAILED) {
-            swap._refundTxId ??= event.meta?.txId;
             swap._state = FromBTCLNAutoSwap_1.FromBTCLNAutoSwapState.FAILED;
             return Promise.resolve(true);
         }

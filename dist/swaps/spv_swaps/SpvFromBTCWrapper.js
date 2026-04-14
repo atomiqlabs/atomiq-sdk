@@ -90,7 +90,6 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
             swap._state === SpvFromBTCSwap_1.SpvFromBTCSwapState.BROADCASTED || swap._state === SpvFromBTCSwap_1.SpvFromBTCSwapState.DECLINED ||
             swap._state === SpvFromBTCSwap_1.SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED || swap._state === SpvFromBTCSwap_1.SpvFromBTCSwapState.BTC_TX_CONFIRMED) {
             swap._state = SpvFromBTCSwap_1.SpvFromBTCSwapState.FRONTED;
-            swap._frontTxId = event.meta?.txId;
             await swap._setBitcoinTxId(event.btcTxId).catch(e => {
                 this.logger.warn("processEventFront(): Failed to set bitcoin txId: ", e);
             });
@@ -104,7 +103,6 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
             swap._state === SpvFromBTCSwap_1.SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED || swap._state === SpvFromBTCSwap_1.SpvFromBTCSwapState.FRONTED ||
             swap._state === SpvFromBTCSwap_1.SpvFromBTCSwapState.BTC_TX_CONFIRMED) {
             swap._state = SpvFromBTCSwap_1.SpvFromBTCSwapState.CLAIMED;
-            swap._claimTxId = event.meta?.txId;
             await swap._setBitcoinTxId(event.btcTxId).catch(e => {
                 this.logger.warn("processEventClaim(): Failed to set bitcoin txId: ", e);
             });

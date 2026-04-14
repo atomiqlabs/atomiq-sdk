@@ -211,7 +211,6 @@ export class FromBTCLNAutoWrapper<
                 return false;
             }
 
-            swap._commitTxId = event.meta?.txId;
             swap._commitedAt ??= Date.now();
             swap._state = FromBTCLNAutoSwapState.CLAIM_COMMITED;
             if(swap.hasSecretPreimage()) swap._broadcastSecret().catch(e => {
@@ -228,7 +227,6 @@ export class FromBTCLNAutoWrapper<
      */
     protected processEventClaim(swap: FromBTCLNAutoSwap<T>, event: ClaimEvent<T["Data"]>): Promise<boolean> {
         if(swap._state!==FromBTCLNAutoSwapState.FAILED && swap._state!==FromBTCLNAutoSwapState.CLAIM_CLAIMED) {
-            swap._claimTxId = event.meta?.txId;
             swap._state = FromBTCLNAutoSwapState.CLAIM_CLAIMED;
             swap._setSwapSecret(event.result);
             return Promise.resolve(true);
@@ -242,7 +240,6 @@ export class FromBTCLNAutoWrapper<
      */
     protected processEventRefund(swap: FromBTCLNAutoSwap<T>, event: RefundEvent<T["Data"]>): Promise<boolean> {
         if(swap._state!==FromBTCLNAutoSwapState.CLAIM_CLAIMED && swap._state!==FromBTCLNAutoSwapState.FAILED) {
-            swap._refundTxId ??= event.meta?.txId;
             swap._state = FromBTCLNAutoSwapState.FAILED;
             return Promise.resolve(true);
         }

@@ -174,9 +174,6 @@ class SwapperApi {
     async init() {
         await this.swapper.init();
     }
-    async poll() {
-        // TODO: Keep this empty for now, until the swapper instance exposes the poll() function
-    }
     async sync() {
         await this.swapper._syncSwaps();
     }

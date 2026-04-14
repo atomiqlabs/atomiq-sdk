@@ -23,7 +23,6 @@ export declare class SwapperApi<T extends MultiChain> {
     constructor(swapper: Swapper<T>, config?: SwapperApiConfig | undefined);
     private txSerializer;
     init(): Promise<void>;
-    poll(): Promise<void>;
     sync(): Promise<void>;
     private createSwap;
     private validateSwapListInput;

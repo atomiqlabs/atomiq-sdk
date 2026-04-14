@@ -1,6 +1,6 @@
 import { MultiChain, Swapper } from "../swapper/Swapper";
 import { ApiEndpoint } from "./ApiTypes";
-import { ListPendingSwapsInput, ListPendingSwapsOutput, CreateSwapInput, CreateSwapOutput, GetSwapStatusInput, GetSwapStatusOutput, GetSupportedTokensInput, GetSupportedTokensOutput, GetSwapCounterTokensInput, GetSwapCounterTokensOutput, GetSwapLimitsInput, GetSwapLimitsOutput, GetSpendableBalanceInput, GetSpendableBalanceOutput, ListSwapsInput, ListSwapsOutput, ParseAddressInput, ParseAddressOutput, SubmitTransactionInput, SubmitTransactionOutput } from "./ApiEndpoints";
+import { CreateSwapInput, CreateSwapOutput, GetSpendableBalanceInput, GetSpendableBalanceOutput, GetSupportedTokensInput, GetSupportedTokensOutput, GetSwapCounterTokensInput, GetSwapCounterTokensOutput, GetSwapLimitsInput, GetSwapLimitsOutput, GetSwapStatusInput, GetSwapStatusOutput, ListPendingSwapsInput, ListPendingSwapsOutput, ListSwapsInput, ListSwapsOutput, ParseAddressInput, ParseAddressOutput, SettleWithLnurlInput, SettleWithLnurlOutput, SubmitTransactionInput, SubmitTransactionOutput } from "./ApiEndpoints";
 export type SwapperApiConfig = {
     syncOnGetStatus?: boolean;
 };
@@ -18,6 +18,7 @@ export declare class SwapperApi<T extends MultiChain> {
         getSpendableBalance: ApiEndpoint<GetSpendableBalanceInput, GetSpendableBalanceOutput, "GET">;
         getSwapStatus: ApiEndpoint<GetSwapStatusInput, GetSwapStatusOutput, "GET">;
         submitTransaction: ApiEndpoint<SubmitTransactionInput, SubmitTransactionOutput, "POST">;
+        settleWithLnurl: ApiEndpoint<SettleWithLnurlInput, SettleWithLnurlOutput, "POST">;
     };
     constructor(swapper: Swapper<T>, config?: SwapperApiConfig | undefined);
     private txSerializer;
@@ -36,4 +37,5 @@ export declare class SwapperApi<T extends MultiChain> {
     private getSpendableBalance;
     private getSwapStatus;
     private submitTransaction;
+    private settleWithLnurl;
 }

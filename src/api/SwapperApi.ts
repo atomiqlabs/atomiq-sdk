@@ -9,25 +9,27 @@ import {MinimalBitcoinWalletInterface} from "../types/wallets/MinimalBitcoinWall
 import {FromBTCLNSwap, FromBTCLNSwapState} from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap";
 import {FromBTCLNAutoSwap, FromBTCLNAutoSwapState} from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap";
 import {
-    ListPendingSwapsInput,
-    ListPendingSwapsOutput,
     CreateSwapInput,
     CreateSwapOutput,
-    GetSwapStatusInput,
-    GetSwapStatusOutput,
+    GetSpendableBalanceInput,
+    GetSpendableBalanceOutput,
     GetSupportedTokensInput,
     GetSupportedTokensOutput,
     GetSwapCounterTokensInput,
     GetSwapCounterTokensOutput,
     GetSwapLimitsInput,
     GetSwapLimitsOutput,
-    GetSpendableBalanceInput,
-    GetSpendableBalanceOutput,
+    GetSwapStatusInput,
+    GetSwapStatusOutput,
+    ListPendingSwapsInput,
+    ListPendingSwapsOutput,
     ListSwapOutput,
     ListSwapsInput,
     ListSwapsOutput,
     ParseAddressInput,
     ParseAddressOutput,
+    SettleWithLnurlInput,
+    SettleWithLnurlOutput,
     SubmitTransactionInput,
     SubmitTransactionOutput,
     SwapOutputBase
@@ -35,6 +37,7 @@ import {
 import {SwapExecutionStep} from "../types/SwapExecutionStep";
 import {SwapStateInfo} from "../types/SwapStateInfo";
 import {IEscrowSwap} from "../swaps/escrow_swaps/IEscrowSwap";
+import {ToBTCLNSwap} from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNSwap";
 
 function requiresSecretRevealForApi(swap: ISwap, state: number): boolean | undefined {
     if(swap instanceof FromBTCLNSwap) {
@@ -81,12 +84,24 @@ function createSwapOutputBase(
                     networkOutput: toApiAmount(networkFeeEntry.fee.amountInSrcToken)
                 } : {})
             },
-            expiry: swap.getQuoteExpiry()
+            expiry: swap.getQuoteExpiry(),
+            outputAddress: swap.getOutputAddress() ?? undefined
         },
 
         createdAt: swap.createdAt,
 
-        steps
+        steps,
+
+        ...(swap instanceof ToBTCLNSwap && swap.isLNURL() ? {
+            lnurl: {
+                pay: swap.getLNURL()!,
+                successAction: swap.getSuccessAction() ?? undefined
+            }
+        } : (swap instanceof FromBTCLNSwap || swap instanceof FromBTCLNAutoSwap) && swap.isLNURL() ? {
+            lnurl: {
+                withdraw: swap.getLNURL()!,
+            }
+        } : {})
     };
 }
 
@@ -126,6 +141,7 @@ export class SwapperApi<T extends MultiChain> {
         getSpendableBalance: ApiEndpoint<GetSpendableBalanceInput, GetSpendableBalanceOutput, "GET">;
         getSwapStatus: ApiEndpoint<GetSwapStatusInput, GetSwapStatusOutput, "GET">;
         submitTransaction: ApiEndpoint<SubmitTransactionInput, SubmitTransactionOutput, "POST">;
+        settleWithLnurl: ApiEndpoint<SettleWithLnurlInput, SettleWithLnurlOutput, "POST">;
     };
 
     constructor(private swapper: Swapper<T>, private readonly config?: SwapperApiConfig) {
@@ -206,6 +222,10 @@ export class SwapperApi<T extends MultiChain> {
                     description: "Array of signed transaction data",
                     items: {type: "string", required: true, description: "Single string-serialized & signed transaction"}
                 }
+            }),
+            settleWithLnurl: createApiEndpoint<SettleWithLnurlInput, SettleWithLnurlOutput, "POST">("POST", this.settleWithLnurl.bind(this), {
+                swapId: { type: "string", required: true, description: "The swap identifier" },
+                lnurlWithdraw: { type: "string", required: false, description: "LNURL-withdraw link to use to settle the Lightning network swap, if the swap was already created with the LNURL-withdraw link, this is optional" }
             })
         };
     }
@@ -447,6 +467,49 @@ export class SwapperApi<T extends MultiChain> {
         return {
             txHashes: await swap._submitExecutionTransactions(input.signedTxs)
         }
+    }
+
+    private async settleWithLnurl(input: SettleWithLnurlInput): Promise<SettleWithLnurlOutput> {
+        const swap = await this.swapper.getSwapById(input.swapId);
+        if (swap == null) throw new Error("Swap not found: " + input.swapId);
+
+        if (swap instanceof FromBTCLNAutoSwap) {
+            if(swap._state!==FromBTCLNAutoSwapState.PR_CREATED)
+                throw new Error("Invalid swap state, must be in PR_CREATED state!");
+        } else if (swap instanceof FromBTCLNSwap) {
+            if(swap._state!==FromBTCLNSwapState.PR_CREATED)
+                throw new Error("Invalid swap state, must be in PR_CREATED state!");
+        } else {
+            throw new Error("Endpoint only supports swaps from Lightning");
+        }
+
+        if (!swap.isLNURL()) {
+            if (input.lnurlWithdraw==null)
+                throw new Error("The swap is not configured to use LNURL, please pass the `lnurlWithdraw` parameter!");
+
+            if (!this.swapper.Utils.isValidLNURL(input.lnurlWithdraw))
+                throw new Error("Invalid LNURL-withdraw link provided: " + input.lnurlWithdraw);
+
+            await swap.settleWithLNURLWithdraw(input.lnurlWithdraw);
+        } else {
+            if (input.lnurlWithdraw!=null)
+                throw new Error("The swap is already configured with an LNURL link, don't pass the `lnurlWithdraw` parameter!");
+        }
+
+        let success: boolean;
+        if (swap instanceof FromBTCLNAutoSwap) {
+            // For non-legacy swap, we don't need to wait till the swap advances all the way to committed state
+            success = await swap._waitForLpPaymentReceived(2);
+        } else {
+            // For legacy swap waitForPayment waits just for the swap to transition into PR_PAID
+            success = await swap.waitForPayment(undefined, 2);
+        }
+
+        if(!success) throw new Error("Failed to settle the swap with the LNURL-withdraw link!");
+
+        return {
+            paymentHash: swap.getInputTxId()!
+        };
     }
 
 }

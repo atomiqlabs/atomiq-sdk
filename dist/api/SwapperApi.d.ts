@@ -23,7 +23,16 @@ export declare class SwapperApi<T extends MultiChain> {
     constructor(swapper: Swapper<T>, config?: SwapperApiConfig | undefined);
     private txSerializer;
     init(): Promise<void>;
+    /**
+     * Should be ran periodically, this synchronizes the swap's state with the on-chain data and also purges
+     *  expired swaps from the persistent storage
+     */
     sync(): Promise<void>;
+    /**
+     * Optionally good to run this periodically, such that any LPs that are dropped off because they are unresponsive
+     *  can be found again.
+     */
+    reloadLps(): Promise<void>;
     private createSwap;
     private validateSwapListInput;
     private createListedSwapOutputs;

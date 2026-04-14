@@ -757,22 +757,11 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
                     amount: this.getInput()
                 }],
             waitForTransactions: async (maxWaitTimeSeconds, pollIntervalSeconds, abortSignal) => {
-                let lightningTxId;
                 const abortController = (0, Utils_1.extendAbortController)(abortSignal, maxWaitTimeSeconds, "Timed out waiting for lightning payment");
-                try {
-                    const success = await this.waitForPayment((txId) => {
-                        lightningTxId = txId;
-                        abortController.abort();
-                    }, pollIntervalSeconds, abortController.signal);
-                    if (!success)
-                        throw new Error("Quote expired while waiting for Lightning payment");
-                }
-                catch (e) {
-                    if (lightningTxId != null)
-                        return lightningTxId;
-                    throw e;
-                }
-                return lightningTxId;
+                const success = await this._waitForLpPaymentReceived(pollIntervalSeconds, abortController.signal);
+                if (!success)
+                    throw new Error("Quote expired while waiting for Lightning payment");
+                return this.getInputTxId();
             }
         };
     }
@@ -938,62 +927,23 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
         return false;
     }
     /**
-     * Checks the data returned by the intermediary in the payment auth request
-     *
-     * @param data Parsed swap data as returned by the intermediary
-     *
-     * @throws {IntermediaryError} If the returned are not valid
-     * @throws {Error} If the swap is already committed on-chain
-     *
-     * @private
-     */
-    async checkIntermediaryReturnedData(data) {
-        if (!data.isPayOut())
-            throw new IntermediaryError_1.IntermediaryError("Invalid not pay out");
-        if (data.getType() !== base_1.ChainSwapType.HTLC)
-            throw new IntermediaryError_1.IntermediaryError("Invalid swap type");
-        if (!data.isOfferer(this.getSwapData().getOfferer()))
-            throw new IntermediaryError_1.IntermediaryError("Invalid offerer used");
-        if (!data.isClaimer(this._getInitiator()))
-            throw new IntermediaryError_1.IntermediaryError("Invalid claimer used");
-        if (!data.isToken(this.getSwapData().getToken()))
-            throw new IntermediaryError_1.IntermediaryError("Invalid token used");
-        if (data.getSecurityDeposit() !== this.getSwapData().getSecurityDeposit())
-            throw new IntermediaryError_1.IntermediaryError("Invalid security deposit!");
-        if (data.getClaimerBounty() !== this.getSwapData().getClaimerBounty())
-            throw new IntermediaryError_1.IntermediaryError("Invalid security deposit!");
-        if (data.getAmount() < this.getSwapData().getAmount())
-            throw new IntermediaryError_1.IntermediaryError("Invalid amount received!");
-        if (data.getClaimHash() !== this.getSwapData().getClaimHash())
-            throw new IntermediaryError_1.IntermediaryError("Invalid payment hash used!");
-        if (!data.isDepositToken(this.getSwapData().getDepositToken()))
-            throw new IntermediaryError_1.IntermediaryError("Invalid deposit token used!");
-        if (data.hasSuccessAction())
-            throw new IntermediaryError_1.IntermediaryError("Invalid has success action");
-        if (await this.wrapper._contract.isExpired(this._getInitiator(), data))
-            throw new IntermediaryError_1.IntermediaryError("Not enough time to claim!");
-        if (this.wrapper._getHtlcTimeout(data) <= (Date.now() / 1000))
-            throw new IntermediaryError_1.IntermediaryError("HTLC expires too soon!");
-    }
-    /**
-     * Waits till a lightning network payment is received by the intermediary, and the intermediary
-     *  initiates the swap HTLC on the smart chain side. After the HTLC is initiated you can wait
-     *  for an automatic settlement by the watchtowers with the {@link waitTillClaimed} function,
-     *  or settle manually using the {@link claim} or {@link txsClaim} functions.
+     * Waits till a lightning network payment is received by the intermediary, after this you still should wait
+     *  till the LP offers an HTLC towards the user.
      *
      * If this swap is using an LNURL-withdraw link as input, it automatically posts the
      *  generated invoice to the LNURL service to pay it.
      *
-     * @param onPaymentReceived Callback as for when the LP reports having received the ln payment
+     * @remarks For internal use, rather use {@link waitForPayment} which properly waits till the LP also
+     *  offers a swap HTLC.
+     *
      * @param abortSignal Abort signal to stop waiting for payment
      * @param checkIntervalSeconds How often to poll the intermediary for answer (default 5 seconds)
+     *
+     * @internal
      */
-    async waitForPayment(onPaymentReceived, checkIntervalSeconds, abortSignal) {
+    async _waitForLpPaymentReceived(checkIntervalSeconds, abortSignal) {
         checkIntervalSeconds ??= 5;
-        if (this._state === FromBTCLNAutoSwapState.PR_PAID) {
-            await this.waitTillCommited(checkIntervalSeconds, abortSignal);
-        }
-        if (this._state >= FromBTCLNAutoSwapState.CLAIM_COMMITED)
+        if (this._state >= FromBTCLNAutoSwapState.PR_PAID)
             return true;
         if (this._state !== FromBTCLNAutoSwapState.PR_CREATED)
             throw new Error("Must be in PR_CREATED state!");
@@ -1055,9 +1005,72 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
             abortController.abort();
             if (!paymentResult)
                 return false;
-            if (onPaymentReceived != null)
-                onPaymentReceived(this.getInputTxId());
         }
+        return this._state >= FromBTCLNAutoSwapState.PR_PAID;
+    }
+    /**
+     * Checks the data returned by the intermediary in the payment auth request
+     *
+     * @param data Parsed swap data as returned by the intermediary
+     *
+     * @throws {IntermediaryError} If the returned are not valid
+     * @throws {Error} If the swap is already committed on-chain
+     *
+     * @private
+     */
+    async checkIntermediaryReturnedData(data) {
+        if (!data.isPayOut())
+            throw new IntermediaryError_1.IntermediaryError("Invalid not pay out");
+        if (data.getType() !== base_1.ChainSwapType.HTLC)
+            throw new IntermediaryError_1.IntermediaryError("Invalid swap type");
+        if (!data.isOfferer(this.getSwapData().getOfferer()))
+            throw new IntermediaryError_1.IntermediaryError("Invalid offerer used");
+        if (!data.isClaimer(this._getInitiator()))
+            throw new IntermediaryError_1.IntermediaryError("Invalid claimer used");
+        if (!data.isToken(this.getSwapData().getToken()))
+            throw new IntermediaryError_1.IntermediaryError("Invalid token used");
+        if (data.getSecurityDeposit() !== this.getSwapData().getSecurityDeposit())
+            throw new IntermediaryError_1.IntermediaryError("Invalid security deposit!");
+        if (data.getClaimerBounty() !== this.getSwapData().getClaimerBounty())
+            throw new IntermediaryError_1.IntermediaryError("Invalid security deposit!");
+        if (data.getAmount() < this.getSwapData().getAmount())
+            throw new IntermediaryError_1.IntermediaryError("Invalid amount received!");
+        if (data.getClaimHash() !== this.getSwapData().getClaimHash())
+            throw new IntermediaryError_1.IntermediaryError("Invalid payment hash used!");
+        if (!data.isDepositToken(this.getSwapData().getDepositToken()))
+            throw new IntermediaryError_1.IntermediaryError("Invalid deposit token used!");
+        if (data.hasSuccessAction())
+            throw new IntermediaryError_1.IntermediaryError("Invalid has success action");
+        if (await this.wrapper._contract.isExpired(this._getInitiator(), data))
+            throw new IntermediaryError_1.IntermediaryError("Not enough time to claim!");
+        if (this.wrapper._getHtlcTimeout(data) <= (Date.now() / 1000))
+            throw new IntermediaryError_1.IntermediaryError("HTLC expires too soon!");
+    }
+    /**
+     * Waits till a lightning network payment is received by the intermediary, and the intermediary
+     *  initiates the swap HTLC on the smart chain side. After the HTLC is initiated you can wait
+     *  for an automatic settlement by the watchtowers with the {@link waitTillClaimed} function,
+     *  or settle manually using the {@link claim} or {@link txsClaim} functions.
+     *
+     * If this swap is using an LNURL-withdraw link as input, it automatically posts the
+     *  generated invoice to the LNURL service to pay it.
+     *
+     * @param onPaymentReceived Callback as for when the LP reports having received the ln payment
+     * @param abortSignal Abort signal to stop waiting for payment
+     * @param checkIntervalSeconds How often to poll the intermediary for answer (default 5 seconds)
+     */
+    async waitForPayment(onPaymentReceived, checkIntervalSeconds, abortSignal) {
+        checkIntervalSeconds ??= 5;
+        if (this._state === FromBTCLNAutoSwapState.PR_PAID) {
+            await this.waitTillCommited(checkIntervalSeconds, abortSignal);
+        }
+        if (this._state >= FromBTCLNAutoSwapState.CLAIM_COMMITED)
+            return true;
+        const success = await this._waitForLpPaymentReceived(checkIntervalSeconds, abortSignal);
+        if (!success)
+            return false;
+        if (onPaymentReceived != null)
+            onPaymentReceived(this.getInputTxId());
         if (this._state === FromBTCLNAutoSwapState.PR_PAID) {
             await this.waitTillCommited(checkIntervalSeconds, abortSignal);
         }

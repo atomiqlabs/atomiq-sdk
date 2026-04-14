@@ -488,6 +488,22 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
      */
     _saveRealSwapData(data: T["Data"], save?: boolean): Promise<boolean>;
     /**
+     * Waits till a lightning network payment is received by the intermediary, after this you still should wait
+     *  till the LP offers an HTLC towards the user.
+     *
+     * If this swap is using an LNURL-withdraw link as input, it automatically posts the
+     *  generated invoice to the LNURL service to pay it.
+     *
+     * @remarks For internal use, rather use {@link waitForPayment} which properly waits till the LP also
+     *  offers a swap HTLC.
+     *
+     * @param abortSignal Abort signal to stop waiting for payment
+     * @param checkIntervalSeconds How often to poll the intermediary for answer (default 5 seconds)
+     *
+     * @internal
+     */
+    _waitForLpPaymentReceived(checkIntervalSeconds?: number, abortSignal?: AbortSignal): Promise<boolean>;
+    /**
      * Checks the data returned by the intermediary in the payment auth request
      *
      * @param data Parsed swap data as returned by the intermediary

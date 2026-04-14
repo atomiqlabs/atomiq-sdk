@@ -2,6 +2,7 @@ import { SwapExecutionStep } from "../types/SwapExecutionStep";
 import { SerializedAction } from "./SerializedAction";
 import { SwapExecutionAction } from "../types/SwapExecutionAction";
 import { ApiAmount, ApiLNURL, ApiToken } from "./ApiTypes";
+import { LNURLDecodedSuccessAction } from "../types/lnurl/LNURLPay";
 export type SwapOutputBase = {
     swapId: string;
     swapType: string;
@@ -18,9 +19,15 @@ export type SwapOutputBase = {
             networkOutput?: ApiAmount;
         };
         expiry: number;
+        outputAddress?: string;
     };
     createdAt: number;
     steps: SwapExecutionStep[];
+    lnurl?: {
+        withdraw?: string;
+        pay?: string;
+        successAction?: LNURLDecodedSuccessAction;
+    };
 };
 /**
  * Input for creating a new swap
@@ -223,4 +230,21 @@ export type SubmitTransactionInput = {
  */
 export type SubmitTransactionOutput = {
     txHashes: string[];
+};
+/**
+ * Input for triggering an LNURL-withdraw based settlement for Lightning -> Smart chain swaps
+ *
+ * @category API
+ */
+export type SettleWithLnurlInput = {
+    swapId: string;
+    lnurlWithdraw?: string;
+};
+/**
+ * Output for triggering an LNURL-withdraw based settlement for Lightning -> Smart chain swaps
+ *
+ * @category API
+ */
+export type SettleWithLnurlOutput = {
+    paymentHash: string;
 };

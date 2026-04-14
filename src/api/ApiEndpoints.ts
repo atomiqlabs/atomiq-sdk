@@ -123,14 +123,14 @@ export type ListSwapsOutput = ListSwapOutput[];
  *
  * @category API
  */
-export type ListActionableSwapsInput = ListSwapsInput;
+export type ListPendingSwapsInput = ListSwapsInput;
 
 /**
  * Output from actionable swap list endpoint
  *
  * @category API
  */
-export type ListActionableSwapsOutput = ListSwapsOutput;
+export type ListPendingSwapsOutput = ListSwapsOutput;
 
 /**
  * Input for listing supported tokens

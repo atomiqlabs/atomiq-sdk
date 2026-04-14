@@ -899,7 +899,7 @@ class Swapper extends events_1.EventEmitter {
             return await unifiedSwapStorage.query([queryParams], reviver);
         }
     }
-    async getActionableSwaps(chainId, signer) {
+    async getPendingSwaps(chainId, signer) {
         if (chainId == null) {
             const res = await Promise.all(Object.keys(this._chains).map((chainId) => {
                 const { unifiedSwapStorage, reviver, wrappers } = this._chains[chainId];
@@ -914,7 +914,7 @@ class Swapper extends events_1.EventEmitter {
                 }
                 return unifiedSwapStorage.query(queryParams, reviver);
             }));
-            return res.flat().filter(swap => swap.requiresAction());
+            return res.flat();
         }
         else {
             const { unifiedSwapStorage, reviver, wrappers } = this._chains[chainId];
@@ -927,7 +927,15 @@ class Swapper extends events_1.EventEmitter {
                 swapTypeQueryParams.push({ key: "state", value: wrapper._pendingSwapStates });
                 queryParams.push(swapTypeQueryParams);
             }
-            return (await unifiedSwapStorage.query(queryParams, reviver)).filter(swap => swap.requiresAction());
+            return await unifiedSwapStorage.query(queryParams, reviver);
+        }
+    }
+    async getActionableSwaps(chainId, signer) {
+        if (chainId == null) {
+            return (await this.getPendingSwaps()).filter(swap => swap.requiresAction());
+        }
+        else {
+            return (await this.getPendingSwaps(chainId, signer)).filter(swap => swap.requiresAction());
         }
     }
     async getRefundableSwaps(chainId, signer) {

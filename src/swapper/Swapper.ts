@@ -1574,14 +1574,14 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
     }
 
     /**
-     * Returns all swaps where an action is required (either claim or refund)
+     * Returns all swaps which are pending (i.e. not in their final state yet)
      */
-    getActionableSwaps(): Promise<ISwap[]>;
+    getPendingSwaps(): Promise<ISwap[]>;
     /**
-     * Returns swaps where an action is required (either claim or refund) for the specific chain, and optionally also for a specific signer's address
+     * Returns swaps which are pending (i.e. not in their final state yet) for the specific chain, and optionally also for a specific signer's address
      */
-    getActionableSwaps<C extends ChainIds<T>>(chainId: C, signer?: string): Promise<ISwap<T[C]>[]>;
-    async getActionableSwaps<C extends ChainIds<T>>(chainId?: C, signer?: string): Promise<ISwap[]> {
+    getPendingSwaps<C extends ChainIds<T>>(chainId: C, signer?: string): Promise<ISwap<T[C]>[]>;
+    async getPendingSwaps<C extends ChainIds<T>>(chainId?: C, signer?: string): Promise<ISwap[]> {
         if(chainId==null) {
             const res: ISwap[][] = await Promise.all(Object.keys(this._chains).map((chainId) => {
                 const {unifiedSwapStorage, reviver, wrappers} = this._chains[chainId];
@@ -1595,7 +1595,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 }
                 return unifiedSwapStorage.query(queryParams, reviver);
             }));
-            return res.flat().filter(swap => swap.requiresAction());
+            return res.flat();
         } else {
             const {unifiedSwapStorage, reviver, wrappers} = this._chains[chainId];
             const queryParams: Array<QueryParams[]> = [];
@@ -1606,7 +1606,23 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 swapTypeQueryParams.push({key: "state", value: wrapper._pendingSwapStates});
                 queryParams.push(swapTypeQueryParams);
             }
-            return (await unifiedSwapStorage.query(queryParams, reviver)).filter(swap => swap.requiresAction());
+            return await unifiedSwapStorage.query(queryParams, reviver);
+        }
+    }
+
+    /**
+     * Returns all swaps where an action is required (either claim or refund)
+     */
+    getActionableSwaps(): Promise<ISwap[]>;
+    /**
+     * Returns swaps where an action is required (either claim or refund) for the specific chain, and optionally also for a specific signer's address
+     */
+    getActionableSwaps<C extends ChainIds<T>>(chainId: C, signer?: string): Promise<ISwap<T[C]>[]>;
+    async getActionableSwaps<C extends ChainIds<T>>(chainId?: C, signer?: string): Promise<ISwap[]> {
+        if(chainId==null) {
+            return (await this.getPendingSwaps()).filter(swap => swap.requiresAction());
+        } else {
+            return (await this.getPendingSwaps(chainId, signer)).filter(swap => swap.requiresAction());
         }
     }
 

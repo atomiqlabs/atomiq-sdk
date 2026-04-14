@@ -509,6 +509,14 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
      */
     getAllSwaps<C extends ChainIds<T>>(chainId: C, signer?: string): Promise<ISwap<T[C]>[]>;
     /**
+     * Returns all swaps which are pending (i.e. not in their final state yet)
+     */
+    getPendingSwaps(): Promise<ISwap[]>;
+    /**
+     * Returns swaps which are pending (i.e. not in their final state yet) for the specific chain, and optionally also for a specific signer's address
+     */
+    getPendingSwaps<C extends ChainIds<T>>(chainId: C, signer?: string): Promise<ISwap<T[C]>[]>;
+    /**
      * Returns all swaps where an action is required (either claim or refund)
      */
     getActionableSwaps(): Promise<ISwap[]>;

@@ -89,9 +89,9 @@ class SwapperApi {
                 signer: { type: "string", required: true, description: "Smart chain signer address to filter swaps for" },
                 chainId: { type: "string", required: false, description: "Optional smart chain identifier to filter swaps" }
             }),
-            listActionableSwaps: (0, ApiTypes_1.createApiEndpoint)("GET", this.listActionableSwaps.bind(this), {
-                signer: { type: "string", required: true, description: "Smart chain signer address to filter actionable swaps for" },
-                chainId: { type: "string", required: false, description: "Optional smart chain identifier to filter actionable swaps" }
+            listPendingSwaps: (0, ApiTypes_1.createApiEndpoint)("GET", this.listPendingSwaps.bind(this), {
+                signer: { type: "string", required: true, description: "Smart chain signer address to filter pending swaps for" },
+                chainId: { type: "string", required: false, description: "Optional smart chain identifier to filter pending swaps" }
             }),
             getSupportedTokens: (0, ApiTypes_1.createApiEndpoint)("GET", this.getSupportedTokens.bind(this), {
                 side: {
@@ -206,9 +206,9 @@ class SwapperApi {
         const swaps = await this.swapper.getAllSwaps(input.chainId, input.signer);
         return this.createListedSwapOutputs(swaps);
     }
-    async listActionableSwaps(input) {
+    async listPendingSwaps(input) {
         this.validateSwapListInput(input);
-        const swaps = await this.swapper.getActionableSwaps(input.chainId, input.signer);
+        const swaps = await this.swapper.getPendingSwaps(input.chainId, input.signer);
         return this.createListedSwapOutputs(swaps);
     }
     //TODO: Maybe reload the intermediaries every so often such that when one drops off due to some issue we can reconnect it again, this directly affects the getSupportedTokens endpoint

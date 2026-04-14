@@ -240,10 +240,6 @@ export class SwapperApi<T extends MultiChain> {
         await this.swapper.init();
     }
 
-    async poll(): Promise<void> {
-        // TODO: Keep this empty for now, until the swapper instance exposes the poll() function
-    }
-
     async sync(): Promise<void> {
         await this.swapper._syncSwaps();
     }

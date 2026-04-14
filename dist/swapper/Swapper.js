@@ -248,8 +248,7 @@ class Swapper extends events_1.EventEmitter {
                         return swap;
                     });
                 }
-                if (!this.options.noEvents)
-                    await unifiedChainEvents.start();
+                await unifiedChainEvents.start(this.options.noEvents);
                 this.logger.debug("init(): Intialized events: " + chainIdentifier);
                 for (let key in wrappers) {
                     // this.logger.debug("init(): Initializing "+SwapType[key]+": "+chainIdentifier);
@@ -1171,6 +1170,19 @@ class Swapper extends events_1.EventEmitter {
         else {
             await this.syncSwapsForChain(chainId, signer);
         }
+    }
+    /**
+     * When the swapper is initiated with the `noEvents` config this function allows you to manually poll for on-chain
+     *  events. It returns an events cursor which you should save and pass to the next call to the `poll()` function.
+     *
+     * @param chainId Chain for which to poll the chain events listener for
+     * @param lastEventCursorState Event cursor state returned from the last call to the `poll()` function
+     */
+    async _pollChainEvents(chainId, lastEventCursorState) {
+        const chain = this._chains[chainId];
+        if (chain == null)
+            throw new Error(`Invalid chain id ${chainId}!`);
+        return chain.unifiedChainEvents.poll(lastEventCursorState);
     }
     /**
      * Recovers swaps from on-chain historical data.

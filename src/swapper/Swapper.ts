@@ -126,8 +126,9 @@ export type SwapperOptions = {
     noTimers?: boolean,
     /**
      * By setting this flag, the swapper doesn't subscribe to on-chain events. To make sure the swap states are
-     *  properly updated you should call the {@link Swapper._syncSwaps} function periodically. This flag should be
-     *  set when you run an environment that doesn't support long-running timers and websocket connections - e.g.
+     *  properly updated you should either call the {@link Swapper._syncSwaps} function periodically, or use the
+     *  {@link Swapper._pollChainEvents} function to manually poll for on-chain events. This flag should be set
+     *  when you run an environment that doesn't support long-running timers and websocket connections - e.g.
      *  serverless environments like Azure Function Apps or AWS Lambda
      */
     noEvents?: boolean,
@@ -157,7 +158,7 @@ export type SwapperOptions = {
      *  want to only create a swap, and then later on retrieve it with the `swapper.getSwapById()` function.
      *
      * Setting this to `false` means the SDK only saves and persists swaps that are considered initiated, i.e. when
-     *  `commit()`, `execute()` or `waitTillPayment` is called (or their respective txs... prefixed variations). This
+     *  `commit()`, `execute()` or `waitTillPayment()` is called (or their respective txs... prefixed variations). This
      *  might save calls to the persistent storage for swaps that are never initiated. This is useful in e.g.
      *  frontend implementations where the frontend holds the swap object reference until it is initiated anyway, not
      *  necessitating the saving of the swap data to the persistent storage until it is actually initiated.
@@ -637,7 +638,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                     )
                 }
 
-                if(!this.options.noEvents) await unifiedChainEvents.start();
+                await unifiedChainEvents.start(this.options.noEvents);
                 this.logger.debug("init(): Intialized events: "+chainIdentifier);
 
                 for(let key in wrappers) {
@@ -1876,6 +1877,20 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         } else {
             await this.syncSwapsForChain(chainId, signer);
         }
+    }
+
+    /**
+     * When the swapper is initiated with the `noEvents` config this function allows you to manually poll for on-chain
+     *  events. It returns an events cursor which you should save and pass to the next call to the `poll()` function.
+     *
+     * @param chainId Chain for which to poll the chain events listener for
+     * @param lastEventCursorState Event cursor state returned from the last call to the `poll()` function
+     */
+    async _pollChainEvents<C extends ChainIds<T>>(chainId: C, lastEventCursorState?: any): Promise<any> {
+        const chain = this._chains[chainId];
+        if(chain==null) throw new Error(`Invalid chain id ${chainId}!`);
+
+        return chain.unifiedChainEvents.poll(lastEventCursorState);
     }
 
     /**

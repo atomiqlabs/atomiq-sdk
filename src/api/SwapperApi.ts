@@ -1,6 +1,5 @@
 import {MultiChain, Swapper} from "../swapper/Swapper";
 import {ApiEndpoint, createApiEndpoint, toApiAmount, toApiLNURL, toApiToken} from "./ApiTypes";
-import {isSwapExecutionActionSignPSBT, isSwapExecutionActionSignSmartChainTx} from "../types/SwapExecutionAction";
 import {ISwap} from "../swaps/ISwap";
 import {serializeAction} from "./SerializedAction";
 import {FeeType} from "../enums/FeeType";
@@ -10,8 +9,8 @@ import {MinimalBitcoinWalletInterface} from "../types/wallets/MinimalBitcoinWall
 import {FromBTCLNSwap, FromBTCLNSwapState} from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap";
 import {FromBTCLNAutoSwap, FromBTCLNAutoSwapState} from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap";
 import {
-    ListActionableSwapsInput,
-    ListActionableSwapsOutput,
+    ListPendingSwapsInput,
+    ListPendingSwapsOutput,
     CreateSwapInput,
     CreateSwapOutput,
     GetSwapStatusInput,
@@ -119,7 +118,7 @@ export class SwapperApi<T extends MultiChain> {
     readonly endpoints: {
         createSwap: ApiEndpoint<CreateSwapInput, CreateSwapOutput, "POST">;
         listSwaps: ApiEndpoint<ListSwapsInput, ListSwapsOutput, "GET">;
-        listActionableSwaps: ApiEndpoint<ListActionableSwapsInput, ListActionableSwapsOutput, "GET">;
+        listPendingSwaps: ApiEndpoint<ListPendingSwapsInput, ListPendingSwapsOutput, "GET">;
         getSupportedTokens: ApiEndpoint<GetSupportedTokensInput, GetSupportedTokensOutput, "GET">;
         getSwapCounterTokens: ApiEndpoint<GetSwapCounterTokensInput, GetSwapCounterTokensOutput, "GET">;
         getSwapLimits: ApiEndpoint<GetSwapLimitsInput, GetSwapLimitsOutput, "GET">;
@@ -150,9 +149,9 @@ export class SwapperApi<T extends MultiChain> {
                 signer: { type: "string", required: true, description: "Smart chain signer address to filter swaps for" },
                 chainId: { type: "string", required: false, description: "Optional smart chain identifier to filter swaps" }
             }),
-            listActionableSwaps: createApiEndpoint<ListActionableSwapsInput, ListActionableSwapsOutput, "GET">("GET", this.listActionableSwaps.bind(this), {
-                signer: { type: "string", required: true, description: "Smart chain signer address to filter actionable swaps for" },
-                chainId: { type: "string", required: false, description: "Optional smart chain identifier to filter actionable swaps" }
+            listPendingSwaps: createApiEndpoint<ListPendingSwapsInput, ListPendingSwapsOutput, "GET">("GET", this.listPendingSwaps.bind(this), {
+                signer: { type: "string", required: true, description: "Smart chain signer address to filter pending swaps for" },
+                chainId: { type: "string", required: false, description: "Optional smart chain identifier to filter pending swaps" }
             }),
             getSupportedTokens: createApiEndpoint<GetSupportedTokensInput, GetSupportedTokensOutput, "GET">("GET", this.getSupportedTokens.bind(this), {
                 side: {
@@ -288,10 +287,10 @@ export class SwapperApi<T extends MultiChain> {
         return this.createListedSwapOutputs(swaps);
     }
 
-    private async listActionableSwaps(input: ListActionableSwapsInput): Promise<ListActionableSwapsOutput> {
+    private async listPendingSwaps(input: ListPendingSwapsInput): Promise<ListPendingSwapsOutput> {
         this.validateSwapListInput(input);
 
-        const swaps = await this.swapper.getActionableSwaps(input.chainId as any, input.signer);
+        const swaps = await this.swapper.getPendingSwaps(input.chainId as any, input.signer);
         return this.createListedSwapOutputs(swaps);
     }
 

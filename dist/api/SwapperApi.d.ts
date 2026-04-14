@@ -1,6 +1,6 @@
 import { MultiChain, Swapper } from "../swapper/Swapper";
 import { ApiEndpoint } from "./ApiTypes";
-import { ListActionableSwapsInput, ListActionableSwapsOutput, CreateSwapInput, CreateSwapOutput, GetSwapStatusInput, GetSwapStatusOutput, GetSupportedTokensInput, GetSupportedTokensOutput, GetSwapCounterTokensInput, GetSwapCounterTokensOutput, GetSwapLimitsInput, GetSwapLimitsOutput, GetSpendableBalanceInput, GetSpendableBalanceOutput, ListSwapsInput, ListSwapsOutput, ParseAddressInput, ParseAddressOutput, SubmitTransactionInput, SubmitTransactionOutput } from "./ApiEndpoints";
+import { ListPendingSwapsInput, ListPendingSwapsOutput, CreateSwapInput, CreateSwapOutput, GetSwapStatusInput, GetSwapStatusOutput, GetSupportedTokensInput, GetSupportedTokensOutput, GetSwapCounterTokensInput, GetSwapCounterTokensOutput, GetSwapLimitsInput, GetSwapLimitsOutput, GetSpendableBalanceInput, GetSpendableBalanceOutput, ListSwapsInput, ListSwapsOutput, ParseAddressInput, ParseAddressOutput, SubmitTransactionInput, SubmitTransactionOutput } from "./ApiEndpoints";
 export type SwapperApiConfig = {
     syncOnGetStatus?: boolean;
 };
@@ -10,7 +10,7 @@ export declare class SwapperApi<T extends MultiChain> {
     readonly endpoints: {
         createSwap: ApiEndpoint<CreateSwapInput, CreateSwapOutput, "POST">;
         listSwaps: ApiEndpoint<ListSwapsInput, ListSwapsOutput, "GET">;
-        listActionableSwaps: ApiEndpoint<ListActionableSwapsInput, ListActionableSwapsOutput, "GET">;
+        listPendingSwaps: ApiEndpoint<ListPendingSwapsInput, ListPendingSwapsOutput, "GET">;
         getSupportedTokens: ApiEndpoint<GetSupportedTokensInput, GetSupportedTokensOutput, "GET">;
         getSwapCounterTokens: ApiEndpoint<GetSwapCounterTokensInput, GetSwapCounterTokensOutput, "GET">;
         getSwapLimits: ApiEndpoint<GetSwapLimitsInput, GetSwapLimitsOutput, "GET">;
@@ -28,7 +28,7 @@ export declare class SwapperApi<T extends MultiChain> {
     private validateSwapListInput;
     private createListedSwapOutputs;
     private listSwaps;
-    private listActionableSwaps;
+    private listPendingSwaps;
     private getSupportedTokens;
     private getSwapCounterTokens;
     private getSwapLimits;

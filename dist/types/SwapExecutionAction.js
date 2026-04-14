@@ -42,7 +42,7 @@ function isSwapExecutionActionSendToAddress(obj, lightning) {
             tx.type === (resolvedLightning ? "BOLT11_PAYMENT_REQUEST" : "BITCOIN_ADDRESS") &&
             typeof (tx.address) === "string" &&
             typeof (tx.hyperlink) === "string" &&
-            (0, TokenAmount_1.isTokenAmount)(tx.amount, lightning ? Token_1.BitcoinTokens.BTCLN : Token_1.BitcoinTokens.BTC, true)) &&
+            (0, TokenAmount_1.isTokenAmount)(tx.amount, resolvedLightning ? Token_1.BitcoinTokens.BTCLN : Token_1.BitcoinTokens.BTC, true)) &&
         typeof (obj.waitForTransactions) === "function";
 }
 exports.isSwapExecutionActionSendToAddress = isSwapExecutionActionSendToAddress;

@@ -89,7 +89,7 @@ export function isSwapExecutionActionSendToAddress<Lightning extends boolean = b
             typeof(tx.hyperlink) === "string" &&
             isTokenAmount(
                 tx.amount,
-                lightning ? BitcoinTokens.BTCLN : BitcoinTokens.BTC,
+                resolvedLightning ? BitcoinTokens.BTCLN : BitcoinTokens.BTC,
                 true
             )
         ) &&

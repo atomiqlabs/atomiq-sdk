@@ -935,7 +935,7 @@ export class SpvFromBTCWrapper<
 
                             genesisSmartChainBlockHeight: await throwIfUndefined(
                                 finalizedBlockHeightPrefetchPromise,
-                                "Finalize block height promise failed!"
+                                "Network finalized blockheight pre-fetch failed!"
                             ),
                             contractVersion: version
                         };

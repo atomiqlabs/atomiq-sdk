@@ -582,7 +582,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
     }
 
     private async _init(): Promise<void> {
-        this.logger.debug("init(): Initializing swapper...");
+        this.logger.debug("init(): Initializing swapper");
 
         const abortController = new AbortController();
 
@@ -708,6 +708,13 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
             delete this.initPromise;
             throw e;
         }
+    }
+
+    /**
+     * Whether the SDK is initialized (after {@link init} is called)
+     */
+    isInitialized(): boolean {
+        return this.initialized;
     }
 
     /**

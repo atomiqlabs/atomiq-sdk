@@ -318,8 +318,8 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
                                 token: amountData.token.toString(),
                                 exactOut: !amountData.exactIn,
                                 sequence,
-                                claimerBounty: (0, Utils_1.throwIfUndefined)(claimerBountyPrefetchPromise[version]),
-                                feeRate: (0, Utils_1.throwIfUndefined)(feeRatePromise[version]),
+                                claimerBounty: (0, Utils_1.throwIfUndefined)(claimerBountyPrefetchPromise[version], "Watchtower fee pre-fetch failed!"),
+                                feeRate: (0, Utils_1.throwIfUndefined)(feeRatePromise[version], "Network fee rate pre-fetch failed!"),
                                 additionalParams
                             }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined);
                             let signDataPromise = _signDataPromise[version];
@@ -341,7 +341,7 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
                             //Get intermediary's liquidity
                             this.verifyReturnedPrice(lp.services[SwapType_1.SwapType.FROM_BTC], false, resp.amount, resp.total, amountData.token, { swapFeeBtc }, pricePrefetchPromise, usdPricePrefetchPromise, abortController.signal),
                             this.verifyReturnedSignature(recipient, data, resp, feeRatePromise[version], signDataPromise, version, abortController.signal),
-                            this.verifyIntermediaryLiquidity(data.getAmount(), (0, Utils_1.throwIfUndefined)(liquidityPromise)),
+                            this.verifyIntermediaryLiquidity(data.getAmount(), (0, Utils_1.throwIfUndefined)(liquidityPromise, "LP liquidity pre-fetch failed!")),
                         ]);
                         const quote = new FromBTCSwap_1.FromBTCSwap(this, {
                             pricingInfo,

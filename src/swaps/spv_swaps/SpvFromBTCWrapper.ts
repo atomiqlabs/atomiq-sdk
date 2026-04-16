@@ -703,7 +703,7 @@ export class SpvFromBTCWrapper<
 
                             genesisSmartChainBlockHeight: await throwIfUndefined(
                                 finalizedBlockHeightPrefetchPromise,
-                                "Finalize block height promise failed!"
+                                "Network finalized blockheight pre-fetch failed!"
                             )
                         };
                         const quote = new SpvFromBTCSwap<T>(this, swapInit);

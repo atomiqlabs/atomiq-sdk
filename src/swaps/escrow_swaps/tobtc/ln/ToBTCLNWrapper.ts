@@ -286,7 +286,7 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
                     maxFee: await calculatedOptions.maxFee,
                     expiryTimestamp: calculatedOptions.expiryTimestamp,
                     token: amountData.token,
-                    feeRate: throwIfUndefined(preFetches.feeRatePromise),
+                    feeRate: throwIfUndefined(preFetches.feeRatePromise, "Network fee rate pre-fetch failed!"),
                     additionalParams
                 }, this._options.postRequestTimeout, abortController.signal, retryCount>0 ? false : undefined);
 
@@ -498,7 +498,7 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
                 (retryCount: number) => IntermediaryAPI.initToBTCLNExactIn(lp.url, {
                     pr: invoice,
                     reqId: prepareResp.reqId,
-                    feeRate: throwIfUndefined(preFetches.feeRatePromise),
+                    feeRate: throwIfUndefined(preFetches.feeRatePromise, "Network fee rate pre-fetch failed!"),
                     additionalParams
                 }, this._options.postRequestTimeout, abortController.signal, retryCount>0 ? false : undefined),
                 undefined, RequestError, abortController.signal

@@ -428,7 +428,7 @@ export class FromBTCLNAutoWrapper<
                                 additionalParams,
                                 gasToken: this._chain.getNativeCurrencyAddress(),
                                 gasAmount: _options.gasAmount,
-                                claimerBounty: throwIfUndefined(_preFetches.claimerBountyPrefetch)
+                                claimerBounty: throwIfUndefined(_preFetches.claimerBountyPrefetch, "Watchtower fee pre-fetch failed!")
                             },
                             this._options.postRequestTimeout, abortController.signal, retryCount>0 ? false : undefined
                         );
@@ -465,7 +465,7 @@ export class FromBTCLNAutoWrapper<
                                 resp.totalGas + resp.claimerBounty,
                                 nativeTokenAddress, {}, _preFetches.gasTokenPricePrefetchPromise, _preFetches.usdPricePrefetchPromise, abortController.signal
                             ),
-                            this.verifyIntermediaryLiquidity(resp.total, throwIfUndefined(liquidityPromise)),
+                            this.verifyIntermediaryLiquidity(resp.total, throwIfUndefined(liquidityPromise, "LP liquidity pre-fetch failed!")),
                             _options.unsafeSkipLnNodeCheck ? Promise.resolve() : this.verifyLnNodeCapacity(lp, decodedPr, lnCapacityPromise, abortController.signal)
                         ]);
 

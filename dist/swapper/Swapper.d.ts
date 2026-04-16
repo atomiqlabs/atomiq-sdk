@@ -269,6 +269,10 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
      */
     init(): Promise<void>;
     /**
+     * Whether the SDK is initialized (after {@link init} is called)
+     */
+    isInitialized(): boolean;
+    /**
      * Stops listening for onchain events and closes this Swapper instance
      */
     stop(): Promise<void>;

@@ -182,7 +182,7 @@ class Swapper extends events_1.EventEmitter {
         });
     }
     async _init() {
-        this.logger.debug("init(): Initializing swapper...");
+        this.logger.debug("init(): Initializing swapper");
         const abortController = new AbortController();
         const promises = [];
         let automaticClockDriftCorrectionPromise = undefined;
@@ -282,6 +282,12 @@ class Swapper extends events_1.EventEmitter {
             delete this.initPromise;
             throw e;
         }
+    }
+    /**
+     * Whether the SDK is initialized (after {@link init} is called)
+     */
+    isInitialized() {
+        return this.initialized;
     }
     /**
      * Stops listening for onchain events and closes this Swapper instance

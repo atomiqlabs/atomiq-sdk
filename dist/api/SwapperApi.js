@@ -49,7 +49,7 @@ function createSwapOutputBase(swap, steps, stateInfo) {
                 } : {})
             },
             expiry: swap.getQuoteExpiry(),
-            outputAddress: swap.getOutputAddress() ?? undefined
+            outputAddress: swap.getOutputAddress()
         },
         createdAt: swap.createdAt,
         steps,
@@ -93,9 +93,9 @@ class SwapperApi {
                 dstAddress: { type: "string", required: true, description: "Destination address" },
                 gasAmount: { type: "bigint", required: false, description: "Gas token amount to receive on destination chain, in base units" },
                 paymentHash: { type: "string", required: false, description: "Custom payment hash for Lightning swaps" },
-                description: { type: "string", required: false, description: "Description for Lightning invoice" },
-                descriptionHash: { type: "string", required: false, description: "Description hash for Lightning invoice (hex)" },
-                expirySeconds: { type: "number", required: false, description: "Custom expiry time in seconds" }
+                lightningInvoiceDescription: { type: "string", required: false, description: "Description for Lightning invoice" },
+                lightningInvoiceDescriptionHash: { type: "string", required: false, description: "Description hash for Lightning invoice (hex)" },
+                lightningPaymentHTLCTimeout: { type: "number", required: false, description: "Custom expiry time in seconds" }
             }),
             listSwaps: (0, ApiTypes_1.createApiEndpoint)("GET", this.listSwaps.bind(this), {
                 signer: { type: "string", required: true, description: "Smart chain signer address to filter swaps for" },
@@ -138,8 +138,8 @@ class SwapperApi {
                 token: { type: "string", required: true, description: "Token identifier accepted by the API, e.g. BTC, STARKNET-STRK, or a token address" },
                 targetChain: { type: "string", required: false, description: "Destination smart chain for Bitcoin SPV-vault fee estimation" },
                 gasDrop: { type: "boolean", required: false, description: "Whether to include gas-drop footprint when estimating Bitcoin SPV-vault spendable balance" },
-                feeRate: { type: "number", required: false, description: "Manual fee rate override" },
-                minFeeRate: { type: "number", required: false, description: "Minimum Bitcoin fee rate to enforce" },
+                feeRate: { type: "string", required: false, description: "Manual fee rate override" },
+                minBitcoinFeeRate: { type: "number", required: false, description: "Minimum Bitcoin fee rate to enforce" },
                 feeMultiplier: { type: "number", required: false, description: "Multiplier applied to smart-chain native token commit fee estimate" }
             }),
             getSwapStatus: (0, ApiTypes_1.createApiEndpoint)("GET", this.getSwapStatus.bind(this), {
@@ -196,12 +196,12 @@ class SwapperApi {
             options.gasAmount = input.gasAmount;
         if (input.paymentHash != null)
             options.paymentHash = Buffer.from(input.paymentHash, "hex");
-        if (input.description != null)
-            options.description = input.description;
-        if (input.descriptionHash != null)
-            options.descriptionHash = Buffer.from(input.descriptionHash, "hex");
-        if (input.expirySeconds != null)
-            options.expirySeconds = input.expirySeconds;
+        if (input.lightningInvoiceDescription != null)
+            options.description = input.lightningInvoiceDescription;
+        if (input.lightningInvoiceDescriptionHash != null)
+            options.descriptionHash = Buffer.from(input.lightningInvoiceDescriptionHash, "hex");
+        if (input.lightningPaymentHTLCTimeout != null)
+            options.expirySeconds = input.lightningPaymentHTLCTimeout;
         // swapper.swap() handles routing based on token types
         const swap = await this.swapper.swap(input.srcToken, input.dstToken, input.amount, exactIn, input.srcAddress, input.dstAddress, Object.keys(options).length > 0 ? options : undefined);
         const { steps, stateInfo } = await swap.getExecutionStatus({ skipBuildingAction: true });
@@ -274,7 +274,7 @@ class SwapperApi {
         return {
             address: result.address,
             type: result.type,
-            ...(result.lnurl != null ? { lnurl: (0, ApiTypes_1.toApiLNURL)(result.lnurl) } : {}),
+            ...(result.lnurl != null ? { lnurl: (0, ApiTypes_1.toApiLNURL)(result.lnurl, this.swapper) } : {}),
             ...(result.min != null ? { min: (0, ApiTypes_1.toApiAmount)(result.min) } : {}),
             ...(result.max != null ? { max: (0, ApiTypes_1.toApiAmount)(result.max) } : {}),
             ...(result.amount != null ? { amount: (0, ApiTypes_1.toApiAmount)(result.amount) } : {})
@@ -284,30 +284,38 @@ class SwapperApi {
         const token = this.swapper.getToken(input.token);
         if (token.chainId === "LIGHTNING")
             throw new Error("Lightning wallet spendable balance is not supported by this endpoint.");
+        if (input.feeRate != null && input.feeMultiplier != null)
+            throw new Error("`feeMultiplier` cannot be specified alongside the `feeRate` parameter.");
         if (token.chainId === "BITCOIN") {
-            if (input.feeMultiplier != null)
-                throw new Error("`feeMultiplier` is only supported for smart-chain tokens.");
             if (input.targetChain != null && !this.swapper.getSmartChains().includes(input.targetChain)) {
                 throw new Error("Unknown targetChain: " + input.targetChain);
             }
             if (!this.swapper.Utils.isValidBitcoinAddress(input.wallet))
                 throw new Error(`Invalid BITCOIN wallet address: ` + input.wallet);
+            let btcFeeRate;
+            if (input.feeRate != null) {
+                btcFeeRate = parseFloat(input.feeRate);
+                if (isNaN(btcFeeRate) || btcFeeRate <= 0)
+                    throw new Error("Bitcoin `feeRate` must be a valid positive number!");
+            }
+            else
+                btcFeeRate = await this.swapper._bitcoinRpc.getFeeRate();
+            if (input.feeMultiplier != null)
+                btcFeeRate *= input.feeMultiplier;
             const { balance, feeRate } = await this.swapper.Utils.getBitcoinSpendableBalance(input.wallet, input.targetChain, {
                 gasDrop: input.gasDrop,
-                feeRate: input.feeRate,
-                minFeeRate: input.minFeeRate
+                feeRate: btcFeeRate,
+                minFeeRate: input.minBitcoinFeeRate
             });
             return {
                 balance: (0, ApiTypes_1.toApiAmount)(balance),
                 feeRate
             };
         }
-        if (input.targetChain != null)
-            throw new Error("`targetChain` is only supported for Bitcoin balances.");
-        if (input.gasDrop != null)
+        if (input.gasDrop === true)
             throw new Error("`gasDrop` is only supported for Bitcoin balances.");
-        if (input.minFeeRate != null)
-            throw new Error("`minFeeRate` is only supported for Bitcoin balances.");
+        if (input.minBitcoinFeeRate != null)
+            throw new Error("`minBitcoinFeeRate` is only supported for Bitcoin balances.");
         if (!this.swapper.Utils.isValidSmartChainAddress(input.wallet, token.chainId))
             throw new Error(`Invalid ${token.chainId} wallet address: ` + input.wallet);
         const balance = await this.swapper.Utils.getSpendableBalance(input.wallet, token, {

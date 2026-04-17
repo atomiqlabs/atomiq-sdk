@@ -1,0 +1,2183 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Atomiq SDK Swapper API",
+    "version": "8.6.11",
+    "description": "OpenAPI specification for the framework-agnostic `SwapperApi` exposed by `@atomiqlabs/sdk`. This document uses the default `/api/<endpointName>` HTTP mapping shown in the SDK integration example. Integrations may mount the same operations under different paths. All TypeScript `bigint` fields are represented as decimal strings because JSON/OpenAPI cannot safely encode arbitrary-precision integers as native numbers."
+  },
+  "servers": [
+    {
+      "url": "{scheme}://{host}{basePath}",
+      "description": "Default mounting convention for `SwapperApi` HTTP integrations.",
+      "variables": {
+        "scheme": {
+          "default": "https",
+          "enum": [
+            "http",
+            "https"
+          ]
+        },
+        "host": {
+          "default": "example.com"
+        },
+        "basePath": {
+          "default": "/api",
+          "description": "Default path prefix used by the SDK integration example."
+        }
+      }
+    }
+  ],
+  "tags": [
+    {
+      "name": "Swapper API",
+      "description": "Swap lifecycle, token discovery, address parsing, and balance utility endpoints exposed by `SwapperApi.endpoints`."
+    }
+  ],
+  "paths": {
+    "/createSwap": {
+      "post": {
+        "tags": [
+          "Swapper API"
+        ],
+        "operationId": "createSwap",
+        "summary": "Create a new swap",
+        "description": "Creates a new swap quote and returns the initial serialized swap state.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSwapInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created swap data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateSwapOutput"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/FrameworkError"
+          }
+        }
+      }
+    },
+    "/listSwaps": {
+      "get": {
+        "tags": [
+          "Swapper API"
+        ],
+        "operationId": "listSwaps",
+        "summary": "List swaps",
+        "description": "Lists swaps for a smart-chain signer, optionally filtered to a single smart chain.",
+        "parameters": [
+          {
+            "name": "signer",
+            "in": "query",
+            "required": true,
+            "description": "Smart-chain signer address to filter swaps for.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "chainId",
+            "in": "query",
+            "required": false,
+            "description": "Optional smart-chain identifier used to narrow the result set, e.g. `SOLANA`, `STARKNET`, `CITREA`.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Serialized swap list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListSwapsOutput"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/FrameworkError"
+          }
+        }
+      }
+    },
+    "/listPendingSwaps": {
+      "get": {
+        "tags": [
+          "Swapper API"
+        ],
+        "operationId": "listPendingSwaps",
+        "summary": "List pending swaps",
+        "description": "Lists pending swaps for a smart-chain signer, optionally filtered to a single smart chain.",
+        "parameters": [
+          {
+            "name": "signer",
+            "in": "query",
+            "required": true,
+            "description": "Smart-chain signer address to filter pending swaps for.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "chainId",
+            "in": "query",
+            "required": false,
+            "description": "Optional smart-chain identifier used to narrow the result set, e.g. `SOLANA`, `STARKNET`, `CITREA`.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Serialized pending swap list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListPendingSwapsOutput"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/FrameworkError"
+          }
+        }
+      }
+    },
+    "/getSupportedTokens": {
+      "get": {
+        "tags": [
+          "Swapper API"
+        ],
+        "operationId": "getSupportedTokens",
+        "summary": "List supported tokens",
+        "description": "Lists tokens that can be used on the requested side of a swap.",
+        "parameters": [
+          {
+            "name": "side",
+            "in": "query",
+            "required": true,
+            "description": "Whether to list valid source tokens (`INPUT`) or destination tokens (`OUTPUT`).",
+            "schema": {
+              "$ref": "#/components/schemas/ApiSide"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Supported token list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetSupportedTokensOutput"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/FrameworkError"
+          }
+        }
+      }
+    },
+    "/getSwapCounterTokens": {
+      "get": {
+        "tags": [
+          "Swapper API"
+        ],
+        "operationId": "getSwapCounterTokens",
+        "summary": "List compatible counter-tokens",
+        "description": "Lists swap counter-tokens for a given token on the requested side of the route.",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "description": "Token identifier to find compatible counter-tokens for, e.g. `BITCOIN-BTC`, `LIGHTNING-BTC` or `STARKNET-STRK`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "side",
+            "in": "query",
+            "required": true,
+            "description": "Treat the provided token as the source token (`INPUT`) or destination token (`OUTPUT`).",
+            "schema": {
+              "$ref": "#/components/schemas/ApiSide"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Compatible counter-token list.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetSwapCounterTokensOutput"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/FrameworkError"
+          }
+        }
+      }
+    },
+    "/getSwapLimits": {
+      "get": {
+        "tags": [
+          "Swapper API"
+        ],
+        "operationId": "getSwapLimits",
+        "summary": "Get swap limits",
+        "description": "Returns the currently supported input-side and output-side limits for a token pair.",
+        "parameters": [
+          {
+            "name": "srcToken",
+            "in": "query",
+            "required": true,
+            "description": "Source token identifier, e.g. `BITCOIN-BTC`, `LIGHTNING-BTC` or `STARKNET-STRK`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dstToken",
+            "in": "query",
+            "required": true,
+            "description": "Destination token identifier, e.g. `BITCOIN-BTC`, `LIGHTNING-BTC` or `STARKNET-STRK`.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Swap limits for the token pair.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetSwapLimitsOutput"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/FrameworkError"
+          }
+        }
+      }
+    },
+    "/parseAddress": {
+      "get": {
+        "tags": [
+          "Swapper API"
+        ],
+        "operationId": "parseAddress",
+        "summary": "Parse an address-like string",
+        "description": "Parses a Bitcoin address, Lightning invoice, LNURL, URI, or supported smart-chain address.",
+        "parameters": [
+          {
+            "name": "address",
+            "in": "query",
+            "required": true,
+            "description": "Address-like string to parse, such as a wallet address, Lightning invoice, LNURL, or URI.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Parsed address information.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParseAddressOutput"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/FrameworkError"
+          }
+        }
+      }
+    },
+    "/getSpendableBalance": {
+      "get": {
+        "tags": [
+          "Swapper API"
+        ],
+        "operationId": "getSpendableBalance",
+        "summary": "Estimate spendable wallet balance",
+        "description": "Returns the spendable balance for a wallet after accounting for swap execution costs.",
+        "parameters": [
+          {
+            "name": "wallet",
+            "in": "query",
+            "required": true,
+            "description": "Wallet address to inspect.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "description": "Token identifier to get the balance for, e.g. `BITCOIN-BTC` or `STARKNET-STRK`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "targetChain",
+            "in": "query",
+            "required": false,
+            "description": "Target smart-chain identifier when estimating spendable Bitcoin balance. The estimate adjusts automatically based on the available swap routes between Bitcoin and the provided chain.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "gasDrop",
+            "in": "query",
+            "required": false,
+            "description": "Whether gas-drop transaction size overhead should be included for Bitcoin-to-smart-chain swaps.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "feeRate",
+            "in": "query",
+            "required": false,
+            "description": "Manual fee-rate override used for spendable balance estimation. For Bitcoin balances this should be a positive numeric fee rate in sats/vB. For smart-chain balances the format is chain-specific: Solana uses `<microLamports/CU>[;<base fee in lamports>]`, Starknet uses `<l1GasCost>,<l2GasCost>,<l1DataGasCost>;v3` where all fee amounts are in Fri per gas, and EVM chains use `<baseFeePerGas>,<priorityFeePerGas>` where both values are in Wei per gas.",
+            "schema": {
+              "$ref": "#/components/schemas/SpendableBalanceFeeRate"
+            }
+          },
+          {
+            "name": "minBitcoinFeeRate",
+            "in": "query",
+            "required": false,
+            "description": "Minimum Bitcoin fee rate to enforce during estimation.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "feeMultiplier",
+            "in": "query",
+            "required": false,
+            "description": "Multiplier applied when `feeRate` is not provided. For Bitcoin balances it multiplies the fetched economical Bitcoin fee rate. For smart-chain balances it multiplies the smart-chain native-token commit fee estimate. This parameter cannot be specified alongside `feeRate`.",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Spendable balance estimate.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetSpendableBalanceOutput"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/FrameworkError"
+          }
+        }
+      }
+    },
+    "/getSwapStatus": {
+      "get": {
+        "tags": [
+          "Swapper API"
+        ],
+        "operationId": "getSwapStatus",
+        "summary": "Get swap status",
+        "description": "Returns the current serialized state of an existing swap, optionally including execution actions such as funded PSBTs or manual settlement transactions.",
+        "parameters": [
+          {
+            "name": "swapId",
+            "in": "query",
+            "required": true,
+            "description": "Unique identifier of the swap to query.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "secret",
+            "in": "query",
+            "required": false,
+            "description": "Swap secret pre-image revealed after the destination-chain HTLC is created for Lightning-to-smart-chain swaps, encoded as a hexadecimal string.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bitcoinAddress",
+            "in": "query",
+            "required": false,
+            "description": "For Bitcoin-to-smart-chain swaps. Bitcoin address used to request a pre-funded PSBT with populated input UTXOs ready for signing and execution. Must be specified together with `bitcoinPublicKey`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bitcoinPublicKey",
+            "in": "query",
+            "required": false,
+            "description": "For Bitcoin-to-smart-chain swaps. Bitcoin public key, in hexadecimal form, used together with `bitcoinAddress` to request a pre-funded PSBT with populated input UTXOs ready for signing and execution. Must be specified together with `bitcoinAddress`.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bitcoinFeeRate",
+            "in": "query",
+            "required": false,
+            "description": "For Bitcoin-to-smart-chain swaps. Bitcoin fee-rate override used when building a pre-funded PSBT; otherwise the current economical fee rate is used.",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "signer",
+            "in": "query",
+            "required": false,
+            "description": "Alternative smart-chain signer to use for claim, refund, or manual settlement transactions.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detailed swap status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetSwapStatusOutput"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/FrameworkError"
+          }
+        }
+      }
+    },
+    "/submitTransaction": {
+      "post": {
+        "tags": [
+          "Swapper API"
+        ],
+        "operationId": "submitTransaction",
+        "summary": "Submit signed transactions",
+        "description": "Submits signed transactions for the current actionable swap step.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitTransactionInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Submitted transaction hashes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmitTransactionOutput"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/FrameworkError"
+          }
+        }
+      }
+    },
+    "/settleWithLnurl": {
+      "post": {
+        "tags": [
+          "Swapper API"
+        ],
+        "operationId": "settleWithLnurl",
+        "summary": "Settle a Lightning swap with LNURL-withdraw",
+        "description": "Triggers an LNURL-withdraw based settlement for supported Lightning-to-smart-chain swaps. Call this when `getSwapStatus` returns a `SendToAddress` current action, which corresponds to the `PR_CREATED` stage for these swaps. If the swap already contains an LNURL-withdraw link, do not pass `lnurlWithdraw`; otherwise `lnurlWithdraw` must be provided.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettleWithLnurlInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Payment hash of the settled Lightning payment.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettleWithLnurlOutput"
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/FrameworkError"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "responses": {
+      "FrameworkError": {
+        "description": "Framework integration specific error response. `SwapperApi` throws plain errors and the host HTTP layer decides the status code and response body shape."
+      }
+    },
+    "schemas": {
+      "BigIntString": {
+        "type": "string",
+        "format": "bigint",
+        "pattern": "^[+-]?\\d+$",
+        "description": "Arbitrary-precision integer encoded as a base-10 string because JSON/OpenAPI cannot safely represent TypeScript `bigint` values.",
+        "example": "1500000000000000000"
+      },
+      "DecimalString": {
+        "type": "string",
+        "format": "decimal",
+        "pattern": "^[0-9]+(?:\\.[0-9]+)?$",
+        "description": "Positive numeric value encoded as a string.",
+        "example": "3.5"
+      },
+      "SpendableBalanceFeeRate": {
+        "description": "Manual fee-rate override accepted by `getSpendableBalance`. The exact representation depends on the target chain.",
+        "oneOf": [
+          {
+            "type": "number",
+            "minimum": 0,
+            "exclusiveMinimum": true,
+            "description": "For Bitcoin balances: positive fee rate in sats/vB.",
+            "example": 3.5
+          },
+          {
+            "type": "string",
+            "pattern": "^\\d+(?:;\\d+)?$",
+            "description": "For Solana balances: `<microLamports/CU>[;<base fee in lamports>]`. The actual fee paid is `CUs * <microLamports/CU> / 1000000 + <base fee in lamports>`. Examples: `10000` uses 10k micro-lamports per CU and no base fee, `10000;500` uses 10k micro-lamports per CU and an additional 500 lamports base fee.",
+            "example": "10000;500"
+          },
+          {
+            "type": "string",
+            "pattern": "^\\d+,\\d+,\\d+;v3$",
+            "description": "For Starknet balances: `<l1GasCost>,<l2GasCost>,<l1DataGasCost>;v3`. All fee amounts are in Fri per gas, the base unit of the STRK token, and the `v3` suffix forces the use of v3 Starknet transactions.",
+            "example": "1000000000,1000000000,0;v3"
+          },
+          {
+            "type": "string",
+            "pattern": "^\\d+,\\d+$",
+            "description": "For EVM balances: `<baseFeePerGas>,<priorityFeePerGas>` where both fee amounts are in Wei per gas.",
+            "example": "30000000000,2000000000"
+          }
+        ]
+      },
+      "ExactAmountType": {
+        "type": "string",
+        "enum": [
+          "EXACT_IN",
+          "EXACT_OUT"
+        ],
+        "description": "Whether the provided amount targets the exact input side or exact output side of the swap."
+      },
+      "ApiSide": {
+        "type": "string",
+        "enum": [
+          "INPUT",
+          "OUTPUT"
+        ],
+        "description": "Swap side selector used by token discovery endpoints."
+      },
+      "ApiAmount": {
+        "type": "object",
+        "description": "Unified amount type for all API responses.",
+        "required": [
+          "amount",
+          "rawAmount",
+          "decimals",
+          "symbol",
+          "chain"
+        ],
+        "properties": {
+          "amount": {
+            "type": "string",
+            "format": "decimal",
+            "description": "Decimal format of the amount, e.g. `1.5`."
+          },
+          "rawAmount": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BigIntString"
+              }
+            ],
+            "description": "Raw base units as string, e.g. `1500000000000000000`."
+          },
+          "decimals": {
+            "type": "integer",
+            "description": "Token decimals, e.g. `18`."
+          },
+          "symbol": {
+            "type": "string",
+            "description": "Token ticker, e.g. `STRK`."
+          },
+          "chain": {
+            "type": "string",
+            "description": "Chain identifier, e.g. `STARKNET`, `BITCOIN`, `LIGHTNING`."
+          }
+        }
+      },
+      "ApiToken": {
+        "type": "object",
+        "description": "Serializable token representation for API responses.",
+        "required": [
+          "id",
+          "chainId",
+          "ticker",
+          "name",
+          "decimals",
+          "address"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Canonical token identifier accepted by the API, e.g. `BITCOIN-BTC`, `LIGHTNING-BTC`, `STARKNET-STRK`."
+          },
+          "chainId": {
+            "type": "string",
+            "description": "Chain identifier, e.g. `STARKNET`, `BITCOIN`, `LIGHTNING`."
+          },
+          "ticker": {
+            "type": "string",
+            "description": "Token ticker, e.g. `STRK`."
+          },
+          "name": {
+            "type": "string",
+            "description": "Full token name."
+          },
+          "decimals": {
+            "type": "integer",
+            "description": "Decimal places of the token."
+          },
+          "address": {
+            "type": "string",
+            "description": "Token contract address, or empty string for BTC on Bitcoin/Lightning."
+          }
+        }
+      },
+      "ApiLNURLPayParams": {
+        "type": "object",
+        "description": "Raw LNURL-pay metadata and callback parameters.",
+        "required": [
+          "tag",
+          "callback",
+          "domain",
+          "minSendable",
+          "maxSendable",
+          "metadata",
+          "decodedMetadata",
+          "commentAllowed",
+          "url"
+        ],
+        "properties": {
+          "tag": {
+            "type": "string",
+            "enum": [
+              "payRequest"
+            ]
+          },
+          "callback": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "minSendable": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "maxSendable": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "metadata": {
+            "type": "string"
+          },
+          "decodedMetadata": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "commentAllowed": {
+            "type": "integer"
+          },
+          "url": {
+            "type": "string",
+            "description": "Original LNURL string."
+          }
+        }
+      },
+      "ApiLNURLWithdrawParams": {
+        "type": "object",
+        "description": "Raw LNURL-withdraw metadata and callback parameters.",
+        "required": [
+          "tag",
+          "k1",
+          "callback",
+          "domain",
+          "minWithdrawable",
+          "maxWithdrawable",
+          "defaultDescription",
+          "url"
+        ],
+        "properties": {
+          "tag": {
+            "type": "string",
+            "enum": [
+              "withdrawRequest"
+            ]
+          },
+          "k1": {
+            "type": "string"
+          },
+          "callback": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "minWithdrawable": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "maxWithdrawable": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "defaultDescription": {
+            "type": "string"
+          },
+          "balanceCheck": {
+            "type": "string"
+          },
+          "payLink": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "description": "Original LNURL string."
+          }
+        }
+      },
+      "ApiLNURLPay": {
+        "type": "object",
+        "description": "Serializable LNURL-pay representation for API responses.",
+        "required": [
+          "type",
+          "min",
+          "max",
+          "commentMaxLength",
+          "params"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "pay"
+            ],
+            "description": "Marks the LNURL payload as an LNURL-pay response."
+          },
+          "min": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ApiAmount"
+              }
+            ],
+            "description": "Minimum payable amount supported by the LNURL-pay endpoint."
+          },
+          "max": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ApiAmount"
+              }
+            ],
+            "description": "Maximum payable amount supported by the LNURL-pay endpoint."
+          },
+          "commentMaxLength": {
+            "type": "integer",
+            "description": "Maximum comment length accepted by the LNURL-pay endpoint."
+          },
+          "shortDescription": {
+            "type": "string",
+            "description": "Short human-readable description of the payee, when provided by the LNURL service."
+          },
+          "longDescription": {
+            "type": "string",
+            "description": "Longer human-readable description of the payee, when provided by the LNURL service."
+          },
+          "icon": {
+            "type": "string",
+            "description": "Optional icon for the payee, usually encoded as a data URL."
+          },
+          "params": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ApiLNURLPayParams"
+              }
+            ],
+            "description": "Raw LNURL-pay metadata and callback parameters."
+          }
+        }
+      },
+      "ApiLNURLWithdraw": {
+        "type": "object",
+        "description": "Serializable LNURL-withdraw representation for API responses.",
+        "required": [
+          "type",
+          "min",
+          "max",
+          "params"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "withdraw"
+            ],
+            "description": "Marks the LNURL payload as an LNURL-withdraw response."
+          },
+          "min": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ApiAmount"
+              }
+            ],
+            "description": "Minimum withdrawable amount supported by the LNURL-withdraw endpoint."
+          },
+          "max": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ApiAmount"
+              }
+            ],
+            "description": "Maximum withdrawable amount supported by the LNURL-withdraw endpoint."
+          },
+          "params": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ApiLNURLWithdrawParams"
+              }
+            ],
+            "description": "Raw LNURL-withdraw metadata and callback parameters."
+          }
+        }
+      },
+      "ApiLNURL": {
+        "description": "Serializable LNURL representation for API responses.",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ApiLNURLPay"
+          },
+          {
+            "$ref": "#/components/schemas/ApiLNURLWithdraw"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "pay": "#/components/schemas/ApiLNURLPay",
+            "withdraw": "#/components/schemas/ApiLNURLWithdraw"
+          }
+        }
+      },
+      "LNURLDecodedSuccessAction": {
+        "type": "object",
+        "description": "Decoded LNURL-pay success action returned after a successful payment.",
+        "required": [
+          "description"
+        ],
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "SwapState": {
+        "type": "object",
+        "description": "Current swap state information. This varies for every swap type.",
+        "required": [
+          "number",
+          "name",
+          "description"
+        ],
+        "properties": {
+          "number": {
+            "type": "integer",
+            "description": "Numeric state representation of the state."
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable state name."
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable state description."
+          }
+        }
+      },
+      "SwapQuoteFees": {
+        "type": "object",
+        "description": "Fee breakdown included in the quote.",
+        "required": [
+          "swap"
+        ],
+        "properties": {
+          "swap": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ApiAmount"
+              }
+            ],
+            "description": "Swap service fee (charged in source token)."
+          },
+          "networkOutput": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ApiAmount"
+              }
+            ],
+            "description": "Swap fee to cover the transaction network fees on the destination side (charged in source token)."
+          }
+        }
+      },
+      "SwapQuote": {
+        "type": "object",
+        "description": "Quote data captured when the swap was created.",
+        "required": [
+          "inputAmount",
+          "outputAmount",
+          "fees",
+          "expiry",
+          "outputAddress"
+        ],
+        "properties": {
+          "inputAmount": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ApiAmount"
+              }
+            ],
+            "description": "Input source amount that will be paid by the user (including fees, but excluding source network fees)."
+          },
+          "outputAmount": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ApiAmount"
+              }
+            ],
+            "description": "Output destination amount that will be paid out to the user."
+          },
+          "fees": {
+            "$ref": "#/components/schemas/SwapQuoteFees"
+          },
+          "expiry": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Quote expiration timestamp in milliseconds since Unix epoch."
+          },
+          "outputAddress": {
+            "type": "string",
+            "description": "Output address of the swap, the destination tokens will be sent here."
+          }
+        }
+      },
+      "SwapOutputLNURL": {
+        "type": "object",
+        "description": "LNURL metadata attached to Lightning-based swaps when applicable.",
+        "properties": {
+          "withdraw": {
+            "type": "string",
+            "description": "LNURL-withdraw link for Lightning to smart-chain flows."
+          },
+          "pay": {
+            "type": "string",
+            "description": "LNURL-pay link for smart-chain to Lightning flows."
+          },
+          "successAction": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LNURLDecodedSuccessAction"
+              }
+            ],
+            "description": "LNURL success action returned after a successful payment via LNURL-pay link, if specified in the LNURL."
+          }
+        }
+      },
+      "SwapExecutionStepConfirmationProgress": {
+        "type": "object",
+        "description": "Confirmation progress for Bitcoin on-chain payments.",
+        "required": [
+          "current",
+          "target",
+          "etaSeconds"
+        ],
+        "properties": {
+          "current": {
+            "type": "integer"
+          },
+          "target": {
+            "type": "integer"
+          },
+          "etaSeconds": {
+            "type": "integer",
+            "description": "Estimated remaining time in seconds until the target confirmation count is reached. Can be `-1` when the estimate is not available."
+          }
+        }
+      },
+      "SwapExecutionStepSetup": {
+        "type": "object",
+        "description": "Execution step describing destination-side setup required before the swap can continue.",
+        "required": [
+          "type",
+          "side",
+          "chain",
+          "title",
+          "description",
+          "status"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "Setup"
+            ]
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "destination"
+            ]
+          },
+          "chain": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "awaiting",
+              "completed",
+              "soft_expired",
+              "expired"
+            ]
+          },
+          "setupTxId": {
+            "type": "string"
+          }
+        }
+      },
+      "SwapExecutionStepPayment": {
+        "type": "object",
+        "description": "Execution step describing the user payment that initiates or funds the swap.",
+        "required": [
+          "type",
+          "side",
+          "chain",
+          "title",
+          "description",
+          "status"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "Payment"
+            ]
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "source"
+            ]
+          },
+          "chain": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "inactive",
+              "awaiting",
+              "received",
+              "confirmed",
+              "soft_expired",
+              "expired"
+            ]
+          },
+          "confirmations": {
+            "$ref": "#/components/schemas/SwapExecutionStepConfirmationProgress"
+          },
+          "initTxId": {
+            "type": "string"
+          },
+          "settleTxId": {
+            "type": "string"
+          }
+        }
+      },
+      "SwapExecutionStepSettlement": {
+        "type": "object",
+        "description": "Execution step describing payout or settlement on the destination side of the swap.",
+        "required": [
+          "type",
+          "side",
+          "chain",
+          "title",
+          "description",
+          "status"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "Settlement"
+            ]
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "destination"
+            ]
+          },
+          "chain": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "inactive",
+              "waiting_lp",
+              "awaiting_automatic",
+              "awaiting_manual",
+              "soft_settled",
+              "soft_expired",
+              "settled",
+              "expired"
+            ]
+          },
+          "initTxId": {
+            "type": "string"
+          },
+          "settleTxId": {
+            "type": "string"
+          }
+        }
+      },
+      "SwapExecutionStepRefund": {
+        "type": "object",
+        "description": "Execution step describing a source-side refund path after a failed swap.",
+        "required": [
+          "type",
+          "side",
+          "chain",
+          "title",
+          "description",
+          "status"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "Refund"
+            ]
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "source"
+            ]
+          },
+          "chain": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "inactive",
+              "awaiting",
+              "refunded"
+            ]
+          },
+          "refundTxId": {
+            "type": "string"
+          }
+        }
+      },
+      "SwapExecutionStep": {
+        "description": "Union of all supported swap execution step variants.",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/SwapExecutionStepSetup"
+          },
+          {
+            "$ref": "#/components/schemas/SwapExecutionStepPayment"
+          },
+          {
+            "$ref": "#/components/schemas/SwapExecutionStepSettlement"
+          },
+          {
+            "$ref": "#/components/schemas/SwapExecutionStepRefund"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "Setup": "#/components/schemas/SwapExecutionStepSetup",
+            "Payment": "#/components/schemas/SwapExecutionStepPayment",
+            "Settlement": "#/components/schemas/SwapExecutionStepSettlement",
+            "Refund": "#/components/schemas/SwapExecutionStepRefund"
+          }
+        }
+      },
+      "SerializedActionSendToAddressTx": {
+        "type": "object",
+        "description": "Destination payment target for a `SendToAddress` action.",
+        "required": [
+          "type",
+          "address",
+          "hyperlink",
+          "amount"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "BOLT11_PAYMENT_REQUEST",
+              "BITCOIN_ADDRESS"
+            ]
+          },
+          "address": {
+            "type": "string"
+          },
+          "hyperlink": {
+            "type": "string"
+          },
+          "amount": {
+            "$ref": "#/components/schemas/ApiAmount"
+          }
+        }
+      },
+      "SerializedActionSendToAddress": {
+        "type": "object",
+        "description": "Serialized action requiring the user to send funds to a Bitcoin address or Lightning invoice.",
+        "required": [
+          "type",
+          "name",
+          "description",
+          "chain",
+          "txs"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "SendToAddress"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "enum": [
+              "Deposit on Lightning",
+              "Deposit on Bitcoin"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "chain": {
+            "type": "string",
+            "enum": [
+              "LIGHTNING",
+              "BITCOIN"
+            ]
+          },
+          "txs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SerializedActionSendToAddressTx"
+            }
+          }
+        }
+      },
+      "SerializedActionSignPSBTFundedTx": {
+        "type": "object",
+        "description": "Funded PSBT ready for signing.",
+        "required": [
+          "type",
+          "psbtHex",
+          "psbtBase64",
+          "signInputs",
+          "feeRate"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "FUNDED_PSBT"
+            ]
+          },
+          "psbtHex": {
+            "type": "string"
+          },
+          "psbtBase64": {
+            "type": "string"
+          },
+          "signInputs": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "feeRate": {
+            "type": "number"
+          }
+        }
+      },
+      "SerializedActionSignPSBTRawTx": {
+        "type": "object",
+        "description": "Raw PSBT that still needs its inputs to be populated before signing.",
+        "required": [
+          "type",
+          "psbtHex",
+          "psbtBase64",
+          "in1sequence",
+          "feeRate"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "RAW_PSBT"
+            ]
+          },
+          "psbtHex": {
+            "type": "string"
+          },
+          "psbtBase64": {
+            "type": "string"
+          },
+          "in1sequence": {
+            "type": "integer"
+          },
+          "feeRate": {
+            "type": "number"
+          }
+        }
+      },
+      "SerializedActionSignPSBT": {
+        "description": "Serialized action requiring the user to sign one or more PSBTs. Each action returns a single PSBT variant, so the `txs` array is homogeneous rather than mixed.",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "type",
+              "name",
+              "description",
+              "chain",
+              "txs"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "SignPSBT"
+                ]
+              },
+              "name": {
+                "type": "string",
+                "enum": [
+                  "Deposit on Bitcoin"
+                ]
+              },
+              "description": {
+                "type": "string"
+              },
+              "chain": {
+                "type": "string",
+                "enum": [
+                  "BITCOIN"
+                ]
+              },
+              "txs": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SerializedActionSignPSBTFundedTx"
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "type",
+              "name",
+              "description",
+              "chain",
+              "txs"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "SignPSBT"
+                ]
+              },
+              "name": {
+                "type": "string",
+                "enum": [
+                  "Deposit on Bitcoin"
+                ]
+              },
+              "description": {
+                "type": "string"
+              },
+              "chain": {
+                "type": "string",
+                "enum": [
+                  "BITCOIN"
+                ]
+              },
+              "txs": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SerializedActionSignPSBTRawTx"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "SerializedActionSignSmartChainTransaction": {
+        "type": "object",
+        "description": "Serialized action requiring the user to sign provided smart-chain transactions.",
+        "required": [
+          "type",
+          "name",
+          "description",
+          "chain",
+          "txs",
+          "requiredSigner"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "SignSmartChainTransaction"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "enum": [
+              "Initiate swap",
+              "Settle manually",
+              "Refund"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "chain": {
+            "type": "string",
+            "description": "Smart-chain identifier on which the transactions should be signed."
+          },
+          "txs": {
+            "type": "array",
+            "description": "Unsigned smart-chain transactions serialized to strings.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "requiredSigner": {
+            "type": "string",
+            "description": "Address of the signer required to sign the transactions."
+          }
+        }
+      },
+      "SerializedActionWait": {
+        "type": "object",
+        "description": "Serialized action indicating that the client should wait and poll again later.",
+        "required": [
+          "type",
+          "name",
+          "description",
+          "expectedTimeSeconds",
+          "pollTimeSeconds"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "Wait"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "enum": [
+              "Awaiting LP payout",
+              "Automatic settlement",
+              "Bitcoin confirmations"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "expectedTimeSeconds": {
+            "type": "number"
+          },
+          "pollTimeSeconds": {
+            "type": "number"
+          }
+        }
+      },
+      "SerializedAction": {
+        "description": "Serialized swap execution action with all non-serializable fields stripped.",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/SerializedActionSendToAddress"
+          },
+          {
+            "$ref": "#/components/schemas/SerializedActionSignPSBT"
+          },
+          {
+            "$ref": "#/components/schemas/SerializedActionSignSmartChainTransaction"
+          },
+          {
+            "$ref": "#/components/schemas/SerializedActionWait"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "SendToAddress": "#/components/schemas/SerializedActionSendToAddress",
+            "SignPSBT": "#/components/schemas/SerializedActionSignPSBT",
+            "SignSmartChainTransaction": "#/components/schemas/SerializedActionSignSmartChainTransaction",
+            "Wait": "#/components/schemas/SerializedActionWait"
+          }
+        }
+      },
+      "EscrowInfo": {
+        "type": "object",
+        "description": "Escrow-specific data for escrow-contract based swaps, which includes all current escrow-backed flows except the non-legacy Bitcoin-to-smart-chain swaps.",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Serialized escrow data payload."
+          },
+          "initTxId": {
+            "type": "string",
+            "description": "Transaction hash that created the escrow when it is already known."
+          }
+        }
+      },
+      "SwapOutputBase": {
+        "type": "object",
+        "description": "Base serialized swap data returned by API endpoints that expose swap details.",
+        "required": [
+          "swapId",
+          "swapType",
+          "state",
+          "quote",
+          "createdAt",
+          "steps"
+        ],
+        "properties": {
+          "swapId": {
+            "type": "string",
+            "description": "Unique identifier of the swap."
+          },
+          "swapType": {
+            "type": "string",
+            "description": "Swap type name, for example `FROM_BTC`, `TO_BTCLN`, or `FROM_BTCLN`."
+          },
+          "state": {
+            "$ref": "#/components/schemas/SwapState"
+          },
+          "quote": {
+            "$ref": "#/components/schemas/SwapQuote"
+          },
+          "createdAt": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Swap creation timestamp in milliseconds since Unix epoch."
+          },
+          "steps": {
+            "type": "array",
+            "description": "Swap execution steps.",
+            "items": {
+              "$ref": "#/components/schemas/SwapExecutionStep"
+            }
+          },
+          "lnurl": {
+            "$ref": "#/components/schemas/SwapOutputLNURL"
+          }
+        }
+      },
+      "CreateSwapInput": {
+        "type": "object",
+        "description": "Input for creating a new swap. Fields typed as `bigint` in TypeScript are encoded in JSON/OpenAPI as decimal strings.",
+        "required": [
+          "srcToken",
+          "dstToken",
+          "amount",
+          "amountType",
+          "dstAddress"
+        ],
+        "properties": {
+          "srcToken": {
+            "type": "string",
+            "description": "Input source token identifier, always in the format of `<network>-<ticker>`, e.g. `BITCOIN-BTC`, `LIGHTNING-BTC`, or `STARKNET-STRK`."
+          },
+          "dstToken": {
+            "type": "string",
+            "description": "Output destination token identifier, always in the format of `<network>-<ticker>`, e.g. `BITCOIN-BTC`, `LIGHTNING-BTC`, or `STARKNET-STRK`."
+          },
+          "amount": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BigIntString"
+              }
+            ],
+            "description": "Swap amount in base units."
+          },
+          "amountType": {
+            "$ref": "#/components/schemas/ExactAmountType"
+          },
+          "srcAddress": {
+            "type": "string",
+            "description": "Source address for flows that require it, mainly smart-chain-to-Bitcoin or smart-chain-to-Lightning swaps."
+          },
+          "dstAddress": {
+            "type": "string",
+            "description": "Destination address, invoice, or recipient identifier for the swap output."
+          },
+          "gasAmount": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BigIntString"
+              }
+            ],
+            "description": "Only for Lightning/Bitcoin to smart-chain swaps. Optional gas-drop amount, meaning additional native destination-chain token to receive on the destination smart chain, encoded in base units."
+          },
+          "paymentHash": {
+            "type": "string",
+            "description": "Only for Lightning-to-smart-chain swaps. Optional custom swap payment hash encoded as a hexadecimal string for cases where the preimage and payment-hash pair are generated outside the API. When this field is used, the client must later provide the `secret` argument to `getSwapStatus` once the swap HTLC is ready to be claimed, which is indicated by `requiresSecretReveal` in the status response."
+          },
+          "lightningInvoiceDescription": {
+            "type": "string",
+            "description": "Only for Lightning-to-smart-chain swaps. Optional description to add to the generated Lightning BOLT11 invoice."
+          },
+          "lightningInvoiceDescriptionHash": {
+            "type": "string",
+            "description": "Only for Lightning-to-smart-chain swaps. Optional description hash to add to the generated Lightning BOLT11 invoice, encoded as a hexadecimal string."
+          },
+          "lightningPaymentHTLCTimeout": {
+            "type": "number",
+            "description": "Only for smart-chain-to-Lightning swaps. Optional override for the HTLC timeout in seconds. Longer timeouts allow more Lightning routing hops to be considered, but may lead to longer funds lockup if the LP is non-cooperative."
+          }
+        },
+        "example": {
+          "srcToken": "BTC",
+          "dstToken": "STARKNET-STRK",
+          "amount": "150000",
+          "amountType": "EXACT_IN",
+          "dstAddress": "0x0123456789abcdef"
+        }
+      },
+      "CreateSwapOutput": {
+        "description": "Output from the create swap endpoint.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/SwapOutputBase"
+          }
+        ]
+      },
+      "ListSwapOutput": {
+        "description": "Serialized swap summary returned by list endpoints.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/SwapOutputBase"
+          },
+          {
+            "type": "object",
+            "required": [
+              "isFinished",
+              "isSuccess",
+              "isFailed",
+              "isExpired"
+            ],
+            "properties": {
+              "isFinished": {
+                "type": "boolean",
+                "description": "Whether the swap reached a terminal state."
+              },
+              "isSuccess": {
+                "type": "boolean",
+                "description": "Whether the swap finished successfully."
+              },
+              "isFailed": {
+                "type": "boolean",
+                "description": "Whether the swap finished in a failed state."
+              },
+              "isExpired": {
+                "type": "boolean",
+                "description": "Whether the quote expired before completion."
+              }
+            }
+          }
+        ]
+      },
+      "GetSwapStatusOutput": {
+        "description": "Detailed swap status returned by the `getSwapStatus` endpoint.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ListSwapOutput"
+          },
+          {
+            "type": "object",
+            "required": [
+              "currentAction"
+            ],
+            "properties": {
+              "currentAction": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/SerializedAction"
+                  }
+                ],
+                "nullable": true,
+                "description": "Current actionable instruction for the client, or `null` when no action is required."
+              },
+              "requiresSecretReveal": {
+                "type": "boolean",
+                "description": "For Lightning-to-smart-chain swaps. Indicates that the client should provide the Lightning secret pre-image to continue execution. This is returned when the destination-chain HTLC is created and ready to be claimed by the user."
+              },
+              "escrow": {
+                "$ref": "#/components/schemas/EscrowInfo"
+              }
+            }
+          }
+        ]
+      },
+      "ListSwapsInput": {
+        "type": "object",
+        "description": "Input for listing swaps.",
+        "required": [
+          "signer"
+        ],
+        "properties": {
+          "signer": {
+            "type": "string",
+            "description": "Smart-chain signer address used to filter swaps."
+          },
+          "chainId": {
+            "type": "string",
+            "description": "Optional smart-chain identifier used to narrow the result set, e.g. `SOLANA`, `STARKNET`, `CITREA`."
+          }
+        }
+      },
+      "ListPendingSwapsInput": {
+        "description": "Input for listing actionable swaps.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ListSwapsInput"
+          }
+        ]
+      },
+      "ListSwapsOutput": {
+        "type": "array",
+        "description": "Output from the swap list endpoint.",
+        "items": {
+          "$ref": "#/components/schemas/ListSwapOutput"
+        }
+      },
+      "ListPendingSwapsOutput": {
+        "type": "array",
+        "description": "Output from the actionable swap list endpoint.",
+        "items": {
+          "$ref": "#/components/schemas/ListSwapOutput"
+        }
+      },
+      "GetSupportedTokensInput": {
+        "type": "object",
+        "description": "Input for listing supported tokens.",
+        "required": [
+          "side"
+        ],
+        "properties": {
+          "side": {
+            "$ref": "#/components/schemas/ApiSide"
+          }
+        }
+      },
+      "GetSupportedTokensOutput": {
+        "type": "array",
+        "description": "Output from the supported token list endpoint.",
+        "items": {
+          "$ref": "#/components/schemas/ApiToken"
+        }
+      },
+      "GetSwapCounterTokensInput": {
+        "type": "object",
+        "description": "Input for listing compatible counter-tokens for a given token.",
+        "required": [
+          "token",
+          "side"
+        ],
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Token identifier to find compatible counter-tokens for, e.g. `BITCOIN-BTC`, `LIGHTNING-BTC` or `STARKNET-STRK`."
+          },
+          "side": {
+            "$ref": "#/components/schemas/ApiSide"
+          }
+        }
+      },
+      "GetSwapCounterTokensOutput": {
+        "type": "array",
+        "description": "Output from the swap counter-token list endpoint.",
+        "items": {
+          "$ref": "#/components/schemas/ApiToken"
+        }
+      },
+      "GetSwapLimitsInput": {
+        "type": "object",
+        "description": "Input for querying swap limits between two tokens.",
+        "required": [
+          "srcToken",
+          "dstToken"
+        ],
+        "properties": {
+          "srcToken": {
+            "type": "string",
+            "description": "Source token identifier, e.g. `BITCOIN-BTC`, `LIGHTNING-BTC` or `STARKNET-STRK`."
+          },
+          "dstToken": {
+            "type": "string",
+            "description": "Destination token identifier, e.g. `BITCOIN-BTC`, `LIGHTNING-BTC` or `STARKNET-STRK`."
+          }
+        }
+      },
+      "GetSwapLimitsSide": {
+        "type": "object",
+        "description": "Limits expressed on one side of the swap.",
+        "required": [
+          "min"
+        ],
+        "properties": {
+          "min": {
+            "$ref": "#/components/schemas/ApiAmount"
+          },
+          "max": {
+            "$ref": "#/components/schemas/ApiAmount"
+          }
+        }
+      },
+      "GetSwapLimitsOutput": {
+        "type": "object",
+        "description": "Output from the swap limits endpoint.",
+        "required": [
+          "input",
+          "output"
+        ],
+        "properties": {
+          "input": {
+            "$ref": "#/components/schemas/GetSwapLimitsSide"
+          },
+          "output": {
+            "$ref": "#/components/schemas/GetSwapLimitsSide"
+          }
+        }
+      },
+      "ParseAddressInput": {
+        "type": "object",
+        "description": "Input for parsing an address-like string supported by the SDK.",
+        "required": [
+          "address"
+        ],
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Address-like string to parse, such as a wallet address, Lightning invoice, LNURL, or URI."
+          }
+        }
+      },
+      "ParseAddressOutput": {
+        "type": "object",
+        "description": "Output from the address parser endpoint.",
+        "required": [
+          "address",
+          "type"
+        ],
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Canonical parsed address or recipient identifier."
+          },
+          "type": {
+            "type": "string",
+            "description": "Parsed address type, e.g. `BITCOIN`, `LIGHTNING`, `LNURL`, `SOLANA`, `STARKNET` or `CITREA`."
+          },
+          "lnurl": {
+            "$ref": "#/components/schemas/ApiLNURL"
+          },
+          "min": {
+            "$ref": "#/components/schemas/ApiAmount"
+          },
+          "max": {
+            "$ref": "#/components/schemas/ApiAmount"
+          },
+          "amount": {
+            "$ref": "#/components/schemas/ApiAmount"
+          }
+        }
+      },
+      "GetSpendableBalanceInput": {
+        "type": "object",
+        "description": "Input for querying spendable wallet balance.",
+        "required": [
+          "wallet",
+          "token"
+        ],
+        "properties": {
+          "wallet": {
+            "type": "string",
+            "description": "Wallet address to inspect."
+          },
+          "token": {
+            "type": "string",
+            "description": "Token identifier to get the balance for, e.g. `BITCOIN-BTC` or `STARKNET-STRK`."
+          },
+          "targetChain": {
+            "type": "string",
+            "description": "Target smart-chain identifier when estimating spendable Bitcoin balance. The estimate adjusts automatically based on the available swap routes between Bitcoin and the provided chain."
+          },
+          "gasDrop": {
+            "type": "boolean",
+            "description": "Whether gas-drop transaction size overhead should be included for Bitcoin-to-smart-chain swaps."
+          },
+          "feeRate": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SpendableBalanceFeeRate"
+              }
+            ],
+            "description": "Manual fee-rate override used for spendable balance estimation. For Bitcoin balances this should be a positive numeric fee rate in sats/vB. For smart-chain balances the format is chain-specific: Solana uses `<microLamports/CU>[;<base fee in lamports>]`, Starknet uses `<l1GasCost>,<l2GasCost>,<l1DataGasCost>;v3` where all fee amounts are in Fri per gas, and EVM chains use `<baseFeePerGas>,<priorityFeePerGas>` where both values are in Wei per gas."
+          },
+          "minBitcoinFeeRate": {
+            "type": "number",
+            "description": "Minimum Bitcoin fee rate to enforce during estimation."
+          },
+          "feeMultiplier": {
+            "type": "number",
+            "description": "Multiplier applied when `feeRate` is not provided. For Bitcoin balances it multiplies the fetched economical Bitcoin fee rate. For smart-chain balances it multiplies the smart-chain native-token commit fee estimate. This parameter cannot be specified alongside `feeRate`."
+          }
+        }
+      },
+      "GetSpendableBalanceOutput": {
+        "type": "object",
+        "description": "Output from the spendable balance endpoint.",
+        "required": [
+          "balance"
+        ],
+        "properties": {
+          "balance": {
+            "$ref": "#/components/schemas/ApiAmount"
+          },
+          "feeRate": {
+            "type": "number",
+            "description": "Fee rate used during estimation. Only when estimating BTC balances on Bitcoin."
+          }
+        }
+      },
+      "GetSwapStatusInput": {
+        "type": "object",
+        "description": "Input for getting swap status.",
+        "required": [
+          "swapId"
+        ],
+        "properties": {
+          "swapId": {
+            "type": "string",
+            "description": "Unique identifier of the swap to query."
+          },
+          "secret": {
+            "type": "string",
+            "description": "Swap secret pre-image revealed after the destination-chain HTLC is created for Lightning-to-smart-chain swaps, encoded as a hexadecimal string."
+          },
+          "bitcoinAddress": {
+            "type": "string",
+            "description": "For Bitcoin-to-smart-chain swaps. Bitcoin address used to request a pre-funded PSBT with populated input UTXOs ready for signing and execution. Must be specified together with `bitcoinPublicKey`."
+          },
+          "bitcoinPublicKey": {
+            "type": "string",
+            "description": "For Bitcoin-to-smart-chain swaps. Bitcoin public key used together with `bitcoinAddress` to request a pre-funded PSBT with populated input UTXOs ready for signing and execution. Must be specified together with `bitcoinAddress`."
+          },
+          "bitcoinFeeRate": {
+            "type": "number",
+            "description": "For Bitcoin-to-smart-chain swaps. Bitcoin fee-rate override used when building a pre-funded PSBT; otherwise the current economical fee rate is used."
+          },
+          "signer": {
+            "type": "string",
+            "description": "Alternative smart-chain signer to use for claim, refund, or manual settlement transactions."
+          }
+        }
+      },
+      "SubmitTransactionInput": {
+        "type": "object",
+        "description": "Input for submitting signed transactions.",
+        "required": [
+          "swapId",
+          "signedTxs"
+        ],
+        "properties": {
+          "swapId": {
+            "type": "string",
+            "description": "Unique identifier of the swap the transactions belong to."
+          },
+          "signedTxs": {
+            "type": "array",
+            "description": "Serialized signed transactions to submit in execution order.",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "SubmitTransactionOutput": {
+        "type": "object",
+        "description": "Output from submitting transactions.",
+        "required": [
+          "txHashes"
+        ],
+        "properties": {
+          "txHashes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Transaction hashes returned after successful submission."
+          }
+        }
+      },
+      "SettleWithLnurlInput": {
+        "type": "object",
+        "description": "Input for triggering an LNURL-withdraw based settlement for supported Lightning-to-smart-chain swaps. Call this when `getSwapStatus` returns a `SendToAddress` current action, which corresponds to the `PR_CREATED` stage for these swaps.",
+        "required": [
+          "swapId"
+        ],
+        "properties": {
+          "swapId": {
+            "type": "string",
+            "description": "Unique identifier of the Lightning-to-smart-chain swap to settle."
+          },
+          "lnurlWithdraw": {
+            "type": "string",
+            "description": "LNURL-withdraw link to use when the swap was not already created with one. This parameter is forbidden if the swap already contains an LNURL-withdraw link."
+          }
+        }
+      },
+      "SettleWithLnurlOutput": {
+        "type": "object",
+        "description": "Output from settling a Lightning swap with LNURL-withdraw.",
+        "required": [
+          "paymentHash"
+        ],
+        "properties": {
+          "paymentHash": {
+            "type": "string",
+            "description": "Payment hash of the Lightning payment paid by the LNURL-withdraw link, encoded as a hexadecimal string."
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createApiEndpoint = exports.toApiLNURL = exports.toApiToken = exports.toApiAmount = void 0;
+const Token_1 = require("../types/Token");
+const TokenAmount_1 = require("../types/TokenAmount");
 const ApiParser_1 = require("./ApiParser");
 /**
  * Converts a TokenAmount to the serializable ApiAmount format
@@ -24,7 +26,7 @@ exports.toApiAmount = toApiAmount;
  */
 function toApiToken(token) {
     return {
-        id: token.chain === "BTC" ? (token.lightning ? "BTCLN" : "BTC") : `${token.chainId}-${token.ticker}`,
+        id: `${token.chainId}-${token.ticker}`,
         chainId: token.chainId,
         ticker: token.ticker,
         name: token.name,
@@ -38,12 +40,12 @@ exports.toApiToken = toApiToken;
  *
  * @category API
  */
-function toApiLNURL(lnurl) {
+function toApiLNURL(lnurl, swapper) {
     if (lnurl.type === "pay") {
         return {
             type: "pay",
-            min: lnurl.min.toString(),
-            max: lnurl.max.toString(),
+            min: toApiAmount((0, TokenAmount_1.toTokenAmount)(lnurl.min, Token_1.BitcoinTokens.BTCLN, swapper.prices)),
+            max: toApiAmount((0, TokenAmount_1.toTokenAmount)(lnurl.max, Token_1.BitcoinTokens.BTCLN, swapper.prices)),
             commentMaxLength: lnurl.commentMaxLength,
             ...(lnurl.shortDescription != null ? { shortDescription: lnurl.shortDescription } : {}),
             ...(lnurl.longDescription != null ? { longDescription: lnurl.longDescription } : {}),
@@ -53,8 +55,8 @@ function toApiLNURL(lnurl) {
     }
     return {
         type: "withdraw",
-        min: lnurl.min.toString(),
-        max: lnurl.max.toString(),
+        min: toApiAmount((0, TokenAmount_1.toTokenAmount)(lnurl.min, Token_1.BitcoinTokens.BTCLN, swapper.prices)),
+        max: toApiAmount((0, TokenAmount_1.toTokenAmount)(lnurl.max, Token_1.BitcoinTokens.BTCLN, swapper.prices)),
         params: lnurl.params
     };
 }

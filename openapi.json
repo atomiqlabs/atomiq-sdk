@@ -29,15 +29,27 @@
   ],
   "tags": [
     {
-      "name": "Swapper API",
-      "description": "Swap lifecycle, token discovery, address parsing, and balance utility endpoints exposed by `SwapperApi.endpoints`."
+      "name": "Token Discovery",
+      "description": "Quote-time helpers used before creating a swap: enumerate tokens, discover compatible counter-tokens, and fetch min/max amounts between a token pair."
+    },
+    {
+      "name": "Swap Lifecycle",
+      "description": "Core endpoints that drive a swap from creation through execution: request a quote, poll for the current required action, submit signed transactions, and settle Lightning swaps via LNURL-withdraw."
+    },
+    {
+      "name": "Swap History",
+      "description": "List swaps associated with a smart-chain signer — either all swaps or only those that currently need the user's attention."
+    },
+    {
+      "name": "Utilities",
+      "description": "General-purpose helpers: normalize address/invoice/LNURL/URI input and estimate spendable wallet balance net of swap execution costs."
     }
   ],
   "paths": {
     "/createSwap": {
       "post": {
         "tags": [
-          "Swapper API"
+          "Swap Lifecycle"
         ],
         "operationId": "createSwap",
         "summary": "Create a new swap",
@@ -72,7 +84,7 @@
     "/listSwaps": {
       "get": {
         "tags": [
-          "Swapper API"
+          "Swap History"
         ],
         "operationId": "listSwaps",
         "summary": "List swaps",
@@ -117,7 +129,7 @@
     "/listPendingSwaps": {
       "get": {
         "tags": [
-          "Swapper API"
+          "Swap History"
         ],
         "operationId": "listPendingSwaps",
         "summary": "List pending swaps",
@@ -162,7 +174,7 @@
     "/getSupportedTokens": {
       "get": {
         "tags": [
-          "Swapper API"
+          "Token Discovery"
         ],
         "operationId": "getSupportedTokens",
         "summary": "List supported tokens",
@@ -198,7 +210,7 @@
     "/getSwapCounterTokens": {
       "get": {
         "tags": [
-          "Swapper API"
+          "Token Discovery"
         ],
         "operationId": "getSwapCounterTokens",
         "summary": "List compatible counter-tokens",
@@ -243,7 +255,7 @@
     "/getSwapLimits": {
       "get": {
         "tags": [
-          "Swapper API"
+          "Token Discovery"
         ],
         "operationId": "getSwapLimits",
         "summary": "Get swap limits",
@@ -288,7 +300,7 @@
     "/parseAddress": {
       "get": {
         "tags": [
-          "Swapper API"
+          "Utilities"
         ],
         "operationId": "parseAddress",
         "summary": "Parse an address-like string",
@@ -324,7 +336,7 @@
     "/getSpendableBalance": {
       "get": {
         "tags": [
-          "Swapper API"
+          "Utilities"
         ],
         "operationId": "getSpendableBalance",
         "summary": "Estimate spendable wallet balance",
@@ -414,7 +426,7 @@
     "/getSwapStatus": {
       "get": {
         "tags": [
-          "Swapper API"
+          "Swap Lifecycle"
         ],
         "operationId": "getSwapStatus",
         "summary": "Get swap status",
@@ -495,7 +507,7 @@
     "/submitTransaction": {
       "post": {
         "tags": [
-          "Swapper API"
+          "Swap Lifecycle"
         ],
         "operationId": "submitTransaction",
         "summary": "Submit signed transactions",
@@ -530,7 +542,7 @@
     "/settleWithLnurl": {
       "post": {
         "tags": [
-          "Swapper API"
+          "Swap Lifecycle"
         ],
         "operationId": "settleWithLnurl",
         "summary": "Settle a Lightning swap with LNURL-withdraw",

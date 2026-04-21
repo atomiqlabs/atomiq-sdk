@@ -590,7 +590,7 @@ export class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T,
     }
 
     /**
-     * @remark Not supported
+     * @remarks Not supported
      */
     async execute(): Promise<boolean> {
         throw new Error("Not supported");

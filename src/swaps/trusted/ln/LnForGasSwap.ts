@@ -411,7 +411,7 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
     //// Payment
 
     /**
-     * @remark Not supported
+     * @remarks Not supported
      */
     async execute(): Promise<boolean> {
         throw new Error("Not supported");

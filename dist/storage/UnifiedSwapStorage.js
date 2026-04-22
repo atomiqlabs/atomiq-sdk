@@ -80,8 +80,12 @@ class UnifiedSwapStorage {
         if (!this.noWeakRefMap)
             this.weakRefCache.set(value.getId(), new WeakRef(value));
         const serialized = value.serialize();
-        await this.storage.save(serialized);
-        value._meta = serialized._meta;
+        try {
+            await this.storage.save(serialized);
+        }
+        finally {
+            value._meta = serialized._meta;
+        }
         value._persisted = true;
     }
     /**
@@ -95,9 +99,15 @@ class UnifiedSwapStorage {
         if (!this.noWeakRefMap)
             values.forEach(value => this.weakRefCache.set(value.getId(), new WeakRef(value)));
         const serialized = values.map(obj => obj.serialize());
-        await this.storage.saveAll(serialized, lenient);
-        values.forEach((value, index) => {
-            value._meta = serialized[index]._meta;
+        try {
+            await this.storage.saveAll(serialized, lenient);
+        }
+        finally {
+            values.forEach((value, index) => {
+                value._meta = serialized[index]._meta;
+            });
+        }
+        values.forEach((value) => {
             value._persisted = true;
         });
     }
@@ -109,8 +119,12 @@ class UnifiedSwapStorage {
         if (!this.noWeakRefMap)
             this.weakRefCache.delete(value.getId());
         const serialized = value.serialize();
-        await this.storage.remove(serialized);
-        value._meta = serialized._meta;
+        try {
+            await this.storage.remove(serialized);
+        }
+        finally {
+            value._meta = serialized._meta;
+        }
         value._persisted = false;
     }
     /**
@@ -124,9 +138,15 @@ class UnifiedSwapStorage {
         if (!this.noWeakRefMap)
             values.forEach(value => this.weakRefCache.delete(value.getId()));
         const serialized = values.map(obj => obj.serialize());
-        await this.storage.removeAll(serialized, lenient);
-        values.forEach((value, index) => {
-            value._meta = serialized[index]._meta;
+        try {
+            await this.storage.removeAll(serialized, lenient);
+        }
+        finally {
+            values.forEach((value, index) => {
+                value._meta = serialized[index]._meta;
+            });
+        }
+        values.forEach((value) => {
             value._persisted = false;
         });
     }

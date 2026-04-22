@@ -75,7 +75,9 @@ export interface IUnifiedStorage<I extends UnifiedStorageIndexes, C extends Unif
      *
      * If the object contains a `_meta` field, this will be also present in the to-be-saved value, to mutate the `_meta`
      *  field of the object that is saved, you can mutate the `_meta` field directly on the passed value, which then
-     *  gets reflected automatically in the existing object.
+     *  gets reflected automatically in the existing object. The mutated `_meta` field is copied even if the function
+     *  throws, hence the implementations must be careful with setting the `_meta` field on the still in-flight requests
+     *  that might fail.
      *
      * @param value Object to save (must have an id property)
      */
@@ -85,7 +87,9 @@ export interface IUnifiedStorage<I extends UnifiedStorageIndexes, C extends Unif
      *
      * If the objects contain a `_meta` field, this will be also present in the to-be-saved values, to mutate the `_meta`
      *  field of the objects that are saved, you can mutate the `_meta` field directly on the passed values, which then
-     *  gets reflected automatically in the existing objects.
+     *  gets reflected automatically in the existing objects. The mutated `_meta` field is copied even if the function
+     *  throws, hence the implementations must be careful with setting the `_meta` field on the still in-flight requests
+     *  that might fail.
      *
      * @param value Array of objects to save
      * @param lenient In lenient mode the persistency layer doesn't throw on individual swap failures due to
@@ -98,7 +102,9 @@ export interface IUnifiedStorage<I extends UnifiedStorageIndexes, C extends Unif
      *
      * If the object contains a `_meta` field, this will be also present in the to-be-removed value, to mutate the `_meta`
      *  field of the object that is saved, you can mutate the `_meta` field directly on the passed value, which then
-     *  gets reflected automatically in the existing object.
+     *  gets reflected automatically in the existing object. The mutated `_meta` field is copied even if the function
+     *  throws, hence the implementations must be careful with setting the `_meta` field on the still in-flight requests
+     *  that might fail.
      *
      * @param value Object to remove (must have an id property)
      */
@@ -108,7 +114,9 @@ export interface IUnifiedStorage<I extends UnifiedStorageIndexes, C extends Unif
      *
      * If the objects contain a `_meta` field, this will be also present in the to-be-removed values, to mutate the `_meta`
      *  field of the objects that are saved, you can mutate the `_meta` field directly on the passed values, which then
-     *  gets reflected automatically in the existing objects.
+     *  gets reflected automatically in the existing objects. The mutated `_meta` field is copied even if the function
+     *  throws, hence the implementations must be careful with setting the `_meta` field on the still in-flight requests
+     *  that might fail.
      *
      * @param value Array of objects to remove
      * @param lenient In lenient mode the persistency layer doesn't throw on individual swap failures due to

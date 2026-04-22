@@ -372,7 +372,7 @@ class SwapperApi {
             currentAction: currentAction ? await (0, SerializedAction_1.serializeAction)(currentAction, this.txSerializer.bind(this)) : null,
             requiresSecretReveal: requiresSecretRevealForApi(swap, stateInfo.state),
             escrow: swap instanceof IEscrowSwap_1.IEscrowSwap && swap._data != null ? {
-                data: swap._data.serialize(),
+                data: swap._data.getEscrowStruct(),
                 initTxId: swap._commitTxId
             } : undefined
         };

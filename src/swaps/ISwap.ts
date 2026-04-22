@@ -146,6 +146,12 @@ export abstract class ISwap<
      * @internal
      */
     _contractVersion?: string;
+    /**
+     * Storage specific metadata that can be used for e.g. optimistic concurrency
+     *
+     * @internal
+     */
+    _meta?: any;
 
 
     /**
@@ -219,6 +225,7 @@ export abstract class ISwap<
 
             this._randomNonce = swapInitOrObj.randomNonce;
             this._contractVersion = swapInitOrObj.contractVersion;
+            this._meta = swapInitOrObj._meta;
         }
         if(this.version!==this.currentVersion) {
             this.upgradeVersion();
@@ -716,7 +723,9 @@ export abstract class ISwap<
             exactIn: this.exactIn,
             createdAt: this.createdAt,
             randomNonce: this._randomNonce,
-            contractVersion: this._contractVersion
+            contractVersion: this._contractVersion,
+
+            _meta: this._meta
         }
     }
 

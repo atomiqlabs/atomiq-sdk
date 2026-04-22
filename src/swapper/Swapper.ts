@@ -1828,8 +1828,8 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         }
 
         this.logger.debug("_syncSwaps(): Done syncing "+swaps.length+" swaps, saving "+changedSwaps.length+" changed swaps, removing "+removeSwaps.length+" swaps!");
-        await unifiedSwapStorage.saveAll(changedSwaps);
-        await unifiedSwapStorage.removeAll(removeSwaps);
+        await unifiedSwapStorage.saveAll(changedSwaps, true);
+        await unifiedSwapStorage.removeAll(removeSwaps, true);
 
         changedSwaps.forEach(swap => swap._emitEvent());
         removeSwaps.forEach(swap => swap._emitEvent());

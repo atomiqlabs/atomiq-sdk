@@ -88,8 +88,11 @@ export interface IUnifiedStorage<I extends UnifiedStorageIndexes, C extends Unif
      *  gets reflected automatically in the existing objects.
      *
      * @param value Array of objects to save
+     * @param lenient In lenient mode the persistency layer doesn't throw on individual swap failures due to
+     *  optimistic concurrency, or other (implementation specific), this flag is to be used when the saving of the swap
+     *  isn't mission-critical for executing next steps (e.g. in tick or sync loops)
      */
-    saveAll(value: UnifiedStoredObject[]): Promise<void>;
+    saveAll(value: UnifiedStoredObject[], lenient?: boolean): Promise<void>;
     /**
      * Removes an object from storage
      *
@@ -108,6 +111,9 @@ export interface IUnifiedStorage<I extends UnifiedStorageIndexes, C extends Unif
      *  gets reflected automatically in the existing objects.
      *
      * @param value Array of objects to remove
+     * @param lenient In lenient mode the persistency layer doesn't throw on individual swap failures due to
+     *  optimistic concurrency, or other (implementation specific), this flag is to be used when the saving of the swap
+     *  isn't mission-critical for executing next steps (e.g. in tick or sync loops)
      */
-    removeAll(value: UnifiedStoredObject[]): Promise<void>;
+    removeAll(value: UnifiedStoredObject[], lenient?: boolean): Promise<void>;
 }

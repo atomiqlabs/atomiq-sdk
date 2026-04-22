@@ -425,8 +425,8 @@ export abstract class ISwapWrapper<
         for(let i=0; i<pastSwaps.length; i+=maxParallelSyncs) {
             const {removeSwaps, changedSwaps} = await this._checkPastSwaps(pastSwaps.slice(i, i+maxParallelSyncs));
             if (!noSave) {
-                await this.unifiedStorage.removeAll(removeSwaps);
-                await this.unifiedStorage.saveAll(changedSwaps);
+                await this.unifiedStorage.removeAll(removeSwaps, true);
+                await this.unifiedStorage.saveAll(changedSwaps, true);
                 changedSwaps.forEach(swap => swap._emitEvent());
                 removeSwaps.forEach(swap => swap._emitEvent());
             }

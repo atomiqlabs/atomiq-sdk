@@ -264,8 +264,10 @@ class Swapper extends events_1.EventEmitter {
     async init() {
         if (this.initialized)
             return;
-        if (this.initPromise != null)
+        if (this.initPromise != null) {
             await this.initPromise;
+            return;
+        }
         try {
             const promise = this._init();
             this.initPromise = promise;

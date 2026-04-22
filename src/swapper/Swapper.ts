@@ -655,7 +655,10 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
      */
     async init(): Promise<void> {
         if(this.initialized) return;
-        if(this.initPromise!=null) await this.initPromise;
+        if(this.initPromise!=null) {
+            await this.initPromise;
+            return;
+        }
 
         try {
             const promise = this._init();

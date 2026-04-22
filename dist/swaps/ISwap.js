@@ -99,6 +99,7 @@ class ISwap {
             this.createdAt = swapInitOrObj.createdAt ?? swapInitOrObj.expiry;
             this._randomNonce = swapInitOrObj.randomNonce;
             this._contractVersion = swapInitOrObj.contractVersion;
+            this._meta = swapInitOrObj._meta;
         }
         if (this.version !== this.currentVersion) {
             this.upgradeVersion();
@@ -351,7 +352,8 @@ class ISwap {
             exactIn: this.exactIn,
             createdAt: this.createdAt,
             randomNonce: this._randomNonce,
-            contractVersion: this._contractVersion
+            contractVersion: this._contractVersion,
+            _meta: this._meta
         };
     }
     //////////////////////////////

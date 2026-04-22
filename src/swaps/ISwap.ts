@@ -141,6 +141,12 @@ export abstract class ISwap<
      * @internal
      */
     _persisted: boolean = false;
+    /**
+     * Storage specific metadata that can be used for e.g. optimistic concurrency
+     *
+     * @internal
+     */
+    _meta?: any;
 
 
     /**
@@ -212,6 +218,7 @@ export abstract class ISwap<
             this.createdAt = swapInitOrObj.createdAt ?? swapInitOrObj.expiry;
 
             this._randomNonce = swapInitOrObj.randomNonce;
+            this._meta = swapInitOrObj._meta;
         }
         if(this.version!==this.currentVersion) {
             this.upgradeVersion();
@@ -697,7 +704,9 @@ export abstract class ISwap<
             initiated: this.initiated,
             exactIn: this.exactIn,
             createdAt: this.createdAt,
-            randomNonce: this._randomNonce
+            randomNonce: this._randomNonce,
+
+            _meta: this._meta
         }
     }
 

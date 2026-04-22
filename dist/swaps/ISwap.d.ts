@@ -121,6 +121,12 @@ export declare abstract class ISwap<T extends ChainType = ChainType, D extends S
      */
     _persisted: boolean;
     /**
+     * Storage specific metadata that can be used for e.g. optimistic concurrency
+     *
+     * @internal
+     */
+    _meta?: any;
+    /**
      * Event emitter emitting `"swapState"` event when swap's state changes
      */
     readonly events: EventEmitter<{

@@ -127,7 +127,7 @@ export type SwapExecutionActionSignSmartChainTx<T extends ChainType = ChainType>
     /**
      * Submits the signed transactions and waits for their confirmation
      *
-     * @remark This might not do any validation on the submitted transactions, so returned txids are informational
+     * @remarks This might not do any validation on the submitted transactions, so returned txids are informational
      *  only and may not be persisted immediately. The swap may wait for an authoritative state transition before
      *  considering the submitted transactions accepted.
      *

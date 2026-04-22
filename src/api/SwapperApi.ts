@@ -481,7 +481,7 @@ export class SwapperApi<T extends MultiChain> {
             requiresSecretReveal: requiresSecretRevealForApi(swap, stateInfo.state),
 
             escrow: swap instanceof IEscrowSwap && swap._data!=null ? {
-                data: swap._data.serialize(),
+                data: swap._data.getEscrowStruct(),
                 initTxId: swap._commitTxId
             } : undefined
         };

@@ -212,7 +212,7 @@ export declare class LnForGasSwap<T extends ChainType = ChainType> extends ISwap
         fee: Fee<T["ChainId"], BtcToken<true>, SCToken<T["ChainId"]>>;
     }];
     /**
-     * @remark Not supported
+     * @remarks Not supported
      */
     execute(): Promise<boolean>;
     /**

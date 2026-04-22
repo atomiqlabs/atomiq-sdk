@@ -1,10 +1,11 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "Atomiq SDK Swapper API",
+    "title": "Atomiq REST API",
     "version": "8.6.11",
-    "description": "OpenAPI specification for the framework-agnostic `SwapperApi` exposed by `@atomiqlabs/sdk`. This document uses the default `/api/<endpointName>` HTTP mapping shown in the SDK integration example. Integrations may mount the same operations under different paths. All TypeScript `bigint` fields are represented as decimal strings because JSON/OpenAPI cannot safely encode arbitrary-precision integers as native numbers."
+    "description": "The Atomiq REST API lets your application quote, prepare, and settle cross-chain swaps between Bitcoin/Lightning and smart-chain networks like Solana and Starknet.\n\nIf you're just getting started, see the REST API Guide first, then come back here when you need the details.\n\n## A few things to know\n\n- **Tokens are identified as `CHAIN-TICKER`** — e.g. `BITCOIN-BTC`, `LIGHTNING-BTC`, `STARKNET-STRK`. The `address` field is the on-chain contract address, and is an empty string for native BTC on Bitcoin/Lightning.\n- **Amounts are in base units** — sats for Bitcoin, Fri for Starknet (1 STRK = 10¹⁸ Fri), Wei for EVM, lamports for Solana. Human-readable decimals (e.g. `1.5`) are only used where a field is explicitly typed as `DecimalString`.\n- **Large integers are JSON strings**, not numbers. Any field typed as `BigIntString` is a base-10 string, because JSON can't safely represent arbitrary-precision integers. Parse them with `BigInt(...)` on the client.\n- **Paths follow the SDK convention** `/<endpointName>` under your chosen base path (default `/api`). Integrations may mount the same operations elsewhere."
   },
+
   "servers": [
     {
       "url": "{scheme}://{host}{basePath}",

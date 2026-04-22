@@ -330,7 +330,7 @@ class LnForGasSwap extends ISwap_1.ISwap {
     //////////////////////////////
     //// Payment
     /**
-     * @remark Not supported
+     * @remarks Not supported
      */
     async execute() {
         throw new Error("Not supported");

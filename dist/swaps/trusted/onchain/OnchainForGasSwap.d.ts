@@ -282,7 +282,7 @@ export declare class OnchainForGasSwap<T extends ChainType = ChainType> extends 
      */
     _submitExecutionTransactions(): Promise<string[]>;
     /**
-     * @remark Not supported
+     * @remarks Not supported
      */
     execute(): Promise<boolean>;
     /**

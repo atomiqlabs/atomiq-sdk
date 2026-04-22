@@ -458,7 +458,7 @@ class OnchainForGasSwap extends ISwap_1.ISwap {
         throw new Error("Not supported");
     }
     /**
-     * @remark Not supported
+     * @remarks Not supported
      */
     async execute() {
         throw new Error("Not supported");

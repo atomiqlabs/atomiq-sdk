@@ -104,7 +104,9 @@ export class UnifiedSwapStorage<T extends ChainType> {
      */
     async save<S extends ISwap<T>>(value: S): Promise<void> {
         if(!this.noWeakRefMap) this.weakRefCache.set(value.getId(), new WeakRef<ISwap<T>>(value));
-        await this.storage.save(value.serialize());
+        const serialized = value.serialize();
+        await this.storage.save(serialized);
+        value._meta = serialized._meta;
         value._persisted = true;
     }
 
@@ -114,8 +116,12 @@ export class UnifiedSwapStorage<T extends ChainType> {
      */
     async saveAll<S extends ISwap<T>>(values: S[]): Promise<void> {
         if(!this.noWeakRefMap) values.forEach(value => this.weakRefCache.set(value.getId(), new WeakRef<ISwap<T>>(value)));
-        await this.storage.saveAll(values.map(obj => obj.serialize()));
-        values.forEach(value => value._persisted = true);
+        const serialized = values.map(obj => obj.serialize());
+        await this.storage.saveAll(serialized);
+        values.forEach((value, index) => {
+            value._meta = serialized[index]._meta;
+            value._persisted = true;
+        });
     }
 
     /**
@@ -124,7 +130,9 @@ export class UnifiedSwapStorage<T extends ChainType> {
      */
     async remove<S extends ISwap<T>>(value: S): Promise<void> {
         if(!this.noWeakRefMap) this.weakRefCache.delete(value.getId());
-        await this.storage.remove(value.serialize());
+        const serialized = value.serialize();
+        await this.storage.remove(serialized);
+        value._meta = serialized._meta;
         value._persisted = false;
     }
 
@@ -134,8 +142,12 @@ export class UnifiedSwapStorage<T extends ChainType> {
      */
     async removeAll<S extends ISwap<T>>(values: S[]): Promise<void> {
         if(!this.noWeakRefMap) values.forEach(value => this.weakRefCache.delete(value.getId()));
-        await this.storage.removeAll(values.map(obj => obj.serialize()));
-        values.forEach(value => value._persisted = false);
+        const serialized = values.map(obj => obj.serialize());
+        await this.storage.removeAll(serialized);
+        values.forEach((value, index) => {
+            value._meta = serialized[index]._meta;
+            value._persisted = false;
+        });
     }
 
 }

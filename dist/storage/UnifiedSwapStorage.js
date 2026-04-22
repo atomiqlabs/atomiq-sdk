@@ -79,7 +79,9 @@ class UnifiedSwapStorage {
     async save(value) {
         if (!this.noWeakRefMap)
             this.weakRefCache.set(value.getId(), new WeakRef(value));
-        await this.storage.save(value.serialize());
+        const serialized = value.serialize();
+        await this.storage.save(serialized);
+        value._meta = serialized._meta;
         value._persisted = true;
     }
     /**
@@ -89,8 +91,12 @@ class UnifiedSwapStorage {
     async saveAll(values) {
         if (!this.noWeakRefMap)
             values.forEach(value => this.weakRefCache.set(value.getId(), new WeakRef(value)));
-        await this.storage.saveAll(values.map(obj => obj.serialize()));
-        values.forEach(value => value._persisted = true);
+        const serialized = values.map(obj => obj.serialize());
+        await this.storage.saveAll(serialized);
+        values.forEach((value, index) => {
+            value._meta = serialized[index]._meta;
+            value._persisted = true;
+        });
     }
     /**
      * Removes a swap from storage
@@ -99,7 +105,9 @@ class UnifiedSwapStorage {
     async remove(value) {
         if (!this.noWeakRefMap)
             this.weakRefCache.delete(value.getId());
-        await this.storage.remove(value.serialize());
+        const serialized = value.serialize();
+        await this.storage.remove(serialized);
+        value._meta = serialized._meta;
         value._persisted = false;
     }
     /**
@@ -109,8 +117,12 @@ class UnifiedSwapStorage {
     async removeAll(values) {
         if (!this.noWeakRefMap)
             values.forEach(value => this.weakRefCache.delete(value.getId()));
-        await this.storage.removeAll(values.map(obj => obj.serialize()));
-        values.forEach(value => value._persisted = false);
+        const serialized = values.map(obj => obj.serialize());
+        await this.storage.removeAll(serialized);
+        values.forEach((value, index) => {
+            value._meta = serialized[index]._meta;
+            value._persisted = false;
+        });
     }
 }
 exports.UnifiedSwapStorage = UnifiedSwapStorage;

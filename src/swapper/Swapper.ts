@@ -126,8 +126,9 @@ export type SwapperOptions = {
     noTimers?: boolean,
     /**
      * By setting this flag, the swapper doesn't subscribe to on-chain events. To make sure the swap states are
-     *  properly updated you should call the {@link Swapper._syncSwaps} function periodically. This flag should be
-     *  set when you run an environment that doesn't support long-running timers and websocket connections - e.g.
+     *  properly updated you should either call the {@link Swapper._syncSwaps} function periodically, or use the
+     *  {@link Swapper._pollChainEvents} function to manually poll for on-chain events. This flag should be set
+     *  when you run an environment that doesn't support long-running timers and websocket connections - e.g.
      *  serverless environments like Azure Function Apps or AWS Lambda
      */
     noEvents?: boolean,
@@ -157,7 +158,7 @@ export type SwapperOptions = {
      *  want to only create a swap, and then later on retrieve it with the `swapper.getSwapById()` function.
      *
      * Setting this to `false` means the SDK only saves and persists swaps that are considered initiated, i.e. when
-     *  `commit()`, `execute()` or `waitTillPayment` is called (or their respective txs... prefixed variations). This
+     *  `commit()`, `execute()` or `waitTillPayment()` is called (or their respective txs... prefixed variations). This
      *  might save calls to the persistent storage for swaps that are never initiated. This is useful in e.g.
      *  frontend implementations where the frontend holds the swap object reference until it is initiated anyway, not
      *  necessitating the saving of the swap data to the persistent storage until it is actually initiated.
@@ -553,7 +554,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
     }
 
     private async _init(): Promise<void> {
-        this.logger.debug("init(): Initializing swapper...");
+        this.logger.debug("init(): Initializing swapper");
 
         const abortController = new AbortController();
 
@@ -637,7 +638,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                     )
                 }
 
-                if(!this.options.noEvents) await unifiedChainEvents.start();
+                await unifiedChainEvents.start(this.options.noEvents);
                 this.logger.debug("init(): Intialized events: "+chainIdentifier);
 
                 for(let key in wrappers) {
@@ -677,6 +678,13 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
             delete this.initPromise;
             throw e;
         }
+    }
+
+    /**
+     * Whether the SDK is initialized (after {@link init} is called)
+     */
+    isInitialized(): boolean {
+        return this.initialized;
     }
 
     /**
@@ -1486,6 +1494,9 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         dst: string |  LNURLPay | LightningInvoiceCreateService,
         options?: FromBTCLNOptions | SpvFromBTCOptions | FromBTCOptions | ToBTCOptions | (ToBTCLNOptions & {comment?: string}) | FromBTCLNAutoOptions
     ): Promise<ISwap<T[C]>> {
+        if(typeof(src)==="string") src = this.Utils.stripAddress(src);
+        if(typeof(dst)==="string") dst = this.Utils.stripAddress(dst);
+
         const srcToken = typeof(_srcToken)==="string" ? this.getToken(_srcToken) as Token<C> : _srcToken;
         const dstToken = typeof(_dstToken)==="string" ? this.getToken(_dstToken) as Token<C> : _dstToken;
         const amount = _amount==null ? null : (typeof(_amount)==="bigint" ? _amount : fromDecimal(_amount, exactIn ? srcToken.decimals : dstToken.decimals));
@@ -1571,14 +1582,14 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
     }
 
     /**
-     * Returns all swaps where an action is required (either claim or refund)
+     * Returns all swaps which are pending (i.e. not in their final state yet)
      */
-    getActionableSwaps(): Promise<ISwap[]>;
+    getPendingSwaps(): Promise<ISwap[]>;
     /**
-     * Returns swaps where an action is required (either claim or refund) for the specific chain, and optionally also for a specific signer's address
+     * Returns swaps which are pending (i.e. not in their final state yet) for the specific chain, and optionally also for a specific signer's address
      */
-    getActionableSwaps<C extends ChainIds<T>>(chainId: C, signer?: string): Promise<ISwap<T[C]>[]>;
-    async getActionableSwaps<C extends ChainIds<T>>(chainId?: C, signer?: string): Promise<ISwap[]> {
+    getPendingSwaps<C extends ChainIds<T>>(chainId: C, signer?: string): Promise<ISwap<T[C]>[]>;
+    async getPendingSwaps<C extends ChainIds<T>>(chainId?: C, signer?: string): Promise<ISwap[]> {
         if(chainId==null) {
             const res: ISwap[][] = await Promise.all(Object.keys(this._chains).map((chainId) => {
                 const {unifiedSwapStorage, reviver, wrappers} = this._chains[chainId];
@@ -1592,7 +1603,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 }
                 return unifiedSwapStorage.query(queryParams, reviver);
             }));
-            return res.flat().filter(swap => swap.requiresAction());
+            return res.flat();
         } else {
             const {unifiedSwapStorage, reviver, wrappers} = this._chains[chainId];
             const queryParams: Array<QueryParams[]> = [];
@@ -1603,7 +1614,23 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 swapTypeQueryParams.push({key: "state", value: wrapper._pendingSwapStates});
                 queryParams.push(swapTypeQueryParams);
             }
-            return (await unifiedSwapStorage.query(queryParams, reviver)).filter(swap => swap.requiresAction());
+            return await unifiedSwapStorage.query(queryParams, reviver);
+        }
+    }
+
+    /**
+     * Returns all swaps where an action is required (either claim or refund)
+     */
+    getActionableSwaps(): Promise<ISwap[]>;
+    /**
+     * Returns swaps where an action is required (either claim or refund) for the specific chain, and optionally also for a specific signer's address
+     */
+    getActionableSwaps<C extends ChainIds<T>>(chainId: C, signer?: string): Promise<ISwap<T[C]>[]>;
+    async getActionableSwaps<C extends ChainIds<T>>(chainId?: C, signer?: string): Promise<ISwap[]> {
+        if(chainId==null) {
+            return (await this.getPendingSwaps()).filter(swap => swap.requiresAction());
+        } else {
+            return (await this.getPendingSwaps(chainId, signer)).filter(swap => swap.requiresAction());
         }
     }
 
@@ -1801,8 +1828,8 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         }
 
         this.logger.debug("_syncSwaps(): Done syncing "+swaps.length+" swaps, saving "+changedSwaps.length+" changed swaps, removing "+removeSwaps.length+" swaps!");
-        await unifiedSwapStorage.saveAll(changedSwaps);
-        await unifiedSwapStorage.removeAll(removeSwaps);
+        await unifiedSwapStorage.saveAll(changedSwaps, true);
+        await unifiedSwapStorage.removeAll(removeSwaps, true);
 
         changedSwaps.forEach(swap => swap._emitEvent());
         removeSwaps.forEach(swap => swap._emitEvent());
@@ -1857,6 +1884,20 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         } else {
             await this.syncSwapsForChain(chainId, signer);
         }
+    }
+
+    /**
+     * When the swapper is initiated with the `noEvents` config this function allows you to manually poll for on-chain
+     *  events. It returns an events cursor which you should save and pass to the next call to the `poll()` function.
+     *
+     * @param chainId Chain for which to poll the chain events listener for
+     * @param lastEventCursorState Event cursor state returned from the last call to the `poll()` function
+     */
+    async _pollChainEvents<C extends ChainIds<T>>(chainId: C, lastEventCursorState?: any): Promise<any> {
+        const chain = this._chains[chainId];
+        if(chain==null) throw new Error(`Invalid chain id ${chainId}!`);
+
+        return chain.unifiedChainEvents.poll(lastEventCursorState);
     }
 
     /**

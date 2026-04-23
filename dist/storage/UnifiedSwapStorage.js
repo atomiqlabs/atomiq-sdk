@@ -79,18 +79,37 @@ class UnifiedSwapStorage {
     async save(value) {
         if (!this.noWeakRefMap)
             this.weakRefCache.set(value.getId(), new WeakRef(value));
-        await this.storage.save(value.serialize());
+        const serialized = value.serialize();
+        try {
+            await this.storage.save(serialized);
+        }
+        finally {
+            value._meta = serialized._meta;
+        }
         value._persisted = true;
     }
     /**
      * Saves multiple swaps to storage in a batch operation
      * @param values Array of swaps to save
+     * @param lenient In lenient mode the underlying persistent layer doesn't throw on individual swap failures due to
+     *  optimistic concurrency, or other (implementation specific), this flag is to be used when the saving of the swap
+     *  isn't mission-critical for executing next steps (e.g. in tick or sync loops)
      */
-    async saveAll(values) {
+    async saveAll(values, lenient) {
         if (!this.noWeakRefMap)
             values.forEach(value => this.weakRefCache.set(value.getId(), new WeakRef(value)));
-        await this.storage.saveAll(values.map(obj => obj.serialize()));
-        values.forEach(value => value._persisted = true);
+        const serialized = values.map(obj => obj.serialize());
+        try {
+            await this.storage.saveAll(serialized, lenient);
+        }
+        finally {
+            values.forEach((value, index) => {
+                value._meta = serialized[index]._meta;
+            });
+        }
+        values.forEach((value) => {
+            value._persisted = true;
+        });
     }
     /**
      * Removes a swap from storage
@@ -99,18 +118,37 @@ class UnifiedSwapStorage {
     async remove(value) {
         if (!this.noWeakRefMap)
             this.weakRefCache.delete(value.getId());
-        await this.storage.remove(value.serialize());
+        const serialized = value.serialize();
+        try {
+            await this.storage.remove(serialized);
+        }
+        finally {
+            value._meta = serialized._meta;
+        }
         value._persisted = false;
     }
     /**
      * Removes multiple swaps from storage in a batch operation
      * @param values Array of swaps to remove
+     * @param lenient In lenient mode the underlying persistent layer doesn't throw on individual swap failures due to
+     *  optimistic concurrency, or other (implementation specific), this flag is to be used when the saving of the swap
+     *  isn't mission-critical for executing next steps (e.g. in tick or sync loops)
      */
-    async removeAll(values) {
+    async removeAll(values, lenient) {
         if (!this.noWeakRefMap)
             values.forEach(value => this.weakRefCache.delete(value.getId()));
-        await this.storage.removeAll(values.map(obj => obj.serialize()));
-        values.forEach(value => value._persisted = false);
+        const serialized = values.map(obj => obj.serialize());
+        try {
+            await this.storage.removeAll(serialized, lenient);
+        }
+        finally {
+            values.forEach((value, index) => {
+                value._meta = serialized[index]._meta;
+            });
+        }
+        values.forEach((value) => {
+            value._persisted = false;
+        });
     }
 }
 exports.UnifiedSwapStorage = UnifiedSwapStorage;

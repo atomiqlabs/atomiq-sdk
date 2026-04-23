@@ -42,8 +42,10 @@ export declare function mapToArray<K, V, Output>(map: Map<K, V>, translator: (ke
  * Creates a new abort controller that will abort if the passed abort signal aborts
  *
  * @param abortSignal
+ * @param timeoutSeconds
+ * @param timeoutMessage
  */
-export declare function extendAbortController(abortSignal?: AbortSignal): AbortController;
+export declare function extendAbortController(abortSignal?: AbortSignal, timeoutSeconds?: number, timeoutMessage?: string): AbortController;
 export declare function bigIntMin(a: bigint, b: bigint): bigint;
 export declare function bigIntMin(a?: bigint, b?: bigint): bigint | undefined;
 export declare function bigIntMax(a: bigint, b: bigint): bigint;

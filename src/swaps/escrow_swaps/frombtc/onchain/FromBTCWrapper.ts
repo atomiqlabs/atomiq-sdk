@@ -466,8 +466,8 @@ export class FromBTCWrapper<
                                     exactOut: !amountData.exactIn,
                                     sequence,
 
-                                    claimerBounty: throwIfUndefined(claimerBountyPrefetchPromise),
-                                    feeRate: throwIfUndefined(feeRatePromise),
+                                    claimerBounty: throwIfUndefined(claimerBountyPrefetchPromise, "Watchtower fee pre-fetch failed!"),
+                                    feeRate: throwIfUndefined(feeRatePromise, "Network fee rate pre-fetch failed!"),
                                     additionalParams
                                 },
                                 this._options.postRequestTimeout, abortController.signal, retryCount>0 ? false : undefined
@@ -495,7 +495,7 @@ export class FromBTCWrapper<
                                 amountData.token, {}, pricePrefetchPromise, usdPricePrefetchPromise, abortController.signal
                             ),
                             this.verifyReturnedSignature(recipient, data, resp, feeRatePromise, signDataPromise, abortController.signal),
-                            this.verifyIntermediaryLiquidity(data.getAmount(), throwIfUndefined(liquidityPromise)),
+                            this.verifyIntermediaryLiquidity(data.getAmount(), throwIfUndefined(liquidityPromise, "LP liquidity pre-fetch failed!")),
                         ]);
 
                         const quote = new FromBTCSwap<T>(this, {

@@ -13,7 +13,9 @@ import { TokenAmount } from "../../../../types/TokenAmount";
 import { BtcToken, SCToken } from "../../../../types/Token";
 import { LoggerType } from "../../../../utils/Logger";
 import { LNURLWithdraw } from "../../../../types/lnurl/LNURLWithdraw";
-import { SwapExecutionAction } from "../../../../types/SwapExecutionAction";
+import { SwapExecutionActionSendToAddress, SwapExecutionActionSignSmartChainTx } from "../../../../types/SwapExecutionAction";
+import { SwapExecutionStepPayment, SwapExecutionStepSettlement } from "../../../../types/SwapExecutionStep";
+import { SwapStateInfo } from "../../../../types/SwapStateInfo";
 /**
  * State enum for legacy Lightning -> Smart chain swaps
  * @category Swaps/Legacy/Lightning → Smart chain
@@ -288,38 +290,30 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
         delayBetweenCommitAndClaimSeconds?: number;
     }): Promise<boolean>;
     /**
-     * @inheritDoc
-     *
-     * @param options
-     * @param options.skipChecks Skip checks like making sure init signature is still valid and swap
-     *  wasn't commited yet (this is handled on swap creation, if you commit right after quoting, you
-     *  can use `skipChecks=true`)
-     * @param options.secret A swap secret to use for the claim transaction, generally only needed if the swap
-     *  was recovered from on-chain data, or the pre-image was generated outside the SDK
+     * @internal
      */
-    txsExecute(options?: {
-        skipChecks?: boolean;
+    protected _getExecutionStatus(options?: {
         secret?: string;
     }): Promise<{
-        name: "Payment";
-        description: string;
-        chain: "LIGHTNING";
-        txs: {
-            type: "BOLT11_PAYMENT_REQUEST";
-            address: string;
-            hyperlink: string;
-        }[];
-    }[] | ({
-        name: "Commit";
-        description: string;
-        chain: T["ChainId"];
-        txs: T["TX"][];
-    } | {
-        name: "Claim";
-        description: string;
-        chain: T["ChainId"];
-        txs: T["TX"][];
-    })[]>;
+        steps: [SwapExecutionStepPayment<"LIGHTNING">, SwapExecutionStepSettlement<T["ChainId"], "awaiting_manual">];
+        buildCurrentAction: (actionOptions?: {
+            skipChecks?: boolean;
+        }) => Promise<SwapExecutionActionSendToAddress<true> | SwapExecutionActionSignSmartChainTx<T> | undefined>;
+        state: FromBTCLNSwapState;
+    }>;
+    /**
+     * @internal
+     */
+    private _buildLightningPaymentAction;
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    _submitExecutionTransactions(txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal, requiredStates?: FromBTCLNSwapState[]): Promise<string[]>;
+    /**
+     * @internal
+     */
+    private _buildClaimSmartChainTxAction;
     /**
      * @inheritDoc
      *
@@ -330,10 +324,32 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
      * @param options.secret A swap secret to use for the claim transaction, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      */
-    getCurrentActions(options?: {
+    getExecutionAction(options?: {
         skipChecks?: boolean;
         secret?: string;
-    }): Promise<SwapExecutionAction<T>[]>;
+    }): Promise<SwapExecutionActionSendToAddress<true> | SwapExecutionActionSignSmartChainTx<T> | undefined>;
+    /**
+     * @inheritDoc
+     */
+    getExecutionStatus(options?: {
+        skipBuildingAction?: boolean;
+        skipChecks?: boolean;
+        secret?: string;
+    }): Promise<{
+        steps: [
+            SwapExecutionStepPayment<"LIGHTNING">,
+            SwapExecutionStepSettlement<T["ChainId"], "awaiting_manual">
+        ];
+        currentAction: SwapExecutionActionSendToAddress<true> | SwapExecutionActionSignSmartChainTx<T> | undefined;
+        stateInfo: SwapStateInfo<FromBTCLNSwapState>;
+    }>;
+    /**
+     * @inheritDoc
+     */
+    getExecutionSteps(): Promise<[
+        SwapExecutionStepPayment<"LIGHTNING">,
+        SwapExecutionStepSettlement<T["ChainId"], "awaiting_manual">
+    ]>;
     /**
      * Checks whether the LP received the LN payment and we can continue by committing & claiming the HTLC on-chain
      *

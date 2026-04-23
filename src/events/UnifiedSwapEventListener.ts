@@ -134,19 +134,27 @@ export class UnifiedSwapEventListener<
 
     }
 
-    listener?: EventListener<T["Data"]>;
-    async start() {
+    private noAutomaticPoll?: boolean;
+    private listener?: EventListener<T["Data"]>;
+
+    async start(noAutomaticPoll?: boolean) {
         if(this.listener!=null) return;
         logger.info("start(): Starting unified swap event listener");
         await this.storage.init();
         logger.debug("start(): Storage initialized");
-        await this.events.init();
+        await this.events.init(noAutomaticPoll);
+        this.noAutomaticPoll = noAutomaticPoll;
         logger.debug("start(): Events initialized");
         this.events.registerListener(this.listener = async (events) => {
             await this.processEvents(events);
             return true;
         });
         logger.info("start(): Successfully initiated the unified swap event listener!");
+    }
+
+    poll(previousState: any): Promise<any> {
+        if(!this.noAutomaticPoll) throw new Error("Only supported when no automatic events polling is configured!");
+        return this.events.poll(previousState);
     }
 
     stop(): Promise<void> {

@@ -40,7 +40,16 @@ import {
     serializePriceInfoType
 } from "../../../../types/PriceInfoType";
 import {sha256} from "@noble/hashes/sha2";
-import {SwapExecutionAction} from "../../../../types/SwapExecutionAction";
+import {
+    SwapExecutionActionSendToAddress,
+    SwapExecutionActionSignSmartChainTx,
+    SwapExecutionActionWait
+} from "../../../../types/SwapExecutionAction";
+import {
+    SwapExecutionStepPayment,
+    SwapExecutionStepSettlement
+} from "../../../../types/SwapExecutionStep";
+import {SwapStateInfo} from "../../../../types/SwapStateInfo";
 
 /**
  * State enum for FromBTCLNAuto swaps
@@ -825,28 +834,232 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
     }
 
     /**
-     * @inheritDoc
+     * @internal
      */
-    async txsExecute() {
-        if (this._state === FromBTCLNAutoSwapState.PR_CREATED) {
-            if (!await this._verifyQuoteValid()) throw new Error("Quote already expired or close to expiry!");
-            return [
-                {
-                    name: "Payment" as const,
-                    description: "Initiates the swap by paying up the lightning network invoice",
-                    chain: "LIGHTNING" as const,
-                    txs: [
-                        {
-                            type: "BOLT11_PAYMENT_REQUEST" as const,
-                            address: this.getAddress(),
-                            hyperlink: this.getHyperlink()
-                        }
-                    ]
+    protected async _getExecutionStatus(options?: {
+        maxWaitTillAutomaticSettlementSeconds?: number,
+        secret?: string
+    }) {
+        if(options?.secret!=null) this.setSecretPreimage(options.secret);
+
+        const state = this._state;
+        const now = Date.now();
+
+        let lightningPaymentStatus: SwapExecutionStepPayment<"LIGHTNING">["status"] = "inactive";
+        let destinationSettlementStatus: SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">["status"] = "inactive";
+        let buildCurrentAction: (actionOptions?: {
+            manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"]
+        }) => Promise<
+            SwapExecutionActionSendToAddress<true> |
+            SwapExecutionActionWait<"LP" | "SETTLEMENT"> |
+            SwapExecutionActionSignSmartChainTx<T> |
+            undefined
+        > = async () => undefined;
+
+        switch(state) {
+            case FromBTCLNAutoSwapState.PR_CREATED: {
+                const quoteValid = await this._verifyQuoteValid();
+                lightningPaymentStatus = quoteValid ? "awaiting" : "soft_expired";
+                if(quoteValid && this.pr!=null && this.pr.toLowerCase().startsWith("ln")) {
+                    buildCurrentAction = this._buildLightningPaymentAction.bind(this);
                 }
-            ];
+                break;
+            }
+            case FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED:
+                lightningPaymentStatus = "soft_expired";
+                break;
+            case FromBTCLNAutoSwapState.QUOTE_EXPIRED:
+                lightningPaymentStatus = "expired";
+                break;
+            case FromBTCLNAutoSwapState.PR_PAID:
+                lightningPaymentStatus = "received";
+                destinationSettlementStatus = "waiting_lp";
+                buildCurrentAction = this._buildWaitLpAction.bind(this);
+                break;
+            case FromBTCLNAutoSwapState.CLAIM_COMMITED:
+                lightningPaymentStatus = "received";
+                if(
+                    this._commitedAt==null ||
+                    options?.maxWaitTillAutomaticSettlementSeconds===0 ||
+                    (now - this._commitedAt) > (options?.maxWaitTillAutomaticSettlementSeconds ?? 60)*1000
+                ) {
+                    destinationSettlementStatus = "awaiting_manual";
+                    if(this.hasSecretPreimage()) {
+                        //TODO: Maybe add an action that would prompt the user to reveal the pre-image
+                        buildCurrentAction = this._buildClaimSmartChainTxAction.bind(this);
+                    }
+                } else {
+                    destinationSettlementStatus = "awaiting_automatic";
+                    //TODO: Maybe add an action that would prompt the user to reveal the pre-image
+                    buildCurrentAction = this._buildWaitSettlementAction.bind(this, options?.maxWaitTillAutomaticSettlementSeconds);
+                }
+                break;
+            case FromBTCLNAutoSwapState.CLAIM_CLAIMED:
+                lightningPaymentStatus = "confirmed";
+                destinationSettlementStatus = "settled";
+                break;
+            case FromBTCLNAutoSwapState.EXPIRED:
+            case FromBTCLNAutoSwapState.FAILED:
+                lightningPaymentStatus = "expired";
+                destinationSettlementStatus = "expired";
+                break;
         }
 
-        throw new Error("Invalid swap state to obtain execution txns, required PR_CREATED");
+        return {
+            steps: [
+                {
+                    type: "Payment",
+                    side: "source",
+                    chain: "LIGHTNING",
+                    title: "Lightning payment",
+                    description: "Pay the Lightning network invoice to initiate the swap",
+                    status: lightningPaymentStatus,
+                    initTxId: this.getInputTxId(),
+                    settleTxId: lightningPaymentStatus==="confirmed" ? this.getInputTxId() : undefined
+                },
+                {
+                    type: "Settlement",
+                    side: "destination",
+                    chain: this.chainIdentifier,
+                    title: "Destination settlement",
+                    description: `Wait for the LP to initiate on the ${this.chainIdentifier} side, then wait for automatic settlement, or settle manually if it takes too long`,
+                    status: destinationSettlementStatus,
+                    initTxId: this._commitTxId,
+                    settleTxId: this._claimTxId
+                }
+            ] as [
+                SwapExecutionStepPayment<"LIGHTNING">,
+                SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
+            ],
+            buildCurrentAction,
+            state
+        };
+    }
+
+    /**
+     * @internal
+     */
+    private async _buildLightningPaymentAction(): Promise<SwapExecutionActionSendToAddress<true>> {
+        return {
+            type: "SendToAddress",
+            name: "Deposit on Lightning",
+            description: "Pay the lightning network invoice to initiate the swap",
+            chain: "LIGHTNING",
+            txs: [{
+                type: "BOLT11_PAYMENT_REQUEST",
+                address: this.getAddress(),
+                hyperlink: this.getHyperlink(),
+                amount: this.getInput()
+            }],
+            waitForTransactions: async (
+                maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal
+            ) => {
+                const abortController = extendAbortController(
+                    abortSignal, maxWaitTimeSeconds, "Timed out waiting for lightning payment"
+                );
+                const success = await this._waitForLpPaymentReceived(pollIntervalSeconds, abortController.signal);
+                if(!success) throw new Error("Quote expired while waiting for Lightning payment");
+
+                return this.getInputTxId()!;
+            }
+        } as SwapExecutionActionSendToAddress<true>;
+    }
+
+    /**
+     * @internal
+     */
+    private async _buildWaitLpAction(): Promise<SwapExecutionActionWait<"LP">> {
+        return {
+            type: "Wait",
+            name: "Awaiting LP payout",
+            description: "Wait for the LP to create the swap HTLC on the destination smart chain",
+            pollTimeSeconds: 5,
+            expectedTimeSeconds: 10,
+            wait: async (
+                maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal
+            ) => {
+                const abortController = extendAbortController(
+                    abortSignal, maxWaitTimeSeconds, "Timed out waiting for LP payout"
+                );
+                await this.waitTillCommited(pollIntervalSeconds, abortController.signal);
+            }
+        } as SwapExecutionActionWait<"LP">;
+    }
+
+    /**
+     * @internal
+     */
+    private async _buildWaitSettlementAction(
+        maxWaitTillAutomaticSettlementSeconds?: number
+    ): Promise<SwapExecutionActionWait<"SETTLEMENT">> {
+        return {
+            type: "Wait",
+            name: "Automatic settlement",
+            description: "Wait for automatic settlement by the watchtower",
+            pollTimeSeconds: 5,
+            expectedTimeSeconds: 10,
+            wait: async (
+                maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal
+            ) => {
+                await this.waitTillClaimed(
+                    maxWaitTimeSeconds ?? maxWaitTillAutomaticSettlementSeconds ?? 60,
+                    abortSignal,
+                    undefined,
+                    pollIntervalSeconds
+                );
+            }
+        } as SwapExecutionActionWait<"SETTLEMENT">;
+    }
+
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    async _submitExecutionTransactions(
+        txs: (T["SignedTXType"] | string)[],
+        abortSignal?: AbortSignal,
+        requiredStates?: FromBTCLNAutoSwapState[]
+    ): Promise<string[]> {
+        if(requiredStates!=null && !requiredStates.includes(this._state)) throw new Error("Swap state has changed before transactions were submitted!");
+
+        if(this._state===FromBTCLNAutoSwapState.CLAIM_COMMITED) {
+            const parsedTxs: T["SignedTXType"][] = [];
+            for(let tx of txs) {
+                parsedTxs.push(typeof(tx)==="string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
+            }
+            const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
+            await this.waitTillClaimed(undefined, abortSignal);
+            return txIds;
+        }
+
+        throw new Error("Invalid swap state for transaction submission!");
+    }
+
+    /**
+     * @internal
+     */
+    private async _buildClaimSmartChainTxAction(actionOptions?: {
+        manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"],
+        secret?: string
+    }): Promise<SwapExecutionActionSignSmartChainTx<T>> {
+        const signerAddress =
+            await this.wrapper._getSignerAddress(actionOptions?.manualSettlementSmartChainSigner);
+
+        return {
+            type: "SignSmartChainTransaction",
+            name: "Settle manually",
+            description: "Manually settle (claim) the swap on the destination smart chain",
+            chain: this.chainIdentifier,
+            txs: await this.prepareTransactions(this.txsClaim(actionOptions?.manualSettlementSmartChainSigner, actionOptions?.secret)),
+            submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => {
+                return this._submitExecutionTransactions(
+                    txs,
+                    abortSignal,
+                    [FromBTCLNAutoSwapState.CLAIM_COMMITED]
+                );
+            },
+            requiredSigner: signerAddress ?? this._getInitiator()
+        } as SwapExecutionActionSignSmartChainTx<T>;
     }
 
     /**
@@ -857,32 +1070,59 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
      * @param options.secret A swap secret to broadcast to watchtowers, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      */
-    async getCurrentActions(options?: {
+    async getExecutionAction(options?: {
         manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"],
         maxWaitTillAutomaticSettlementSeconds?: number,
         secret?: string
-    }): Promise<SwapExecutionAction<T>[]> {
-        if(options?.secret!=null) this.setSecretPreimage(options.secret);
-        if (this._state === FromBTCLNAutoSwapState.PR_CREATED) {
-            try {
-                return await this.txsExecute();
-            } catch (e) {}
-        }
-        if(this.isClaimable()) {
-            if(
-                this._commitedAt==null ||
-                options?.maxWaitTillAutomaticSettlementSeconds===0 ||
-                (Date.now() - this._commitedAt) > (options?.maxWaitTillAutomaticSettlementSeconds ?? 60)*1000
-            ) {
-                return [{
-                    name: "Claim" as const,
-                    description: "Manually settle (claim) the swap on the destination smart chain",
-                    chain: this.chainIdentifier,
-                    txs: await this.txsClaim(options?.manualSettlementSmartChainSigner)
-                }];
-            }
-        }
-        return [];
+    }): Promise<
+        SwapExecutionActionSendToAddress<true> |
+        SwapExecutionActionWait<"LP" | "SETTLEMENT"> |
+        SwapExecutionActionSignSmartChainTx<T> |
+        undefined
+    > {
+        const executionStatus = await this._getExecutionStatus(options);
+        return executionStatus.buildCurrentAction(options);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    // TODO: Figure how we gonna trigger an LNURL-withdraw with the execution actions
+    async getExecutionStatus(options?: {
+        skipBuildingAction?: boolean,
+        manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"],
+        maxWaitTillAutomaticSettlementSeconds?: number,
+        secret?: string
+    }): Promise<{
+        steps: [
+            SwapExecutionStepPayment<"LIGHTNING">,
+            SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
+        ],
+        currentAction:
+            SwapExecutionActionSendToAddress<true> |
+            SwapExecutionActionWait<"LP" | "SETTLEMENT"> |
+            SwapExecutionActionSignSmartChainTx<T> |
+            undefined,
+        stateInfo: SwapStateInfo<FromBTCLNAutoSwapState>
+    }> {
+        const executionStatus = await this._getExecutionStatus(options);
+        return {
+            steps: executionStatus.steps,
+            currentAction: options?.skipBuildingAction ? undefined : await executionStatus.buildCurrentAction(options),
+            stateInfo: this._getStateInfo(executionStatus.state)
+        };
+    }
+
+    /**
+     * @inheritDoc
+     */
+    async getExecutionSteps(options?: {
+        maxWaitTillAutomaticSettlementSeconds?: number
+    }): Promise<[
+        SwapExecutionStepPayment<"LIGHTNING">,
+        SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
+    ]> {
+        return (await this._getExecutionStatus(options)).steps;
     }
 
 
@@ -952,51 +1192,23 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
     }
 
     /**
-     * Checks the data returned by the intermediary in the payment auth request
-     *
-     * @param data Parsed swap data as returned by the intermediary
-     *
-     * @throws {IntermediaryError} If the returned are not valid
-     * @throws {Error} If the swap is already committed on-chain
-     *
-     * @private
-     */
-    private async checkIntermediaryReturnedData(data: T["Data"]): Promise<void> {
-        if (!data.isPayOut()) throw new IntermediaryError("Invalid not pay out");
-        if (data.getType() !== ChainSwapType.HTLC) throw new IntermediaryError("Invalid swap type");
-        if (!data.isOfferer(this.getSwapData().getOfferer())) throw new IntermediaryError("Invalid offerer used");
-        if (!data.isClaimer(this._getInitiator())) throw new IntermediaryError("Invalid claimer used");
-        if (!data.isToken(this.getSwapData().getToken())) throw new IntermediaryError("Invalid token used");
-        if (data.getSecurityDeposit() !== this.getSwapData().getSecurityDeposit()) throw new IntermediaryError("Invalid security deposit!");
-        if (data.getClaimerBounty() !== this.getSwapData().getClaimerBounty()) throw new IntermediaryError("Invalid security deposit!");
-        if (data.getAmount() < this.getSwapData().getAmount()) throw new IntermediaryError("Invalid amount received!");
-        if (data.getClaimHash() !== this.getSwapData().getClaimHash()) throw new IntermediaryError("Invalid payment hash used!");
-        if (!data.isDepositToken(this.getSwapData().getDepositToken())) throw new IntermediaryError("Invalid deposit token used!");
-        if (data.hasSuccessAction()) throw new IntermediaryError("Invalid has success action");
-
-        if (await this.wrapper._contract.isExpired(this._getInitiator(), data)) throw new IntermediaryError("Not enough time to claim!");
-        if (this.wrapper._getHtlcTimeout(data) <= (Date.now()/1000)) throw new IntermediaryError("HTLC expires too soon!");
-    }
-
-    /**
-     * Waits till a lightning network payment is received by the intermediary, and the intermediary
-     *  initiates the swap HTLC on the smart chain side. After the HTLC is initiated you can wait
-     *  for an automatic settlement by the watchtowers with the {@link waitTillClaimed} function,
-     *  or settle manually using the {@link claim} or {@link txsClaim} functions.
+     * Waits till a lightning network payment is received by the intermediary, after this you still should wait
+     *  till the LP offers an HTLC towards the user.
      *
      * If this swap is using an LNURL-withdraw link as input, it automatically posts the
      *  generated invoice to the LNURL service to pay it.
      *
-     * @param onPaymentReceived Callback as for when the LP reports having received the ln payment
+     * @remarks For internal use, rather use {@link waitForPayment} which properly waits till the LP also
+     *  offers a swap HTLC.
+     *
      * @param abortSignal Abort signal to stop waiting for payment
      * @param checkIntervalSeconds How often to poll the intermediary for answer (default 5 seconds)
+     *
+     * @internal
      */
-    async waitForPayment(onPaymentReceived?: (txId: string) => void, checkIntervalSeconds?: number, abortSignal?: AbortSignal): Promise<boolean> {
+    async _waitForLpPaymentReceived(checkIntervalSeconds?: number, abortSignal?: AbortSignal): Promise<boolean> {
         checkIntervalSeconds ??= 5;
-        if(this._state===FromBTCLNAutoSwapState.PR_PAID) {
-            await this.waitTillCommited(checkIntervalSeconds, abortSignal);
-        }
-        if(this._state>=FromBTCLNAutoSwapState.CLAIM_COMMITED) return true;
+        if(this._state>=FromBTCLNAutoSwapState.PR_PAID) return true;
         if(
             this._state!==FromBTCLNAutoSwapState.PR_CREATED
         ) throw new Error("Must be in PR_CREATED state!");
@@ -1066,8 +1278,62 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
             abortController.abort();
 
             if(!paymentResult) return false;
-            if(onPaymentReceived!=null) onPaymentReceived(this.getInputTxId()!);
         }
+
+        return this._state>=FromBTCLNAutoSwapState.PR_PAID;
+    }
+
+    /**
+     * Checks the data returned by the intermediary in the payment auth request
+     *
+     * @param data Parsed swap data as returned by the intermediary
+     *
+     * @throws {IntermediaryError} If the returned are not valid
+     * @throws {Error} If the swap is already committed on-chain
+     *
+     * @private
+     */
+    private async checkIntermediaryReturnedData(data: T["Data"]): Promise<void> {
+        if (!data.isPayOut()) throw new IntermediaryError("Invalid not pay out");
+        if (data.getType() !== ChainSwapType.HTLC) throw new IntermediaryError("Invalid swap type");
+        if (!data.isOfferer(this.getSwapData().getOfferer())) throw new IntermediaryError("Invalid offerer used");
+        if (!data.isClaimer(this._getInitiator())) throw new IntermediaryError("Invalid claimer used");
+        if (!data.isToken(this.getSwapData().getToken())) throw new IntermediaryError("Invalid token used");
+        if (data.getSecurityDeposit() !== this.getSwapData().getSecurityDeposit()) throw new IntermediaryError("Invalid security deposit!");
+        if (data.getClaimerBounty() !== this.getSwapData().getClaimerBounty()) throw new IntermediaryError("Invalid security deposit!");
+        if (data.getAmount() < this.getSwapData().getAmount()) throw new IntermediaryError("Invalid amount received!");
+        if (data.getClaimHash() !== this.getSwapData().getClaimHash()) throw new IntermediaryError("Invalid payment hash used!");
+        if (!data.isDepositToken(this.getSwapData().getDepositToken())) throw new IntermediaryError("Invalid deposit token used!");
+        if (data.hasSuccessAction()) throw new IntermediaryError("Invalid has success action");
+
+        if (await this.wrapper._contract.isExpired(this._getInitiator(), data)) throw new IntermediaryError("Not enough time to claim!");
+        if (this.wrapper._getHtlcTimeout(data) <= (Date.now()/1000)) throw new IntermediaryError("HTLC expires too soon!");
+    }
+
+    /**
+     * Waits till a lightning network payment is received by the intermediary, and the intermediary
+     *  initiates the swap HTLC on the smart chain side. After the HTLC is initiated you can wait
+     *  for an automatic settlement by the watchtowers with the {@link waitTillClaimed} function,
+     *  or settle manually using the {@link claim} or {@link txsClaim} functions.
+     *
+     * If this swap is using an LNURL-withdraw link as input, it automatically posts the
+     *  generated invoice to the LNURL service to pay it.
+     *
+     * @param onPaymentReceived Callback as for when the LP reports having received the ln payment
+     * @param abortSignal Abort signal to stop waiting for payment
+     * @param checkIntervalSeconds How often to poll the intermediary for answer (default 5 seconds)
+     */
+    async waitForPayment(onPaymentReceived?: (txId: string) => void, checkIntervalSeconds?: number, abortSignal?: AbortSignal): Promise<boolean> {
+        checkIntervalSeconds ??= 5;
+        if(this._state===FromBTCLNAutoSwapState.PR_PAID) {
+            await this.waitTillCommited(checkIntervalSeconds, abortSignal);
+        }
+        if(this._state>=FromBTCLNAutoSwapState.CLAIM_COMMITED) return true;
+
+        const success = await this._waitForLpPaymentReceived(checkIntervalSeconds, abortSignal);
+        if(!success) return false;
+
+        if(onPaymentReceived!=null) onPaymentReceived(this.getInputTxId()!);
 
         if((this._state as FromBTCLNAutoSwapState)===FromBTCLNAutoSwapState.PR_PAID) {
             await this.waitTillCommited(checkIntervalSeconds, abortSignal);
@@ -1206,12 +1472,13 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
      * @param abortSignal AbortSignal
      * @param secret A swap secret to broadcast to watchtowers, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
+     * @param pollIntervalSeconds How often to poll via the watchdog
      *
      * @throws {Error} If swap is in invalid state (must be {@link FromBTCLNAutoSwapState.CLAIM_COMMITED})
      * @throws {Error} If the LP refunded sooner than we were able to claim
      * @returns {boolean} whether the swap was claimed in time or not
      */
-    async waitTillClaimed(maxWaitTimeSeconds?: number, abortSignal?: AbortSignal, secret?: string): Promise<boolean> {
+    async waitTillClaimed(maxWaitTimeSeconds?: number, abortSignal?: AbortSignal, secret?: string, pollIntervalSeconds?: number): Promise<boolean> {
         if(this._state===FromBTCLNAutoSwapState.CLAIM_CLAIMED) return Promise.resolve(true);
         if(this._state!==FromBTCLNAutoSwapState.CLAIM_COMMITED) throw new Error("Invalid state (not CLAIM_COMMITED)");
 
@@ -1235,7 +1502,7 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
         let res: 0 | 1 | SwapCommitState;
         try {
             res = await Promise.race([
-                this.watchdogWaitTillResult(undefined, abortController.signal),
+                this.watchdogWaitTillResult(pollIntervalSeconds, abortController.signal),
                 this.waitTillState(FromBTCLNAutoSwapState.CLAIM_CLAIMED, "eq", abortController.signal).then(() => 0 as const),
                 this.waitTillState(FromBTCLNAutoSwapState.EXPIRED, "eq", abortController.signal).then(() => 1 as const),
             ]);

@@ -16,7 +16,9 @@ import { BtcToken, SCToken } from "../../../../types/Token";
 import { LoggerType } from "../../../../utils/Logger";
 import { LNURLWithdraw } from "../../../../types/lnurl/LNURLWithdraw";
 import { PriceInfoType } from "../../../../types/PriceInfoType";
-import { SwapExecutionAction } from "../../../../types/SwapExecutionAction";
+import { SwapExecutionActionSendToAddress, SwapExecutionActionSignSmartChainTx, SwapExecutionActionWait } from "../../../../types/SwapExecutionAction";
+import { SwapExecutionStepPayment, SwapExecutionStepSettlement } from "../../../../types/SwapExecutionStep";
+import { SwapStateInfo } from "../../../../types/SwapStateInfo";
 /**
  * State enum for FromBTCLNAuto swaps
  * @category Swaps/Lightning → Smart chain
@@ -396,18 +398,39 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
         secret?: string;
     }): Promise<boolean>;
     /**
-     * @inheritDoc
+     * @internal
      */
-    txsExecute(): Promise<{
-        name: "Payment";
-        description: string;
-        chain: "LIGHTNING";
-        txs: {
-            type: "BOLT11_PAYMENT_REQUEST";
-            address: string;
-            hyperlink: string;
-        }[];
-    }[]>;
+    protected _getExecutionStatus(options?: {
+        maxWaitTillAutomaticSettlementSeconds?: number;
+        secret?: string;
+    }): Promise<{
+        steps: [SwapExecutionStepPayment<"LIGHTNING">, SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">];
+        buildCurrentAction: (actionOptions?: {
+            manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
+        }) => Promise<SwapExecutionActionSendToAddress<true> | SwapExecutionActionWait<"LP" | "SETTLEMENT"> | SwapExecutionActionSignSmartChainTx<T> | undefined>;
+        state: number;
+    }>;
+    /**
+     * @internal
+     */
+    private _buildLightningPaymentAction;
+    /**
+     * @internal
+     */
+    private _buildWaitLpAction;
+    /**
+     * @internal
+     */
+    private _buildWaitSettlementAction;
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    _submitExecutionTransactions(txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal, requiredStates?: FromBTCLNAutoSwapState[]): Promise<string[]>;
+    /**
+     * @internal
+     */
+    private _buildClaimSmartChainTxAction;
     /**
      *
      * @param options.manualSettlementSmartChainSigner Optional smart chain signer to create a manual claim (settlement) transaction
@@ -416,11 +439,36 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
      * @param options.secret A swap secret to broadcast to watchtowers, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      */
-    getCurrentActions(options?: {
+    getExecutionAction(options?: {
         manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
         maxWaitTillAutomaticSettlementSeconds?: number;
         secret?: string;
-    }): Promise<SwapExecutionAction<T>[]>;
+    }): Promise<SwapExecutionActionSendToAddress<true> | SwapExecutionActionWait<"LP" | "SETTLEMENT"> | SwapExecutionActionSignSmartChainTx<T> | undefined>;
+    /**
+     * @inheritDoc
+     */
+    getExecutionStatus(options?: {
+        skipBuildingAction?: boolean;
+        manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
+        maxWaitTillAutomaticSettlementSeconds?: number;
+        secret?: string;
+    }): Promise<{
+        steps: [
+            SwapExecutionStepPayment<"LIGHTNING">,
+            SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
+        ];
+        currentAction: SwapExecutionActionSendToAddress<true> | SwapExecutionActionWait<"LP" | "SETTLEMENT"> | SwapExecutionActionSignSmartChainTx<T> | undefined;
+        stateInfo: SwapStateInfo<FromBTCLNAutoSwapState>;
+    }>;
+    /**
+     * @inheritDoc
+     */
+    getExecutionSteps(options?: {
+        maxWaitTillAutomaticSettlementSeconds?: number;
+    }): Promise<[
+        SwapExecutionStepPayment<"LIGHTNING">,
+        SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
+    ]>;
     /**
      * Checks whether the LP received the LN payment
      *
@@ -439,6 +487,22 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
      * @internal
      */
     _saveRealSwapData(data: T["Data"], save?: boolean): Promise<boolean>;
+    /**
+     * Waits till a lightning network payment is received by the intermediary, after this you still should wait
+     *  till the LP offers an HTLC towards the user.
+     *
+     * If this swap is using an LNURL-withdraw link as input, it automatically posts the
+     *  generated invoice to the LNURL service to pay it.
+     *
+     * @remarks For internal use, rather use {@link waitForPayment} which properly waits till the LP also
+     *  offers a swap HTLC.
+     *
+     * @param abortSignal Abort signal to stop waiting for payment
+     * @param checkIntervalSeconds How often to poll the intermediary for answer (default 5 seconds)
+     *
+     * @internal
+     */
+    _waitForLpPaymentReceived(checkIntervalSeconds?: number, abortSignal?: AbortSignal): Promise<boolean>;
     /**
      * Checks the data returned by the intermediary in the payment auth request
      *
@@ -501,12 +565,13 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
      * @param abortSignal AbortSignal
      * @param secret A swap secret to broadcast to watchtowers, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
+     * @param pollIntervalSeconds How often to poll via the watchdog
      *
      * @throws {Error} If swap is in invalid state (must be {@link FromBTCLNAutoSwapState.CLAIM_COMMITED})
      * @throws {Error} If the LP refunded sooner than we were able to claim
      * @returns {boolean} whether the swap was claimed in time or not
      */
-    waitTillClaimed(maxWaitTimeSeconds?: number, abortSignal?: AbortSignal, secret?: string): Promise<boolean>;
+    waitTillClaimed(maxWaitTimeSeconds?: number, abortSignal?: AbortSignal, secret?: string, pollIntervalSeconds?: number): Promise<boolean>;
     /**
      * Whether this swap uses an LNURL-withdraw link
      */

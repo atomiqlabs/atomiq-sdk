@@ -98,8 +98,11 @@ export declare class UnifiedSwapStorage<T extends ChainType> {
     /**
      * Saves multiple swaps to storage in a batch operation
      * @param values Array of swaps to save
+     * @param lenient In lenient mode the underlying persistent layer doesn't throw on individual swap failures due to
+     *  optimistic concurrency, or other (implementation specific), this flag is to be used when the saving of the swap
+     *  isn't mission-critical for executing next steps (e.g. in tick or sync loops)
      */
-    saveAll<S extends ISwap<T>>(values: S[]): Promise<void>;
+    saveAll<S extends ISwap<T>>(values: S[], lenient?: boolean): Promise<void>;
     /**
      * Removes a swap from storage
      * @param value Swap to remove
@@ -108,7 +111,10 @@ export declare class UnifiedSwapStorage<T extends ChainType> {
     /**
      * Removes multiple swaps from storage in a batch operation
      * @param values Array of swaps to remove
+     * @param lenient In lenient mode the underlying persistent layer doesn't throw on individual swap failures due to
+     *  optimistic concurrency, or other (implementation specific), this flag is to be used when the saving of the swap
+     *  isn't mission-critical for executing next steps (e.g. in tick or sync loops)
      */
-    removeAll<S extends ISwap<T>>(values: S[]): Promise<void>;
+    removeAll<S extends ISwap<T>>(values: S[], lenient?: boolean): Promise<void>;
 }
 export {};

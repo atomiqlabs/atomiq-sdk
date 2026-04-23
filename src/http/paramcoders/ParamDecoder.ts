@@ -1,6 +1,10 @@
 import {IParamReader} from "./IParamReader";
 import {Buffer} from "buffer";
 
+function ensureBuffer(input: any): Buffer {
+    if(input instanceof Buffer) return input;
+    return Buffer.from(input);
+}
 
 export class ParamDecoder implements IParamReader {
 
@@ -56,8 +60,8 @@ export class ParamDecoder implements IParamReader {
                     this.frameHeader = leavesBuffer;
                     leavesBuffer = null;
                 } else {
-                    this.frameHeader = leavesBuffer.subarray(0, 4);
-                    leavesBuffer = leavesBuffer.subarray(4);
+                    this.frameHeader = ensureBuffer(leavesBuffer.subarray(0, 4));
+                    leavesBuffer = ensureBuffer(leavesBuffer.subarray(4));
                 }
             } else if(this.frameHeader.length<4) {
                 const requiredLen = 4-this.frameHeader.length;
@@ -66,13 +70,13 @@ export class ParamDecoder implements IParamReader {
                     leavesBuffer = null;
                 } else {
                     this.frameHeader = Buffer.concat([this.frameHeader, leavesBuffer.subarray(0, requiredLen)]);
-                    leavesBuffer = leavesBuffer.subarray(requiredLen);
+                    leavesBuffer = ensureBuffer(leavesBuffer.subarray(requiredLen));
                 }
             }
             if(leavesBuffer==null) continue;
             if(this.frameHeader==null || this.frameHeader.length<4) continue;
 
-            const frameLength = this.frameHeader.readUint32LE();
+            const frameLength = this.frameHeader.readUint32LE!=null ? this.frameHeader.readUint32LE() : this.frameHeader.readUInt32LE();
             const requiredLen = frameLength-this.frameDataLength;
 
             if(leavesBuffer.length<=requiredLen) {

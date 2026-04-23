@@ -2,6 +2,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ParamDecoder = void 0;
 const buffer_1 = require("buffer");
+function ensureBuffer(input) {
+    if (input instanceof buffer_1.Buffer)
+        return input;
+    return buffer_1.Buffer.from(input);
+}
 class ParamDecoder {
     constructor() {
         this.frameData = [];
@@ -48,8 +53,8 @@ class ParamDecoder {
                     leavesBuffer = null;
                 }
                 else {
-                    this.frameHeader = leavesBuffer.subarray(0, 4);
-                    leavesBuffer = leavesBuffer.subarray(4);
+                    this.frameHeader = ensureBuffer(leavesBuffer.subarray(0, 4));
+                    leavesBuffer = ensureBuffer(leavesBuffer.subarray(4));
                 }
             }
             else if (this.frameHeader.length < 4) {
@@ -60,14 +65,14 @@ class ParamDecoder {
                 }
                 else {
                     this.frameHeader = buffer_1.Buffer.concat([this.frameHeader, leavesBuffer.subarray(0, requiredLen)]);
-                    leavesBuffer = leavesBuffer.subarray(requiredLen);
+                    leavesBuffer = ensureBuffer(leavesBuffer.subarray(requiredLen));
                 }
             }
             if (leavesBuffer == null)
                 continue;
             if (this.frameHeader == null || this.frameHeader.length < 4)
                 continue;
-            const frameLength = this.frameHeader.readUint32LE();
+            const frameLength = this.frameHeader.readUint32LE != null ? this.frameHeader.readUint32LE() : this.frameHeader.readUInt32LE();
             const requiredLen = frameLength - this.frameDataLength;
             if (leavesBuffer.length <= requiredLen) {
                 this.frameData.push(leavesBuffer);

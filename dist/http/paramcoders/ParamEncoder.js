@@ -15,7 +15,12 @@ class ParamEncoder {
     writeParams(data) {
         const serialized = buffer_1.Buffer.from(JSON.stringify(data));
         const frameLengthBuffer = buffer_1.Buffer.alloc(4);
-        frameLengthBuffer.writeUint32LE(serialized.length);
+        if (frameLengthBuffer.writeUint32LE != null) {
+            frameLengthBuffer.writeUint32LE(serialized.length);
+        }
+        else {
+            frameLengthBuffer.writeUInt32LE(serialized.length);
+        }
         return this.writeFN(buffer_1.Buffer.concat([
             frameLengthBuffer,
             serialized

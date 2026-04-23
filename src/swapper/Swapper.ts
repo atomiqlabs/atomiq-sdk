@@ -553,7 +553,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
     }
 
     private async _init(): Promise<void> {
-        this.logger.debug("init(): Initializing swapper, sdk-lib version 16.1.3");
+        this.logger.debug("init(): Initializing swapper...");
 
         const abortController = new AbortController();
 
@@ -594,12 +594,19 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         for(let chainIdentifier in this._chains) {
             chainPromises.push((async() => {
                 const {
+                    chainInterface,
                     swapContract,
                     unifiedChainEvents,
                     unifiedSwapStorage,
                     wrappers,
                     reviver
                 } = this._chains[chainIdentifier];
+
+                const _chainInterface: any = chainInterface;
+                if(_chainInterface.verifyNetwork!=null) {
+                    await _chainInterface.verifyNetwork(this.bitcoinNetwork);
+                }
+
                 await swapContract.start();
                 this.logger.debug("init(): Intialized swap contract: "+chainIdentifier);
 

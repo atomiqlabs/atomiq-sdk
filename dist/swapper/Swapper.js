@@ -182,7 +182,7 @@ class Swapper extends events_1.EventEmitter {
         });
     }
     async _init() {
-        this.logger.debug("init(): Initializing swapper, sdk-lib version 16.1.3");
+        this.logger.debug("init(): Initializing swapper...");
         const abortController = new AbortController();
         const promises = [];
         let automaticClockDriftCorrectionPromise = undefined;
@@ -218,7 +218,11 @@ class Swapper extends events_1.EventEmitter {
         const chainPromises = [];
         for (let chainIdentifier in this._chains) {
             chainPromises.push((async () => {
-                const { swapContract, unifiedChainEvents, unifiedSwapStorage, wrappers, reviver } = this._chains[chainIdentifier];
+                const { chainInterface, swapContract, unifiedChainEvents, unifiedSwapStorage, wrappers, reviver } = this._chains[chainIdentifier];
+                const _chainInterface = chainInterface;
+                if (_chainInterface.verifyNetwork != null) {
+                    await _chainInterface.verifyNetwork(this.bitcoinNetwork);
+                }
                 await swapContract.start();
                 this.logger.debug("init(): Intialized swap contract: " + chainIdentifier);
                 await unifiedSwapStorage.init();

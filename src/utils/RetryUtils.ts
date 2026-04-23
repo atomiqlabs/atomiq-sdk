@@ -40,12 +40,19 @@ function checkError(e: any, errorAllowed: ((e: any) => boolean) | Constructor<Er
  * @param retryPolicy.exponential Whether to use exponentially increasing delays
  * @param errorAllowed A callback for determining whether a given error is allowed, and we should therefore not retry
  * @param abortSignal
+ * @param failureLogLevel
  * @returns Result of the action executing callback
  * @category Utilities
  */
-export async function tryWithRetries<T>(func: (retryCount: number) => Promise<T>, retryPolicy?: {
-    maxRetries?: number, delay?: number, exponential?: boolean
-}, errorAllowed?: ((e: any) => boolean) | Constructor<Error> | Constructor<Error>[], abortSignal?: AbortSignal): Promise<T> {
+export async function tryWithRetries<T>(
+    func: (retryCount: number) => Promise<T>,
+    retryPolicy?: {
+        maxRetries?: number, delay?: number, exponential?: boolean
+    },
+    errorAllowed?: ((e: any) => boolean) | Constructor<Error> | Constructor<Error>[],
+    abortSignal?: AbortSignal,
+    failureLogLevel: "debug" | "info" | "warn" | "error" = "warn"
+): Promise<T> {
     retryPolicy = retryPolicy || {};
     retryPolicy.maxRetries = retryPolicy.maxRetries || 5;
     retryPolicy.delay = retryPolicy.delay || 500;
@@ -59,7 +66,7 @@ export async function tryWithRetries<T>(func: (retryCount: number) => Promise<T>
         } catch (e) {
             if (errorAllowed != null && checkError(e, errorAllowed)) throw e;
             err = e;
-            logger.debug("tryWithRetries(): Error on try number: " + i, e);
+            logger[failureLogLevel]("tryWithRetries(): Error on try number: " + i, e);
         }
         if (abortSignal != null && abortSignal.aborted) throw (abortSignal.reason || new Error("Aborted"));
         if (i !== retryPolicy.maxRetries - 1) {

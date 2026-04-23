@@ -241,7 +241,8 @@ export class IntermediaryDiscovery extends EventEmitter {
             () => IntermediaryAPI.getIntermediaryInfo(url, this.httpRequestTimeout, abortSignal),
             {maxRetries: 3, delay: 100, exponential: true},
             undefined,
-            abortSignal
+            abortSignal,
+            "debug"
         );
         abortSignal?.throwIfAborted();
 
@@ -255,7 +256,7 @@ export class IntermediaryDiscovery extends EventEmitter {
                         await this.swapContracts[chain].isValidDataSignature(Buffer.from(response.envelope), signature, address);
                         addresses[chain] = address;
                     } catch (e) {
-                        logger.warn("Failed to verify "+chain+" signature for intermediary: "+url);
+                        logger.warn("getNodeInfo(): Failed to verify "+chain+" signature for intermediary: "+url);
                     }
                 })());
             }
@@ -303,8 +304,9 @@ export class IntermediaryDiscovery extends EventEmitter {
                 services[swapHandlerTypeToSwapType(key as SwapHandlerType)] = nodeInfo.info.services[key as SwapHandlerType];
             }
             return new Intermediary(url, nodeInfo.addresses, services);
-        } catch (e) {
-            logger.warn("fetchIntermediaries(): Error contacting intermediary "+url+": ", e);
+        } catch (e: any) {
+            logger.warn("fetchIntermediaries(): Intermediary "+url+` is unreachable due to ${e.name ?? e.message} error, skipping...`);
+            logger.debug("fetchIntermediaries(): Error contacting intermediary "+url+": ", e);
             return null;
         }
     }

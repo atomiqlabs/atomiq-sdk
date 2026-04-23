@@ -129,7 +129,7 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
      * @param abortSignal
      */
     async getNodeInfo(url, abortSignal) {
-        const response = await (0, RetryUtils_1.tryWithRetries)(() => IntermediaryAPI_1.IntermediaryAPI.getIntermediaryInfo(url, this.httpRequestTimeout, abortSignal), { maxRetries: 3, delay: 100, exponential: true }, undefined, abortSignal);
+        const response = await (0, RetryUtils_1.tryWithRetries)(() => IntermediaryAPI_1.IntermediaryAPI.getIntermediaryInfo(url, this.httpRequestTimeout, abortSignal), { maxRetries: 3, delay: 100, exponential: true }, undefined, abortSignal, "debug");
         abortSignal?.throwIfAborted();
         const promises = [];
         const addresses = {};
@@ -142,7 +142,7 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
                         addresses[chain] = address;
                     }
                     catch (e) {
-                        logger.warn("Failed to verify " + chain + " signature for intermediary: " + url);
+                        logger.warn("getNodeInfo(): Failed to verify " + chain + " signature for intermediary: " + url);
                     }
                 })());
             }
@@ -191,7 +191,8 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
             return new Intermediary_1.Intermediary(url, nodeInfo.addresses, services);
         }
         catch (e) {
-            logger.warn("fetchIntermediaries(): Error contacting intermediary " + url + ": ", e);
+            logger.warn("fetchIntermediaries(): Intermediary " + url + ` is unreachable due to ${e.name ?? e.message} error, skipping...`);
+            logger.debug("fetchIntermediaries(): Error contacting intermediary " + url + ": ", e);
             return null;
         }
     }

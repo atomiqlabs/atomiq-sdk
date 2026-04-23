@@ -10,6 +10,7 @@ type Constructor<T = any> = new (...args: any[]) => T;
  * @param retryPolicy.exponential Whether to use exponentially increasing delays
  * @param errorAllowed A callback for determining whether a given error is allowed, and we should therefore not retry
  * @param abortSignal
+ * @param failureLogLevel
  * @returns Result of the action executing callback
  * @category Utilities
  */
@@ -17,5 +18,5 @@ export declare function tryWithRetries<T>(func: (retryCount: number) => Promise<
     maxRetries?: number;
     delay?: number;
     exponential?: boolean;
-}, errorAllowed?: ((e: any) => boolean) | Constructor<Error> | Constructor<Error>[], abortSignal?: AbortSignal): Promise<T>;
+}, errorAllowed?: ((e: any) => boolean) | Constructor<Error> | Constructor<Error>[], abortSignal?: AbortSignal, failureLogLevel?: "debug" | "info" | "warn" | "error"): Promise<T>;
 export {};

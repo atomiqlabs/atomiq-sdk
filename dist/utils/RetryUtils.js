@@ -36,10 +36,11 @@ function checkError(e, errorAllowed) {
  * @param retryPolicy.exponential Whether to use exponentially increasing delays
  * @param errorAllowed A callback for determining whether a given error is allowed, and we should therefore not retry
  * @param abortSignal
+ * @param failureLogLevel
  * @returns Result of the action executing callback
  * @category Utilities
  */
-async function tryWithRetries(func, retryPolicy, errorAllowed, abortSignal) {
+async function tryWithRetries(func, retryPolicy, errorAllowed, abortSignal, failureLogLevel = "warn") {
     retryPolicy = retryPolicy || {};
     retryPolicy.maxRetries = retryPolicy.maxRetries || 5;
     retryPolicy.delay = retryPolicy.delay || 500;
@@ -53,7 +54,7 @@ async function tryWithRetries(func, retryPolicy, errorAllowed, abortSignal) {
             if (errorAllowed != null && checkError(e, errorAllowed))
                 throw e;
             err = e;
-            logger.debug("tryWithRetries(): Error on try number: " + i, e);
+            logger[failureLogLevel]("tryWithRetries(): Error on try number: " + i, e);
         }
         if (abortSignal != null && abortSignal.aborted)
             throw (abortSignal.reason || new Error("Aborted"));

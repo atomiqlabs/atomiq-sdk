@@ -118,7 +118,7 @@ class IEscrowSwap extends ISwap_1.ISwap {
                 status = await this._contract.getCommitStatus(this._getInitiator(), this._data);
                 if (status?.type === base_1.SwapCommitStateType.NOT_COMMITED &&
                     await this._verifyQuoteDefinitelyExpired())
-                    return false;
+                    return null;
             }
             catch (e) {
                 this.logger.error("watchdogWaitTillCommited(): Error when fetching commit status or signature expiry: ", e);
@@ -126,7 +126,9 @@ class IEscrowSwap extends ISwap_1.ISwap {
         }
         if (abortSignal != null)
             abortSignal.throwIfAborted();
-        return status?.type !== base_1.SwapCommitStateType.EXPIRED;
+        return status?.type === base_1.SwapCommitStateType.EXPIRED
+            ? null
+            : status;
     }
     /**
      * Periodically checks the chain to see whether the swap was finished (claimed or refunded)

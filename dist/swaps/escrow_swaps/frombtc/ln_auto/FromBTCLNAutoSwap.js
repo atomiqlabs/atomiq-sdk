@@ -586,10 +586,11 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
      *
      * @throws {Error} If an invalid secret preimage is provided
      */
-    setSecretPreimage(secret) {
+    async setSecretPreimage(secret) {
         if (!this.isValidSecretPreimage(secret))
             throw new Error("Invalid secret preimage provided, hash doesn't match!");
         this.secret = secret;
+        await this._broadcastSecret().catch(e => this.logger.error("setSecretPreimage(): Failed to broadcast swap secret: ", e));
     }
     /**
      * Returns whether the secret preimage for this swap is known
@@ -661,7 +662,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
      */
     async _getExecutionStatus(options) {
         if (options?.secret != null)
-            this.setSecretPreimage(options.secret);
+            await this.setSecretPreimage(options.secret);
         const state = this._state;
         const now = Date.now();
         let lightningPaymentStatus = "inactive";

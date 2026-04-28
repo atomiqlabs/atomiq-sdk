@@ -370,7 +370,7 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
      *
      * @throws {Error} If an invalid secret preimage is provided
      */
-    setSecretPreimage(secret: string): void;
+    setSecretPreimage(secret: string): Promise<void>;
     /**
      * Returns whether the secret preimage for this swap is known
      */

@@ -838,10 +838,10 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
                 }
                 if (parsedTx instanceof btc_signer_1.Transaction) {
                     // Bitcoin tx
-                    const txId = parsedTx.id;
-                    if (txId === this.txId)
+                    const btcTx = await this.wrapper._btcRpc.parseTransaction(buffer_1.Buffer.from(parsedTx.toBytes(true)).toString("hex"));
+                    if (btcTx.txid === this.txId)
                         idempotencyTriggered = true;
-                    txIds.push(txId);
+                    txIds.push(btcTx.txid);
                 }
                 else {
                     // SC tx

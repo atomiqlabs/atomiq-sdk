@@ -3,6 +3,7 @@ import { ApiEndpoint } from "./ApiTypes";
 import { CreateSwapInput, CreateSwapOutput, GetSpendableBalanceInput, GetSpendableBalanceOutput, GetSupportedTokensInput, GetSupportedTokensOutput, GetSwapCounterTokensInput, GetSwapCounterTokensOutput, GetSwapLimitsInput, GetSwapLimitsOutput, GetSwapStatusInput, GetSwapStatusOutput, ListPendingSwapsInput, ListPendingSwapsOutput, ListSwapsInput, ListSwapsOutput, ParseAddressInput, ParseAddressOutput, SettleWithLnurlInput, SettleWithLnurlOutput, SubmitTransactionInput, SubmitTransactionOutput } from "./ApiEndpoints";
 export type SwapperApiConfig = {
     syncOnGetStatus?: boolean;
+    idempotentTxSubmission?: boolean;
 };
 export declare class SwapperApi<T extends MultiChain> {
     private swapper;

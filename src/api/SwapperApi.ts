@@ -125,7 +125,8 @@ function parseSwapSide(side: "INPUT" | "OUTPUT"): SwapSide {
 }
 
 export type SwapperApiConfig = {
-    syncOnGetStatus?: boolean
+    syncOnGetStatus?: boolean,
+    idempotentTxSubmission?: boolean
 };
 
 export class SwapperApi<T extends MultiChain> {
@@ -494,7 +495,7 @@ export class SwapperApi<T extends MultiChain> {
         }
 
         return {
-            txHashes: await swap._submitExecutionTransactions(input.signedTxs)
+            txHashes: await swap._submitExecutionTransactions(input.signedTxs, undefined, undefined, this.config?.idempotentTxSubmission)
         }
     }
 

@@ -490,25 +490,30 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
      * @inheritDoc
      * @internal
      */
-    async _submitExecutionTransactions(txs, abortSignal, requiredStates) {
+    async _submitExecutionTransactions(txs, abortSignal, requiredStates, idempotent) {
+        const parsedTxs = [];
+        for (let tx of txs) {
+            parsedTxs.push(typeof (tx) === "string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
+        }
+        if (idempotent) {
+            // Handle idempotent calls
+            if (this.wrapper._chain.getTxId != null) {
+                const txIds = await Promise.all(parsedTxs.map(tx => this.wrapper._chain.getTxId(tx)));
+                const foundTxId = txIds.find(txId => this._commitTxId === txId || this._refundTxId === txId);
+                if (foundTxId != null)
+                    return txIds;
+            }
+        }
         if (requiredStates != null && !requiredStates.includes(this._state))
             throw new Error("Swap state has changed before transactions were submitted!");
         if (this._state === ToBTCSwapState.CREATED || this._state === ToBTCSwapState.QUOTE_SOFT_EXPIRED) {
             if (!await this._verifyQuoteValid())
                 throw new Error("Quote is already expired!");
-            const parsedTxs = [];
-            for (let tx of txs) {
-                parsedTxs.push(typeof (tx) === "string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
-            }
             const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
             await this.waitTillCommited(abortSignal);
             return txIds;
         }
         if (this._state === ToBTCSwapState.REFUNDABLE) {
-            const parsedTxs = [];
-            for (let tx of txs) {
-                parsedTxs.push(typeof (tx) === "string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
-            }
             const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
             await this.waitTillRefunded(abortSignal);
             return txIds;
@@ -525,8 +530,8 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
             description: `Initiates the swap by commiting the funds to the escrow on the ${this.chainIdentifier} side`,
             chain: this.chainIdentifier,
             txs: await this.prepareTransactions(this.txsCommit(actionOptions?.skipChecks)),
-            submitTransactions: async (txs, abortSignal) => {
-                return this._submitExecutionTransactions(txs, abortSignal, [ToBTCSwapState.CREATED, ToBTCSwapState.QUOTE_SOFT_EXPIRED]);
+            submitTransactions: async (txs, abortSignal, idempotent) => {
+                return this._submitExecutionTransactions(txs, abortSignal, [ToBTCSwapState.CREATED, ToBTCSwapState.QUOTE_SOFT_EXPIRED], idempotent);
             },
             requiredSigner: this._getInitiator()
         };
@@ -557,8 +562,8 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
             description: "Refund the swap after it failed to execute",
             chain: this.chainIdentifier,
             txs: await this.prepareTransactions(this.txsRefund(actionOptions?.refundSmartChainSigner)),
-            submitTransactions: async (txs, abortSignal) => {
-                return this._submitExecutionTransactions(txs, abortSignal, [ToBTCSwapState.REFUNDABLE]);
+            submitTransactions: async (txs, abortSignal, idempotent) => {
+                return this._submitExecutionTransactions(txs, abortSignal, [ToBTCSwapState.REFUNDABLE], idempotent);
             },
             requiredSigner: signerAddress ?? this._getInitiator()
         };
@@ -654,11 +659,13 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
             abortController.abort();
             throw e;
         }
-        if (result === 0)
+        if (result === 0) {
             this.logger.debug("waitTillCommited(): Resolved from state change");
-        if (result === true)
+        }
+        else if (result != null) {
             this.logger.debug("waitTillCommited(): Resolved from watchdog - commited");
-        if (result === false) {
+        }
+        if (result === null) {
             this.logger.debug("waitTillCommited(): Resolved from watchdog - signature expiry");
             if (this._state === ToBTCSwapState.QUOTE_SOFT_EXPIRED || this._state === ToBTCSwapState.CREATED) {
                 await this._saveAndEmit(ToBTCSwapState.QUOTE_EXPIRED);
@@ -666,6 +673,8 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
             throw new Error("Quote expired while waiting for transaction confirmation!");
         }
         if (this._state === ToBTCSwapState.QUOTE_SOFT_EXPIRED || this._state === ToBTCSwapState.CREATED || this._state === ToBTCSwapState.QUOTE_EXPIRED) {
+            if (typeof (result) === "object" && result.getInitTxId != null && this._commitTxId == null)
+                this._commitTxId = await result.getInitTxId();
             await this._saveAndEmit(ToBTCSwapState.COMMITED);
         }
     }
@@ -1003,6 +1012,8 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
     async _forciblySetOnchainState(commitStatus) {
         switch (commitStatus.type) {
             case base_1.SwapCommitStateType.PAID:
+                if (this._commitTxId == null && commitStatus.getInitTxId != null)
+                    this._commitTxId = await commitStatus.getInitTxId();
                 if (this._claimTxId == null && commitStatus.getClaimTxId)
                     this._claimTxId = await commitStatus.getClaimTxId();
                 const eventResult = await commitStatus.getClaimResult();
@@ -1015,27 +1026,43 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
                 this._state = ToBTCSwapState.CLAIMED;
                 return true;
             case base_1.SwapCommitStateType.REFUNDABLE:
+                if (this._commitTxId == null && commitStatus.getInitTxId != null)
+                    this._commitTxId = await commitStatus.getInitTxId();
                 this._state = ToBTCSwapState.REFUNDABLE;
                 return true;
             case base_1.SwapCommitStateType.EXPIRED:
+                if (this._commitTxId == null && commitStatus.getInitTxId != null)
+                    this._commitTxId = await commitStatus.getInitTxId();
                 if (this._refundTxId == null && commitStatus.getRefundTxId)
                     this._refundTxId = await commitStatus.getRefundTxId();
                 this._state = this._refundTxId == null ? ToBTCSwapState.QUOTE_EXPIRED : ToBTCSwapState.REFUNDED;
                 return true;
             case base_1.SwapCommitStateType.NOT_COMMITED:
-                if (this._refundTxId == null && commitStatus.getRefundTxId)
+                let changed = false;
+                if (this._commitTxId == null && commitStatus.getInitTxId != null) {
+                    this._commitTxId = await commitStatus.getInitTxId();
+                    changed = true;
+                }
+                if (this._refundTxId == null && commitStatus.getRefundTxId) {
                     this._refundTxId = await commitStatus.getRefundTxId();
+                    changed = true;
+                }
                 if (this._refundTxId != null) {
                     this._state = ToBTCSwapState.REFUNDED;
-                    return true;
+                    changed = true;
                 }
-                break;
+                return changed;
             case base_1.SwapCommitStateType.COMMITED:
+                let save = false;
+                if (this._commitTxId == null && commitStatus.getInitTxId != null) {
+                    this._commitTxId = await commitStatus.getInitTxId();
+                    save = true;
+                }
                 if (this._state !== ToBTCSwapState.COMMITED && this._state !== ToBTCSwapState.REFUNDABLE && this._state !== ToBTCSwapState.SOFT_CLAIMED) {
                     this._state = ToBTCSwapState.COMMITED;
-                    return true;
+                    save = true;
                 }
-                break;
+                return save;
         }
         return false;
     }

@@ -383,7 +383,7 @@ class SwapperApi {
             throw new Error("Swap not found: " + input.swapId);
         }
         return {
-            txHashes: await swap._submitExecutionTransactions(input.signedTxs)
+            txHashes: await swap._submitExecutionTransactions(input.signedTxs, undefined, undefined, this.config?.idempotentTxSubmission)
         };
     }
     async settleWithLnurl(input) {

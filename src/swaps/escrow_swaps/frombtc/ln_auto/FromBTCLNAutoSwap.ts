@@ -751,9 +751,10 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
      *
      * @throws {Error} If an invalid secret preimage is provided
      */
-    setSecretPreimage(secret: string) {
+    async setSecretPreimage(secret: string) {
         if(!this.isValidSecretPreimage(secret)) throw new Error("Invalid secret preimage provided, hash doesn't match!");
         this.secret = secret;
+        await this._broadcastSecret().catch(e => this.logger.error("setSecretPreimage(): Failed to broadcast swap secret: ", e));
     }
 
     /**
@@ -843,7 +844,7 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
         maxWaitTillAutomaticSettlementSeconds?: number,
         secret?: string
     }) {
-        if(options?.secret!=null) this.setSecretPreimage(options.secret);
+        if(options?.secret!=null) await this.setSecretPreimage(options.secret);
 
         const state = this._state;
         const now = Date.now();

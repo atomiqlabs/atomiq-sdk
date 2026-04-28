@@ -94,19 +94,25 @@ class UnifiedSwapEventListener {
             }
         }
     }
-    async start() {
+    async start(noAutomaticPoll) {
         if (this.listener != null)
             return;
         logger.info("start(): Starting unified swap event listener");
         await this.storage.init();
         logger.debug("start(): Storage initialized");
-        await this.events.init();
+        await this.events.init(noAutomaticPoll);
+        this.noAutomaticPoll = noAutomaticPoll;
         logger.debug("start(): Events initialized");
         this.events.registerListener(this.listener = async (events) => {
             await this.processEvents(events);
             return true;
         });
         logger.info("start(): Successfully initiated the unified swap event listener!");
+    }
+    poll(previousState) {
+        if (!this.noAutomaticPoll)
+            throw new Error("Only supported when no automatic events polling is configured!");
+        return this.events.poll(previousState);
     }
     stop() {
         logger.info("stop(): Stopping unified swap event listener");

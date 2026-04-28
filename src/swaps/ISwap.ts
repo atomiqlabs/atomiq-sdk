@@ -13,6 +13,7 @@ import {SwapExecutionAction} from "../types/SwapExecutionAction";
 import {LoggerType} from "../utils/Logger";
 import {isPriceInfoType, PriceInfoType} from "../types/PriceInfoType";
 import {SwapStateInfo} from "../types/SwapStateInfo";
+import {SwapExecutionStep} from "../types/SwapExecutionStep";
 
 /**
  * Initialization data for creating a swap
@@ -140,6 +141,12 @@ export abstract class ISwap<
      * @internal
      */
     _persisted: boolean = false;
+    /**
+     * Storage specific metadata that can be used for e.g. optimistic concurrency
+     *
+     * @internal
+     */
+    _meta?: any;
 
 
     /**
@@ -211,6 +218,7 @@ export abstract class ISwap<
             this.createdAt = swapInitOrObj.createdAt ?? swapInitOrObj.expiry;
 
             this._randomNonce = swapInitOrObj.randomNonce;
+            this._meta = swapInitOrObj._meta;
         }
         if(this.version!==this.currentVersion) {
             this.upgradeVersion();
@@ -251,13 +259,6 @@ export abstract class ISwap<
             });
         });
     }
-
-    /**
-     * Returns a list of steps or transactions required to finish and settle the swap
-     *
-     * @param options Additional options for executing the swap
-     */
-    public abstract txsExecute(options?: any): Promise<SwapExecutionAction<T>[]>;
 
     /**
      * Executes the swap with the provided wallet, the exact arguments for this functions differ for various swap
@@ -307,6 +308,19 @@ export abstract class ISwap<
                 this.pricingInfo.realPriceUsdPerBitcoin = priceUsdPerBtc;
             }
         }
+    }
+
+    /**
+     * Returns the specific state along with the human-readable description of that state
+     *
+     * @internal
+     */
+    protected _getStateInfo(state: S): SwapStateInfo<S> {
+        return {
+            state: state,
+            name: this.swapStateName(state),
+            description: this.swapStateDescription[state]
+        };
     }
 
     /**
@@ -390,6 +404,18 @@ export abstract class ISwap<
      */
     protected checkSigner(signer: T["Signer"] | string): void {
         if((typeof(signer)==="string" ? signer : signer.getAddress())!==this._getInitiator()) throw new Error("Invalid signer provided!");
+    }
+
+    /**
+     * Await and prepares a list of passed transactions
+     *
+     * @param txsPromise
+     * @internal
+     */
+    protected async prepareTransactions(txsPromise: Promise<T["TX"][]>): Promise<T["TX"][]> {
+        const txs = await txsPromise;
+        if(this.wrapper._chain.prepareTxs==null) return txs;
+        return await this.wrapper._chain.prepareTxs(txs);
     }
 
     /**
@@ -528,18 +554,62 @@ export abstract class ISwap<
      * Returns the current state of the swap along with the human-readable description of the state
      */
     public getStateInfo(): SwapStateInfo<S> {
-        return {
-            state: this._state,
-            name: this.swapStateName(this._state),
-            description: this.swapStateDescription[this._state]
-        }
+        return this._getStateInfo(this._state);
     }
 
     /**
-     * Returns a state-dependent set of actions for the user to execute, or empty array if there is currently
-     *  no action required from the user to execute.
+     * Returns a current state-dependent action for the user to execute, or `undefined` if there is no more action
+     *  required for this swap - this means that the swap is probably finished (either expired, failed or settled).
+     *
+     * @param options Optional options argument for the additional action context (i.e. passing bitcoin wallet info to
+     *  get funded PSBTs or passing the externally-generated swap secret), see the actual type in the respective swap
+     *  classes
      */
-    public abstract getCurrentActions(): Promise<SwapExecutionAction<T>[]>;
+    public abstract getExecutionAction(options?: any): Promise<SwapExecutionAction | undefined>;
+
+    /**
+     * Returns a list of execution steps the user has to go through for a given swap, to see the possible execution
+     *  steps check out {@link SwapExecutionStep}.
+     *
+     * @param options Optional options argument for the additional steps context (i.e. automatic settlement timeout),
+     *  see the actual type in the respective swap classes
+     */
+    public abstract getExecutionSteps(options?: any): Promise<SwapExecutionStep[]>;
+
+    /**
+     * Returns the current action and the full execution steps for a given swap. Prefer this to calling
+     *  {@link getExecutionSteps} and {@link getExecutionAction} separately - if called sequentially they might
+     *  return the respective steps/actions in different states if you hit the state transition boundary.
+     *
+     * @param options Optional options argument for the additional execution status context, see the actual type in
+     *  the respective swap classes
+     */
+    public abstract getExecutionStatus(options?: { skipBuildingAction?: boolean } & any): Promise<{
+        steps: SwapExecutionStep[],
+        currentAction: SwapExecutionAction | undefined,
+        stateInfo: SwapStateInfo<S>
+    }>;
+
+    /**
+     * Submits signed transactions obtained from the execution action back to the swap.
+     *
+     * @remarks This endpoint will also wait till the submitted transactions are confirmed (on a smart-chain side)
+     *  and till the swap state change is observed from the authoritative chain/intermediary state.
+     *
+     *  If invalid transactions are submitted, i.e. sending a simple noop or transfer transaction instead of the
+     *  expected tx, this call may wait indefinitely unless aborted via the AbortSignal.
+     *
+     * @param txs Signed transactions
+     * @param abortSignal Abort signal
+     * @param requiredStates Optional list of states that the swap has to be in for the transactions to be
+     *  submitted, else throws
+     * @param idempotent Whether the tx submission should be handled idempotently, meaning if any of the supplied
+     *  transactions are already processed as e.g. init, claim, refund or execution transactions the function just
+     *  returns these transaction IDs without actually submitting them
+     *
+     * @internal
+     */
+    abstract _submitExecutionTransactions(txs: (T["SignedTXType"] | string | any)[], abortSignal?: AbortSignal, requiredStates?: S[], idempotent?: boolean): Promise<string[]>;
 
     //////////////////////////////
     //// Amounts & fees
@@ -637,7 +707,9 @@ export abstract class ISwap<
             initiated: this.initiated,
             exactIn: this.exactIn,
             createdAt: this.createdAt,
-            randomNonce: this._randomNonce
+            randomNonce: this._randomNonce,
+
+            _meta: this._meta
         }
     }
 

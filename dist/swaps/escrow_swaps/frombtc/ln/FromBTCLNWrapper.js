@@ -197,7 +197,7 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
                             description: _options.description,
                             descriptionHash: _options.descriptionHash,
                             exactOut: !amountData.exactIn,
-                            feeRate: (0, Utils_1.throwIfUndefined)(_preFetches.feeRatePromise),
+                            feeRate: (0, Utils_1.throwIfUndefined)(_preFetches.feeRatePromise, "Network fee rate pre-fetch failed!"),
                             additionalParams
                         }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined);
                         let lnCapacityPromise;
@@ -221,7 +221,7 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
                         this.verifyReturnedData(resp, amountData, lp, _options, decodedPr, paymentHash);
                         const [pricingInfo] = await Promise.all([
                             this.verifyReturnedPrice(lp.services[SwapType_1.SwapType.FROM_BTCLN], false, amountIn, resp.total, amountData.token, {}, _preFetches.pricePrefetchPromise, _preFetches.usdPricePrefetchPromise, abortController.signal),
-                            this.verifyIntermediaryLiquidity(resp.total, (0, Utils_1.throwIfUndefined)(liquidityPromise)),
+                            this.verifyIntermediaryLiquidity(resp.total, (0, Utils_1.throwIfUndefined)(liquidityPromise, "LP liquidity pre-fetch failed!")),
                             lnCapacityPromise != null ? this.verifyLnNodeCapacity(lp, decodedPr, lnCapacityPromise, abortController.signal) : Promise.resolve()
                         ]);
                         const quote = new FromBTCLNSwap_1.FromBTCLNSwap(this, {

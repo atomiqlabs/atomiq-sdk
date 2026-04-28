@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ISwapWrapper = exports.DEFAULT_MAX_PARALLEL_SWAP_SYNCS = exports.DEFAULT_MAX_PARALLEL_SWAP_TICKS = void 0;
+const base_1 = require("@atomiqlabs/base");
 const events_1 = require("events");
 const IntermediaryError_1 = require("../errors/IntermediaryError");
 const Logger_1 = require("../utils/Logger");
@@ -247,8 +248,8 @@ class ISwapWrapper {
         for (let i = 0; i < pastSwaps.length; i += maxParallelSyncs) {
             const { removeSwaps, changedSwaps } = await this._checkPastSwaps(pastSwaps.slice(i, i + maxParallelSyncs));
             if (!noSave) {
-                await this.unifiedStorage.removeAll(removeSwaps);
-                await this.unifiedStorage.saveAll(changedSwaps);
+                await this.unifiedStorage.removeAll(removeSwaps, true);
+                await this.unifiedStorage.saveAll(changedSwaps, true);
                 changedSwaps.forEach(swap => swap._emitEvent());
                 removeSwaps.forEach(swap => swap._emitEvent());
             }
@@ -348,6 +349,24 @@ class ISwapWrapper {
      */
     _getPendingSwap(id) {
         return this.pendingSwaps.get(id)?.deref() ?? null;
+    }
+    /**
+     * @internal
+     */
+    async _getSignerAddress(signer) {
+        let address = undefined;
+        if (signer != null) {
+            if (typeof (signer) === "string") {
+                address = signer;
+            }
+            else if ((0, base_1.isAbstractSigner)(signer)) {
+                address = signer.getAddress();
+            }
+            else {
+                address = (await this._chain.wrapSigner(signer)).getAddress();
+            }
+        }
+        return address;
     }
 }
 exports.ISwapWrapper = ISwapWrapper;

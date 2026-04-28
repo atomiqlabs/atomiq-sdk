@@ -101,6 +101,14 @@ export declare class SwapperUtils<T extends MultiChain> {
         amount?: TokenAmount;
     } | null;
     /**
+     * Strips the URL encoding around `bitcoin:` and `lightning:` addresses, leaving just the raw address
+     *
+     * @param addressString Address to strip
+     *
+     * @returns Raw clean address
+     */
+    stripAddress(addressString: string): string;
+    /**
      * Returns a random PSBT that can be used for fee estimation for SPV vault (UTXO-controlled vault) based swaps
      *  {@link SwapType.SPV_VAULT_FROM_BTC}, the last output (the LP output) is omitted to allow for coinselection
      *  algorithm to determine maximum sendable amount there
@@ -145,11 +153,11 @@ export declare class SwapperUtils<T extends MultiChain> {
      */
     randomSigner<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier): T[ChainIdentifier]["Signer"];
     /**
-     * Returns a random address for a given smart chain
+     * Returns a random address for a given smart chain or bitcoin
      *
      * @param chainIdentifier
      */
-    randomAddress<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier): string;
+    randomAddress<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier | "BITCOIN"): string;
     /**
      * Signs and broadcasts the supplied smart chain transaction
      *
@@ -169,6 +177,14 @@ export declare class SwapperUtils<T extends MultiChain> {
      * @param onBeforePublish Callback invoked before a transaction is sent (invoked for every transaction to be sent)
      */
     sendSignedAndConfirm<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier, txs: T[ChainIdentifier]["SignedTXType"][], abortSignal?: AbortSignal, onBeforePublish?: (txId: string, rawTx: string) => Promise<void>): Promise<string[]>;
+    /**
+     * Prepares a set of unsigned transactions for signing, by adding required nonces or recent blockhashes, might
+     *  also add hints of account deployment on e.g. Starknet
+     *
+     * @param chainIdentifier A chain for which to prepare the txs
+     * @param txs Transactions to prepare
+     */
+    prepareUnsignedTransactions<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier, txs: T[ChainIdentifier]["TX"][]): Promise<T[ChainIdentifier]["TX"][]>;
     /**
      * Serializes an unsigned smart chain transaction
      *

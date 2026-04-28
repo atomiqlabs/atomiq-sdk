@@ -158,7 +158,7 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                     maxFee: await calculatedOptions.maxFee,
                     expiryTimestamp: calculatedOptions.expiryTimestamp,
                     token: amountData.token,
-                    feeRate: (0, Utils_1.throwIfUndefined)(preFetches.feeRatePromise),
+                    feeRate: (0, Utils_1.throwIfUndefined)(preFetches.feeRatePromise, "Network fee rate pre-fetch failed!"),
                     additionalParams
                 }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined);
                 let signDataPromise = preFetches.signDataPrefetchPromise;
@@ -318,7 +318,7 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
             const resp = await (0, RetryUtils_1.tryWithRetries)((retryCount) => IntermediaryAPI_1.IntermediaryAPI.initToBTCLNExactIn(lp.url, {
                 pr: invoice,
                 reqId: prepareResp.reqId,
-                feeRate: (0, Utils_1.throwIfUndefined)(preFetches.feeRatePromise),
+                feeRate: (0, Utils_1.throwIfUndefined)(preFetches.feeRatePromise, "Network fee rate pre-fetch failed!"),
                 additionalParams
             }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined), undefined, RequestError_1.RequestError, abortController.signal);
             if (parsedInvoice.millisatoshis == null)

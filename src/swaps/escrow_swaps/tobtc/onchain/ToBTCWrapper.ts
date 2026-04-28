@@ -269,7 +269,7 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
                                 token: amountData.token,
                                 offerer: signer,
                                 exactIn: amountData.exactIn,
-                                feeRate: throwIfUndefined(feeRatePromise),
+                                feeRate: throwIfUndefined(feeRatePromise, "Network fee rate pre-fetch failed!"),
                                 additionalParams
                             }, this._options.postRequestTimeout, abortController.signal, retryCount>0 ? false : undefined);
 

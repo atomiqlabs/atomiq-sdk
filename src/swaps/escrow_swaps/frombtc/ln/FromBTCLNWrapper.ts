@@ -312,7 +312,7 @@ export class FromBTCLNWrapper<
                                 description: _options.description,
                                 descriptionHash: _options.descriptionHash,
                                 exactOut: !amountData.exactIn,
-                                feeRate: throwIfUndefined(_preFetches.feeRatePromise),
+                                feeRate: throwIfUndefined(_preFetches.feeRatePromise, "Network fee rate pre-fetch failed!"),
                                 additionalParams
                             },
                             this._options.postRequestTimeout, abortController.signal, retryCount>0 ? false : undefined
@@ -341,7 +341,7 @@ export class FromBTCLNWrapper<
                                 lp.services[SwapType.FROM_BTCLN], false, amountIn, resp.total,
                                 amountData.token, {}, _preFetches.pricePrefetchPromise, _preFetches.usdPricePrefetchPromise, abortController.signal
                             ),
-                            this.verifyIntermediaryLiquidity(resp.total, throwIfUndefined(liquidityPromise)),
+                            this.verifyIntermediaryLiquidity(resp.total, throwIfUndefined(liquidityPromise, "LP liquidity pre-fetch failed!")),
                             lnCapacityPromise!=null ? this.verifyLnNodeCapacity(lp, decodedPr, lnCapacityPromise, abortController.signal) : Promise.resolve()
                         ]);
 

@@ -182,7 +182,7 @@ class Swapper extends events_1.EventEmitter {
         });
     }
     async _init() {
-        this.logger.debug("init(): Initializing swapper...");
+        this.logger.debug("init(): Initializing swapper");
         const abortController = new AbortController();
         const promises = [];
         let automaticClockDriftCorrectionPromise = undefined;
@@ -248,8 +248,7 @@ class Swapper extends events_1.EventEmitter {
                         return swap;
                     });
                 }
-                if (!this.options.noEvents)
-                    await unifiedChainEvents.start();
+                await unifiedChainEvents.start(this.options.noEvents);
                 this.logger.debug("init(): Intialized events: " + chainIdentifier);
                 for (let key in wrappers) {
                     // this.logger.debug("init(): Initializing "+SwapType[key]+": "+chainIdentifier);
@@ -283,6 +282,12 @@ class Swapper extends events_1.EventEmitter {
             delete this.initPromise;
             throw e;
         }
+    }
+    /**
+     * Whether the SDK is initialized (after {@link init} is called)
+     */
+    isInitialized() {
+        return this.initialized;
     }
     /**
      * Stops listening for onchain events and closes this Swapper instance
@@ -803,6 +808,10 @@ class Swapper extends events_1.EventEmitter {
      * @param options Options for the swap
      */
     swap(_srcToken, _dstToken, _amount, exactIn, src, dst, options) {
+        if (typeof (src) === "string")
+            src = this.Utils.stripAddress(src);
+        if (typeof (dst) === "string")
+            dst = this.Utils.stripAddress(dst);
         const srcToken = typeof (_srcToken) === "string" ? this.getToken(_srcToken) : _srcToken;
         const dstToken = typeof (_dstToken) === "string" ? this.getToken(_dstToken) : _dstToken;
         const amount = _amount == null ? null : (typeof (_amount) === "bigint" ? _amount : (0, Utils_1.fromDecimal)(_amount, exactIn ? srcToken.decimals : dstToken.decimals));
@@ -895,7 +904,7 @@ class Swapper extends events_1.EventEmitter {
             return await unifiedSwapStorage.query([queryParams], reviver);
         }
     }
-    async getActionableSwaps(chainId, signer) {
+    async getPendingSwaps(chainId, signer) {
         if (chainId == null) {
             const res = await Promise.all(Object.keys(this._chains).map((chainId) => {
                 const { unifiedSwapStorage, reviver, wrappers } = this._chains[chainId];
@@ -910,7 +919,7 @@ class Swapper extends events_1.EventEmitter {
                 }
                 return unifiedSwapStorage.query(queryParams, reviver);
             }));
-            return res.flat().filter(swap => swap.requiresAction());
+            return res.flat();
         }
         else {
             const { unifiedSwapStorage, reviver, wrappers } = this._chains[chainId];
@@ -923,7 +932,15 @@ class Swapper extends events_1.EventEmitter {
                 swapTypeQueryParams.push({ key: "state", value: wrapper._pendingSwapStates });
                 queryParams.push(swapTypeQueryParams);
             }
-            return (await unifiedSwapStorage.query(queryParams, reviver)).filter(swap => swap.requiresAction());
+            return await unifiedSwapStorage.query(queryParams, reviver);
+        }
+    }
+    async getActionableSwaps(chainId, signer) {
+        if (chainId == null) {
+            return (await this.getPendingSwaps()).filter(swap => swap.requiresAction());
+        }
+        else {
+            return (await this.getPendingSwaps(chainId, signer)).filter(swap => swap.requiresAction());
         }
     }
     async getRefundableSwaps(chainId, signer) {
@@ -1105,8 +1122,8 @@ class Swapper extends events_1.EventEmitter {
             removeSwaps.push(...result.removeSwaps);
         }
         this.logger.debug("_syncSwaps(): Done syncing " + swaps.length + " swaps, saving " + changedSwaps.length + " changed swaps, removing " + removeSwaps.length + " swaps!");
-        await unifiedSwapStorage.saveAll(changedSwaps);
-        await unifiedSwapStorage.removeAll(removeSwaps);
+        await unifiedSwapStorage.saveAll(changedSwaps, true);
+        await unifiedSwapStorage.removeAll(removeSwaps, true);
         changedSwaps.forEach(swap => swap._emitEvent());
         removeSwaps.forEach(swap => swap._emitEvent());
     }
@@ -1159,6 +1176,19 @@ class Swapper extends events_1.EventEmitter {
         else {
             await this.syncSwapsForChain(chainId, signer);
         }
+    }
+    /**
+     * When the swapper is initiated with the `noEvents` config this function allows you to manually poll for on-chain
+     *  events. It returns an events cursor which you should save and pass to the next call to the `poll()` function.
+     *
+     * @param chainId Chain for which to poll the chain events listener for
+     * @param lastEventCursorState Event cursor state returned from the last call to the `poll()` function
+     */
+    async _pollChainEvents(chainId, lastEventCursorState) {
+        const chain = this._chains[chainId];
+        if (chain == null)
+            throw new Error(`Invalid chain id ${chainId}!`);
+        return chain.unifiedChainEvents.poll(lastEventCursorState);
     }
     /**
      * Recovers swaps from on-chain historical data.

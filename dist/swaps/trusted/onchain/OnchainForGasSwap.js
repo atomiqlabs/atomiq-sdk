@@ -435,50 +435,33 @@ class OnchainForGasSwap extends ISwap_1.ISwap {
      * @param options.bitcoinWallet Optional bitcoin wallet address specification to return a funded PSBT,
      *  if not provided an address is returned instead.
      */
-    async txsExecute(options) {
-        if (this._state === OnchainForGasSwapState.PR_CREATED) {
-            if (!await this._verifyQuoteValid())
-                throw new Error("Quote already expired or close to expiry!");
-            return [
-                {
-                    name: "Payment",
-                    description: "Send funds to the bitcoin swap address",
-                    chain: "BITCOIN",
-                    txs: [
-                        options?.bitcoinWallet == null ? {
-                            address: this.address,
-                            amount: Number(this.inputAmount),
-                            hyperlink: this.getHyperlink(),
-                            type: "ADDRESS"
-                        } : {
-                            ...await this.getFundedPsbt(options.bitcoinWallet),
-                            type: "FUNDED_PSBT"
-                        }
-                    ]
-                }
-            ];
-        }
-        throw new Error("Invalid swap state to obtain execution txns, required PR_CREATED or CLAIM_COMMITED");
-    }
-    /**
-     * @remark Not supported
-     */
-    async execute() {
+    async getExecutionAction(options) {
         throw new Error("Not supported");
     }
     /**
      * @inheritDoc
-     *
-     * @param options.bitcoinWallet Optional bitcoin wallet address specification to return a funded PSBT,
-     *  if not provided an address is returned instead.
      */
-    async getCurrentActions(options) {
-        try {
-            return await this.txsExecute(options);
-        }
-        catch (e) {
-            return [];
-        }
+    async getExecutionSteps() {
+        throw new Error("Not supported");
+    }
+    /**
+     * @inheritDoc
+     */
+    async getExecutionStatus() {
+        throw new Error("Not supported");
+    }
+    /**
+     * @internal
+     * @inheritDoc
+     */
+    _submitExecutionTransactions() {
+        throw new Error("Not supported");
+    }
+    /**
+     * @remarks Not supported
+     */
+    async execute() {
+        throw new Error("Not supported");
     }
     //////////////////////////////
     //// Payment

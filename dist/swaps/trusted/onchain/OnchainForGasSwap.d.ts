@@ -12,7 +12,6 @@ import { FeeType } from "../../../enums/FeeType";
 import { TokenAmount } from "../../../types/TokenAmount";
 import { BtcToken, SCToken } from "../../../types/Token";
 import { LoggerType } from "../../../utils/Logger";
-import { SwapExecutionAction, SwapExecutionActionBitcoin } from "../../../types/SwapExecutionAction";
 /**
  * State enum for trusted on-chain gas swaps
  *
@@ -266,24 +265,26 @@ export declare class OnchainForGasSwap<T extends ChainType = ChainType> extends 
      * @param options.bitcoinWallet Optional bitcoin wallet address specification to return a funded PSBT,
      *  if not provided an address is returned instead.
      */
-    txsExecute(options?: {
+    getExecutionAction(options?: {
         bitcoinWallet?: MinimalBitcoinWalletInterface;
-    }): Promise<[
-        SwapExecutionActionBitcoin<"ADDRESS" | "FUNDED_PSBT">
-    ]>;
-    /**
-     * @remark Not supported
-     */
-    execute(): Promise<boolean>;
+    }): Promise<never>;
     /**
      * @inheritDoc
-     *
-     * @param options.bitcoinWallet Optional bitcoin wallet address specification to return a funded PSBT,
-     *  if not provided an address is returned instead.
      */
-    getCurrentActions(options?: {
-        bitcoinWallet?: MinimalBitcoinWalletInterface;
-    }): Promise<SwapExecutionAction<T>[]>;
+    getExecutionSteps(): Promise<never>;
+    /**
+     * @inheritDoc
+     */
+    getExecutionStatus(): Promise<never>;
+    /**
+     * @internal
+     * @inheritDoc
+     */
+    _submitExecutionTransactions(): Promise<string[]>;
+    /**
+     * @remarks Not supported
+     */
+    execute(): Promise<boolean>;
     /**
      * Queries the intermediary (LP) node for the state of the swap
      *

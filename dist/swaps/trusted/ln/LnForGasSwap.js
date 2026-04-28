@@ -20,32 +20,32 @@ const TimeoutUtils_1 = require("../../../utils/TimeoutUtils");
 var LnForGasSwapState;
 (function (LnForGasSwapState) {
     /**
-     * The swap quote expired without user sending in the lightning network payment
+     * The swap quote expired before the user paid the Lightning invoice
      */
     LnForGasSwapState[LnForGasSwapState["EXPIRED"] = -2] = "EXPIRED";
     /**
-     * The swap has failed after the intermediary already received a lightning network payment on the source
+     * The swap has failed before the destination payout completed, and the held Lightning invoice was released
      */
     LnForGasSwapState[LnForGasSwapState["FAILED"] = -1] = "FAILED";
     /**
-     * Swap was created, pay the provided lightning network invoice
+     * Swap was created, pay the provided Lightning invoice which will remain held until destination payout succeeds
      */
     LnForGasSwapState[LnForGasSwapState["PR_CREATED"] = 0] = "PR_CREATED";
     /**
-     * User paid the lightning network invoice on the source
+     * The Lightning invoice was paid and is currently held until the user receives the destination funds
      */
     LnForGasSwapState[LnForGasSwapState["PR_PAID"] = 1] = "PR_PAID";
     /**
-     * The swap is finished after the intermediary sent funds on the destination chain
+     * The swap is finished after the destination payout succeeded and the held Lightning invoice was settled
      */
     LnForGasSwapState[LnForGasSwapState["FINISHED"] = 2] = "FINISHED";
 })(LnForGasSwapState = exports.LnForGasSwapState || (exports.LnForGasSwapState = {}));
 const LnForGasSwapStateDescription = {
-    [LnForGasSwapState.EXPIRED]: "The swap quote expired without user sending in the lightning network payment",
-    [LnForGasSwapState.FAILED]: "The swap has failed after the intermediary already received a lightning network payment on the source",
-    [LnForGasSwapState.PR_CREATED]: "Swap was created, pay the provided lightning network invoice",
-    [LnForGasSwapState.PR_PAID]: "User paid the lightning network invoice on the source",
-    [LnForGasSwapState.FINISHED]: "The swap is finished after the intermediary sent funds on the destination chain"
+    [LnForGasSwapState.EXPIRED]: "The swap quote expired before the user paid the Lightning invoice",
+    [LnForGasSwapState.FAILED]: "The swap failed before destination payout completed, and the held Lightning invoice was released back to the user",
+    [LnForGasSwapState.PR_CREATED]: "Swap was created, pay the provided Lightning invoice. The invoice will remain held until destination payout succeeds",
+    [LnForGasSwapState.PR_PAID]: "The Lightning invoice was paid and is currently held. It will only settle once the user receives the destination funds",
+    [LnForGasSwapState.FINISHED]: "The swap is finished after the destination payout succeeded and the held Lightning invoice was settled"
 };
 function isLnForGasSwapInit(obj) {
     return typeof (obj.pr) === "string" &&
@@ -330,45 +330,149 @@ class LnForGasSwap extends ISwap_1.ISwap {
     //////////////////////////////
     //// Payment
     /**
-     * @inheritDoc
-     */
-    async txsExecute() {
-        if (this._state === LnForGasSwapState.PR_CREATED) {
-            if (!await this._verifyQuoteValid())
-                throw new Error("Quote already expired or close to expiry!");
-            return [
-                {
-                    name: "Payment",
-                    description: "Initiates the swap by paying up the lightning network invoice",
-                    chain: "LIGHTNING",
-                    txs: [
-                        {
-                            type: "BOLT11_PAYMENT_REQUEST",
-                            address: this.pr,
-                            hyperlink: this.getHyperlink()
-                        }
-                    ]
-                }
-            ];
-        }
-        throw new Error("Invalid swap state to obtain execution txns, required PR_CREATED");
-    }
-    /**
-     * @remark Not supported
+     * @remarks Not supported
      */
     async execute() {
         throw new Error("Not supported");
     }
     /**
+     * @internal
+     */
+    async _getExecutionStatus() {
+        const state = this._state;
+        let lightningPaymentStatus = "inactive";
+        let destinationSettlementStatus = "inactive";
+        let buildCurrentAction = async () => undefined;
+        switch (state) {
+            case LnForGasSwapState.PR_CREATED: {
+                const quoteValid = await this._verifyQuoteValid();
+                lightningPaymentStatus = quoteValid ? "awaiting" : "soft_expired";
+                if (quoteValid) {
+                    buildCurrentAction = this._buildLightningPaymentAction.bind(this);
+                }
+                break;
+            }
+            case LnForGasSwapState.EXPIRED:
+                lightningPaymentStatus = "expired";
+                break;
+            case LnForGasSwapState.PR_PAID:
+                lightningPaymentStatus = "received";
+                destinationSettlementStatus = "waiting_lp";
+                buildCurrentAction = this._buildWaitLpAction.bind(this);
+                break;
+            case LnForGasSwapState.FAILED:
+                lightningPaymentStatus = "expired";
+                destinationSettlementStatus = "expired";
+                break;
+            case LnForGasSwapState.FINISHED:
+                lightningPaymentStatus = "confirmed";
+                destinationSettlementStatus = "settled";
+                break;
+        }
+        return {
+            steps: [
+                {
+                    type: "Payment",
+                    side: "source",
+                    chain: "LIGHTNING",
+                    title: "Lightning payment",
+                    description: "Pay the Lightning network invoice to initiate the swap",
+                    status: lightningPaymentStatus
+                },
+                {
+                    type: "Settlement",
+                    side: "destination",
+                    chain: this.chainIdentifier,
+                    title: "Destination payout",
+                    description: "Wait for the intermediary to send the gas tokens on the destination smart chain",
+                    status: destinationSettlementStatus
+                }
+            ],
+            buildCurrentAction,
+            state
+        };
+    }
+    /**
+     * @internal
      * @inheritDoc
      */
-    async getCurrentActions() {
-        try {
-            return await this.txsExecute();
-        }
-        catch (e) {
-            return [];
-        }
+    _submitExecutionTransactions() {
+        throw new Error("Invalid swap state for transaction submission!");
+    }
+    /**
+     * @internal
+     */
+    async _buildLightningPaymentAction() {
+        return {
+            type: "SendToAddress",
+            name: "Deposit on Lightning",
+            description: "Pay the lightning network invoice to initiate the swap",
+            chain: "LIGHTNING",
+            txs: [{
+                    type: "BOLT11_PAYMENT_REQUEST",
+                    address: this.pr,
+                    hyperlink: this.getHyperlink(),
+                    amount: this.getInput()
+                }],
+            waitForTransactions: async (maxWaitTimeSeconds, pollIntervalSeconds, abortSignal) => {
+                const abortController = (0, Utils_1.extendAbortController)(abortSignal, maxWaitTimeSeconds, "Timed out waiting for lightning payment");
+                let lightningTxId;
+                try {
+                    const success = await this.waitForPayment(pollIntervalSeconds, abortController.signal, (txId) => {
+                        lightningTxId = txId;
+                        abortController.abort();
+                    });
+                    if (!success)
+                        throw new Error("Quote expired while waiting for lightning payment");
+                }
+                catch (e) {
+                    if (lightningTxId != null)
+                        return lightningTxId;
+                    throw e;
+                }
+                return this.getInputTxId();
+            }
+        };
+    }
+    /**
+     * @internal
+     */
+    async _buildWaitLpAction() {
+        return {
+            type: "Wait",
+            name: "Awaiting LP payout",
+            description: "Wait for the intermediary to send the gas tokens on the destination smart chain",
+            pollTimeSeconds: 5,
+            expectedTimeSeconds: 10,
+            wait: async (maxWaitTimeSeconds, pollIntervalSeconds, abortSignal) => {
+                const abortController = (0, Utils_1.extendAbortController)(abortSignal, maxWaitTimeSeconds, "Timed out waiting for LP payout");
+                await this.waitForPayment(pollIntervalSeconds, abortController.signal);
+            }
+        };
+    }
+    /**
+     * @inheritDoc
+     */
+    async getExecutionAction() {
+        const executionStatus = await this._getExecutionStatus();
+        return executionStatus.buildCurrentAction();
+    }
+    /**
+     * @inheritDoc
+     */
+    async getExecutionStatus(options) {
+        const executionStatus = await this._getExecutionStatus();
+        return {
+            steps: executionStatus.steps,
+            currentAction: options?.skipBuildingAction ? undefined : await executionStatus.buildCurrentAction(),
+            stateInfo: this._getStateInfo(executionStatus.state)
+        };
+    }
+    /**
+     * @inheritDoc
+     */
+    async getExecutionSteps() {
+        return (await this._getExecutionStatus()).steps;
     }
     /**
      * Queries the intermediary (LP) node for the state of the swap
@@ -438,24 +542,34 @@ class LnForGasSwap extends ISwap_1.ISwap {
     }
     /**
      * A blocking promise resolving when payment was received by the intermediary and client can continue,
-     *  rejecting in case of failure. The swap must be in {@link LnForGasSwapState.PR_CREATED} state!
+     *  rejecting in case of failure. The swap must be in {@link LnForGasSwapState.PR_CREATED} or
+     *  {@link LnForGasSwapState.PR_PAID} state!
      *
      * @param checkIntervalSeconds How often to poll the intermediary for answer (default 5 seconds)
      * @param abortSignal Abort signal
+     * @param onPaymentReceived Callback as for when the LP reports having received the ln payment
      * @throws {Error} When in invalid state (not PR_CREATED)
      */
-    async waitForPayment(checkIntervalSeconds, abortSignal) {
-        if (this._state !== LnForGasSwapState.PR_CREATED)
-            throw new Error("Must be in PR_CREATED state!");
+    async waitForPayment(checkIntervalSeconds, abortSignal, onPaymentReceived) {
+        if (this._state !== LnForGasSwapState.PR_CREATED && this._state !== LnForGasSwapState.PR_PAID)
+            throw new Error("Must be in PR_CREATED or PR_PAID state!");
         if (!this.initiated) {
             this.initiated = true;
             await this._saveAndEmit();
         }
         while (!abortSignal?.aborted && (this._state === LnForGasSwapState.PR_CREATED || this._state === LnForGasSwapState.PR_PAID)) {
             await this.checkInvoicePaid(true);
+            if (this._state === LnForGasSwapState.PR_PAID) {
+                if (onPaymentReceived != null) {
+                    onPaymentReceived(this.getInputTxId());
+                    onPaymentReceived = undefined; // Set to null so it only triggers once
+                }
+            }
             if (this._state === LnForGasSwapState.PR_CREATED || this._state === LnForGasSwapState.PR_PAID)
                 await (0, TimeoutUtils_1.timeoutPromise)((checkIntervalSeconds ?? 5) * 1000, abortSignal);
         }
+        if (abortSignal != null)
+            abortSignal.throwIfAborted();
         if (this.isFailed())
             throw new Error("Swap failed");
         return !this.isQuoteExpired();

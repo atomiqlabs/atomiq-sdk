@@ -31,7 +31,15 @@ import {getLogger, LoggerType} from "../../../../utils/Logger";
 import {timeoutPromise} from "../../../../utils/TimeoutUtils";
 import {isLNURLWithdraw, LNURLWithdraw, LNURLWithdrawParamsWithUrl} from "../../../../types/lnurl/LNURLWithdraw";
 import {sha256} from "@noble/hashes/sha2";
-import {SwapExecutionAction} from "../../../../types/SwapExecutionAction";
+import {
+    SwapExecutionActionSendToAddress,
+    SwapExecutionActionSignSmartChainTx
+} from "../../../../types/SwapExecutionAction";
+import {
+    SwapExecutionStepPayment,
+    SwapExecutionStepSettlement
+} from "../../../../types/SwapExecutionStep";
+import {SwapStateInfo} from "../../../../types/SwapStateInfo";
 
 /**
  * State enum for legacy Lightning -> Smart chain swaps
@@ -600,70 +608,201 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
     }
 
     /**
-     * @inheritDoc
-     *
-     * @param options
-     * @param options.skipChecks Skip checks like making sure init signature is still valid and swap
-     *  wasn't commited yet (this is handled on swap creation, if you commit right after quoting, you
-     *  can use `skipChecks=true`)
-     * @param options.secret A swap secret to use for the claim transaction, generally only needed if the swap
-     *  was recovered from on-chain data, or the pre-image was generated outside the SDK
+     * @internal
      */
-    async txsExecute(options?: {
-        skipChecks?: boolean,
+    protected async _getExecutionStatus(options?: {
         secret?: string
     }) {
-        if(this._state===FromBTCLNSwapState.PR_CREATED) {
-            if(!await this._verifyQuoteValid()) throw new Error("Quote already expired or close to expiry!");
-            return [
-                {
-                    name: "Payment" as const,
-                    description: "Initiates the swap by paying up the lightning network invoice",
-                    chain: "LIGHTNING" as const,
-                    txs: [
-                        {
-                            type: "BOLT11_PAYMENT_REQUEST" as const,
-                            address: this.getAddress(),
-                            hyperlink: this.getHyperlink()
-                        }
-                    ]
+        if(options?.secret!=null) this.setSecretPreimage(options.secret);
+        const state = this._state;
+
+        let lightningPaymentStatus: SwapExecutionStepPayment<"LIGHTNING">["status"] = "inactive";
+        let destinationSettlementStatus: SwapExecutionStepSettlement<T["ChainId"], "awaiting_manual">["status"] = "inactive";
+        let buildCurrentAction: (actionOptions?: {
+            skipChecks?: boolean
+        }) => Promise<
+            SwapExecutionActionSendToAddress<true> |
+            SwapExecutionActionSignSmartChainTx<T> |
+            undefined
+        > = async () => undefined;
+
+        switch(state) {
+            case FromBTCLNSwapState.PR_CREATED: {
+                const quoteValid = await this._verifyQuoteValid();
+                lightningPaymentStatus = quoteValid ? "awaiting" : "soft_expired";
+                if(quoteValid && this.pr!=null && this.pr.toLowerCase().startsWith("ln")) {
+                    buildCurrentAction = this._buildLightningPaymentAction.bind(this);
                 }
-            ];
+                break;
+            }
+            case FromBTCLNSwapState.QUOTE_SOFT_EXPIRED:
+                if(this.signatureData==null) {
+                    lightningPaymentStatus = "soft_expired";
+                } else {
+                    lightningPaymentStatus = "received";
+                    destinationSettlementStatus = "soft_expired";
+                }
+                break;
+            case FromBTCLNSwapState.PR_PAID:
+            case FromBTCLNSwapState.CLAIM_COMMITED:
+                lightningPaymentStatus = "received";
+                destinationSettlementStatus = "awaiting_manual";
+                if(
+                    (state!==FromBTCLNSwapState.PR_PAID || await this._verifyQuoteValid()) &&
+                    this.hasSecretPreimage()
+                ) {
+                    buildCurrentAction = this._buildClaimSmartChainTxAction.bind(this);
+                }
+                break;
+            case FromBTCLNSwapState.CLAIM_CLAIMED:
+                lightningPaymentStatus = "confirmed";
+                destinationSettlementStatus = "settled";
+                break;
+            case FromBTCLNSwapState.EXPIRED:
+            case FromBTCLNSwapState.FAILED:
+                lightningPaymentStatus = "expired";
+                destinationSettlementStatus = "expired";
+                break;
+            case FromBTCLNSwapState.QUOTE_EXPIRED:
+                if(this.signatureData==null) {
+                    lightningPaymentStatus = "expired";
+                } else {
+                    lightningPaymentStatus = "expired";
+                    destinationSettlementStatus = "expired";
+                }
+                break;
         }
 
-        if(this._state===FromBTCLNSwapState.PR_PAID) {
-            if(!await this._verifyQuoteValid()) throw new Error("Quote already expired or close to expiry!");
-            const txsCommit = await this.txsCommit(options?.skipChecks);
-            const txsClaim = await this._txsClaim(undefined, options?.secret);
-            return [
+        return {
+            steps: [
                 {
-                    name: "Commit" as const,
-                    description: `Creates the HTLC escrow on the ${this.chainIdentifier} side`,
-                    chain: this.chainIdentifier,
-                    txs: txsCommit
+                    type: "Payment",
+                    side: "source",
+                    chain: "LIGHTNING",
+                    title: "Lightning payment",
+                    description: "Pay the Lightning network invoice to initiate the swap",
+                    status: lightningPaymentStatus,
+                    initTxId: this.getInputTxId(),
+                    settleTxId: lightningPaymentStatus==="confirmed" ? this.getInputTxId() : undefined
                 },
                 {
-                    name: "Claim" as const,
-                    description: `Settles & claims the funds from the HTLC escrow on the ${this.chainIdentifier} side`,
+                    type: "Settlement",
+                    side: "destination",
                     chain: this.chainIdentifier,
-                    txs: txsClaim
-                },
-            ];
+                    title: "Destination settlement",
+                    description: `Manually settle the swap on the ${this.chainIdentifier} side`,
+                    status: destinationSettlementStatus,
+                    initTxId: this._commitTxId,
+                    settleTxId: this._claimTxId
+                }
+            ] as [
+                SwapExecutionStepPayment<"LIGHTNING">,
+                SwapExecutionStepSettlement<T["ChainId"], "awaiting_manual">
+            ],
+            buildCurrentAction,
+            state
+        };
+    }
+
+    /**
+     * @internal
+     */
+    private async _buildLightningPaymentAction(): Promise<SwapExecutionActionSendToAddress<true>> {
+        return {
+            type: "SendToAddress",
+            name: "Deposit on Lightning",
+            description: "Pay the lightning network invoice to initiate the swap",
+            chain: "LIGHTNING",
+            txs: [{
+                type: "BOLT11_PAYMENT_REQUEST",
+                address: this.getAddress(),
+                hyperlink: this.getHyperlink(),
+                amount: this.getInput()
+            }],
+            waitForTransactions: async (
+                maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal
+            ) => {
+                const abortController = extendAbortController(
+                    abortSignal, maxWaitTimeSeconds, "Timed out waiting for lightning payment"
+                );
+
+                const success = await this.waitForPayment(
+                    undefined,
+                    pollIntervalSeconds,
+                    abortController.signal
+                );
+                if(!success) throw new Error("Quote expired while waiting for Lightning payment");
+
+                return this.getInputTxId();
+            }
+        } as SwapExecutionActionSendToAddress<true>;
+    }
+
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    async _submitExecutionTransactions(txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal, requiredStates?: FromBTCLNSwapState[], idempotent?: boolean): Promise<string[]> {
+        const parsedTxs: T["SignedTXType"][] = [];
+        for(let tx of txs) {
+            parsedTxs.push(typeof(tx)==="string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
+        }
+
+        if(idempotent) {
+            // Handle idempotent calls
+            if(this.wrapper._chain.getTxId!=null) {
+                const txIds = await Promise.all(parsedTxs.map(tx => this.wrapper._chain.getTxId!(tx)));
+                const foundTxId = txIds.find(txId => this._commitTxId===txId || this._claimTxId===txId);
+                if(foundTxId!=null) return txIds;
+            }
+        }
+
+        if(requiredStates!=null && !requiredStates.includes(this._state)) throw new Error("Swap state has changed before transactions were submitted!");
+
+        if(this._state===FromBTCLNSwapState.PR_PAID || this._state===FromBTCLNSwapState.QUOTE_SOFT_EXPIRED) {
+            if(!await this._verifyQuoteValid()) throw new Error("Quote is already expired!");
+            const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
+            await this.waitTillCommited(abortSignal);
+            await this.waitTillClaimed(undefined, abortSignal);
+            return txIds;
         }
 
         if(this._state===FromBTCLNSwapState.CLAIM_COMMITED) {
-            const txsClaim = await this.txsClaim(undefined, options?.secret);
-            return [
-                {
-                    name: "Claim" as const,
-                    description: `Settles & claims the funds from the HTLC escrow on the ${this.chainIdentifier} side`,
-                    chain: this.chainIdentifier,
-                    txs: txsClaim
-                },
-            ];
+            const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
+            await this.waitTillClaimed(undefined, abortSignal);
+            return txIds;
         }
 
-        throw new Error("Invalid swap state to obtain execution txns, required PR_CREATED, PR_PAID or CLAIM_COMMITED");
+        throw new Error("Invalid swap state for transaction submission!");
+    }
+
+    /**
+     * @internal
+     */
+    private async _buildClaimSmartChainTxAction(actionOptions?: {
+        skipChecks?: boolean,
+        secret?: string
+    }): Promise<SwapExecutionActionSignSmartChainTx<T>> {
+        return {
+            type: "SignSmartChainTransaction",
+            name: "Settle manually",
+            description: "Create the HTLC escrow and settle the swap on the destination smart chain",
+            chain: this.chainIdentifier,
+            txs: await this.prepareTransactions(this.txsCommitAndClaim(actionOptions?.skipChecks, actionOptions?.secret)),
+            submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal, idempotent?: boolean) => {
+                return this._submitExecutionTransactions(
+                    txs,
+                    abortSignal,
+                    [
+                        FromBTCLNSwapState.PR_PAID,
+                        FromBTCLNSwapState.QUOTE_SOFT_EXPIRED,
+                        FromBTCLNSwapState.CLAIM_COMMITED
+                    ],
+                    idempotent
+                );
+            },
+            requiredSigner: this._getInitiator()
+        } as SwapExecutionActionSignSmartChainTx<T>;
     }
 
     /**
@@ -676,15 +815,53 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
      * @param options.secret A swap secret to use for the claim transaction, generally only needed if the swap
      *  was recovered from on-chain data, or the pre-image was generated outside the SDK
      */
-    async getCurrentActions(options?: {
+    async getExecutionAction(options?: {
         skipChecks?: boolean,
         secret?: string
-    }): Promise<SwapExecutionAction<T>[]> {
-        try {
-            return await this.txsExecute(options);
-        } catch (e) {
-            return [];
-        }
+    }): Promise<
+        SwapExecutionActionSendToAddress<true> |
+        SwapExecutionActionSignSmartChainTx<T> |
+        undefined
+    > {
+        const executionStatus = await this._getExecutionStatus(options);
+        return executionStatus.buildCurrentAction(options);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    // TODO: Figure how we gonna trigger an LNURL-withdraw with the execution actions
+    async getExecutionStatus(options?: {
+        skipBuildingAction?: boolean,
+        skipChecks?: boolean,
+        secret?: string
+    }): Promise<{
+        steps: [
+            SwapExecutionStepPayment<"LIGHTNING">,
+            SwapExecutionStepSettlement<T["ChainId"], "awaiting_manual">
+        ],
+        currentAction:
+            SwapExecutionActionSendToAddress<true> |
+            SwapExecutionActionSignSmartChainTx<T> |
+            undefined,
+        stateInfo: SwapStateInfo<FromBTCLNSwapState>
+    }> {
+        const executionStatus = await this._getExecutionStatus(options);
+        return {
+            steps: executionStatus.steps,
+            currentAction: options?.skipBuildingAction ? undefined : await executionStatus.buildCurrentAction(options),
+            stateInfo: this._getStateInfo(executionStatus.state)
+        };
+    }
+
+    /**
+     * @inheritDoc
+     */
+    async getExecutionSteps(): Promise<[
+        SwapExecutionStepPayment<"LIGHTNING">,
+        SwapExecutionStepSettlement<T["ChainId"], "awaiting_manual">
+    ]> {
+        return (await this._getExecutionStatus()).steps;
     }
 
 
@@ -919,9 +1096,12 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
         ]);
         abortController.abort();
 
-        if(result===0) this.logger.debug("waitTillCommited(): Resolved from state changed");
-        if(result===true) this.logger.debug("waitTillCommited(): Resolved from watchdog - commited");
-        if(result===false) {
+        if(result===0) {
+            this.logger.debug("waitTillCommited(): Resolved from state changed");
+        } else if(result!=null) {
+            this.logger.debug("waitTillCommited(): Resolved from watchdog - commited");
+        }
+        if(result===null) {
             this.logger.debug("waitTillCommited(): Resolved from watchdog - signature expired");
             if(
                 this._state===FromBTCLNSwapState.PR_PAID ||
@@ -936,6 +1116,8 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
             this._state===FromBTCLNSwapState.PR_PAID ||
             this._state===FromBTCLNSwapState.QUOTE_SOFT_EXPIRED
         ) {
+            if(typeof(result)==="object" && (result as any).getInitTxId!=null && this._commitTxId==null)
+                this._commitTxId = await (result as any).getInitTxId();
             await this._saveAndEmit(FromBTCLNSwapState.CLAIM_COMMITED);
         }
     }
@@ -1401,27 +1583,42 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
     async _forciblySetOnchainState(commitStatus: SwapCommitState): Promise<boolean> {
         switch(commitStatus.type) {
             case SwapCommitStateType.PAID:
+                if(this._commitTxId==null && (commitStatus as any).getInitTxId!=null) this._commitTxId = await (commitStatus as any).getInitTxId();
                 if(this._claimTxId==null) this._claimTxId = await commitStatus.getClaimTxId();
                 if(this.secret==null || this.pr==null) this._setSwapSecret(await commitStatus.getClaimResult());
                 this._state = FromBTCLNSwapState.CLAIM_CLAIMED;
                 return true;
             case SwapCommitStateType.NOT_COMMITED:
-                if(this._refundTxId==null && commitStatus.getRefundTxId) this._refundTxId = await commitStatus.getRefundTxId();
+                let changed: boolean = false;
+                if(this._commitTxId==null && (commitStatus as any).getInitTxId!=null) {
+                    this._commitTxId = await (commitStatus as any).getInitTxId();
+                    changed = true;
+                }
+                if(this._refundTxId==null && commitStatus.getRefundTxId) {
+                    this._refundTxId = await commitStatus.getRefundTxId();
+                    changed = true;
+                }
                 if(this._refundTxId!=null) {
                     this._state = FromBTCLNSwapState.FAILED;
-                    return true;
+                    changed = true;
                 }
-                break;
+                return changed;
             case SwapCommitStateType.EXPIRED:
+                if(this._commitTxId==null && (commitStatus as any).getInitTxId!=null) this._commitTxId = await (commitStatus as any).getInitTxId();
                 if(this._refundTxId==null && commitStatus.getRefundTxId) this._refundTxId = await commitStatus.getRefundTxId();
                 this._state = this._refundTxId==null ? FromBTCLNSwapState.QUOTE_EXPIRED : FromBTCLNSwapState.FAILED;
                 return true;
             case SwapCommitStateType.COMMITED:
+                let save: boolean = false;
+                if(this._commitTxId==null && (commitStatus as any).getInitTxId!=null) {
+                    this._commitTxId = await (commitStatus as any).getInitTxId();
+                    save = true;
+                }
                 if(this._state!==FromBTCLNSwapState.CLAIM_COMMITED && this._state!==FromBTCLNSwapState.EXPIRED) {
                     this._state = FromBTCLNSwapState.CLAIM_COMMITED;
-                    return true;
+                    save = true;
                 }
-                break;
+                return save;
         }
         return false;
     }

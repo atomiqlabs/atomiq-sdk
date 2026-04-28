@@ -8,7 +8,9 @@ import { FeeType } from "../../../enums/FeeType";
 import { TokenAmount } from "../../../types/TokenAmount";
 import { BtcToken, SCToken } from "../../../types/Token";
 import { LoggerType } from "../../../utils/Logger";
-import { SwapExecutionAction, SwapExecutionActionLightning } from "../../../types/SwapExecutionAction";
+import { SwapExecutionActionSendToAddress, SwapExecutionActionWait } from "../../../types/SwapExecutionAction";
+import { SwapExecutionStepPayment, SwapExecutionStepSettlement } from "../../../types/SwapExecutionStep";
+import { SwapStateInfo } from "../../../types/SwapStateInfo";
 /**
  * State enum for trusted Lightning gas swaps
  *
@@ -16,23 +18,23 @@ import { SwapExecutionAction, SwapExecutionActionLightning } from "../../../type
  */
 export declare enum LnForGasSwapState {
     /**
-     * The swap quote expired without user sending in the lightning network payment
+     * The swap quote expired before the user paid the Lightning invoice
      */
     EXPIRED = -2,
     /**
-     * The swap has failed after the intermediary already received a lightning network payment on the source
+     * The swap has failed before the destination payout completed, and the held Lightning invoice was released
      */
     FAILED = -1,
     /**
-     * Swap was created, pay the provided lightning network invoice
+     * Swap was created, pay the provided Lightning invoice which will remain held until destination payout succeeds
      */
     PR_CREATED = 0,
     /**
-     * User paid the lightning network invoice on the source
+     * The Lightning invoice was paid and is currently held until the user receives the destination funds
      */
     PR_PAID = 1,
     /**
-     * The swap is finished after the intermediary sent funds on the destination chain
+     * The swap is finished after the destination payout succeeded and the held Lightning invoice was settled
      */
     FINISHED = 2
 }
@@ -210,17 +212,54 @@ export declare class LnForGasSwap<T extends ChainType = ChainType> extends ISwap
         fee: Fee<T["ChainId"], BtcToken<true>, SCToken<T["ChainId"]>>;
     }];
     /**
-     * @inheritDoc
-     */
-    txsExecute(): Promise<[SwapExecutionActionLightning]>;
-    /**
-     * @remark Not supported
+     * @remarks Not supported
      */
     execute(): Promise<boolean>;
     /**
+     * @internal
+     */
+    protected _getExecutionStatus(): Promise<{
+        steps: [SwapExecutionStepPayment<"LIGHTNING">, SwapExecutionStepSettlement<T["ChainId"], never>];
+        buildCurrentAction: () => Promise<SwapExecutionActionSendToAddress<true> | SwapExecutionActionWait<"LP"> | undefined>;
+        state: LnForGasSwapState;
+    }>;
+    /**
+     * @internal
      * @inheritDoc
      */
-    getCurrentActions(): Promise<SwapExecutionAction<T>[]>;
+    _submitExecutionTransactions(): Promise<string[]>;
+    /**
+     * @internal
+     */
+    private _buildLightningPaymentAction;
+    /**
+     * @internal
+     */
+    private _buildWaitLpAction;
+    /**
+     * @inheritDoc
+     */
+    getExecutionAction(): Promise<SwapExecutionActionSendToAddress<true> | SwapExecutionActionWait<"LP"> | undefined>;
+    /**
+     * @inheritDoc
+     */
+    getExecutionStatus(options?: {
+        skipBuildingAction?: boolean;
+    }): Promise<{
+        steps: [
+            SwapExecutionStepPayment<"LIGHTNING">,
+            SwapExecutionStepSettlement<T["ChainId"], never>
+        ];
+        currentAction: SwapExecutionActionSendToAddress<true> | SwapExecutionActionWait<"LP"> | undefined;
+        stateInfo: SwapStateInfo<LnForGasSwapState>;
+    }>;
+    /**
+     * @inheritDoc
+     */
+    getExecutionSteps(): Promise<[
+        SwapExecutionStepPayment<"LIGHTNING">,
+        SwapExecutionStepSettlement<T["ChainId"], never>
+    ]>;
     /**
      * Queries the intermediary (LP) node for the state of the swap
      *
@@ -232,13 +271,15 @@ export declare class LnForGasSwap<T extends ChainType = ChainType> extends ISwap
     protected checkInvoicePaid(save?: boolean): Promise<boolean | null>;
     /**
      * A blocking promise resolving when payment was received by the intermediary and client can continue,
-     *  rejecting in case of failure. The swap must be in {@link LnForGasSwapState.PR_CREATED} state!
+     *  rejecting in case of failure. The swap must be in {@link LnForGasSwapState.PR_CREATED} or
+     *  {@link LnForGasSwapState.PR_PAID} state!
      *
      * @param checkIntervalSeconds How often to poll the intermediary for answer (default 5 seconds)
      * @param abortSignal Abort signal
+     * @param onPaymentReceived Callback as for when the LP reports having received the ln payment
      * @throws {Error} When in invalid state (not PR_CREATED)
      */
-    waitForPayment(checkIntervalSeconds?: number, abortSignal?: AbortSignal): Promise<boolean>;
+    waitForPayment(checkIntervalSeconds?: number, abortSignal?: AbortSignal, onPaymentReceived?: (txId: string) => void): Promise<boolean>;
     /**
      * @inheritDoc
      */

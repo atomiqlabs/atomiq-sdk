@@ -338,6 +338,22 @@ export class SwapperUtils<T extends MultiChain> {
     }
 
     /**
+     * Strips the URL encoding around `bitcoin:` and `lightning:` addresses, leaving just the raw address
+     *
+     * @param addressString Address to strip
+     *
+     * @returns Raw clean address
+     */
+    stripAddress(addressString: string): string {
+        if(addressString.startsWith("lightning:") || addressString.startsWith("bitcoin:")) {
+            addressString = addressString.substring(addressString.indexOf(":")+1);
+            const delimeterIndex = addressString.indexOf("?");
+            if(delimeterIndex!==-1) addressString = addressString.substring(0, delimeterIndex);
+        }
+        return addressString;
+    }
+
+    /**
      * Returns a random PSBT that can be used for fee estimation for SPV vault (UTXO-controlled vault) based swaps
      *  {@link SwapType.SPV_VAULT_FROM_BTC}, the last output (the LP output) is omitted to allow for coinselection
      *  algorithm to determine maximum sendable amount there
@@ -463,11 +479,18 @@ export class SwapperUtils<T extends MultiChain> {
     }
 
     /**
-     * Returns a random address for a given smart chain
+     * Returns a random address for a given smart chain or bitcoin
      *
      * @param chainIdentifier
      */
-    randomAddress<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier): string {
+    randomAddress<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier | "BITCOIN"): string {
+        if(chainIdentifier==="BITCOIN") {
+            // Return random p2wkh address
+            return Address(this.bitcoinNetwork).encode({
+                type: "wpkh",
+                hash: randomBytes(20)
+            });
+        }
         if(this.root._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
         return this.root._chains[chainIdentifier].chainInterface.randomAddress();
     }
@@ -508,6 +531,23 @@ export class SwapperUtils<T extends MultiChain> {
     ): Promise<string[]> {
         if(this.root._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
         return this.root._chains[chainIdentifier].chainInterface.sendSignedAndConfirm(txs, true, abortSignal, false, onBeforePublish);
+    }
+
+    /**
+     * Prepares a set of unsigned transactions for signing, by adding required nonces or recent blockhashes, might
+     *  also add hints of account deployment on e.g. Starknet
+     *
+     * @param chainIdentifier A chain for which to prepare the txs
+     * @param txs Transactions to prepare
+     */
+    prepareUnsignedTransactions<ChainIdentifier extends ChainIds<T>>(
+        chainIdentifier: ChainIdentifier,
+        txs: T[ChainIdentifier]["TX"][]
+    ): Promise<T[ChainIdentifier]["TX"][]> {
+        if(this.root._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
+        const chainInterface = this.root._chains[chainIdentifier].chainInterface;
+        if(chainInterface.prepareTxs==null) throw new Error("Chain doesn't support tx preparation, chainId: "+chainIdentifier);
+        return chainInterface.prepareTxs(txs);
     }
 
     /**

@@ -177,7 +177,7 @@ class ToBTCWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                                 token: amountData.token,
                                 offerer: signer,
                                 exactIn: amountData.exactIn,
-                                feeRate: (0, Utils_1.throwIfUndefined)(feeRatePromise),
+                                feeRate: (0, Utils_1.throwIfUndefined)(feeRatePromise, "Network fee rate pre-fetch failed!"),
                                 additionalParams
                             }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined);
                             let signDataPromise = _signDataPromise;

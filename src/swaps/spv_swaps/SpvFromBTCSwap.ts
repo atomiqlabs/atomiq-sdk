@@ -1284,12 +1284,12 @@ export class SpvFromBTCSwap<T extends ChainType>
 
                 if(parsedTx instanceof Transaction) {
                     // Bitcoin tx
-                    const txId = parsedTx.id;
-                    if(txId===this._data?.getTxId()) {
+                    const btcTx = await this.wrapper._btcRpc.parseTransaction(Buffer.from(parsedTx.toBytes(true)).toString("hex"));
+                    if(btcTx.txid===this._data?.getTxId()) {
                         if(this._state!==SpvFromBTCSwapState.SIGNED && this._state!==SpvFromBTCSwapState.DECLINED)
                             idempotencyTriggered = true;
                     }
-                    txIds.push(txId);
+                    txIds.push(btcTx.txid);
                 } else {
                     // SC tx
                     if(this.wrapper._chain.getTxId!=null) {

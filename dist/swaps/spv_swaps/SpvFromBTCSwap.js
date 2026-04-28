@@ -971,12 +971,12 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
                 }
                 if (parsedTx instanceof btc_signer_1.Transaction) {
                     // Bitcoin tx
-                    const txId = parsedTx.id;
-                    if (txId === this._data?.getTxId()) {
+                    const btcTx = await this.wrapper._btcRpc.parseTransaction(buffer_1.Buffer.from(parsedTx.toBytes(true)).toString("hex"));
+                    if (btcTx.txid === this._data?.getTxId()) {
                         if (this._state !== SpvFromBTCSwapState.SIGNED && this._state !== SpvFromBTCSwapState.DECLINED)
                             idempotencyTriggered = true;
                     }
-                    txIds.push(txId);
+                    txIds.push(btcTx.txid);
                 }
                 else {
                     // SC tx

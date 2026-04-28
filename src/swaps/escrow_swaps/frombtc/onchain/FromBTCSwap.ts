@@ -1023,9 +1023,9 @@ export class FromBTCSwap<T extends ChainType = ChainType>
 
                 if(parsedTx instanceof Transaction) {
                     // Bitcoin tx
-                    const txId = parsedTx.id;
-                    if(txId===this.txId) idempotencyTriggered = true;
-                    txIds.push(txId);
+                    const btcTx = await this.wrapper._btcRpc.parseTransaction(Buffer.from(parsedTx.toBytes(true)).toString("hex"));
+                    if(btcTx.txid===this.txId) idempotencyTriggered = true;
+                    txIds.push(btcTx.txid);
                 } else {
                     // SC tx
                     if(this.wrapper._chain.getTxId!=null) {

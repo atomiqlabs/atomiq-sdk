@@ -309,7 +309,7 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
      * @inheritDoc
      * @internal
      */
-    _submitExecutionTransactions(txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal, requiredStates?: FromBTCLNSwapState[]): Promise<string[]>;
+    _submitExecutionTransactions(txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal, requiredStates?: FromBTCLNSwapState[], idempotent?: boolean): Promise<string[]>;
     /**
      * @internal
      */

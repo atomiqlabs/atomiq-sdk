@@ -162,7 +162,7 @@ export abstract class IEscrowSwap<
      * @param abortSignal
      * @internal
      */
-    protected async watchdogWaitTillCommited(intervalSeconds?: number, abortSignal?: AbortSignal): Promise<boolean> {
+    protected async watchdogWaitTillCommited(intervalSeconds?: number, abortSignal?: AbortSignal): Promise<SwapCommitState | null> {
         if(this._data==null) throw new Error("Tried to await commitment but data is null, invalid state?");
 
         intervalSeconds ??= 5;
@@ -174,13 +174,15 @@ export abstract class IEscrowSwap<
                 if(
                     status?.type===SwapCommitStateType.NOT_COMMITED &&
                     await this._verifyQuoteDefinitelyExpired()
-                ) return false;
+                ) return null;
             } catch (e) {
                 this.logger.error("watchdogWaitTillCommited(): Error when fetching commit status or signature expiry: ", e);
             }
         }
         if(abortSignal!=null) abortSignal.throwIfAborted();
-        return status?.type!==SwapCommitStateType.EXPIRED;
+        return status?.type===SwapCommitStateType.EXPIRED
+            ? null
+            : status;
     }
 
     /**

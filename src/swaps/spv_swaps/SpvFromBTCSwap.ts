@@ -1257,7 +1257,51 @@ export class SpvFromBTCSwap<T extends ChainType>
      * @inheritDoc
      * @internal
      */
-    async _submitExecutionTransactions(txs: (T["SignedTXType"] | Transaction | string)[], abortSignal?: AbortSignal, requiredStates?: SpvFromBTCSwapState[]): Promise<string[]> {
+    async _submitExecutionTransactions(txs: (T["SignedTXType"] | Transaction | string)[], abortSignal?: AbortSignal, requiredStates?: SpvFromBTCSwapState[], idempotent?: boolean): Promise<string[]> {
+        if(txs.length===0) throw new Error("Need to submit at least 1 transaction in the array, submitted empty array of transactions!");
+
+        // Handle idempotent calls
+        if(idempotent) {
+            let idempotencyTriggered = false;
+            const txIds: string[] = [];
+            for(let tx of txs) {
+                let parsedTx: T["SignedTXType"] | Transaction | undefined;
+                if(typeof(tx)==="string") {
+                    try {
+                        parsedTx = await this.wrapper._chain.deserializeSignedTx(tx);
+                    } catch (e) {}
+                    try {
+                        parsedTx = parsePsbtTransaction(tx);
+                    } catch (e) {}
+                } else {
+                    parsedTx = tx;
+                }
+
+                if(parsedTx==null) {
+                    this.logger.debug("_submitExecutionTransactions(): Failed to parse provided execution transaction: ", tx);
+                    continue;
+                }
+
+                if(parsedTx instanceof Transaction) {
+                    // Bitcoin tx
+                    const txId = parsedTx.id;
+                    if(txId===this._data?.getTxId()) {
+                        if(this._state!==SpvFromBTCSwapState.SIGNED && this._state!==SpvFromBTCSwapState.DECLINED)
+                            idempotencyTriggered = true;
+                    }
+                    txIds.push(txId);
+                } else {
+                    // SC tx
+                    if(this.wrapper._chain.getTxId!=null) {
+                        const txId = await this.wrapper._chain.getTxId(parsedTx);
+                        if(this._claimTxId===txId) idempotencyTriggered = true;
+                        txIds.push(txId);
+                    }
+                }
+            }
+            if(idempotencyTriggered) return txIds;
+        }
+
         if(requiredStates!=null && !requiredStates.includes(this._state)) throw new Error("Swap state has changed before transactions were submitted!");
 
         if(this._state===SpvFromBTCSwapState.CREATED || this._state===SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED) {
@@ -1299,11 +1343,12 @@ export class SpvFromBTCSwap<T extends ChainType>
                     ? {...await this.getPsbt(), type: "RAW_PSBT"}
                     : {...await this.getFundedPsbt(actionOptions.bitcoinWallet, actionOptions?.bitcoinFeeRate), type: "FUNDED_PSBT"}
             ],
-            submitPsbt: async (signedPsbt: string | Transaction | (string | Transaction)[]) => {
+            submitPsbt: async (signedPsbt: string | Transaction | (string | Transaction)[], idempotent) => {
                 return this._submitExecutionTransactions(
                     Array.isArray(signedPsbt) ? signedPsbt : [signedPsbt],
                     undefined,
-                    [SpvFromBTCSwapState.CREATED, SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED]
+                    [SpvFromBTCSwapState.CREATED, SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED],
+                    idempotent
                 );
             }
         } as SwapExecutionActionSignPSBT;
@@ -1364,11 +1409,12 @@ export class SpvFromBTCSwap<T extends ChainType>
             description: "Manually settle the swap on the destination smart chain",
             chain: this.chainIdentifier,
             txs: await this.prepareTransactions(this.txsClaim(actionOptions?.manualSettlementSmartChainSigner)),
-            submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => {
+            submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal, idempotent?: boolean) => {
                 return this._submitExecutionTransactions(
                     txs,
                     abortSignal,
-                    [SpvFromBTCSwapState.BTC_TX_CONFIRMED]
+                    [SpvFromBTCSwapState.BTC_TX_CONFIRMED],
+                    idempotent
                 );
             },
             requiredSigner: signerAddress ?? this._getInitiator()

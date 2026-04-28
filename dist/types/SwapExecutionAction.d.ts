@@ -91,7 +91,7 @@ export type SwapExecutionActionSignPSBT<T extends "FUNDED_PSBT" | "RAW_PSBT" = "
      *
      * @returns An array of transaction IDs of the submitted Bitcoin transactions
      */
-    submitPsbt: (signedPsbt: string | Transaction | (string | Transaction)[]) => Promise<string[]>;
+    submitPsbt: (signedPsbt: string | Transaction | (string | Transaction)[], idempotent?: boolean) => Promise<string[]>;
 };
 /**
  * Type guard for {@link SwapExecutionActionSignPSBT}
@@ -134,7 +134,7 @@ export type SwapExecutionActionSignSmartChainTx<T extends ChainType = ChainType>
      *  Make sure to only submit valid signed transactions obtained from this action object, and pass an AbortSignal
      *  if you need a timeout, otherwise this call can wait indefinitely when invalid transactions are submitted.
      */
-    submitTransactions: (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => Promise<string[]>;
+    submitTransactions: (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal, idempotent?: boolean) => Promise<string[]>;
     /**
      * The address of the signer that has to sign the transactions
      */

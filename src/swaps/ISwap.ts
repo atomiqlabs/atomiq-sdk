@@ -603,10 +603,13 @@ export abstract class ISwap<
      * @param abortSignal Abort signal
      * @param requiredStates Optional list of states that the swap has to be in for the transactions to be
      *  submitted, else throws
+     * @param idempotent Whether the tx submission should be handled idempotently, meaning if any of the supplied
+     *  transactions are already processed as e.g. init, claim, refund or execution transactions the function just
+     *  returns these transaction IDs without actually submitting them
      *
      * @internal
      */
-    abstract _submitExecutionTransactions(txs: (T["SignedTXType"] | string | any)[], abortSignal?: AbortSignal, requiredStates?: S[]): Promise<string[]>;
+    abstract _submitExecutionTransactions(txs: (T["SignedTXType"] | string | any)[], abortSignal?: AbortSignal, requiredStates?: S[], idempotent?: boolean): Promise<string[]>;
 
     //////////////////////////////
     //// Amounts & fees

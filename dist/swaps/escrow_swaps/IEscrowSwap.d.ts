@@ -89,7 +89,7 @@ export declare abstract class IEscrowSwap<T extends ChainType = ChainType, D ext
      * @param abortSignal
      * @internal
      */
-    protected watchdogWaitTillCommited(intervalSeconds?: number, abortSignal?: AbortSignal): Promise<boolean>;
+    protected watchdogWaitTillCommited(intervalSeconds?: number, abortSignal?: AbortSignal): Promise<SwapCommitState | null>;
     /**
      * Periodically checks the chain to see whether the swap was finished (claimed or refunded)
      *

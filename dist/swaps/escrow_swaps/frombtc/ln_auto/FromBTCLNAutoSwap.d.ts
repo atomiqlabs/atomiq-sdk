@@ -426,7 +426,7 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
      * @inheritDoc
      * @internal
      */
-    _submitExecutionTransactions(txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal, requiredStates?: FromBTCLNAutoSwapState[]): Promise<string[]>;
+    _submitExecutionTransactions(txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal, requiredStates?: FromBTCLNAutoSwapState[], idempotent?: boolean): Promise<string[]>;
     /**
      * @internal
      */

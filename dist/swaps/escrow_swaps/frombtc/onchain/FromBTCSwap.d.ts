@@ -336,7 +336,7 @@ export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromB
      * @inheritDoc
      * @internal
      */
-    _submitExecutionTransactions(txs: (T["SignedTXType"] | Transaction | string)[], abortSignal?: AbortSignal, requiredStates?: FromBTCSwapState[]): Promise<string[]>;
+    _submitExecutionTransactions(txs: (T["SignedTXType"] | Transaction | string)[], abortSignal?: AbortSignal, requiredStates?: FromBTCSwapState[], idempotent?: boolean): Promise<string[]>;
     /**
      * @internal
      */

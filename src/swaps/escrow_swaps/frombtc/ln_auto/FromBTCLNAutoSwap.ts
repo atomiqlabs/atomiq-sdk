@@ -1018,15 +1018,26 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
     async _submitExecutionTransactions(
         txs: (T["SignedTXType"] | string)[],
         abortSignal?: AbortSignal,
-        requiredStates?: FromBTCLNAutoSwapState[]
+        requiredStates?: FromBTCLNAutoSwapState[],
+        idempotent?: boolean
     ): Promise<string[]> {
+        const parsedTxs: T["SignedTXType"][] = [];
+        for(let tx of txs) {
+            parsedTxs.push(typeof(tx)==="string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
+        }
+
+        if(idempotent) {
+            // Handle idempotent calls
+            if(this.wrapper._chain.getTxId!=null) {
+                const txIds = await Promise.all(parsedTxs.map(tx => this.wrapper._chain.getTxId!(tx)));
+                const foundTxId = txIds.find(txId => this._claimTxId===txId);
+                if(foundTxId!=null) return txIds;
+            }
+        }
+
         if(requiredStates!=null && !requiredStates.includes(this._state)) throw new Error("Swap state has changed before transactions were submitted!");
 
         if(this._state===FromBTCLNAutoSwapState.CLAIM_COMMITED) {
-            const parsedTxs: T["SignedTXType"][] = [];
-            for(let tx of txs) {
-                parsedTxs.push(typeof(tx)==="string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
-            }
             const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
             await this.waitTillClaimed(undefined, abortSignal);
             return txIds;
@@ -1051,11 +1062,12 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
             description: "Manually settle (claim) the swap on the destination smart chain",
             chain: this.chainIdentifier,
             txs: await this.prepareTransactions(this.txsClaim(actionOptions?.manualSettlementSmartChainSigner, actionOptions?.secret)),
-            submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal) => {
+            submitTransactions: async (txs: (T["SignedTXType"] | string)[], abortSignal?: AbortSignal, idempotent?: boolean) => {
                 return this._submitExecutionTransactions(
                     txs,
                     abortSignal,
-                    [FromBTCLNAutoSwapState.CLAIM_COMMITED]
+                    [FromBTCLNAutoSwapState.CLAIM_COMMITED],
+                    idempotent
                 );
             },
             requiredSigner: signerAddress ?? this._getInitiator()
@@ -1359,7 +1371,7 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
         if(this._state!==FromBTCLNAutoSwapState.PR_PAID) throw new Error("Invalid state");
 
         const abortController = extendAbortController(abortSignal);
-        let result: number | boolean;
+        let result: SwapCommitState | number | null;
         try {
             result = await Promise.race([
                 this.watchdogWaitTillCommited(checkIntervalSeconds, abortController.signal),
@@ -1371,7 +1383,7 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
             throw e;
         }
 
-        if(result===false) {
+        if(result===null) {
             this.logger.debug("waitTillCommited(): Resolved from watchdog - HTLC expired");
             if(
                 this._state===FromBTCLNAutoSwapState.PR_PAID
@@ -1384,12 +1396,15 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
         if(
             this._state===FromBTCLNAutoSwapState.PR_PAID
         ) {
+            if(typeof(result)==="object" && (result as any).getInitTxId!=null && this._commitTxId==null)
+                this._commitTxId = await (result as any).getInitTxId();
             this._commitedAt ??= Date.now();
             await this._saveAndEmit(FromBTCLNAutoSwapState.CLAIM_COMMITED);
         }
 
-        if(result===0) this.logger.debug("waitTillCommited(): Resolved from state changed");
-        if(result===true) {
+        if(result===0) {
+            this.logger.debug("waitTillCommited(): Resolved from state changed");
+        } else if(result!=null) {
             this.logger.debug("waitTillCommited(): Resolved from watchdog - commited");
             if(this.secret!=null) await this._broadcastSecret().catch(e => {
                 this.logger.error("waitTillCommited(): Error broadcasting swap secret: ", e);
@@ -1740,28 +1755,43 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
     async _forciblySetOnchainState(commitStatus: SwapCommitState): Promise<boolean> {
         switch(commitStatus?.type) {
             case SwapCommitStateType.PAID:
+                if(this._commitTxId==null && (commitStatus as any).getInitTxId!=null) this._commitTxId = await (commitStatus as any).getInitTxId();
                 if(this._claimTxId==null) this._claimTxId = await commitStatus.getClaimTxId();
                 if(this.secret==null || this.pr==null) this._setSwapSecret(await commitStatus.getClaimResult());
                 this._state = FromBTCLNAutoSwapState.CLAIM_CLAIMED;
                 return true;
             case SwapCommitStateType.NOT_COMMITED:
-                if(this._refundTxId==null && commitStatus.getRefundTxId!=null) this._refundTxId = await commitStatus.getRefundTxId();
+                let changed: boolean = false;
+                if(this._commitTxId==null && (commitStatus as any).getInitTxId!=null) {
+                    this._commitTxId = await (commitStatus as any).getInitTxId();
+                    changed = true;
+                }
+                if(this._refundTxId==null && commitStatus.getRefundTxId!=null) {
+                    this._refundTxId = await commitStatus.getRefundTxId();
+                    changed = true;
+                }
                 if(this._refundTxId!=null) {
                     this._state = FromBTCLNAutoSwapState.FAILED;
-                    return true;
+                    changed = true;
                 }
-                break;
+                return changed;
             case SwapCommitStateType.EXPIRED:
+                if(this._commitTxId==null && (commitStatus as any).getInitTxId!=null) this._commitTxId = await (commitStatus as any).getInitTxId();
                 if(this._refundTxId==null && commitStatus.getRefundTxId!=null) this._refundTxId = await commitStatus.getRefundTxId();
                 this._state = this._refundTxId==null ? FromBTCLNAutoSwapState.QUOTE_EXPIRED : FromBTCLNAutoSwapState.FAILED;
                 return true;
             case SwapCommitStateType.COMMITED:
+                let save: boolean = false;
+                if(this._commitTxId==null && (commitStatus as any).getInitTxId!=null) {
+                    this._commitTxId = await (commitStatus as any).getInitTxId();
+                    save = true;
+                }
                 if(this._state!==FromBTCLNAutoSwapState.CLAIM_COMMITED && this._state!==FromBTCLNAutoSwapState.EXPIRED) {
                     this._commitedAt ??= Date.now();
                     this._state = FromBTCLNAutoSwapState.CLAIM_COMMITED;
-                    return true;
+                    save = true;
                 }
-                break;
+                return save;
         }
         return false;
     }

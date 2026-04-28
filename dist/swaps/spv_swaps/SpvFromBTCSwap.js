@@ -943,7 +943,54 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
      * @inheritDoc
      * @internal
      */
-    async _submitExecutionTransactions(txs, abortSignal, requiredStates) {
+    async _submitExecutionTransactions(txs, abortSignal, requiredStates, idempotent) {
+        if (txs.length === 0)
+            throw new Error("Need to submit at least 1 transaction in the array, submitted empty array of transactions!");
+        // Handle idempotent calls
+        if (idempotent) {
+            let idempotencyTriggered = false;
+            const txIds = [];
+            for (let tx of txs) {
+                let parsedTx;
+                if (typeof (tx) === "string") {
+                    try {
+                        parsedTx = await this.wrapper._chain.deserializeSignedTx(tx);
+                    }
+                    catch (e) { }
+                    try {
+                        parsedTx = (0, BitcoinUtils_1.parsePsbtTransaction)(tx);
+                    }
+                    catch (e) { }
+                }
+                else {
+                    parsedTx = tx;
+                }
+                if (parsedTx == null) {
+                    this.logger.debug("_submitExecutionTransactions(): Failed to parse provided execution transaction: ", tx);
+                    continue;
+                }
+                if (parsedTx instanceof btc_signer_1.Transaction) {
+                    // Bitcoin tx
+                    const txId = parsedTx.id;
+                    if (txId === this._data?.getTxId()) {
+                        if (this._state !== SpvFromBTCSwapState.SIGNED && this._state !== SpvFromBTCSwapState.DECLINED)
+                            idempotencyTriggered = true;
+                    }
+                    txIds.push(txId);
+                }
+                else {
+                    // SC tx
+                    if (this.wrapper._chain.getTxId != null) {
+                        const txId = await this.wrapper._chain.getTxId(parsedTx);
+                        if (this._claimTxId === txId)
+                            idempotencyTriggered = true;
+                        txIds.push(txId);
+                    }
+                }
+            }
+            if (idempotencyTriggered)
+                return txIds;
+        }
         if (requiredStates != null && !requiredStates.includes(this._state))
             throw new Error("Swap state has changed before transactions were submitted!");
         if (this._state === SpvFromBTCSwapState.CREATED || this._state === SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED) {
@@ -980,8 +1027,8 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
                     ? { ...await this.getPsbt(), type: "RAW_PSBT" }
                     : { ...await this.getFundedPsbt(actionOptions.bitcoinWallet, actionOptions?.bitcoinFeeRate), type: "FUNDED_PSBT" }
             ],
-            submitPsbt: async (signedPsbt) => {
-                return this._submitExecutionTransactions(Array.isArray(signedPsbt) ? signedPsbt : [signedPsbt], undefined, [SpvFromBTCSwapState.CREATED, SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED]);
+            submitPsbt: async (signedPsbt, idempotent) => {
+                return this._submitExecutionTransactions(Array.isArray(signedPsbt) ? signedPsbt : [signedPsbt], undefined, [SpvFromBTCSwapState.CREATED, SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED], idempotent);
             }
         };
     }
@@ -1027,8 +1074,8 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
             description: "Manually settle the swap on the destination smart chain",
             chain: this.chainIdentifier,
             txs: await this.prepareTransactions(this.txsClaim(actionOptions?.manualSettlementSmartChainSigner)),
-            submitTransactions: async (txs, abortSignal) => {
-                return this._submitExecutionTransactions(txs, abortSignal, [SpvFromBTCSwapState.BTC_TX_CONFIRMED]);
+            submitTransactions: async (txs, abortSignal, idempotent) => {
+                return this._submitExecutionTransactions(txs, abortSignal, [SpvFromBTCSwapState.BTC_TX_CONFIRMED], idempotent);
             },
             requiredSigner: signerAddress ?? this._getInitiator()
         };

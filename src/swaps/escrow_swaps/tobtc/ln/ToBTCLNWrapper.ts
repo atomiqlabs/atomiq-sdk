@@ -9,7 +9,7 @@ import {ISwapPrice} from "../../../../prices/abstract/ISwapPrice";
 import {EventEmitter} from "events";
 import {IntermediaryError} from "../../../../errors/IntermediaryError";
 import {SwapType} from "../../../../enums/SwapType";
-import {extendAbortController, throwIfUndefined} from "../../../../utils/Utils";
+import {extendAbortController, mapArrayToObject, throwIfUndefined} from "../../../../utils/Utils";
 import {IntermediaryAPI, ToBTCLNResponseType} from "../../../../intermediaries/apis/IntermediaryAPI";
 import {RequestError} from "../../../../errors/RequestError";
 import {LNURL, LNURLPaySuccessAction} from "../../../../lnurl/LNURL";
@@ -102,21 +102,26 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
         unifiedStorage: UnifiedSwapStorage<T>,
         unifiedChainEvents: UnifiedSwapEventListener<T>,
         chain: T["ChainInterface"],
-        contract: T["Contract"],
         prices: ISwapPrice,
         tokens: WrapperCtorTokens,
-        swapDataDeserializer: new (data: any) => T["Data"],
+        versionedContracts: {
+            [version: string]: {
+                swapContract: T["Contract"],
+                swapDataConstructor: new (data: any) => T["Data"]
+            }
+        },
         options?: AllOptional<ToBTCLNWrapperOptions>,
         events?: EventEmitter<{swapState: [ISwap]}>
     ) {
         super(
-            chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer,
+            chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens,
             {
                 ...options,
                 paymentTimeoutSeconds: options?.paymentTimeoutSeconds ?? 5*24*60*60,
                 lightningBaseFee: options?.lightningBaseFee ?? 10,
                 lightningFeePPM: options?.lightningFeePPM ?? 2000
             },
+            versionedContracts,
             events
         );
     }
@@ -221,7 +226,7 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
             throw new IntermediaryError("Invalid data returned - total amount");
 
         if(parsedPr.tagsObject.payment_hash==null) throw new Error("Swap invoice doesn't contain payment hash field!");
-        const claimHash = this._contract.getHashForHtlc(Buffer.from(parsedPr.tagsObject.payment_hash, "hex"));
+        const claimHash = this._contract(lp.getContractVersion(this.chainIdentifier)).getHashForHtlc(Buffer.from(parsedPr.tagsObject.payment_hash, "hex"));
 
         if(
             data.getAmount() !== resp.total ||
@@ -265,18 +270,19 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
             expiryTimestamp: bigint
         },
         preFetches: {
-            feeRatePromise: Promise<string | undefined>,
+            feeRatePromise: {[contractVersion: string]: Promise<string | undefined>},
             pricePreFetchPromise: Promise<bigint | undefined>,
             usdPricePrefetchPromise: Promise<number | undefined>,
-            signDataPrefetchPromise?: Promise<T["PreFetchVerification"] | undefined>
+            signDataPrefetchPromise?: {[contractVersion: string]: Promise<T["PreFetchVerification"] | undefined> | undefined}
         },
         abort: AbortSignal | AbortController,
         additionalParams?: Record<string, any>,
     ) {
         if(lp.services[SwapType.TO_BTCLN]==null) throw new Error("LP service for processing to btcln swaps not found!");
+        const version = lp.getContractVersion(this.chainIdentifier);
 
         const abortController = abort instanceof AbortController ? abort : extendAbortController(abort);
-        const reputationPromise = this.preFetchIntermediaryReputation(amountData, lp, abortController);
+        const reputationPromise = this.preFetchIntermediaryReputation(amountData, lp, abortController, version);
 
         try {
             const {signDataPromise, resp} = await tryWithRetries(async(retryCount: number) => {
@@ -286,13 +292,13 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
                     maxFee: await calculatedOptions.maxFee,
                     expiryTimestamp: calculatedOptions.expiryTimestamp,
                     token: amountData.token,
-                    feeRate: throwIfUndefined(preFetches.feeRatePromise),
+                    feeRate: throwIfUndefined(preFetches.feeRatePromise[version]),
                     additionalParams
                 }, this._options.postRequestTimeout, abortController.signal, retryCount>0 ? false : undefined);
 
-                let signDataPromise = preFetches.signDataPrefetchPromise;
+                let signDataPromise = preFetches.signDataPrefetchPromise?.[version];
                 if(signDataPromise==null) {
-                    signDataPromise = this.preFetchSignData(signDataPrefetch);
+                    signDataPromise = this.preFetchSignData(signDataPrefetch, version);
                 } else signDataPrefetch.catch(() => {});
 
                 return {
@@ -304,7 +310,7 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
             if(parsedPr.millisatoshis==null) throw new Error("Swap invoice doesn't have msat amount field!");
             const amountOut: bigint = (BigInt(parsedPr.millisatoshis) + 999n) / 1000n;
             const totalFee: bigint = resp.swapFee + resp.maxFee;
-            const data: T["Data"] = new this._swapDataDeserializer(resp.data);
+            const data: T["Data"] = new (this._swapDataDeserializer(version))(resp.data);
             data.setOfferer(signer);
 
             await this.verifyReturnedData(signer, resp, parsedPr, amountData.token, lp, calculatedOptions, data);
@@ -316,7 +322,7 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
                     preFetches.pricePreFetchPromise, preFetches.usdPricePrefetchPromise, abortController.signal
                 ),
                 this.verifyReturnedSignature(
-                    signer, data, resp, preFetches.feeRatePromise, signDataPromise, abortController.signal
+                    signer, data, resp, preFetches.feeRatePromise[version], signDataPromise, version, abortController.signal
                 ),
                 reputationPromise
             ]);
@@ -332,14 +338,15 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
                 expiry: signatureExpiry,
                 swapFee: resp.swapFee,
                 swapFeeBtc,
-                feeRate: (await preFetches.feeRatePromise)!,
+                feeRate: (await preFetches.feeRatePromise[version])!,
                 signatureData: resp,
                 data,
                 networkFee: resp.maxFee,
                 networkFeeBtc: resp.routingFeeSats,
                 confidence: resp.confidence,
                 pr,
-                exactIn: false
+                exactIn: false,
+                contractVersion: version
             } as IToBTCSwapInit<T["Data"]>);
             return quote;
         } catch (e) {
@@ -370,10 +377,10 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
         additionalParams?: Record<string, any>,
         abortSignal?: AbortSignal,
         preFetches?: {
-            feeRatePromise: Promise<string | undefined>,
+            feeRatePromise: {[contractVersion: string]: Promise<string | undefined>},
             pricePreFetchPromise: Promise<bigint | undefined>,
             usdPricePrefetchPromise: Promise<number | undefined>,
-            signDataPrefetchPromise?: Promise<T["PreFetchVerification"] | undefined>
+            signDataPrefetchPromise?: {[contractVersion: string]: Promise<T["PreFetchVerification"] | undefined> | undefined}
         }
     ): Promise<{
         quote: Promise<ToBTCLNSwap<T>>,
@@ -383,19 +390,27 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
         if(parsedPr.millisatoshis==null) throw new UserError("Must be an invoice with amount");
         const amountOut: bigint = (BigInt(parsedPr.millisatoshis) + 999n) / 1000n;
 
+        const lpVersions = Intermediary.getContractVersionsForLps(this.chainIdentifier, lps);
+
         const _options = this.toRequiredSwapOptions({...amountData, amount: amountOut}, options);
 
         if(parsedPr.tagsObject.payment_hash==null) throw new Error("Provided lightning invoice doesn't contain payment hash field!");
         await this.checkPaymentHashWasPaid(parsedPr.tagsObject.payment_hash);
 
-        const claimHash = this._contract.getHashForHtlc(Buffer.from(parsedPr.tagsObject.payment_hash, "hex"));
+        const _hash = mapArrayToObject(lpVersions, (contractVersion: string) => {
+            return this._contract(contractVersion).getHashForHtlc(Buffer.from(parsedPr.tagsObject.payment_hash!, "hex")).toString("hex");
+        });
 
         const _abortController = extendAbortController(abortSignal);
         const _preFetches = preFetches ?? {
             pricePreFetchPromise: this.preFetchPrice(amountData, _abortController.signal),
-            feeRatePromise: this.preFetchFeeRate(signer, amountData, claimHash.toString("hex"), _abortController),
+            feeRatePromise: this.preFetchFeeRate(signer, amountData, _hash, _abortController, lpVersions),
             usdPricePrefetchPromise: this.preFetchUsdPrice(_abortController.signal),
-            signDataPrefetchPromise: this._contract.preFetchBlockDataForSignatures==null ? this.preFetchSignData(Promise.resolve(true)) : undefined
+            signDataPrefetchPromise: mapArrayToObject(lpVersions, (contractVersion: string) => {
+                return this._contract(contractVersion).preFetchBlockDataForSignatures==null ?
+                    this.preFetchSignData(Promise.resolve(true), contractVersion) :
+                    undefined;
+            })
         };
 
         return lps.map(lp => {
@@ -451,7 +466,7 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
             expiryTimestamp: bigint
         },
         preFetches: {
-            feeRatePromise: Promise<string | undefined>,
+            feeRatePromise: {[contractVersion: string]: Promise<string | undefined>},
             pricePreFetchPromise: Promise<bigint | undefined>,
             usdPricePrefetchPromise: Promise<number | undefined>
         },
@@ -459,9 +474,10 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
         additionalParams?: Record<string, any>,
     ) {
         if(lp.services[SwapType.TO_BTCLN]==null) throw new Error("LP service for processing to btcln swaps not found!");
+        const version = lp.getContractVersion(this.chainIdentifier);
 
         const abortController = extendAbortController(abortSignal);
-        const reputationPromise = this.preFetchIntermediaryReputation(amountData, lp, abortController);
+        const reputationPromise = this.preFetchIntermediaryReputation(amountData, lp, abortController, version);
 
         try {
             const {signDataPromise, prepareResp} = await tryWithRetries(async(retryCount: number) => {
@@ -476,7 +492,7 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
                 }, this._options.postRequestTimeout, abortController.signal, retryCount>0 ? false : undefined);
 
                 return {
-                    signDataPromise: this.preFetchSignData(signDataPrefetch),
+                    signDataPromise: this.preFetchSignData(signDataPrefetch, version),
                     prepareResp: await response
                 };
             }, undefined, e => e instanceof RequestError, abortController.signal);
@@ -498,7 +514,7 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
                 (retryCount: number) => IntermediaryAPI.initToBTCLNExactIn(lp.url, {
                     pr: invoice,
                     reqId: prepareResp.reqId,
-                    feeRate: throwIfUndefined(preFetches.feeRatePromise),
+                    feeRate: throwIfUndefined(preFetches.feeRatePromise[version]),
                     additionalParams
                 }, this._options.postRequestTimeout, abortController.signal, retryCount>0 ? false : undefined),
                 undefined, RequestError, abortController.signal
@@ -507,7 +523,7 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
             if(parsedInvoice.millisatoshis==null) throw new Error("Swap invoice doesn't have msat amount field!");
             const amountOut: bigint = (BigInt(parsedInvoice.millisatoshis) + 999n) / 1000n;
             const totalFee: bigint = resp.swapFee + resp.maxFee;
-            const data: T["Data"] = new this._swapDataDeserializer(resp.data);
+            const data: T["Data"] = new (this._swapDataDeserializer(version))(resp.data);
             data.setOfferer(signer);
 
             await this.verifyReturnedData(signer, resp, parsedInvoice, amountData.token, lp, calculatedOptions, data, amountData.amount);
@@ -519,7 +535,7 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
                     preFetches.pricePreFetchPromise, preFetches.usdPricePrefetchPromise, abortSignal
                 ),
                 this.verifyReturnedSignature(
-                    signer, data, resp, preFetches.feeRatePromise, signDataPromise, abortController.signal
+                    signer, data, resp, preFetches.feeRatePromise[version], signDataPromise, version, abortController.signal
                 ),
                 reputationPromise
             ]);
@@ -535,14 +551,15 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
                 expiry: signatureExpiry,
                 swapFee: resp.swapFee,
                 swapFeeBtc,
-                feeRate: (await preFetches.feeRatePromise)!,
+                feeRate: (await preFetches.feeRatePromise[version])!,
                 signatureData: resp,
                 data,
                 networkFee: resp.maxFee,
                 networkFeeBtc: resp.routingFeeSats,
                 confidence: resp.confidence,
                 pr: invoice,
-                exactIn: true
+                exactIn: true,
+                contractVersion: version
             } as IToBTCSwapInit<T["Data"]>);
             return quote;
         } catch (e) {
@@ -578,13 +595,17 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
     }[]> {
         if(!this.isInitialized) throw new Error("Not initialized, call init() first!");
 
+        const lpVersions = Intermediary.getContractVersionsForLps(this.chainIdentifier, lps);
+
         const _abortController = extendAbortController(abortSignal);
         const pricePreFetchPromise: Promise<bigint | undefined> = this.preFetchPrice(amountData, _abortController.signal);
         const usdPricePrefetchPromise: Promise<number | undefined> = this.preFetchUsdPrice(_abortController.signal);
-        const feeRatePromise: Promise<string | undefined> = this.preFetchFeeRate(signer, amountData, undefined, _abortController);
-        const signDataPrefetchPromise: Promise<T["PreFetchVerification"] | undefined> | undefined = this._contract.preFetchBlockDataForSignatures==null ?
-            this.preFetchSignData(Promise.resolve(true)) :
-            undefined;
+        const feeRatePromise = this.preFetchFeeRate(signer, amountData, undefined, _abortController, lpVersions);
+        const signDataPrefetchPromise = mapArrayToObject(lpVersions, (contractVersion: string) => {
+            return this._contract(contractVersion).preFetchBlockDataForSignatures==null ?
+                this.preFetchSignData(Promise.resolve(true), contractVersion) :
+                undefined;
+        });
 
         const _options = this.toRequiredSwapOptions(amountData, options, pricePreFetchPromise, _abortController.signal);
 
@@ -716,6 +737,7 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
     async recoverFromSwapDataAndState(
         init: {data: T["Data"], getInitTxId: () => Promise<string>, getTxBlock: () => Promise<{blockTime: number, blockHeight: number}>},
         state: SwapCommitState,
+        contractVersion: string,
         lp?: Intermediary
     ): Promise<ToBTCLNSwap<T> | null> {
         const data = init.data;
@@ -747,7 +769,8 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
             networkFeeBtc: 0n,
             confidence: 0,
             pr: paymentHash ?? undefined,
-            exactIn: false
+            exactIn: false,
+            contractVersion
         };
         const swap = new ToBTCLNSwap(this, swapInit);
         swap._commitTxId = await init.getInitTxId();

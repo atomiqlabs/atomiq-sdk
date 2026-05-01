@@ -18,6 +18,15 @@ export declare function throwIfUndefined<T>(promise: Promise<T | undefined>, msg
  */
 export declare function promiseAny<T>(promises: Promise<T>[]): Promise<T>;
 /**
+ * Maps an array to object properties using the translation function
+ *
+ * @param array
+ * @param translator
+ */
+export declare function mapArrayToObject<T extends string[], O>(array: T, translator: (key: T[number]) => O): {
+    [key in T[number]]: O;
+};
+/**
  * Maps a JS object to another JS object based on the translation function, the translation function is called for every
  *  property (value/key) of the old object and returns the new value of for this property
  *

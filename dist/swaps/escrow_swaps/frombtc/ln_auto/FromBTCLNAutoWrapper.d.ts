@@ -108,16 +108,20 @@ export declare class FromBTCLNAutoWrapper<T extends ChainType> extends IFromBTCL
      * @param unifiedStorage Storage interface for the current environment
      * @param unifiedChainEvents On-chain event listener
      * @param chain
-     * @param contract Underlying contract handling the swaps
      * @param prices Swap pricing handler
      * @param tokens
-     * @param swapDataDeserializer Deserializer for SwapData
+     * @param versionedContracts
      * @param lnApi
      * @param messenger
      * @param options
      * @param events Instance to use for emitting events
      */
-    constructor(chainIdentifier: string, unifiedStorage: UnifiedSwapStorage<T>, unifiedChainEvents: UnifiedSwapEventListener<T>, chain: T["ChainInterface"], contract: T["Contract"], prices: ISwapPrice, tokens: WrapperCtorTokens, swapDataDeserializer: new (data: any) => T["Data"], lnApi: LightningNetworkApi, messenger: Messenger, options?: AllOptional<FromBTCLNAutoWrapperOptions>, events?: EventEmitter<{
+    constructor(chainIdentifier: string, unifiedStorage: UnifiedSwapStorage<T>, unifiedChainEvents: UnifiedSwapEventListener<T>, chain: T["ChainInterface"], prices: ISwapPrice, tokens: WrapperCtorTokens, versionedContracts: {
+        [version: string]: {
+            swapContract: T["Contract"];
+            swapDataConstructor: new (data: any) => T["Data"];
+        };
+    }, lnApi: LightningNetworkApi, messenger: Messenger, options?: AllOptional<FromBTCLNAutoWrapperOptions>, events?: EventEmitter<{
         swapState: [ISwap];
     }>);
     /**
@@ -144,6 +148,7 @@ export declare class FromBTCLNAutoWrapper<T extends ChainType> extends IFromBTCL
      * @param options Options as passed to the swap creation function
      * @param abortController
      *
+     * @param contractVersions
      * @private
      */
     private preFetchClaimerBounty;
@@ -178,10 +183,12 @@ export declare class FromBTCLNAutoWrapper<T extends ChainType> extends IFromBTCL
      * @param preFetches Optional pre-fetches for speeding up the quoting process (mainly used internally)
      */
     create(recipient: string, amountData: AmountData, lps: Intermediary[], options?: FromBTCLNAutoOptions, additionalParams?: Record<string, any>, abortSignal?: AbortSignal, preFetches?: {
-        pricePrefetchPromise?: Promise<bigint | undefined>;
-        usdPricePrefetchPromise?: Promise<number | undefined>;
+        pricePrefetchPromise: Promise<bigint | undefined>;
+        usdPricePrefetchPromise: Promise<number | undefined>;
+        claimerBountyPrefetch: {
+            [contractVersion: string]: Promise<bigint | undefined>;
+        };
         gasTokenPricePrefetchPromise?: Promise<bigint | undefined>;
-        claimerBountyPrefetch?: Promise<bigint | undefined>;
     }): {
         quote: Promise<FromBTCLNAutoSwap<T>>;
         intermediary: Intermediary;
@@ -224,5 +231,5 @@ export declare class FromBTCLNAutoWrapper<T extends ChainType> extends IFromBTCL
             blockTime: number;
             blockHeight: number;
         }>;
-    }, state: SwapCommitState, lp?: Intermediary): Promise<FromBTCLNAutoSwap<T> | null>;
+    }, state: SwapCommitState, contractVersion: string, lp?: Intermediary): Promise<FromBTCLNAutoSwap<T> | null>;
 }

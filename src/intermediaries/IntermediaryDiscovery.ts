@@ -169,7 +169,7 @@ export class IntermediaryDiscovery extends EventEmitter {
     /**
      * Swap contracts for checking intermediary signatures
      */
-    swapContracts: {[key: string]: SwapContract};
+    swapContracts: {[chainIdentifier: string]: {[contractVersion: string]: {swapContract: SwapContract}}};
     /**
      * Registry URL used as a source for the list of intermediaries, this should be a link to a
      *  github-hosted JSON file
@@ -193,7 +193,7 @@ export class IntermediaryDiscovery extends EventEmitter {
     private overrideNodeUrls?: string[];
 
     constructor(
-        swapContracts: {[key: string]: SwapContract},
+        swapContracts: {[chainIdentifier: string]: {[contractVersion: string]: {swapContract: SwapContract}}},
         registryUrl: string = REGISTRY_URL,
         nodeUrls?: string[],
         httpRequestTimeout?: number,
@@ -236,7 +236,11 @@ export class IntermediaryDiscovery extends EventEmitter {
      * @param url
      * @param abortSignal
      */
-    private async getNodeInfo(url: string, abortSignal?: AbortSignal) : Promise<{addresses: {[key: string]: string}, info: InfoHandlerResponseEnvelope}> {
+    private async getNodeInfo(url: string, abortSignal?: AbortSignal) : Promise<{
+        addresses: {[chainIdentifier: string]: string},
+        contractVersions: {[chainIdentifier: string]: string},
+        info: InfoHandlerResponseEnvelope
+    }> {
         const response = await tryWithRetries(
             () => IntermediaryAPI.getIntermediaryInfo(url, this.httpRequestTimeout, abortSignal),
             {maxRetries: 3, delay: 100, exponential: true},
@@ -247,14 +251,22 @@ export class IntermediaryDiscovery extends EventEmitter {
         abortSignal?.throwIfAborted();
 
         const promises: Promise<void>[] = [];
-        const addresses: {[key: string]: string} = {};
+        const addresses: {[chainIdentifier: string]: string} = {};
+        const contractVersions: {[chainIdentifier: string]: string} = {};
         for(let chain in response.chains) {
             if(this.swapContracts[chain]!=null) {
+                const {signature, address, contractVersion} = response.chains[chain];
+                const _contractVersion = contractVersion ?? "v1";
+                const contract = this.swapContracts[chain][_contractVersion];
+                if(contract==null) {
+                    logger.warn("getNodeInfo(): Unknown chain contract version "+_contractVersion+" for "+chain+" reported by intermediary: "+url);
+                    continue;
+                }
                 promises.push((async () => {
-                    const {signature, address} = response.chains[chain];
                     try {
-                        await this.swapContracts[chain].isValidDataSignature(Buffer.from(response.envelope), signature, address);
+                        await contract.swapContract.isValidDataSignature(Buffer.from(response.envelope), signature, address);
                         addresses[chain] = address;
+                        contractVersions[chain] = _contractVersion;
                     } catch (e) {
                         logger.warn("getNodeInfo(): Failed to verify "+chain+" signature for intermediary: "+url);
                     }
@@ -285,6 +297,7 @@ export class IntermediaryDiscovery extends EventEmitter {
 
         return {
             addresses,
+            contractVersions,
             info
         };
     }
@@ -303,7 +316,7 @@ export class IntermediaryDiscovery extends EventEmitter {
             for(let key in nodeInfo.info.services) {
                 services[swapHandlerTypeToSwapType(key as SwapHandlerType)] = nodeInfo.info.services[key as SwapHandlerType];
             }
-            return new Intermediary(url, nodeInfo.addresses, services);
+            return new Intermediary(url, nodeInfo.addresses, services, undefined, nodeInfo.contractVersions);
         } catch (e: any) {
             logger.warn("fetchIntermediaries(): Intermediary "+url+` is unreachable due to ${e.name ?? e.message} error, skipping...`);
             logger.debug("fetchIntermediaries(): Error contacting intermediary "+url+": ", e);

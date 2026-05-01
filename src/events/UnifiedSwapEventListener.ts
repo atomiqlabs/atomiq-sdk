@@ -82,9 +82,10 @@ export class UnifiedSwapEventListener<
 
         for(let event of events) {
             const escrowHash = chainEventToEscrowHash(event);
+            const eventVersion = event.contractVersion ?? "v1";
             if(escrowHash!=null) {
                 const swap = swapsByEscrowHash[escrowHash];
-                if(swap!=null) {
+                if(swap!=null && (swap._contractVersion ?? "v1")===eventVersion) {
                     const obj = this.listeners[swap.getType()];
                     if(obj==null) continue;
                     await obj.listener(event, swap);
@@ -124,8 +125,9 @@ export class UnifiedSwapEventListener<
 
         for(let claimData in htlcCheckInitializeEvents) {
             const event = htlcCheckInitializeEvents[claimData];
+            const eventVersion = event.contractVersion ?? "v1";
             const swap = swapsByClaimDataHash[claimData];
-            if(swap!=null) {
+            if(swap!=null && (swap._contractVersion ?? "v1")===eventVersion) {
                 const obj = this.listeners[swap.getType()];
                 if(obj==null) continue;
                 await obj.listener(event, swap);

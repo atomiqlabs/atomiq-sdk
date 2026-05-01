@@ -81,7 +81,7 @@ export declare class SpvFromBTCWrapper<T extends ChainType> extends ISwapWrapper
     /**
      * @internal
      */
-    protected readonly btcRelay: T["BtcRelay"];
+    protected readonly btcRelay: (version?: string) => BtcRelay<any, T["TX"], any>;
     /**
      * @internal
      */
@@ -89,11 +89,11 @@ export declare class SpvFromBTCWrapper<T extends ChainType> extends ISwapWrapper
     /**
      * @internal
      */
-    readonly _synchronizer: RelaySynchronizer<any, T["TX"], any>;
+    readonly _synchronizer: (version?: string) => RelaySynchronizer<any, T["TX"], any>;
     /**
      * @internal
      */
-    readonly _contract: T["SpvVaultContract"];
+    readonly _contract: (version?: string) => T["SpvVaultContract"];
     /**
      * @internal
      */
@@ -101,27 +101,37 @@ export declare class SpvFromBTCWrapper<T extends ChainType> extends ISwapWrapper
     /**
      * @internal
      */
-    readonly _spvWithdrawalDataDeserializer: new (data: any) => T["SpvVaultWithdrawalData"];
+    readonly _spvWithdrawalDataDeserializer: (version?: string) => (new (data: any) => T["SpvVaultWithdrawalData"]);
     /**
      * @internal
      */
     readonly _pendingSwapStates: Array<SpvFromBTCSwap<T>["_state"]>;
+    private readonly versionedContracts;
+    private readonly versionedSynchronizer;
     /**
      * @param chainIdentifier
      * @param unifiedStorage Storage interface for the current environment
      * @param unifiedChainEvents On-chain event listener
      * @param chain
-     * @param contract Underlying contract handling the swaps
      * @param prices Pricing to use
      * @param tokens
-     * @param spvWithdrawalDataDeserializer Deserializer for SpvVaultWithdrawalData
-     * @param btcRelay
-     * @param synchronizer Btc relay synchronizer
+     * @param versionedContracts
+     * @param versionedSynchronizer
      * @param btcRpc Bitcoin RPC which also supports getting transactions by txoHash
      * @param options
      * @param events Instance to use for emitting events
      */
-    constructor(chainIdentifier: string, unifiedStorage: UnifiedSwapStorage<T>, unifiedChainEvents: UnifiedSwapEventListener<T>, chain: T["ChainInterface"], contract: T["SpvVaultContract"], prices: ISwapPrice, tokens: WrapperCtorTokens, spvWithdrawalDataDeserializer: new (data: any) => T["SpvVaultWithdrawalData"], btcRelay: BtcRelay<any, T["TX"], any>, synchronizer: RelaySynchronizer<any, T["TX"], any>, btcRpc: BitcoinRpcWithAddressIndex<any>, options?: AllOptional<SpvFromBTCWrapperOptions>, events?: EventEmitter<{
+    constructor(chainIdentifier: string, unifiedStorage: UnifiedSwapStorage<T>, unifiedChainEvents: UnifiedSwapEventListener<T>, chain: T["ChainInterface"], prices: ISwapPrice, tokens: WrapperCtorTokens, versionedContracts: {
+        [version: string]: {
+            btcRelay: BtcRelay<any, T["TX"], any>;
+            spvVaultContract: T["SpvVaultContract"];
+            spvVaultWithdrawalDataConstructor: new (data: any) => T["SpvVaultWithdrawalData"];
+        };
+    }, versionedSynchronizer: {
+        [version: string]: {
+            synchronizer: RelaySynchronizer<any, T["TX"], any>;
+        };
+    }, btcRpc: BitcoinRpcWithAddressIndex<any>, options?: AllOptional<SpvFromBTCWrapperOptions>, events?: EventEmitter<{
         swapState: [ISwap];
     }>);
     private processEventFront;
@@ -148,6 +158,7 @@ export declare class SpvFromBTCWrapper<T extends ChainType> extends ISwapWrapper
      * @param pricePrefetch
      * @param nativeTokenPricePrefetch
      * @param abortController
+     * @param contractVersion
      * @private
      */
     private preFetchCallerFeeShare;
@@ -188,7 +199,7 @@ export declare class SpvFromBTCWrapper<T extends ChainType> extends ISwapWrapper
      * @param vault SPV vault processing the swap
      * @param lp Intermediary (LP) used as a counterparty for the swap
      */
-    recoverFromState(state: SpvWithdrawalClaimedState | SpvWithdrawalFrontedState, vault?: SpvVaultData | null, lp?: Intermediary): Promise<SpvFromBTCSwap<T> | null>;
+    recoverFromState(state: SpvWithdrawalClaimedState | SpvWithdrawalFrontedState, contractVersion: string, vault?: SpvVaultData | null, lp?: Intermediary): Promise<SpvFromBTCSwap<T> | null>;
     /**
      * Returns a random dummy PSBT that can be used for fee estimation, the last output (the LP output) is omitted
      *  to allow for coinselection algorithm to determine maximum sendable amount there

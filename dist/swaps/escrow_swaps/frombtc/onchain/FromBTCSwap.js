@@ -305,7 +305,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
     inferRequiredConfirmationsCount(btcTx, vout) {
         const txOut = btcTx.outs[vout];
         for (let i = 1; i <= 20; i++) {
-            const computedClaimHash = this.wrapper._contract.getHashForOnchain(buffer_1.Buffer.from(txOut.scriptPubKey.hex, "hex"), BigInt(txOut.value), i);
+            const computedClaimHash = this._contract.getHashForOnchain(buffer_1.Buffer.from(txOut.scriptPubKey.hex, "hex"), BigInt(txOut.value), i);
             if (computedClaimHash.toString("hex") === this._data.getClaimHash()) {
                 return i;
             }
@@ -815,13 +815,13 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             throw new Error("Cannot create claim transaction, because required confirmations are not known and cannot be infered! This can happen after a swap is recovered.");
         if (tx.blockhash == null || tx.confirmations == null || tx.blockheight == null || tx.confirmations < this.requiredConfirmations)
             throw new Error("Bitcoin transaction not confirmed yet!");
-        return await this.wrapper._contract.txsClaimWithTxData(signer ?? this._getInitiator(), this._data, {
+        return await this._contract.txsClaimWithTxData(signer ?? this._getInitiator(), this._data, {
             blockhash: tx.blockhash,
             confirmations: tx.confirmations,
             txid: tx.txid,
             hex: tx.hex,
             height: tx.blockheight
-        }, this.requiredConfirmations, this.vout, undefined, this.wrapper._synchronizer, true);
+        }, this.requiredConfirmations, this.vout, undefined, this.wrapper._synchronizer(this._contractVersion), true);
     }
     /**
      * Settles the swap by claiming the funds on the destination chain if the swap requires manual settlement, you can
@@ -855,7 +855,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
                 this.logger.info("claim(): Transaction state is CLAIM_CLAIMED, swap was successfully claimed by the watchtower");
                 return this._claimTxId;
             }
-            const status = await this.wrapper._contract.getCommitStatus(this._getInitiator(), this._data);
+            const status = await this._contract.getCommitStatus(this._getInitiator(), this._data);
             if (status?.type === base_1.SwapCommitStateType.PAID) {
                 this.logger.info("claim(): Transaction commit status is PAID, swap was successfully claimed by the watchtower");
                 if (this._claimTxId == null)
@@ -973,7 +973,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             if (this._state === FromBTCSwapState.PR_CREATED || this._state === FromBTCSwapState.QUOTE_SOFT_EXPIRED) {
                 quoteExpired = quoteDefinitelyExpired ?? await this._verifyQuoteDefinitelyExpired(); //Make sure we check for expiry here, to prevent race conditions
             }
-            const status = commitStatus ?? await this.wrapper._contract.getCommitStatus(this._getInitiator(), this._data);
+            const status = commitStatus ?? await this._contract.getCommitStatus(this._getInitiator(), this._data);
             if (status != null && await this._forciblySetOnchainState(status))
                 return true;
             if (this._state === FromBTCSwapState.PR_CREATED || this._state === FromBTCSwapState.QUOTE_SOFT_EXPIRED) {

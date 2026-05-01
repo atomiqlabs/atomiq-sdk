@@ -576,7 +576,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
     }
     isValidSecretPreimage(secret) {
         const paymentHash = buffer_1.Buffer.from((0, sha2_1.sha256)(buffer_1.Buffer.from(secret, "hex")));
-        const claimHash = this.wrapper._contract.getHashForHtlc(paymentHash).toString("hex");
+        const claimHash = this._contract.getHashForHtlc(paymentHash).toString("hex");
         return this.getSwapData().getClaimHash() === claimHash;
     }
     /**
@@ -737,7 +737,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
         const resp = await IntermediaryAPI_1.IntermediaryAPI.getInvoiceStatus(this.url, paymentHash.toString("hex"));
         switch (resp.code) {
             case IntermediaryAPI_1.InvoiceStatusResponseCodes.PAID:
-                const data = new this.wrapper._swapDataDeserializer(resp.data.data);
+                const data = new (this.wrapper._swapDataDeserializer(this._contractVersion))(resp.data.data);
                 if (this._state === FromBTCLNAutoSwapState.PR_CREATED || this._state === FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED)
                     try {
                         await this._saveRealSwapData(data, save);
@@ -809,7 +809,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
             throw new IntermediaryError_1.IntermediaryError("Invalid deposit token used!");
         if (data.hasSuccessAction())
             throw new IntermediaryError_1.IntermediaryError("Invalid has success action");
-        if (await this.wrapper._contract.isExpired(this._getInitiator(), data))
+        if (await this.wrapper._contract(this._contractVersion).isExpired(this._getInitiator(), data))
             throw new IntermediaryError_1.IntermediaryError("Not enough time to claim!");
         if (this.wrapper._getHtlcTimeout(data) <= (Date.now() / 1000))
             throw new IntermediaryError_1.IntermediaryError("HTLC expires too soon!");
@@ -880,7 +880,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
                     this.lnurlFailSignal.signal.removeEventListener("abort", lnurlFailListener);
                     abortController.signal.throwIfAborted();
                     if (resp.code === IntermediaryAPI_1.InvoiceStatusResponseCodes.PAID) {
-                        const swapData = new this.wrapper._swapDataDeserializer(resp.data.data);
+                        const swapData = new (this.wrapper._swapDataDeserializer(this._contractVersion))(resp.data.data);
                         return await this._saveRealSwapData(swapData, true);
                     }
                     if (this._state === FromBTCLNAutoSwapState.PR_CREATED || this._state === FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED) {
@@ -984,7 +984,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
             throw new Error("Swap secret pre-image not known and not provided, please provide the swap secret pre-image as an argument");
         if (!this.isValidSecretPreimage(useSecret))
             throw new Error("Invalid swap secret pre-image provided!");
-        return await this.wrapper._contract.txsClaimWithSecret(address ?? this._getInitiator(), this._data, useSecret, true, true);
+        return await this._contract.txsClaimWithSecret(address ?? this._getInitiator(), this._data, useSecret, true, true);
     }
     /**
      * @inheritDoc
@@ -1176,7 +1176,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
                 quoteExpired = quoteDefinitelyExpired ?? await this._verifyQuoteDefinitelyExpired();
             }
             //Check if it's already successfully paid
-            commitStatus ??= await this.wrapper._contract.getCommitStatus(this._getInitiator(), this._data);
+            commitStatus ??= await this._contract.getCommitStatus(this._getInitiator(), this._data);
             if (commitStatus != null && await this._forciblySetOnchainState(commitStatus))
                 return true;
             if (this._state === FromBTCLNAutoSwapState.PR_PAID) {
@@ -1239,7 +1239,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
         if (await this.syncStateFromChain(quoteDefinitelyExpired, commitStatus))
             changed = true;
         if (this._state === FromBTCLNAutoSwapState.CLAIM_COMMITED) {
-            const expired = await this.wrapper._contract.isExpired(this._getInitiator(), this._data);
+            const expired = await this._contract.isExpired(this._getInitiator(), this._data);
             if (expired) {
                 this._state = FromBTCLNAutoSwapState.EXPIRED;
                 changed = true;
@@ -1308,7 +1308,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
         if (!this.isValidSecretPreimage(useSecret))
             throw new Error("Invalid swap secret pre-image provided!");
         if (!noCheckExpiry) {
-            if (await this.wrapper._contract.isExpired(this._getInitiator(), this._data))
+            if (await this._contract.isExpired(this._getInitiator(), this._data))
                 throw new Error("On-chain HTLC already expired!");
         }
         await this.wrapper._messenger.broadcast(new base_1.SwapClaimWitnessMessage(this._data, useSecret));
@@ -1337,7 +1337,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
                 break;
             case FromBTCLNAutoSwapState.PR_PAID:
             case FromBTCLNAutoSwapState.CLAIM_COMMITED:
-                const expired = await this.wrapper._contract.isExpired(this._getInitiator(), this._data);
+                const expired = await this._contract.isExpired(this._getInitiator(), this._data);
                 if (expired) {
                     this._state = FromBTCLNAutoSwapState.EXPIRED;
                     if (save)

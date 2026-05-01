@@ -196,7 +196,7 @@ export abstract class IFromBTCSelfInitSwap<
         required: TokenAmount<SCToken<T["ChainId"]>, true>
     }> {
         const [balance, commitFee] = await Promise.all([
-            this.wrapper._contract.getBalance(this._getInitiator(), this.wrapper._chain.getNativeCurrencyAddress(), false),
+            this._contract.getBalance(this._getInitiator(), this.wrapper._chain.getNativeCurrencyAddress(), false),
             this.getCommitFee()
         ]);
         const totalFee = commitFee + this.getSwapData().getTotalDeposit();
@@ -247,7 +247,7 @@ export abstract class IFromBTCSelfInitSwap<
             await this._saveAndEmit();
         }
 
-        return await this.wrapper._contract.txsInit(
+        return await this._contract.txsInit(
             this._getInitiator(), this._data, this.signatureData, skipChecks, this.feeRate
         ).catch(e => Promise.reject(e instanceof SignatureVerificationError ? new Error("Request timed out") : e));
     }
@@ -274,7 +274,7 @@ export abstract class IFromBTCSelfInitSwap<
      *  smart chain
      */
     async getClaimNetworkFee(): Promise<TokenAmount<SCToken<T["ChainId"]>, true>> {
-        const swapContract: T["Contract"] = this.wrapper._contract;
+        const swapContract: T["Contract"] = this._contract;
         return toTokenAmount(
             await swapContract.getClaimFee(this._getInitiator(), this.getSwapData()),
             this.wrapper._getNativeToken(),

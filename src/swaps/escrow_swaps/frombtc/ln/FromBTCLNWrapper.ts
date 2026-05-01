@@ -13,7 +13,7 @@ import {UserError} from "../../../../errors/UserError";
 import {IntermediaryError} from "../../../../errors/IntermediaryError";
 import {SwapType} from "../../../../enums/SwapType";
 import {
-    extendAbortController, parseHashValueExact32Bytes,
+    extendAbortController, mapArrayToObject, parseHashValueExact32Bytes,
     throwIfUndefined
 } from "../../../../utils/Utils";
 import {FromBTCLNResponseType, IntermediaryAPI} from "../../../../intermediaries/apis/IntermediaryAPI";
@@ -113,10 +113,9 @@ export class FromBTCLNWrapper<
      * @param unifiedStorage Storage interface for the current environment
      * @param unifiedChainEvents On-chain event listener
      * @param chain
-     * @param contract Underlying contract handling the swaps
      * @param prices Swap pricing handler
      * @param tokens
-     * @param swapDataDeserializer Deserializer for SwapData
+     * @param versionedContracts
      * @param lnApi
      * @param options
      * @param events Instance to use for emitting events
@@ -126,16 +125,20 @@ export class FromBTCLNWrapper<
         unifiedStorage: UnifiedSwapStorage<T>,
         unifiedChainEvents: UnifiedSwapEventListener<T>,
         chain: T["ChainInterface"],
-        contract: T["Contract"],
         prices: ISwapPrice,
         tokens: WrapperCtorTokens,
-        swapDataDeserializer: new (data: any) => T["Data"],
+        versionedContracts: {
+            [version: string]: {
+                swapContract: T["Contract"],
+                swapDataConstructor: new (data: any) => T["Data"]
+            }
+        },
         lnApi: LightningNetworkApi,
         options?: AllOptional<FromBTCLNWrapperOptions>,
         events?: EventEmitter<{swapState: [ISwap]}>
     ) {
         super(
-            chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, lnApi,
+            chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, versionedContracts, lnApi,
             {
                 ...options,
                 safetyFactor: options?.safetyFactor ?? 2,
@@ -254,8 +257,8 @@ export class FromBTCLNWrapper<
         abortSignal?: AbortSignal,
         preFetches?: {
             usdPricePrefetchPromise: Promise<number | undefined>,
-            pricePrefetchPromise?: Promise<bigint | undefined>,
-            feeRatePromise?: Promise<string | undefined>
+            pricePrefetchPromise: Promise<bigint | undefined>,
+            feeRatePromise: {[contractVersion: string]: Promise<string | undefined>},
         }
     ): {
         quote: Promise<FromBTCLNSwap<T>>,
@@ -273,6 +276,8 @@ export class FromBTCLNWrapper<
         if(_options.description!=null && Buffer.byteLength(_options.description, "utf8") > 500)
             throw new UserError("Invalid description length");
 
+        const lpVersions = Intermediary.getContractVersionsForLps(this.chainIdentifier, lps);
+
         let secret: Buffer | undefined;
         let paymentHash: Buffer;
         if(_options.paymentHash!=null) {
@@ -280,15 +285,17 @@ export class FromBTCLNWrapper<
         } else {
             ({secret, paymentHash} = this.getSecretAndHash());
         }
-        const claimHash = this._contract.getHashForHtlc(paymentHash);
+        const _hash = mapArrayToObject(lpVersions, (contractVersion: string) => {
+            return this._contract(contractVersion).getHashForHtlc(paymentHash).toString("hex");
+        });
 
         const nativeTokenAddress = this._chain.getNativeCurrencyAddress();
 
         const _abortController = extendAbortController(abortSignal);
-        const _preFetches = {
-            pricePrefetchPromise: preFetches?.pricePrefetchPromise ?? this.preFetchPrice(amountData, _abortController.signal),
-            feeRatePromise: preFetches?.feeRatePromise ?? this.preFetchFeeRate(recipient, amountData, claimHash.toString("hex"), _abortController),
-            usdPricePrefetchPromise: preFetches?.usdPricePrefetchPromise ?? this.preFetchUsdPrice(_abortController.signal),
+        const _preFetches = preFetches ?? {
+            pricePrefetchPromise: this.preFetchPrice(amountData, _abortController.signal),
+            feeRatePromise: this.preFetchFeeRate(recipient, amountData, _hash, _abortController, lpVersions),
+            usdPricePrefetchPromise: this.preFetchUsdPrice(_abortController.signal),
         }
 
         return lps.map(lp => {
@@ -296,10 +303,11 @@ export class FromBTCLNWrapper<
                 intermediary: lp,
                 quote: (async () => {
                     if(lp.services[SwapType.FROM_BTCLN]==null) throw new Error("LP service for processing from btcln swaps not found!");
+                    const version = lp.getContractVersion(this.chainIdentifier);
 
                     const abortController = extendAbortController(_abortController.signal);
 
-                    const liquidityPromise: Promise<bigint | undefined> = this.preFetchIntermediaryLiquidity(amountData, lp, abortController);
+                    const liquidityPromise: Promise<bigint | undefined> = this.preFetchIntermediaryLiquidity(amountData, lp, abortController, version);
 
                     const {lnCapacityPromise, resp} = await tryWithRetries(async(retryCount: number) => {
                         const {lnPublicKey, response} = IntermediaryAPI.initFromBTCLN(
@@ -312,7 +320,7 @@ export class FromBTCLNWrapper<
                                 description: _options.description,
                                 descriptionHash: _options.descriptionHash,
                                 exactOut: !amountData.exactIn,
-                                feeRate: throwIfUndefined(_preFetches.feeRatePromise),
+                                feeRate: throwIfUndefined(_preFetches.feeRatePromise[version]),
                                 additionalParams
                             },
                             this._options.postRequestTimeout, abortController.signal, retryCount>0 ? false : undefined
@@ -351,16 +359,17 @@ export class FromBTCLNWrapper<
                             expiry: decodedPr.timeExpireDate*1000,
                             swapFee: resp.swapFee,
                             swapFeeBtc: resp.swapFee * amountIn / (resp.total - resp.swapFee),
-                            feeRate: (await _preFetches.feeRatePromise)!,
-                            initialSwapData: await this._contract.createSwapData(
+                            feeRate: (await _preFetches.feeRatePromise[version])!,
+                            initialSwapData: await this._contract(version).createSwapData(
                                 ChainSwapType.HTLC, lp.getAddress(this.chainIdentifier), recipient, amountData.token,
-                                resp.total, claimHash.toString("hex"),
+                                resp.total, _hash[version],
                                 this.getRandomSequence(), BigInt(Math.floor(Date.now()/1000)), false, true,
                                 resp.securityDeposit, 0n, nativeTokenAddress
                             ),
                             pr: resp.pr,
                             secret: secret?.toString("hex"),
-                            exactIn: amountData.exactIn ?? true
+                            exactIn: amountData.exactIn ?? true,
+                            contractVersion: version
                         } as FromBTCLNSwapInit<T["Data"]>);
                         return quote;
                     } catch (e) {
@@ -408,11 +417,13 @@ export class FromBTCLNWrapper<
             unsafeSkipLnNodeCheck: options?.unsafeSkipLnNodeCheck ?? this._options.unsafeSkipLnNodeCheck
         };
 
+        const lpVersions = Intermediary.getContractVersionsForLps(this.chainIdentifier, lps);
+
         const abortController = extendAbortController(abortSignal);
         const preFetches = {
             pricePrefetchPromise: this.preFetchPrice(amountData, abortController.signal),
             usdPricePrefetchPromise: this.preFetchUsdPrice(abortController.signal),
-            feeRatePromise: this.preFetchFeeRate(recipient, amountData, undefined, abortController)
+            feeRatePromise: this.preFetchFeeRate(recipient, amountData, undefined, abortController, lpVersions)
         };
 
         try {
@@ -474,7 +485,7 @@ export class FromBTCLNWrapper<
         const changedSwapSet: Set<FromBTCLNSwap<T>> = new Set();
 
         const swapExpiredStatus: {[id: string]: boolean} = {};
-        const checkStatusSwaps: (FromBTCLNSwap<T> & {_data: T["Data"]})[] = [];
+        const checkStatusSwaps: {[contractVersion: string]: (FromBTCLNSwap<T> & {_data: T["Data"]})[]} = {};
 
         await Promise.all(pastSwaps.map(async (pastSwap) => {
             if(pastSwap._shouldCheckIntermediary()) {
@@ -493,19 +504,27 @@ export class FromBTCLNWrapper<
             }
             if(pastSwap._shouldFetchOnchainState()) {
                 //Add to swaps for which status should be checked
-                if(pastSwap._data!=null) checkStatusSwaps.push(pastSwap as (FromBTCLNSwap<T> & {_data: T["Data"]}));
+                if(pastSwap._data!=null) (checkStatusSwaps[pastSwap._contractVersion ?? "v1"] ??= []).push(pastSwap as (FromBTCLNSwap<T> & {_data: T["Data"]}));
             }
         }));
 
-        const swapStatuses = await this._contract.getCommitStatuses(checkStatusSwaps.map(val => ({signer: val._getInitiator(), swapData: val._data})));
+        for(let version in checkStatusSwaps) {
+            if(this._versionedContracts[version]==null) {
+                this.logger.warn(`_checkPastSwaps(): No contract was found for ${this.chainIdentifier} version ${version}! Skipping these swaps!`);
+                continue;
+            }
 
-        for(let pastSwap of checkStatusSwaps) {
-            const shouldSave = await pastSwap._sync(
-                false, swapExpiredStatus[pastSwap.getId()],
-                swapStatuses[pastSwap.getEscrowHash()!], true
-            );
-            if(shouldSave) {
-                changedSwapSet.add(pastSwap);
+            const _checkStatusSwap = checkStatusSwaps[version];
+            const swapStatuses = await this._contract(version).getCommitStatuses(_checkStatusSwap.map(val => ({signer: val._getInitiator(), swapData: val._data})));
+
+            for(let pastSwap of _checkStatusSwap) {
+                const shouldSave = await pastSwap._sync(
+                    false, swapExpiredStatus[pastSwap.getId()],
+                    swapStatuses[pastSwap.getEscrowHash()!], true
+                );
+                if(shouldSave) {
+                    changedSwapSet.add(pastSwap);
+                }
             }
         }
 
@@ -532,6 +551,7 @@ export class FromBTCLNWrapper<
     async recoverFromSwapDataAndState(
         init: {data: T["Data"], getInitTxId: () => Promise<string>, getTxBlock: () => Promise<{blockTime: number, blockHeight: number}>},
         state: SwapCommitState,
+        contractVersion: string,
         lp?: Intermediary
     ): Promise<FromBTCLNSwap<T> | null> {
         const data = init.data;
@@ -562,7 +582,8 @@ export class FromBTCLNWrapper<
             data,
             pr: paymentHash ?? undefined,
             secret,
-            exactIn: false
+            exactIn: false,
+            contractVersion
         }
         const swap = new FromBTCLNSwap(this, swapInit);
         swap._commitTxId = await init.getInitTxId();

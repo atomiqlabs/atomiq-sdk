@@ -25,6 +25,7 @@ export type ISwapInit = {
     swapFee: bigint;
     swapFeeBtc: bigint;
     exactIn: boolean;
+    contractVersion: string;
 };
 /**
  * Type guard to check if an object is an ISwapInit
@@ -119,6 +120,10 @@ export declare abstract class ISwap<T extends ChainType = ChainType, D extends S
      * @internal
      */
     _persisted: boolean;
+    /**
+     * @internal
+     */
+    _contractVersion?: string;
     /**
      * Event emitter emitting `"swapState"` event when swap's state changes
      */

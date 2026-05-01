@@ -7,6 +7,7 @@ export type InfoHandlerResponse = {
         [chainIdentifier: string]: {
             address: string;
             signature: string;
+            contractVersion?: string;
         };
     };
 };

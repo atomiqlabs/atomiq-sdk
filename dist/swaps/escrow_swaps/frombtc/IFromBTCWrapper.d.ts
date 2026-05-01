@@ -27,11 +27,16 @@ export declare abstract class IFromBTCWrapper<T extends ChainType, D extends IFr
      * @param claimHash optional claim hash of the swap or null
      * @param abortController
      *
+     * @param contractVersions
      * @returns Fee rate
      *
      * @internal
      */
-    protected preFetchFeeRate(signer: string, amountData: AmountData, claimHash: string | undefined, abortController: AbortController): Promise<string | undefined>;
+    protected preFetchFeeRate(signer: string, amountData: AmountData, claimHash: {
+        [contractVersion: string]: string;
+    } | undefined, abortController: AbortController, contractVersions: string[]): {
+        [contractVersion: string]: Promise<string | undefined>;
+    };
     /**
      * Pre-fetches intermediary (LP) available smart chain liquidity
      *
@@ -39,11 +44,12 @@ export declare abstract class IFromBTCWrapper<T extends ChainType, D extends IFr
      * @param lp Intermediary
      * @param abortController
      *
+     * @param contractVersion
      * @returns Intermediary's liquidity balance
      *
      * @internal
      */
-    protected preFetchIntermediaryLiquidity(amountData: AmountData, lp: Intermediary, abortController: AbortController): Promise<bigint | undefined>;
+    protected preFetchIntermediaryLiquidity(amountData: AmountData, lp: Intermediary, abortController: AbortController, contractVersion: string): Promise<bigint | undefined>;
     /**
      * Verifies whether the intermediary (LP) has enough available liquidity such that we can initiate the swap
      *

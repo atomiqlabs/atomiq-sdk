@@ -1,7 +1,7 @@
 import {ISwapWrapperOptions} from "../../ISwapWrapper";
 import {Intermediary} from "../../../intermediaries/Intermediary";
 import {IntermediaryError} from "../../../errors/IntermediaryError";
-import {randomBytes} from "../../../utils/Utils";
+import {mapArrayToObject, randomBytes} from "../../../utils/Utils";
 import {BigIntBufferUtils, ChainType} from "@atomiqlabs/base";
 import {IEscrowSwapDefinition, IEscrowSwapWrapper} from "../IEscrowSwapWrapper";
 import {IEscrowSwap} from "../IEscrowSwap";
@@ -39,6 +39,7 @@ export abstract class IFromBTCWrapper<
      * @param claimHash optional claim hash of the swap or null
      * @param abortController
      *
+     * @param contractVersions
      * @returns Fee rate
      *
      * @internal
@@ -46,15 +47,18 @@ export abstract class IFromBTCWrapper<
     protected preFetchFeeRate(
         signer: string,
         amountData: AmountData,
-        claimHash: string | undefined,
-        abortController: AbortController
-    ): Promise<string | undefined> {
-        return this._contract.getInitFeeRate(this._chain.randomAddress(), signer, amountData.token, claimHash)
-            .catch(e => {
-                this.logger.warn("preFetchFeeRate(): Error: ", e);
-                abortController.abort(e);
-                return undefined;
-            });
+        claimHash: {[contractVersion: string]: string} | undefined,
+        abortController: AbortController,
+        contractVersions: string[]
+    ): {[contractVersion: string]: Promise<string | undefined>} {
+        return mapArrayToObject(contractVersions, (contractVersion) => {
+            return this._contract(contractVersion).getInitFeeRate(this._chain.randomAddress(), signer, amountData.token, claimHash?.[contractVersion])
+                .catch(e => {
+                    this.logger.warn("preFetchFeeRate(): Error: ", e);
+                    abortController.abort(e);
+                    return undefined;
+                });
+        });
     }
 
     /**
@@ -64,12 +68,18 @@ export abstract class IFromBTCWrapper<
      * @param lp Intermediary
      * @param abortController
      *
+     * @param contractVersion
      * @returns Intermediary's liquidity balance
      *
      * @internal
      */
-    protected preFetchIntermediaryLiquidity(amountData: AmountData, lp: Intermediary, abortController: AbortController): Promise<bigint | undefined> {
-        return lp.getLiquidity(this.chainIdentifier, this._contract, amountData.token.toString(), abortController.signal).catch(e => {
+    protected preFetchIntermediaryLiquidity(
+        amountData: AmountData,
+        lp: Intermediary,
+        abortController: AbortController,
+        contractVersion: string
+    ): Promise<bigint | undefined> {
+        return lp.getLiquidity(this.chainIdentifier, this._contract(contractVersion), amountData.token.toString(), abortController.signal).catch(e => {
             this.logger.warn("preFetchIntermediaryLiquidity(): Error: ", e);
             abortController.abort(e);
             return undefined;

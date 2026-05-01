@@ -4,6 +4,7 @@ exports.FromBTCWrapper = void 0;
 const IFromBTCWrapper_1 = require("../IFromBTCWrapper");
 const FromBTCSwap_1 = require("./FromBTCSwap");
 const base_1 = require("@atomiqlabs/base");
+const Intermediary_1 = require("../../../../intermediaries/Intermediary");
 const buffer_1 = require("buffer");
 const IntermediaryError_1 = require("../../../../errors/IntermediaryError");
 const SwapType_1 = require("../../../../enums/SwapType");
@@ -25,18 +26,16 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
      * @param unifiedStorage Storage interface for the current environment
      * @param unifiedChainEvents On-chain event listener
      * @param chain
-     * @param contract Underlying contract handling the swaps
      * @param prices Pricing to use
      * @param tokens
-     * @param swapDataDeserializer Deserializer for SwapData
-     * @param btcRelay
-     * @param synchronizer Btc relay synchronizer
+     * @param versionedContracts
+     * @param versionedSynchronizer
      * @param btcRpc Bitcoin RPC which also supports getting transactions by txoHash
      * @param options
      * @param events Instance to use for emitting events
      */
-    constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, btcRelay, synchronizer, btcRpc, options, events) {
-        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, {
+    constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, versionedContracts, versionedSynchronizer, btcRpc, options, events) {
+        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, {
             ...options,
             bitcoinNetwork: options?.bitcoinNetwork ?? utils_1.TEST_NETWORK,
             safetyFactor: options?.safetyFactor ?? 2,
@@ -44,7 +43,7 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
             maxConfirmations: options?.maxConfirmations ?? 6,
             minSendWindow: options?.minSendWindow ?? 30 * 60,
             bitcoinBlocktime: options?.bitcoinBlocktime ?? 10 * 60
-        }, events);
+        }, versionedContracts, events);
         this.TYPE = SwapType_1.SwapType.FROM_BTC;
         /**
          * @internal
@@ -68,9 +67,28 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
          * @internal
          */
         this._swapDeserializer = FromBTCSwap_1.FromBTCSwap;
-        this.btcRelay = btcRelay;
-        this._synchronizer = synchronizer;
+        /**
+         * @internal
+         */
+        this._synchronizer = (version) => {
+            const _version = version ?? "v1";
+            const data = this.versionedSynchronizer[_version];
+            if (data == null)
+                throw new Error(`Invalid contract version ${_version} requested`);
+            return data.synchronizer;
+        };
+        this.btcRelay = (version) => {
+            const _version = version ?? "v1";
+            const data = this.versionedBtcRelay[_version];
+            if (data == null)
+                throw new Error(`Invalid contract version ${_version} requested`);
+            return data.btcRelay;
+        };
+        this.versionedBtcRelay = {};
+        this.versionedSynchronizer = {};
         this._btcRpc = btcRpc;
+        this.versionedBtcRelay = versionedContracts;
+        this.versionedSynchronizer = versionedSynchronizer;
     }
     /**
      * @inheritDoc
@@ -128,10 +146,11 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
      * @param amountData
      * @param options Options as passed to the swap creation function
      * @param abortController
+     * @param contractVersion
      *
      * @private
      */
-    async preFetchClaimerBounty(signer, amountData, options, abortController) {
+    async preFetchClaimerBounty(signer, amountData, options, abortController, contractVersion) {
         const startTimestamp = BigInt(Math.floor(Date.now() / 1000));
         if (options.unsafeZeroWatchtowerFee) {
             return {
@@ -143,13 +162,13 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
             };
         }
         const dummyAmount = BigInt(Math.floor(Math.random() * 0x1000000));
-        const dummySwapData = await this._contract.createSwapData(base_1.ChainSwapType.CHAIN, signer, signer, amountData.token, dummyAmount, this._contract.getHashForOnchain((0, Utils_1.randomBytes)(20), dummyAmount, 3).toString("hex"), this.getRandomSequence(), startTimestamp, false, true, BigInt(Math.floor(Math.random() * 0x10000)), BigInt(Math.floor(Math.random() * 0x10000)));
+        const dummySwapData = await this._contract(contractVersion).createSwapData(base_1.ChainSwapType.CHAIN, signer, signer, amountData.token, dummyAmount, this._contract(contractVersion).getHashForOnchain((0, Utils_1.randomBytes)(20), dummyAmount, 3).toString("hex"), this.getRandomSequence(), startTimestamp, false, true, BigInt(Math.floor(Math.random() * 0x10000)), BigInt(Math.floor(Math.random() * 0x10000)));
         try {
             const [feePerBlock, btcRelayData, currentBtcBlock, claimFeeRate] = await Promise.all([
-                this.btcRelay.getFeePerBlock(),
-                this.btcRelay.getTipData(),
+                this.btcRelay(contractVersion).getFeePerBlock(),
+                this.btcRelay(contractVersion).getTipData(),
                 this._btcRpc.getTipHeight(),
-                this._contract.getClaimFee(signer, dummySwapData)
+                this._contract(contractVersion).getClaimFee(signer, dummySwapData)
             ]);
             if (btcRelayData == null)
                 throw new Error("Btc relay not initialized!");
@@ -231,9 +250,10 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
         if ((expiry - currentTimestamp) < BigInt(this._options.minSendWindow)) {
             throw new IntermediaryError_1.IntermediaryError("Send window too low");
         }
+        const version = lp.getContractVersion(this.chainIdentifier);
         const lockingScript = (0, BitcoinUtils_1.toOutputScript)(this._options.bitcoinNetwork, resp.btcAddress);
-        const desiredExtraData = this._contract.getExtraData(lockingScript, resp.amount, requiredConfirmations);
-        const desiredClaimHash = this._contract.getHashForOnchain(lockingScript, resp.amount, requiredConfirmations);
+        const desiredExtraData = this._contract(version).getExtraData(lockingScript, resp.amount, requiredConfirmations);
+        const desiredClaimHash = this._contract(version).getHashForOnchain(lockingScript, resp.amount, requiredConfirmations);
         if (!desiredClaimHash.equals(buffer_1.Buffer.from(data.getClaimHash(), "hex"))) {
             throw new IntermediaryError_1.IntermediaryError("Invalid claim hash returned!");
         }
@@ -261,6 +281,7 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
         else if (typeof (options?.feeSafetyFactor) === "number") {
             feeSafetyFactorPPM = BigInt(Math.floor(options.feeSafetyFactor * 1000000));
         }
+        const lpVersions = Intermediary_1.Intermediary.getContractVersionsForLps(this.chainIdentifier, lps);
         const _options = {
             blockSafetyFactor: options?.blockSafetyFactor != null ? BigInt(options.blockSafetyFactor) : 1n,
             feeSafetyFactorPPM,
@@ -270,20 +291,25 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
         const _abortController = (0, Utils_1.extendAbortController)(abortSignal);
         const pricePrefetchPromise = this.preFetchPrice(amountData, _abortController.signal);
         const usdPricePrefetchPromise = this.preFetchUsdPrice(_abortController.signal);
-        const claimerBountyPrefetchPromise = this.preFetchClaimerBounty(recipient, amountData, _options, _abortController);
+        const claimerBountyPrefetchPromise = (0, Utils_1.mapArrayToObject)(lpVersions, (contractVersion) => {
+            return this.preFetchClaimerBounty(recipient, amountData, _options, _abortController, contractVersion);
+        });
         const nativeTokenAddress = this._chain.getNativeCurrencyAddress();
-        const feeRatePromise = this.preFetchFeeRate(recipient, amountData, undefined, _abortController);
-        const _signDataPromise = this._contract.preFetchBlockDataForSignatures == null ?
-            this.preFetchSignData(Promise.resolve(true)) :
-            undefined;
+        const feeRatePromise = this.preFetchFeeRate(recipient, amountData, undefined, _abortController, lpVersions);
+        const _signDataPromise = (0, Utils_1.mapArrayToObject)(lpVersions, (contractVersion) => {
+            return this._contract(contractVersion).preFetchBlockDataForSignatures == null ?
+                this.preFetchSignData(Promise.resolve(true), contractVersion) :
+                undefined;
+        });
         return lps.map(lp => {
             return {
                 intermediary: lp,
                 quote: (async () => {
                     if (lp.services[SwapType_1.SwapType.FROM_BTC] == null)
                         throw new Error("LP service for processing from btc swaps not found!");
+                    const version = lp.getContractVersion(this.chainIdentifier);
                     const abortController = (0, Utils_1.extendAbortController)(_abortController.signal);
-                    const liquidityPromise = this.preFetchIntermediaryLiquidity(amountData, lp, abortController);
+                    const liquidityPromise = this.preFetchIntermediaryLiquidity(amountData, lp, abortController, version);
                     try {
                         const { signDataPromise, resp } = await (0, RetryUtils_1.tryWithRetries)(async (retryCount) => {
                             const { signDataPrefetch, response } = IntermediaryAPI_1.IntermediaryAPI.initFromBTC(this.chainIdentifier, lp.url, nativeTokenAddress, {
@@ -292,13 +318,13 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
                                 token: amountData.token.toString(),
                                 exactOut: !amountData.exactIn,
                                 sequence,
-                                claimerBounty: (0, Utils_1.throwIfUndefined)(claimerBountyPrefetchPromise),
-                                feeRate: (0, Utils_1.throwIfUndefined)(feeRatePromise),
+                                claimerBounty: (0, Utils_1.throwIfUndefined)(claimerBountyPrefetchPromise[version]),
+                                feeRate: (0, Utils_1.throwIfUndefined)(feeRatePromise[version]),
                                 additionalParams
                             }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined);
-                            let signDataPromise = _signDataPromise;
+                            let signDataPromise = _signDataPromise[version];
                             if (signDataPromise == null) {
-                                signDataPromise = this.preFetchSignData(signDataPrefetch);
+                                signDataPromise = this.preFetchSignData(signDataPrefetch, version);
                             }
                             else
                                 signDataPrefetch.catch(() => { });
@@ -307,13 +333,13 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
                                 resp: await response
                             };
                         }, undefined, e => e instanceof RequestError_1.RequestError, abortController.signal);
-                        const data = new this._swapDataDeserializer(resp.data);
+                        const data = new (this._swapDataDeserializer(version))(resp.data);
                         data.setClaimer(recipient);
-                        this.verifyReturnedData(recipient, resp, amountData, lp, _options, data, sequence, (await claimerBountyPrefetchPromise), nativeTokenAddress);
+                        this.verifyReturnedData(recipient, resp, amountData, lp, _options, data, sequence, (await claimerBountyPrefetchPromise[version]), nativeTokenAddress);
                         const [pricingInfo, signatureExpiry] = await Promise.all([
                             //Get intermediary's liquidity
                             this.verifyReturnedPrice(lp.services[SwapType_1.SwapType.FROM_BTC], false, resp.amount, resp.total, amountData.token, {}, pricePrefetchPromise, usdPricePrefetchPromise, abortController.signal),
-                            this.verifyReturnedSignature(recipient, data, resp, feeRatePromise, signDataPromise, abortController.signal),
+                            this.verifyReturnedSignature(recipient, data, resp, feeRatePromise[version], signDataPromise, version, abortController.signal),
                             this.verifyIntermediaryLiquidity(data.getAmount(), (0, Utils_1.throwIfUndefined)(liquidityPromise)),
                         ]);
                         const quote = new FromBTCSwap_1.FromBTCSwap(this, {
@@ -322,13 +348,14 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
                             expiry: signatureExpiry,
                             swapFee: resp.swapFee,
                             swapFeeBtc: resp.swapFee * resp.amount / (data.getAmount() - resp.swapFee),
-                            feeRate: (await feeRatePromise),
+                            feeRate: (await feeRatePromise[version]),
                             signatureData: resp,
                             data,
                             address: resp.btcAddress,
                             amount: resp.amount,
                             exactIn: amountData.exactIn ?? true,
-                            requiredConfirmations: resp.confirmations
+                            requiredConfirmations: resp.confirmations,
+                            contractVersion: version
                         });
                         return quote;
                     }
@@ -343,7 +370,7 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
     /**
      * @inheritDoc
      */
-    async recoverFromSwapDataAndState(init, state, lp) {
+    async recoverFromSwapDataAndState(init, state, contractVersion, lp) {
         const data = init.data;
         const swapInit = {
             pricingInfo: {
@@ -361,7 +388,8 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
             feeRate: "",
             signatureData: undefined,
             data,
-            exactIn: false
+            exactIn: false,
+            contractVersion
         };
         const swap = new FromBTCSwap_1.FromBTCSwap(this, swapInit);
         swap._commitTxId = await init.getInitTxId();

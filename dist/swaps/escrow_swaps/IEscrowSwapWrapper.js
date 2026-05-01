@@ -9,21 +9,43 @@ const base_1 = require("@atomiqlabs/base");
  * @category Swaps/Abstract
  */
 class IEscrowSwapWrapper extends ISwapWrapper_1.ISwapWrapper {
-    constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, options, events) {
+    constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, options, versionedContracts, events) {
         super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, options, events);
-        this._swapDataDeserializer = swapDataDeserializer;
-        this._contract = contract;
+        /**
+         * @internal
+         */
+        this._contract = (version) => {
+            const _version = version ?? "v1";
+            const data = this._versionedContracts[_version];
+            if (data == null)
+                throw new Error(`Invalid contract version ${_version} requested`);
+            return data.swapContract;
+        };
+        /**
+         * @internal
+         */
+        this._swapDataDeserializer = (version) => {
+            const _version = version ?? "v1";
+            const data = this._versionedContracts[_version];
+            if (data == null)
+                throw new Error(`Invalid contract version ${_version} requested`);
+            return data.swapDataConstructor;
+        };
+        //TODO: Properly populate in constructor
+        this._versionedContracts = {};
+        this._versionedContracts = versionedContracts;
     }
     /**
      * Pre-fetches signature verification data from the server's pre-sent promise, doesn't throw, instead returns null
      *
      * @param signDataPrefetch Promise that resolves when we receive "signDataPrefetch" from the LP in streaming mode
+     * @param contractVersion
      * @returns Pre-fetched signature verification data or null if failed
      *
      * @internal
      */
-    preFetchSignData(signDataPrefetch) {
-        if (this._contract.preFetchForInitSignatureVerification == null) {
+    preFetchSignData(signDataPrefetch, contractVersion) {
+        if (this._contract(contractVersion).preFetchForInitSignatureVerification == null) {
             // Catch promise rejections, should they happen
             signDataPrefetch.catch(() => { });
             return Promise.resolve(undefined);
@@ -31,7 +53,7 @@ class IEscrowSwapWrapper extends ISwapWrapper_1.ISwapWrapper {
         return signDataPrefetch.then(obj => {
             if (obj == null)
                 return undefined;
-            return this._contract.preFetchForInitSignatureVerification(obj);
+            return this._contract(contractVersion).preFetchForInitSignatureVerification(obj);
         }).catch(e => {
             this.logger.error("preFetchSignData(): Error: ", e);
         });
@@ -44,16 +66,17 @@ class IEscrowSwapWrapper extends ISwapWrapper_1.ISwapWrapper {
      * @param signature Response of the intermediary
      * @param feeRatePromise Pre-fetched fee rate promise
      * @param preFetchSignatureVerificationData Pre-fetched signature verification data
+     * @param contractVersion
      * @param abortSignal
      * @returns Swap initialization signature expiry
      * @throws {SignatureVerificationError} when swap init signature is invalid
      *
      * @internal
      */
-    async verifyReturnedSignature(initiator, data, signature, feeRatePromise, preFetchSignatureVerificationData, abortSignal) {
+    async verifyReturnedSignature(initiator, data, signature, feeRatePromise, preFetchSignatureVerificationData, contractVersion, abortSignal) {
         const [feeRate, preFetchedSignatureData] = await Promise.all([feeRatePromise, preFetchSignatureVerificationData]);
-        await this._contract.isValidInitAuthorization(initiator, data, signature, feeRate, preFetchedSignatureData);
-        return await this._contract.getInitAuthorizationExpiry(data, signature, preFetchedSignatureData);
+        await this._contract(contractVersion).isValidInitAuthorization(initiator, data, signature, feeRate, preFetchedSignatureData);
+        return await this._contract(contractVersion).getInitAuthorizationExpiry(data, signature, preFetchedSignatureData);
     }
     /**
      * Processes a single SC on-chain event
@@ -100,7 +123,7 @@ class IEscrowSwapWrapper extends ISwapWrapper_1.ISwapWrapper {
         const changedSwaps = [];
         const removeSwaps = [];
         const swapExpiredStatus = {};
-        const checkStatusSwaps = [];
+        const checkStatusSwaps = {};
         for (let pastSwap of pastSwaps) {
             if (pastSwap._shouldFetchExpiryStatus()) {
                 //Check expiry
@@ -109,19 +132,29 @@ class IEscrowSwapWrapper extends ISwapWrapper_1.ISwapWrapper {
             if (pastSwap._shouldFetchOnchainState()) {
                 //Add to swaps for which status should be checked
                 if (pastSwap._data != null)
-                    checkStatusSwaps.push(pastSwap);
+                    (checkStatusSwaps[pastSwap._contractVersion ?? "v1"] ??= []).push(pastSwap);
             }
         }
-        const swapStatuses = await this._contract.getCommitStatuses(checkStatusSwaps.map(val => ({ signer: val._getInitiator(), swapData: val._data })));
-        for (let pastSwap of checkStatusSwaps) {
-            const escrowHash = pastSwap.getEscrowHash();
-            const shouldSave = await pastSwap._sync(false, swapExpiredStatus[pastSwap.getId()], escrowHash == null ? undefined : swapStatuses[escrowHash]);
-            if (shouldSave) {
-                if (pastSwap.isQuoteExpired()) {
-                    removeSwaps.push(pastSwap);
-                }
-                else {
-                    changedSwaps.push(pastSwap);
+        for (let version in checkStatusSwaps) {
+            if (this._versionedContracts[version] == null) {
+                this.logger.warn(`_checkPastSwaps(): No contract was found for ${this.chainIdentifier} version ${version}! Skipping these swaps!`);
+                continue;
+            }
+            const _checkStatusSwap = checkStatusSwaps[version];
+            const swapStatuses = await this._contract(version).getCommitStatuses(_checkStatusSwap.map(val => ({
+                signer: val._getInitiator(),
+                swapData: val._data
+            })));
+            for (let pastSwap of _checkStatusSwap) {
+                const escrowHash = pastSwap.getEscrowHash();
+                const shouldSave = await pastSwap._sync(false, swapExpiredStatus[pastSwap.getId()], escrowHash == null ? undefined : swapStatuses[escrowHash]);
+                if (shouldSave) {
+                    if (pastSwap.isQuoteExpired()) {
+                        removeSwaps.push(pastSwap);
+                    }
+                    else {
+                        changedSwaps.push(pastSwap);
+                    }
                 }
             }
         }

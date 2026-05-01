@@ -56,6 +56,10 @@ export class Intermediary {
      */
     readonly addresses: {[chainIdentifier: string]: string};
     /**
+     * Contract versions of the intermediary on smart chains
+     */
+    readonly contractVersions: {[chainIdentifier: string]: string};
+    /**
      * Swap protocol services offered by the intermediary
      */
     readonly services: ServicesType;
@@ -99,12 +103,14 @@ export class Intermediary {
         url: string,
         addresses: {[chainIdentifier: string]: string},
         services: ServicesType,
-        reputation: { [chainIdentifier: string]: SingleChainReputationType } = {}
+        reputation: { [chainIdentifier: string]: SingleChainReputationType } = {},
+        contractVersions: {[chainIdentifier: string]: string} = {},
     ) {
         this.url = url;
         this.addresses = addresses;
         this.services = services;
         this.reputation = reputation;
+        this.contractVersions = contractVersions;
 
         this.swapBounds = {};
         for(let _swapType in this.services) {
@@ -245,6 +251,30 @@ export class Intermediary {
      */
     getAddress(chainIdentifier: string) {
         return this.addresses[chainIdentifier];
+    }
+
+    /**
+     * Returns the contract version used by the intermediary for a given chain
+     *
+     * @param chainIdentifier
+     */
+    getContractVersion(chainIdentifier: string): string {
+        return this.contractVersions[chainIdentifier] ?? "v1";
+    }
+
+    /**
+     * Returns the range of contract versions used by the LPs
+     *
+     * @param chainIdentifier
+     * @param lps
+     */
+    static getContractVersionsForLps(chainIdentifier: string, lps: Intermediary[]): string[] {
+        const versions: string[] = [];
+        lps.forEach((lp) => {
+            const lpVersion = lp.getContractVersion(chainIdentifier);
+            if(!versions.includes(lpVersion)) versions.push(lpVersion);
+        });
+        return versions;
     }
 
 }

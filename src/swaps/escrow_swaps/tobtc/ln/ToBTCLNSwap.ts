@@ -104,7 +104,7 @@ export class ToBTCLNSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, 
         const hash = Buffer.from(sha256(secretBuffer));
 
         if(check) {
-            const claimHash = this.wrapper._contract.getHashForHtlc(hash);
+            const claimHash = this._contract.getHashForHtlc(hash);
 
             const expectedClaimHash = Buffer.from(this.getClaimHash(), "hex");
             if(!claimHash.equals(expectedClaimHash)) throw new IntermediaryError("Invalid payment secret returned");

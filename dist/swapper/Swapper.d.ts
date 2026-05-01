@@ -159,14 +159,19 @@ type ChainSpecificData<T extends ChainType> = {
         [SwapType.FROM_BTCLN_AUTO]: FromBTCLNAutoWrapper<T>;
     };
     chainEvents: T["Events"];
-    swapContract: T["Contract"];
-    spvVaultContract: T["SpvVaultContract"];
     chainInterface: T["ChainInterface"];
-    btcRelay: BtcRelay<any, T["TX"], BtcBlock, T["Signer"]>;
-    synchronizer: RelaySynchronizer<any, T["TX"], BtcBlock>;
     unifiedChainEvents: UnifiedSwapEventListener<T>;
     unifiedSwapStorage: UnifiedSwapStorage<T>;
     reviver: (val: any) => ISwap<T>;
+    defaultVersion: string;
+    versionedContracts: {
+        [contractVersion: string]: {
+            swapContract: T["Contract"];
+            spvVaultContract: T["SpvVaultContract"];
+            btcRelay: BtcRelay<any, T["TX"], BtcBlock, T["Signer"]>;
+            synchronizer: RelaySynchronizer<any, T["TX"], BtcBlock>;
+        };
+    };
 };
 type MultiChainData<T extends MultiChain> = {
     [chainIdentifier in keyof T]: ChainSpecificData<T[chainIdentifier]>;

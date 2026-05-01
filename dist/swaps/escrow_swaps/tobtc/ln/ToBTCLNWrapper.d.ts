@@ -82,7 +82,12 @@ export declare class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T
      * @internal
      */
     readonly _swapDeserializer: typeof ToBTCLNSwap;
-    constructor(chainIdentifier: string, unifiedStorage: UnifiedSwapStorage<T>, unifiedChainEvents: UnifiedSwapEventListener<T>, chain: T["ChainInterface"], contract: T["Contract"], prices: ISwapPrice, tokens: WrapperCtorTokens, swapDataDeserializer: new (data: any) => T["Data"], options?: AllOptional<ToBTCLNWrapperOptions>, events?: EventEmitter<{
+    constructor(chainIdentifier: string, unifiedStorage: UnifiedSwapStorage<T>, unifiedChainEvents: UnifiedSwapEventListener<T>, chain: T["ChainInterface"], prices: ISwapPrice, tokens: WrapperCtorTokens, versionedContracts: {
+        [version: string]: {
+            swapContract: T["Contract"];
+            swapDataConstructor: new (data: any) => T["Data"];
+        };
+    }, options?: AllOptional<ToBTCLNWrapperOptions>, events?: EventEmitter<{
         swapState: [ISwap];
     }>);
     private toRequiredSwapOptions;
@@ -157,10 +162,14 @@ export declare class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T
     create(signer: string, recipient: string, amountData: Omit<AmountData, "amount"> & {
         exactIn: false;
     }, lps: Intermediary[], options?: ToBTCLNOptions, additionalParams?: Record<string, any>, abortSignal?: AbortSignal, preFetches?: {
-        feeRatePromise: Promise<string | undefined>;
+        feeRatePromise: {
+            [contractVersion: string]: Promise<string | undefined>;
+        };
         pricePreFetchPromise: Promise<bigint | undefined>;
         usdPricePrefetchPromise: Promise<number | undefined>;
-        signDataPrefetchPromise?: Promise<T["PreFetchVerification"] | undefined>;
+        signDataPrefetchPromise?: {
+            [contractVersion: string]: Promise<T["PreFetchVerification"] | undefined> | undefined;
+        };
     }): Promise<{
         quote: Promise<ToBTCLNSwap<T>>;
         intermediary: Intermediary;
@@ -238,5 +247,5 @@ export declare class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T
             blockTime: number;
             blockHeight: number;
         }>;
-    }, state: SwapCommitState, lp?: Intermediary): Promise<ToBTCLNSwap<T> | null>;
+    }, state: SwapCommitState, contractVersion: string, lp?: Intermediary): Promise<ToBTCLNSwap<T> | null>;
 }

@@ -128,7 +128,7 @@ class IFromBTCSelfInitSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
      */
     async hasEnoughForTxFees() {
         const [balance, commitFee] = await Promise.all([
-            this.wrapper._contract.getBalance(this._getInitiator(), this.wrapper._chain.getNativeCurrencyAddress(), false),
+            this._contract.getBalance(this._getInitiator(), this.wrapper._chain.getNativeCurrencyAddress(), false),
             this.getCommitFee()
         ]);
         const totalFee = commitFee + this.getSwapData().getTotalDeposit();
@@ -174,7 +174,7 @@ class IFromBTCSelfInitSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
             this.initiated = true;
             await this._saveAndEmit();
         }
-        return await this.wrapper._contract.txsInit(this._getInitiator(), this._data, this.signatureData, skipChecks, this.feeRate).catch(e => Promise.reject(e instanceof base_1.SignatureVerificationError ? new Error("Request timed out") : e));
+        return await this._contract.txsInit(this._getInitiator(), this._data, this.signatureData, skipChecks, this.feeRate).catch(e => Promise.reject(e instanceof base_1.SignatureVerificationError ? new Error("Request timed out") : e));
     }
     //////////////////////////////
     //// Claim
@@ -183,7 +183,7 @@ class IFromBTCSelfInitSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
      *  smart chain
      */
     async getClaimNetworkFee() {
-        const swapContract = this.wrapper._contract;
+        const swapContract = this._contract;
         return (0, TokenAmount_1.toTokenAmount)(await swapContract.getClaimFee(this._getInitiator(), this.getSwapData()), this.wrapper._getNativeToken(), this.wrapper._prices);
     }
 }

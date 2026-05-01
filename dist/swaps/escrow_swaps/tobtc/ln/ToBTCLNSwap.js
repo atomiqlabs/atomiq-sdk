@@ -78,7 +78,7 @@ class ToBTCLNSwap extends IToBTCSwap_1.IToBTCSwap {
         const secretBuffer = buffer_1.Buffer.from(result.secret, "hex");
         const hash = buffer_1.Buffer.from((0, sha2_1.sha256)(secretBuffer));
         if (check) {
-            const claimHash = this.wrapper._contract.getHashForHtlc(hash);
+            const claimHash = this._contract.getHashForHtlc(hash);
             const expectedClaimHash = buffer_1.Buffer.from(this.getClaimHash(), "hex");
             if (!claimHash.equals(expectedClaimHash))
                 throw new IntermediaryError_1.IntermediaryError("Invalid payment secret returned");

@@ -4,6 +4,7 @@ exports.IToBTCWrapper = void 0;
 const IToBTCSwap_1 = require("./IToBTCSwap");
 const IntermediaryError_1 = require("../../../errors/IntermediaryError");
 const IEscrowSwapWrapper_1 = require("../IEscrowSwapWrapper");
+const Utils_1 = require("../../../utils/Utils");
 /**
  * Base class for wrappers of escrow-based Smart chain -> Bitcoin (on-chain & lightning) swaps
  *
@@ -37,13 +38,14 @@ class IToBTCWrapper extends IEscrowSwapWrapper_1.IEscrowSwapWrapper {
      * @param amountData
      * @param lp Intermediary
      * @param abortController
+     * @param contractVersion
      * @returns Intermediary's reputation or null if failed
      * @throws {IntermediaryError} If the intermediary vault doesn't exist
      *
      * @internal
      */
-    preFetchIntermediaryReputation(amountData, lp, abortController) {
-        return lp.getReputation(this.chainIdentifier, this._contract, [amountData.token.toString()], abortController.signal).then(res => {
+    preFetchIntermediaryReputation(amountData, lp, abortController, contractVersion) {
+        return lp.getReputation(this.chainIdentifier, this._contract(contractVersion), [amountData.token.toString()], abortController.signal).then(res => {
             if (res == null)
                 throw new IntermediaryError_1.IntermediaryError("Invalid data returned - invalid LP vault");
             return res;
@@ -60,16 +62,19 @@ class IToBTCWrapper extends IEscrowSwapWrapper_1.IEscrowSwapWrapper {
      * @param amountData
      * @param claimHash optional hash of the swap or null
      * @param abortController
+     * @param contractVersions
      * @returns Fee rate
      *
      * @internal
      */
-    preFetchFeeRate(signer, amountData, claimHash, abortController) {
-        return this._contract.getInitPayInFeeRate(signer, this._chain.randomAddress(), amountData.token, claimHash)
-            .catch(e => {
-            this.logger.warn("preFetchFeeRate(): Error: ", e);
-            abortController.abort(e);
-            return undefined;
+    preFetchFeeRate(signer, amountData, claimHash, abortController, contractVersions) {
+        return (0, Utils_1.mapArrayToObject)(contractVersions, (contractVersion) => {
+            return this._contract(contractVersion).getInitPayInFeeRate(signer, this._chain.randomAddress(), amountData.token, claimHash?.[contractVersion])
+                .catch(e => {
+                this.logger.warn("preFetchFeeRate(): Error: ", e);
+                abortController.abort(e);
+                return undefined;
+            });
         });
     }
     /**

@@ -15,7 +15,12 @@ import {Buffer} from "buffer";
 import {UserError} from "../../../../errors/UserError";
 import {IntermediaryError} from "../../../../errors/IntermediaryError";
 import {SwapType} from "../../../../enums/SwapType";
-import {extendAbortController, randomBytes, throwIfUndefined} from "../../../../utils/Utils";
+import {
+    extendAbortController,
+    mapArrayToObject,
+    randomBytes,
+    throwIfUndefined
+} from "../../../../utils/Utils";
 import {toOutputScript} from "../../../../utils/BitcoinUtils";
 import {IntermediaryAPI, ToBTCResponseType} from "../../../../intermediaries/apis/IntermediaryAPI";
 import {RequestError} from "../../../../errors/RequestError";
@@ -73,10 +78,9 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
      * @param unifiedStorage Storage interface for the current environment
      * @param unifiedChainEvents Smart chain on-chain event listener
      * @param chain
-     * @param contract Chain specific swap contract
+     * @param versionedContracts Chain specific versioned contracts
      * @param prices Swap pricing handler
      * @param tokens
-     * @param swapDataDeserializer Deserializer for chain specific SwapData
      * @param btcRpc Bitcoin RPC api
      * @param options
      * @param events Instance to use for emitting events
@@ -86,16 +90,20 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
         unifiedStorage: UnifiedSwapStorage<T>,
         unifiedChainEvents: UnifiedSwapEventListener<T>,
         chain: T["ChainInterface"],
-        contract: T["Contract"],
         prices: ISwapPrice,
         tokens: WrapperCtorTokens,
-        swapDataDeserializer: new (data: any) => T["Data"],
+        versionedContracts: {
+            [version: string]: {
+                swapContract: T["Contract"],
+                swapDataConstructor: new (data: any) => T["Data"]
+            }
+        },
         btcRpc: BitcoinRpc<any>,
         options?: AllOptional<ToBTCWrapperOptions>,
         events?: EventEmitter<{swapState: [ISwap]}>
     ) {
         super(
-            chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer,
+            chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens,
             {
                 ...options,
                 bitcoinNetwork: options?.bitcoinNetwork ?? TEST_NETWORK,
@@ -105,6 +113,7 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
                 maxExpectedOnchainSendSafetyFactor: options?.maxExpectedOnchainSendSafetyFactor ?? 4,
                 maxExpectedOnchainSendGracePeriodBlocks: options?.maxExpectedOnchainSendGracePeriodBlocks ?? 12,
             },
+            versionedContracts,
             events
         );
         this._btcRpc = btcRpc;
@@ -234,29 +243,35 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
             confirmationTarget: options?.confirmationTarget ?? 3,
             confirmations: options?.confirmations ?? 2
         };
+        const lpVersions = Intermediary.getContractVersionsForLps(this.chainIdentifier, lps);
 
         const nonce: bigint = this.getRandomNonce();
         const outputScript: Buffer = this.btcAddressToOutputScript(recipient);
-        const _hash: string | undefined = !amountData.exactIn ?
-            this._contract.getHashForOnchain(outputScript, amountData.amount, _options.confirmations, nonce).toString("hex") :
+        const _hash = !amountData.exactIn ?
+            mapArrayToObject(lpVersions, (contractVersion: string) => {
+                return this._contract(contractVersion).getHashForOnchain(outputScript, amountData.amount, _options.confirmations, nonce).toString("hex");
+            }) :
             undefined;
 
         const _abortController = extendAbortController(abortSignal);
         const pricePreFetchPromise: Promise<bigint | undefined> = this.preFetchPrice(amountData, _abortController.signal);
         const usdPricePrefetchPromise: Promise<number | undefined> = this.preFetchUsdPrice(_abortController.signal);
-        const feeRatePromise: Promise<string | undefined> = this.preFetchFeeRate(signer, amountData, _hash, _abortController);
-        const _signDataPromise: Promise<T["PreFetchVerification"] | undefined> | undefined = this._contract.preFetchBlockDataForSignatures==null ?
-            this.preFetchSignData(Promise.resolve(true)) :
-            undefined;
+        const feeRatePromise = this.preFetchFeeRate(signer, amountData, _hash, _abortController, lpVersions);
+        const _signDataPromise = mapArrayToObject(lpVersions, (contractVersion: string) => {
+            return this._contract(contractVersion).preFetchBlockDataForSignatures==null ?
+                this.preFetchSignData(Promise.resolve(true), contractVersion) :
+                undefined;
+        });
 
         return lps.map(lp => {
             return {
                 intermediary: lp,
                 quote: (async () => {
                     if(lp.services[SwapType.TO_BTC]==null) throw new Error("LP service for processing to btc swaps not found!");
+                    const version = lp.getContractVersion(this.chainIdentifier);
 
                     const abortController = extendAbortController(_abortController.signal);
-                    const reputationPromise: Promise<SingleChainReputationType | undefined> = this.preFetchIntermediaryReputation(amountData, lp, abortController);
+                    const reputationPromise: Promise<SingleChainReputationType | undefined> = this.preFetchIntermediaryReputation(amountData, lp, abortController, version);
 
                     try {
                         const {signDataPromise, resp} = await tryWithRetries(async(retryCount) => {
@@ -269,13 +284,13 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
                                 token: amountData.token,
                                 offerer: signer,
                                 exactIn: amountData.exactIn,
-                                feeRate: throwIfUndefined(feeRatePromise),
+                                feeRate: throwIfUndefined(feeRatePromise[version]),
                                 additionalParams
                             }, this._options.postRequestTimeout, abortController.signal, retryCount>0 ? false : undefined);
 
-                            let signDataPromise = _signDataPromise;
+                            let signDataPromise = _signDataPromise[version];
                             if(signDataPromise==null) {
-                                signDataPromise = this.preFetchSignData(signDataPrefetch);
+                                signDataPromise = this.preFetchSignData(signDataPrefetch, version);
                             } else signDataPrefetch.catch(() => {});
 
                             return {
@@ -284,9 +299,9 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
                             };
                         }, undefined, RequestError, abortController.signal);
 
-                        let hash: string = _hash ?? this._contract.getHashForOnchain(outputScript, resp.amount, _options.confirmations, nonce).toString("hex");
+                        let hash: string = _hash?.[version] ?? this._contract(version).getHashForOnchain(outputScript, resp.amount, _options.confirmations, nonce).toString("hex");
 
-                        const data: T["Data"] = new this._swapDataDeserializer(resp.data);
+                        const data: T["Data"] = new (this._swapDataDeserializer(version))(resp.data);
                         data.setOfferer(signer);
 
                         this.verifyReturnedData(signer, resp, amountData, lp, _options, data, hash);
@@ -295,7 +310,7 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
                                 lp.services[SwapType.TO_BTC], true, resp.amount, data.getAmount(),
                                 amountData.token, resp, pricePreFetchPromise, usdPricePrefetchPromise, abortController.signal
                             ),
-                            this.verifyReturnedSignature(signer, data, resp, feeRatePromise, signDataPromise, abortController.signal),
+                            this.verifyReturnedSignature(signer, data, resp, feeRatePromise[version], signDataPromise, version, abortController.signal),
                             reputationPromise
                         ]);
                         abortController.signal.throwIfAborted();
@@ -312,7 +327,7 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
                             expiry: signatureExpiry,
                             swapFee: resp.swapFee,
                             swapFeeBtc,
-                            feeRate: (await feeRatePromise)!,
+                            feeRate: (await feeRatePromise[version])!,
                             signatureData: resp,
                             data,
                             networkFee: resp.networkFee,
@@ -323,7 +338,8 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
                             satsPerVByte: Number(resp.satsPervByte),
                             exactIn: amountData.exactIn,
                             requiredConfirmations: _options.confirmations,
-                            nonce
+                            nonce,
+                            contractVersion: version
                         } as ToBTCSwapInit<T["Data"]>);
                         return quote;
                     } catch (e) {
@@ -341,6 +357,7 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
     async recoverFromSwapDataAndState(
         init: {data: T["Data"], getInitTxId: () => Promise<string>, getTxBlock: () => Promise<{blockTime: number, blockHeight: number}>},
         state: SwapCommitState,
+        contractVersion: string,
         lp?: Intermediary
     ): Promise<ToBTCSwap<T> | null> {
         const data = init.data;
@@ -367,7 +384,8 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
             data,
             networkFee: 0n,
             networkFeeBtc: 0n,
-            exactIn: true
+            exactIn: true,
+            contractVersion
         };
         const swap = new ToBTCSwap(this, swapInit);
         swap._commitTxId = await init.getInitTxId();

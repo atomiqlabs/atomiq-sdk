@@ -9,7 +9,7 @@ const RetryUtils_1 = require("../utils/RetryUtils");
  * @category LPs
  */
 class Intermediary {
-    constructor(url, addresses, services, reputation = {}) {
+    constructor(url, addresses, services, reputation = {}, contractVersions = {}) {
         /**
          * Reputation of the intermediary on different smart chains, this is only fetched
          *  on-demand when creating a swap where reputation is checked
@@ -24,6 +24,7 @@ class Intermediary {
         this.addresses = addresses;
         this.services = services;
         this.reputation = reputation;
+        this.contractVersions = contractVersions;
         this.swapBounds = {};
         for (let _swapType in this.services) {
             const swapType = parseInt(_swapType);
@@ -137,6 +138,29 @@ class Intermediary {
      */
     getAddress(chainIdentifier) {
         return this.addresses[chainIdentifier];
+    }
+    /**
+     * Returns the contract version used by the intermediary for a given chain
+     *
+     * @param chainIdentifier
+     */
+    getContractVersion(chainIdentifier) {
+        return this.contractVersions[chainIdentifier] ?? "v1";
+    }
+    /**
+     * Returns the range of contract versions used by the LPs
+     *
+     * @param chainIdentifier
+     * @param lps
+     */
+    static getContractVersionsForLps(chainIdentifier, lps) {
+        const versions = [];
+        lps.forEach((lp) => {
+            const lpVersion = lp.getContractVersion(chainIdentifier);
+            if (!versions.includes(lpVersion))
+                versions.push(lpVersion);
+        });
+        return versions;
     }
 }
 exports.Intermediary = Intermediary;

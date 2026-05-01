@@ -276,6 +276,8 @@ export class SpvFromBTCSwap<T extends ChainType>
      */
     private btcTxConfirmedAt?: number;
 
+    private _contract: T["SpvVaultContract"];
+
     constructor(wrapper: SpvFromBTCWrapper<T>, init: SpvFromBTCSwapInit);
     constructor(wrapper: SpvFromBTCWrapper<T>, obj: any);
     constructor(wrapper: SpvFromBTCWrapper<T>, initOrObject: SpvFromBTCSwapInit | any) {
@@ -342,10 +344,12 @@ export class SpvFromBTCSwap<T extends ChainType>
             this.gasPricingInfo = deserializePriceInfoType(initOrObject.gasPricingInfo);
             this.btcTxConfirmedAt = initOrObject.btcTxConfirmedAt;
             this.posted = initOrObject.posted;
-            if(initOrObject.data!=null) this._data = new this.wrapper._spvWithdrawalDataDeserializer(initOrObject.data);
+            if(initOrObject.data!=null) this._data = new (this.wrapper._spvWithdrawalDataDeserializer(this._contractVersion))(initOrObject.data);
         }
         this.tryCalculateSwapFee();
         this.logger = getLogger("SPVFromBTC("+this.getId()+"): ");
+
+        this._contract = wrapper._contract(this._contractVersion);
     }
 
     /**
@@ -779,7 +783,7 @@ export class SpvFromBTCSwap<T extends ChainType>
 
         const out2script = toOutputScript(this.wrapper._options.bitcoinNetwork, this.btcDestinationAddress);
 
-        const opReturnData = this.wrapper._contract.toOpReturnData(
+        const opReturnData = this._contract.toOpReturnData(
             this.recipient,
             [
                 this.outputTotalSwap / this.vaultTokenMultipliers[0],
@@ -934,7 +938,7 @@ export class SpvFromBTCSwap<T extends ChainType>
             psbt.finalizeIdx(i);
         }
         const btcTx = await this.wrapper._btcRpc.parseTransaction(Buffer.from(psbt.toBytes(true)).toString("hex"));
-        const data = await this.wrapper._contract.getWithdrawalData(btcTx);
+        const data = await this._contract.getWithdrawalData(btcTx);
 
         this.logger.debug("submitPsbt(): parsed withdrawal data: ", data);
 
@@ -971,7 +975,7 @@ export class SpvFromBTCSwap<T extends ChainType>
 
         //Verify tx is parsable by the contract
         try {
-            await this.wrapper._contract.checkWithdrawalTx(data);
+            await this._contract.checkWithdrawalTx(data);
         } catch (e: any) {
             throw new Error("Transaction not parsable by the contract: "+(e.message ?? e.toString()));
         }
@@ -1273,7 +1277,7 @@ export class SpvFromBTCSwap<T extends ChainType>
         if(!this.isClaimable()) throw new Error("Must be in BTC_TX_CONFIRMED state!");
         if(this._data==null) throw new Error("Expected swap to have withdrawal data filled!");
 
-        const vaultData = await this.wrapper._contract.getVaultData(this.vaultOwner, this.vaultId);
+        const vaultData = await this._contract.getVaultData(this.vaultOwner, this.vaultId);
         if(vaultData==null) throw new Error(`Vault data for ${this.vaultOwner}:${this.vaultId.toString(10)} not found (already closed???)!`);
 
         const btcTx = await this.wrapper._btcRpc.getTransaction(this._data.btcTx.txid);
@@ -1291,13 +1295,13 @@ export class SpvFromBTCSwap<T extends ChainType>
         //Parse transactions to withdrawal data
         const withdrawalData: T["SpvVaultWithdrawalData"][] = [];
         for(let tx of txs) {
-            withdrawalData.push(await this.wrapper._contract.getWithdrawalData(tx));
+            withdrawalData.push(await this._contract.getWithdrawalData(tx));
         }
 
-        return await this.wrapper._contract.txsClaim(
+        return await this._contract.txsClaim(
             address ?? this._getInitiator(), vaultData,
             withdrawalData.map(tx => {return {tx}}),
-            this.wrapper._synchronizer, true
+            this.wrapper._synchronizer(this._contractVersion), true
         );
     }
 
@@ -1335,7 +1339,7 @@ export class SpvFromBTCSwap<T extends ChainType>
                 this.logger.info("claim(): Transaction state is CLAIMED, swap was successfully claimed by the watchtower");
                 return this._claimTxId!;
             }
-            const withdrawalState = await this.wrapper._contract.getWithdrawalState(this._data, this._genesisSmartChainBlockHeight);
+            const withdrawalState = await this._contract.getWithdrawalState(this._data, this._genesisSmartChainBlockHeight);
             if(withdrawalState!=null && withdrawalState.type===SpvWithdrawalStateType.CLAIMED) {
                 this.logger.info("claim(): Transaction status is CLAIMED, swap was successfully claimed by the watchtower");
                 this._claimTxId = withdrawalState.txId;
@@ -1374,7 +1378,7 @@ export class SpvFromBTCSwap<T extends ChainType>
             try {
                 //Be smart about checking withdrawal state
                 if(await this._shouldCheckWithdrawalState()) {
-                    status = await this.wrapper._contract.getWithdrawalState(
+                    status = await this._contract.getWithdrawalState(
                         this._data, this._genesisSmartChainBlockHeight
                     ) ?? {type: SpvWithdrawalStateType.NOT_FOUND};
                 }
@@ -1654,7 +1658,7 @@ export class SpvFromBTCSwap<T extends ChainType>
 
         if(this._state===SpvFromBTCSwapState.BROADCASTED || this._state===SpvFromBTCSwapState.BTC_TX_CONFIRMED) {
             if(await this._shouldCheckWithdrawalState()) {
-                const status = await this.wrapper._contract.getWithdrawalState(this._data!, this._genesisSmartChainBlockHeight);
+                const status = await this._contract.getWithdrawalState(this._data!, this._genesisSmartChainBlockHeight);
                 this.logger.debug("syncStateFromChain(): status of "+this._data!.btcTx.txid, status);
                 switch(status?.type) {
                     case SpvWithdrawalStateType.FRONTED:
@@ -1750,8 +1754,8 @@ export class SpvFromBTCSwap<T extends ChainType>
      * @internal
      */
     async _shouldCheckWithdrawalState(frontingAddress?: string | null, vaultDataUtxo?: string | null) {
-        if(frontingAddress===undefined) frontingAddress = await this.wrapper._contract.getFronterAddress(this.vaultOwner, this.vaultId, this._data!);
-        if(vaultDataUtxo===undefined) vaultDataUtxo = await this.wrapper._contract.getVaultLatestUtxo(this.vaultOwner, this.vaultId);
+        if(frontingAddress===undefined) frontingAddress = await this._contract.getFronterAddress(this.vaultOwner, this.vaultId, this._data!);
+        if(vaultDataUtxo===undefined) vaultDataUtxo = await this._contract.getVaultLatestUtxo(this.vaultOwner, this.vaultId);
 
         if(frontingAddress != null) return true; //In case the swap is fronted there will for sure be a fronted event
         if(vaultDataUtxo == null) return true; //Vault UTXO is null (the vault closed)

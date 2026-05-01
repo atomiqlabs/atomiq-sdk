@@ -29,16 +29,19 @@ class IFromBTCWrapper extends IEscrowSwapWrapper_1.IEscrowSwapWrapper {
      * @param claimHash optional claim hash of the swap or null
      * @param abortController
      *
+     * @param contractVersions
      * @returns Fee rate
      *
      * @internal
      */
-    preFetchFeeRate(signer, amountData, claimHash, abortController) {
-        return this._contract.getInitFeeRate(this._chain.randomAddress(), signer, amountData.token, claimHash)
-            .catch(e => {
-            this.logger.warn("preFetchFeeRate(): Error: ", e);
-            abortController.abort(e);
-            return undefined;
+    preFetchFeeRate(signer, amountData, claimHash, abortController, contractVersions) {
+        return (0, Utils_1.mapArrayToObject)(contractVersions, (contractVersion) => {
+            return this._contract(contractVersion).getInitFeeRate(this._chain.randomAddress(), signer, amountData.token, claimHash?.[contractVersion])
+                .catch(e => {
+                this.logger.warn("preFetchFeeRate(): Error: ", e);
+                abortController.abort(e);
+                return undefined;
+            });
         });
     }
     /**
@@ -48,12 +51,13 @@ class IFromBTCWrapper extends IEscrowSwapWrapper_1.IEscrowSwapWrapper {
      * @param lp Intermediary
      * @param abortController
      *
+     * @param contractVersion
      * @returns Intermediary's liquidity balance
      *
      * @internal
      */
-    preFetchIntermediaryLiquidity(amountData, lp, abortController) {
-        return lp.getLiquidity(this.chainIdentifier, this._contract, amountData.token.toString(), abortController.signal).catch(e => {
+    preFetchIntermediaryLiquidity(amountData, lp, abortController, contractVersion) {
+        return lp.getLiquidity(this.chainIdentifier, this._contract(contractVersion), amountData.token.toString(), abortController.signal).catch(e => {
             this.logger.warn("preFetchIntermediaryLiquidity(): Error: ", e);
             abortController.abort(e);
             return undefined;

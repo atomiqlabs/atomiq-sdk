@@ -200,6 +200,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
      * @private
      */
     private btcTxConfirmedAt?;
+    private _contract;
     constructor(wrapper: SpvFromBTCWrapper<T>, init: SpvFromBTCSwapInit);
     constructor(wrapper: SpvFromBTCWrapper<T>, obj: any);
     /**

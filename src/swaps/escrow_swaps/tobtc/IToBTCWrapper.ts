@@ -5,6 +5,7 @@ import {Intermediary, SingleChainReputationType} from "../../../intermediaries/I
 import {IntermediaryError} from "../../../errors/IntermediaryError";
 import {IEscrowSwapWrapper} from "../IEscrowSwapWrapper";
 import {AmountData} from "../../../types/AmountData";
+import {mapArrayToObject} from "../../../utils/Utils";
 
 export type IToBTCDefinition<T extends ChainType, W extends IToBTCWrapper<T, any>, S extends IToBTCSwap<T>> = SwapTypeDefinition<T, W, S>;
 
@@ -44,6 +45,7 @@ export abstract class IToBTCWrapper<
      * @param amountData
      * @param lp Intermediary
      * @param abortController
+     * @param contractVersion
      * @returns Intermediary's reputation or null if failed
      * @throws {IntermediaryError} If the intermediary vault doesn't exist
      *
@@ -52,9 +54,10 @@ export abstract class IToBTCWrapper<
     protected preFetchIntermediaryReputation(
         amountData: Omit<AmountData, "amount">,
         lp: Intermediary,
-        abortController: AbortController
+        abortController: AbortController,
+        contractVersion: string
     ): Promise<SingleChainReputationType | undefined> {
-        return lp.getReputation(this.chainIdentifier, this._contract, [amountData.token.toString()], abortController.signal).then(res => {
+        return lp.getReputation(this.chainIdentifier, this._contract(contractVersion), [amountData.token.toString()], abortController.signal).then(res => {
             if(res==null) throw new IntermediaryError("Invalid data returned - invalid LP vault");
             return res;
         }).catch(e => {
@@ -71,17 +74,26 @@ export abstract class IToBTCWrapper<
      * @param amountData
      * @param claimHash optional hash of the swap or null
      * @param abortController
+     * @param contractVersions
      * @returns Fee rate
      *
      * @internal
      */
-    protected preFetchFeeRate(signer: string, amountData: Omit<AmountData, "amount">, claimHash: string | undefined, abortController: AbortController): Promise<string | undefined> {
-        return this._contract.getInitPayInFeeRate(signer, this._chain.randomAddress(), amountData.token, claimHash)
-            .catch(e => {
-                this.logger.warn("preFetchFeeRate(): Error: ", e);
-                abortController.abort(e);
-                return undefined;
-            });
+    protected preFetchFeeRate(
+        signer: string,
+        amountData: Omit<AmountData, "amount">,
+        claimHash: {[contractVersion: string]: string} | undefined,
+        abortController: AbortController,
+        contractVersions: string[]
+    ): {[contractVersion: string]: Promise<string | undefined>} {
+        return mapArrayToObject(contractVersions, (contractVersion) => {
+            return this._contract(contractVersion).getInitPayInFeeRate(signer, this._chain.randomAddress(), amountData.token, claimHash?.[contractVersion])
+                .catch(e => {
+                    this.logger.warn("preFetchFeeRate(): Error: ", e);
+                    abortController.abort(e);
+                    return undefined;
+                });
+        });
     }
 
     /**

@@ -25,7 +25,8 @@ export type ISwapInit = {
     expiry: number,
     swapFee: bigint,
     swapFeeBtc: bigint,
-    exactIn: boolean
+    exactIn: boolean,
+    contractVersion: string
 };
 
 /**
@@ -140,6 +141,10 @@ export abstract class ISwap<
      * @internal
      */
     _persisted: boolean = false;
+    /**
+     * @internal
+     */
+    _contractVersion?: string;
 
 
     /**
@@ -181,6 +186,7 @@ export abstract class ISwap<
             this.version = this.currentVersion;
             this.createdAt = Date.now();
             this._randomNonce = randomBytes(16).toString("hex");
+            this._contractVersion = swapInitOrObj.contractVersion;
         } else {
             this.expiry = swapInitOrObj.expiry;
             this.url = swapInitOrObj.url;
@@ -211,6 +217,7 @@ export abstract class ISwap<
             this.createdAt = swapInitOrObj.createdAt ?? swapInitOrObj.expiry;
 
             this._randomNonce = swapInitOrObj.randomNonce;
+            this._contractVersion = swapInitOrObj.contractVersion;
         }
         if(this.version!==this.currentVersion) {
             this.upgradeVersion();
@@ -637,7 +644,8 @@ export abstract class ISwap<
             initiated: this.initiated,
             exactIn: this.exactIn,
             createdAt: this.createdAt,
-            randomNonce: this._randomNonce
+            randomNonce: this._randomNonce,
+            contractVersion: this._contractVersion
         }
     }
 

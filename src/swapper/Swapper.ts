@@ -6,7 +6,7 @@ import {
     ChainSwapType,
     ChainType, LightningNetworkApi,
     Messenger,
-    RelaySynchronizer
+    RelaySynchronizer, SpvWithdrawalClaimedState, SpvWithdrawalFrontedState, SwapCommitState, SwapContract, SwapData
 } from "@atomiqlabs/base";
 import {
     ToBTCLNOptions,
@@ -190,14 +190,20 @@ type ChainSpecificData<T extends ChainType> = {
         [SwapType.FROM_BTCLN_AUTO]: FromBTCLNAutoWrapper<T>
     }
     chainEvents: T["Events"],
-    swapContract: T["Contract"],
-    spvVaultContract: T["SpvVaultContract"],
     chainInterface: T["ChainInterface"],
-    btcRelay: BtcRelay<any, T["TX"], BtcBlock, T["Signer"]>,
-    synchronizer: RelaySynchronizer<any, T["TX"], BtcBlock>,
     unifiedChainEvents: UnifiedSwapEventListener<T>,
     unifiedSwapStorage: UnifiedSwapStorage<T>,
-    reviver: (val: any) => ISwap<T>
+    reviver: (val: any) => ISwap<T>,
+    defaultVersion: string,
+
+    versionedContracts: {
+        [contractVersion: string]: {
+            swapContract: T["Contract"],
+            spvVaultContract: T["SpvVaultContract"],
+            btcRelay: BtcRelay<any, T["TX"], BtcBlock, T["Signer"]>,
+            synchronizer: RelaySynchronizer<any, T["TX"], BtcBlock>,
+        }
+    }
 };
 
 type MultiChainData<T extends MultiChain> = {
@@ -358,12 +364,37 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         };
 
         this._chains = objectMap<CtorMultiChainData<T>, MultiChainData<T>>(chainsData, <InputKey extends keyof CtorMultiChainData<T>>(chainData: CtorMultiChainData<T>[InputKey], key: string) => {
-            const {
-                swapContract, chainEvents, btcRelay,
-                chainInterface, spvVaultContract, spvVaultWithdrawalDataConstructor,
-                chainId
+            let {
+                chainInterface, chainEvents, chainId,
+                btcRelay,
+                swapContract, swapDataConstructor,
+                spvVaultContract, spvVaultWithdrawalDataConstructor, spvVaultDataConstructor,
+                defaultVersion, versions
             } = chainData;
-            const synchronizer = bitcoinSynchronizer(btcRelay);
+
+            defaultVersion ??= "v1";
+
+            if(versions==null) {
+                versions = {
+                    [defaultVersion]: {
+                        btcRelay,
+                        swapContract,
+                        swapDataConstructor,
+                        spvVaultContract,
+                        spvVaultDataConstructor,
+                        spvVaultWithdrawalDataConstructor
+                    }
+                }
+            }
+
+            const versionedContracts = objectMap(versions, (value, key) => {
+                return {
+                    swapContract: value.swapContract,
+                    spvVaultContract: value.spvVaultContract,
+                    btcRelay: value.btcRelay,
+                    synchronizer: bitcoinSynchronizer(value.btcRelay)
+                };
+            });
 
             const storageHandler = swapStorage(storagePrefix + chainId);
             const unifiedSwapStorage = new UnifiedSwapStorage<T[InputKey]>(storageHandler, this.options.noSwapCache);
@@ -376,10 +407,9 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 unifiedSwapStorage,
                 unifiedChainEvents,
                 chainInterface,
-                swapContract,
                 pricing,
                 this._tokens[chainId],
-                chainData.swapDataConstructor,
+                versions,
                 {
                     getRequestTimeout: this.options.getRequestTimeout,
                     postRequestTimeout: this.options.postRequestTimeout,
@@ -391,10 +421,9 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 unifiedSwapStorage,
                 unifiedChainEvents,
                 chainInterface,
-                swapContract,
                 pricing,
                 this._tokens[chainId],
-                chainData.swapDataConstructor,
+                versions,
                 this._bitcoinRpc,
                 {
                     getRequestTimeout: this.options.getRequestTimeout,
@@ -408,10 +437,9 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 unifiedSwapStorage,
                 unifiedChainEvents,
                 chainInterface,
-                swapContract,
                 pricing,
                 this._tokens[chainId],
-                chainData.swapDataConstructor,
+                versions,
                 lightningApi,
                 {
                     getRequestTimeout: this.options.getRequestTimeout,
@@ -425,12 +453,10 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 unifiedSwapStorage,
                 unifiedChainEvents,
                 chainInterface,
-                swapContract,
                 pricing,
                 this._tokens[chainId],
-                chainData.swapDataConstructor,
-                btcRelay,
-                synchronizer,
+                versions,
+                versionedContracts,
                 this._bitcoinRpc,
                 {
                     getRequestTimeout: this.options.getRequestTimeout,
@@ -468,18 +494,17 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 }
             );
 
+            // This is gated on the default version of the contracts
             if(spvVaultContract!=null) {
                 wrappers[SwapType.SPV_VAULT_FROM_BTC] = new SpvFromBTCWrapper<T[InputKey]>(
                     key,
                     unifiedSwapStorage,
                     unifiedChainEvents,
                     chainInterface,
-                    spvVaultContract,
                     pricing,
                     this._tokens[chainId],
-                    spvVaultWithdrawalDataConstructor,
-                    btcRelay,
-                    synchronizer,
+                    versions,
+                    versionedContracts,
                     bitcoinRpc,
                     {
                         getRequestTimeout: this.options.getRequestTimeout,
@@ -490,16 +515,16 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 );
             }
 
+            // This is gated on the default version of the contracts
             if(swapContract.supportsInitWithoutClaimer) {
                 wrappers[SwapType.FROM_BTCLN_AUTO] = new FromBTCLNAutoWrapper<T[InputKey]>(
                     key,
                     unifiedSwapStorage,
                     unifiedChainEvents,
                     chainInterface,
-                    swapContract,
                     pricing,
                     this._tokens[chainId],
-                    chainData.swapDataConstructor,
+                    versions,
                     lightningApi,
                     this.messenger,
                     {
@@ -521,22 +546,22 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
 
             return {
                 chainEvents,
-                spvVaultContract,
-                swapContract,
                 chainInterface,
-                btcRelay,
-                synchronizer,
 
                 wrappers,
 
                 unifiedChainEvents,
                 unifiedSwapStorage,
 
-                reviver
+                defaultVersion,
+
+                reviver,
+
+                versionedContracts
             }
         });
 
-        const contracts = objectMap(chainsData, (data) => data.swapContract);
+        const contracts = objectMap(chainsData, (data) => data.versions ?? {[data.defaultVersion ?? "v1"]: {swapContract: data.swapContract}});
         if(options.intermediaryUrl!=null) {
             this.intermediaryDiscovery = new IntermediaryDiscovery(contracts, options.registryUrl, Array.isArray(options.intermediaryUrl) ? options.intermediaryUrl : [options.intermediaryUrl], options.getRequestTimeout);
         } else {
@@ -595,7 +620,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
             chainPromises.push((async() => {
                 const {
                     chainInterface,
-                    swapContract,
+                    versionedContracts,
                     unifiedChainEvents,
                     unifiedSwapStorage,
                     wrappers,
@@ -607,8 +632,10 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                     await _chainInterface.verifyNetwork(this.bitcoinNetwork);
                 }
 
-                await swapContract.start();
-                this.logger.debug("init(): Intialized swap contract: "+chainIdentifier);
+                for(let contractVersion in versionedContracts) {
+                    await versionedContracts[contractVersion].swapContract.start();
+                    this.logger.debug("init(): Intialized swap contract: "+chainIdentifier+` version: ${contractVersion}`);
+                }
 
                 await unifiedSwapStorage.init();
                 if(unifiedSwapStorage.storage instanceof IndexedDBUnifiedStorage) {
@@ -1872,18 +1899,56 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
      *  initiated after this blockheight
      */
     async recoverSwaps<C extends ChainIds<T>>(chainId: C, signer: string, startBlockheight?: number): Promise<ISwap<T[C]>[]> {
-        const {spvVaultContract, swapContract, unifiedSwapStorage, reviver, wrappers} = this._chains[chainId];
+        //TODO: Recover swaps from all the known contract versions
+        const {versionedContracts, unifiedSwapStorage, reviver, wrappers} = this._chains[chainId];
 
-        if(
-            swapContract.getHistoricalSwaps==null ||
-            (spvVaultContract!=null && spvVaultContract.getHistoricalWithdrawalStates==null)
-        ) throw new Error(`Historical swap recovery is not supported for ${chainId}`);
+        const recoveredSwaps: ISwap<T[C]>[] = [];
+        let someVersionSupportsRecovery = false;
+        const recoveredEscrowStates: {
+            [p: string]: {
+                init?: {
+                    data: SwapData
+                    getInitTxId: () => Promise<string>
+                    getTxBlock: () => Promise<{
+                        blockTime: number
+                        blockHeight: number
+                    }>
+                },
+                state: SwapCommitState
+                contractVersion: string
+            }
+        } = {};
+        const recoveredSpvStates: {
+            [contractVersion: string]: {
+                [escrowHash: string]: SpvWithdrawalClaimedState | SpvWithdrawalFrontedState
+            }
+        } = {};
 
-        const {swaps} = await swapContract.getHistoricalSwaps(signer, startBlockheight);
-        const spvVaultData = await spvVaultContract?.getHistoricalWithdrawalStates!(signer, startBlockheight);
+        for(let contractVersion in versionedContracts) {
+            const {swapContract, spvVaultContract} = versionedContracts[contractVersion];
 
-        const escrowHashes = Object.keys(swaps);
-        if(spvVaultData!=null) Object.keys(spvVaultData.withdrawals).forEach(btcTxId => escrowHashes.push(btcTxId));
+            if(
+                swapContract.getHistoricalSwaps==null ||
+                (spvVaultContract!=null && spvVaultContract.getHistoricalWithdrawalStates==null)
+            ) {
+                this.logger.warn(`recoverSwaps(): Swap data recovery not supported on ${chainId}, with contract version ${contractVersion}`);
+                continue;
+            }
+
+            someVersionSupportsRecovery = true;
+
+            const {swaps} = await swapContract.getHistoricalSwaps(signer, startBlockheight);
+            const spvVaultData = wrappers[SwapType.SPV_VAULT_FROM_BTC]==null
+                ? undefined
+                : await spvVaultContract?.getHistoricalWithdrawalStates!(signer, startBlockheight);
+
+            for(let key in swaps) recoveredEscrowStates[key] = {...swaps[key], contractVersion};
+            if(spvVaultData!=null) for(let key in spvVaultData.withdrawals) (recoveredSpvStates[contractVersion] ??= {})[key] = spvVaultData.withdrawals[key];
+        }
+        if(!someVersionSupportsRecovery) throw new Error(`Historical swap recovery is not supported for ${chainId}`);
+
+        const escrowHashes = Object.keys(recoveredEscrowStates);
+        for(let contractVersion in recoveredSpvStates) Object.keys(recoveredSpvStates[contractVersion]).forEach(btcTxId => escrowHashes.push(btcTxId));
         this.logger.debug(`recoverSwaps(): Loaded on-chain data for ${escrowHashes.length} swaps`);
         this.logger.debug(`recoverSwaps(): Fetching if swap escrowHashes are known: ${escrowHashes.join(", ")}`);
         const knownSwapsArray = await unifiedSwapStorage.query([[{key: "escrowHash", value: escrowHashes}]], reviver);
@@ -1894,11 +1959,10 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         });
         this.logger.debug(`recoverSwaps(): Fetched known swaps escrowHashes: ${Object.keys(knownSwaps).join(", ")}`);
 
-        const recoveredSwaps: ISwap<T[C]>[] = [];
-
-        for(let escrowHash in swaps) {
-            const {init, state} = swaps[escrowHash];
+        for(let escrowHash in recoveredEscrowStates) {
+            const {init, state, contractVersion} = recoveredEscrowStates[escrowHash];
             const knownSwap = knownSwaps[escrowHash];
+            const { swapContract } = versionedContracts[contractVersion];
 
             if(knownSwap==null) {
                 if(init==null) {
@@ -1907,6 +1971,10 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 }
             } else if(knownSwap instanceof IEscrowSwap) {
                 this.logger.debug(`recoverSwaps(escrow): Forcibly updating ${escrowHash} swap: swap already known and in local storage!`);
+                if((knownSwap._contractVersion ?? "v1")!==contractVersion) {
+                    this.logger.debug(`recoverSwaps(escrow): Skipping ${escrowHash} swap: swap uses contract version ${knownSwap._contractVersion ?? "v1"}, but state comes from ${contractVersion}!`);
+                    continue;
+                }
                 if(await knownSwap._forciblySetOnchainState(state)) {
                     await knownSwap._save();
                 }
@@ -1926,27 +1994,27 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                     //To BTCLN
                     typeIdentified = true;
                     const lp = this.intermediaryDiscovery.intermediaries.find(val => val.supportsChain(chainId) && data.isClaimer(val.getAddress(chainId)));
-                    swap = await wrappers[SwapType.TO_BTCLN].recoverFromSwapDataAndState(init, state, lp);
+                    swap = await wrappers[SwapType.TO_BTCLN].recoverFromSwapDataAndState(init, state, contractVersion, lp);
                 } else if(data.isClaimer(signer)) {
                     //From BTCLN
                     typeIdentified = true;
                     const lp = this.intermediaryDiscovery.intermediaries.find(val => val.supportsChain(chainId) && data.isOfferer(val.getAddress(chainId)));
-                    if(this.supportsSwapType(chainId, SwapType.FROM_BTCLN_AUTO)) {
-                        swap = await wrappers[SwapType.FROM_BTCLN_AUTO].recoverFromSwapDataAndState(init, state, lp);
+                    if(swapContract.supportsInitWithoutClaimer && wrappers[SwapType.FROM_BTCLN_AUTO]!=null) {
+                        swap = await wrappers[SwapType.FROM_BTCLN_AUTO].recoverFromSwapDataAndState(init, state, contractVersion, lp);
                     } else {
-                        swap = await wrappers[SwapType.FROM_BTCLN].recoverFromSwapDataAndState(init, state, lp);
+                        swap = await wrappers[SwapType.FROM_BTCLN].recoverFromSwapDataAndState(init, state, contractVersion, lp);
                     }
                 }
             } else if(data.getType()===ChainSwapType.CHAIN_NONCED) {
                 //To BTC
                 typeIdentified = true;
                 const lp = this.intermediaryDiscovery.intermediaries.find(val => val.supportsChain(chainId) && data.isClaimer(val.getAddress(chainId)));
-                swap = await wrappers[SwapType.TO_BTC].recoverFromSwapDataAndState(init, state, lp);
+                swap = await wrappers[SwapType.TO_BTC].recoverFromSwapDataAndState(init, state, contractVersion, lp);
             } else if(data.getType()===ChainSwapType.CHAIN) {
                 //From BTC
                 typeIdentified = true;
                 const lp = this.intermediaryDiscovery.intermediaries.find(val => val.supportsChain(chainId) && data.isOfferer(val.getAddress(chainId)));
-                swap = await wrappers[SwapType.FROM_BTC].recoverFromSwapDataAndState(init, state, lp);
+                swap = await wrappers[SwapType.FROM_BTC].recoverFromSwapDataAndState(init, state, contractVersion, lp);
             }
 
             if(swap!=null) {
@@ -1956,17 +2024,20 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
             }
         }
 
-        if(spvVaultContract!=null && spvVaultData!=null) {
+        for(let contractVersion in recoveredSpvStates) {
+            const { spvVaultContract } = versionedContracts[contractVersion];
+            const spvVaultData = recoveredSpvStates[contractVersion];
+
             const vaultsData = await spvVaultContract.getMultipleVaultData(
-                Object.keys(spvVaultData.withdrawals)
+                Object.keys(spvVaultData)
                     .map(btcTxId => ({
-                        owner: spvVaultData.withdrawals[btcTxId].owner,
-                        vaultId: spvVaultData.withdrawals[btcTxId].vaultId
+                        owner: spvVaultData[btcTxId].owner,
+                        vaultId: spvVaultData[btcTxId].vaultId
                     }))
             );
 
-            for(let btcTxId in spvVaultData.withdrawals) {
-                const state = spvVaultData.withdrawals[btcTxId];
+            for(let btcTxId in spvVaultData) {
+                const state = spvVaultData[btcTxId];
                 const knownSwap = knownSwaps[btcTxId];
 
                 if(knownSwap!=null) {
@@ -1988,6 +2059,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 );
                 const swap = await wrappers[SwapType.SPV_VAULT_FROM_BTC].recoverFromState(
                     state,
+                    contractVersion,
                     vaultsData[state.owner]?.[state.vaultId.toString(10)],
                     lp
                 );

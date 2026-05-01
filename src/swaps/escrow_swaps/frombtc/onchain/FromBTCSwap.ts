@@ -385,7 +385,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
     private inferRequiredConfirmationsCount(btcTx: Omit<BtcTxWithBlockheight, "hex" | "raw">, vout: number): number | undefined {
         const txOut = btcTx.outs[vout];
         for(let i=1;i<=20;i++) {
-            const computedClaimHash = this.wrapper._contract.getHashForOnchain(
+            const computedClaimHash = this._contract.getHashForOnchain(
                 Buffer.from(txOut.scriptPubKey.hex, "hex"),
                 BigInt(txOut.value),
                 i
@@ -976,13 +976,13 @@ export class FromBTCSwap<T extends ChainType = ChainType>
         if(tx.blockhash==null || tx.confirmations==null || tx.blockheight==null || tx.confirmations<this.requiredConfirmations)
             throw new Error("Bitcoin transaction not confirmed yet!");
 
-        return await this.wrapper._contract.txsClaimWithTxData(signer ?? this._getInitiator(), this._data, {
+        return await this._contract.txsClaimWithTxData(signer ?? this._getInitiator(), this._data, {
             blockhash: tx.blockhash,
             confirmations: tx.confirmations,
             txid: tx.txid,
             hex: tx.hex,
             height: tx.blockheight
-        }, this.requiredConfirmations, this.vout, undefined, this.wrapper._synchronizer, true);
+        }, this.requiredConfirmations, this.vout, undefined, this.wrapper._synchronizer(this._contractVersion), true);
     }
 
     /**
@@ -1017,7 +1017,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
                 this.logger.info("claim(): Transaction state is CLAIM_CLAIMED, swap was successfully claimed by the watchtower");
                 return this._claimTxId!;
             }
-            const status = await this.wrapper._contract.getCommitStatus(this._getInitiator(), this._data);
+            const status = await this._contract.getCommitStatus(this._getInitiator(), this._data);
             if(status?.type===SwapCommitStateType.PAID) {
                 this.logger.info("claim(): Transaction commit status is PAID, swap was successfully claimed by the watchtower");
                 if(this._claimTxId==null) this._claimTxId = await status.getClaimTxId();
@@ -1149,7 +1149,7 @@ export class FromBTCSwap<T extends ChainType = ChainType>
                 quoteExpired = quoteDefinitelyExpired ?? await this._verifyQuoteDefinitelyExpired(); //Make sure we check for expiry here, to prevent race conditions
             }
 
-            const status = commitStatus ?? await this.wrapper._contract.getCommitStatus(this._getInitiator(), this._data);
+            const status = commitStatus ?? await this._contract.getCommitStatus(this._getInitiator(), this._data);
             if(status!=null && await this._forciblySetOnchainState(status)) return true;
 
             if(this._state===FromBTCSwapState.PR_CREATED || this._state===FromBTCSwapState.QUOTE_SOFT_EXPIRED) {

@@ -20,23 +20,35 @@ export declare abstract class IEscrowSwapWrapper<T extends ChainType, D extends 
     /**
      * @internal
      */
-    readonly _contract: T["Contract"];
+    readonly _contract: (version?: string) => T["Contract"];
     /**
      * @internal
      */
-    readonly _swapDataDeserializer: new (data: any) => T["Data"];
-    constructor(chainIdentifier: string, unifiedStorage: UnifiedSwapStorage<T>, unifiedChainEvents: UnifiedSwapEventListener<T>, chain: T["ChainInterface"], contract: T["Contract"], prices: ISwapPrice, tokens: WrapperCtorTokens, swapDataDeserializer: new (data: any) => T["Data"], options: O, events?: EventEmitter<{
+    readonly _swapDataDeserializer: (version?: string) => new (data: any) => T["Data"];
+    readonly _versionedContracts: {
+        [version: string]: {
+            swapContract: T["Contract"];
+            swapDataConstructor: new (data: any) => T["Data"];
+        };
+    };
+    constructor(chainIdentifier: string, unifiedStorage: UnifiedSwapStorage<T>, unifiedChainEvents: UnifiedSwapEventListener<T>, chain: T["ChainInterface"], prices: ISwapPrice, tokens: WrapperCtorTokens, options: O, versionedContracts: {
+        [version: string]: {
+            swapContract: T["Contract"];
+            swapDataConstructor: new (data: any) => T["Data"];
+        };
+    }, events?: EventEmitter<{
         swapState: [ISwap];
     }>);
     /**
      * Pre-fetches signature verification data from the server's pre-sent promise, doesn't throw, instead returns null
      *
      * @param signDataPrefetch Promise that resolves when we receive "signDataPrefetch" from the LP in streaming mode
+     * @param contractVersion
      * @returns Pre-fetched signature verification data or null if failed
      *
      * @internal
      */
-    protected preFetchSignData(signDataPrefetch: Promise<any | null>): Promise<T["PreFetchVerification"] | undefined>;
+    protected preFetchSignData(signDataPrefetch: Promise<any | null>, contractVersion: string): Promise<T["PreFetchVerification"] | undefined>;
     /**
      * Verifies swap initialization signature returned by the intermediary
      *
@@ -45,13 +57,14 @@ export declare abstract class IEscrowSwapWrapper<T extends ChainType, D extends 
      * @param signature Response of the intermediary
      * @param feeRatePromise Pre-fetched fee rate promise
      * @param preFetchSignatureVerificationData Pre-fetched signature verification data
+     * @param contractVersion
      * @param abortSignal
      * @returns Swap initialization signature expiry
      * @throws {SignatureVerificationError} when swap init signature is invalid
      *
      * @internal
      */
-    protected verifyReturnedSignature(initiator: string, data: T["Data"], signature: SignatureData, feeRatePromise: Promise<any>, preFetchSignatureVerificationData: Promise<any>, abortSignal?: AbortSignal): Promise<number>;
+    protected verifyReturnedSignature(initiator: string, data: T["Data"], signature: SignatureData, feeRatePromise: Promise<any>, preFetchSignatureVerificationData: Promise<any>, contractVersion: string, abortSignal?: AbortSignal): Promise<number>;
     /**
      * Processes InitializeEvent for a given swap
      * @param swap
@@ -111,5 +124,5 @@ export declare abstract class IEscrowSwapWrapper<T extends ChainType, D extends 
             blockTime: number;
             blockHeight: number;
         }>;
-    }, state: SwapCommitState, lp?: Intermediary): Promise<D["Swap"] | null>;
+    }, state: SwapCommitState, contractVersion: string, lp?: Intermediary): Promise<D["Swap"] | null>;
 }

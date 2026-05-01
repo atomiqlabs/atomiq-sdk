@@ -73,11 +73,11 @@ class ToBTCSwap extends IToBTCSwap_1.IToBTCSwap {
             let requiredConfirmations = this.requiredConfirmations;
             const foundVout = btcTx.outs.find(vout => {
                 if (requiredConfirmations != null) {
-                    return this._data.getClaimHash() === this.wrapper._contract.getHashForOnchain(buffer_1.Buffer.from(vout.scriptPubKey.hex, "hex"), BigInt(vout.value), requiredConfirmations, nonce).toString("hex");
+                    return this._data.getClaimHash() === this._contract.getHashForOnchain(buffer_1.Buffer.from(vout.scriptPubKey.hex, "hex"), BigInt(vout.value), requiredConfirmations, nonce).toString("hex");
                 }
                 else {
                     for (let i = 1; i <= 20; i++) {
-                        if (this._data.getClaimHash() === this.wrapper._contract.getHashForOnchain(buffer_1.Buffer.from(vout.scriptPubKey.hex, "hex"), BigInt(vout.value), i, nonce).toString("hex")) {
+                        if (this._data.getClaimHash() === this._contract.getHashForOnchain(buffer_1.Buffer.from(vout.scriptPubKey.hex, "hex"), BigInt(vout.value), i, nonce).toString("hex")) {
                             requiredConfirmations = i;
                             return true;
                         }

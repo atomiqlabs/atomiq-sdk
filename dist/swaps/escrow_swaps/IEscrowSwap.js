@@ -24,11 +24,12 @@ class IEscrowSwap extends ISwap_1.ISwap {
         }
         else {
             if (swapInitOrObj.data != null)
-                this._data = new wrapper._swapDataDeserializer(swapInitOrObj.data);
+                this._data = new (wrapper._swapDataDeserializer(this._contractVersion))(swapInitOrObj.data);
             this._commitTxId = swapInitOrObj.commitTxId;
             this._claimTxId = swapInitOrObj.claimTxId;
             this._refundTxId = swapInitOrObj.refundTxId;
         }
+        this._contract = wrapper._contract(this._contractVersion);
     }
     //////////////////////////////
     //// Identifiers
@@ -114,7 +115,7 @@ class IEscrowSwap extends ISwap_1.ISwap {
         while (status?.type === base_1.SwapCommitStateType.NOT_COMMITED) {
             await (0, TimeoutUtils_1.timeoutPromise)(intervalSeconds * 1000, abortSignal);
             try {
-                status = await this.wrapper._contract.getCommitStatus(this._getInitiator(), this._data);
+                status = await this._contract.getCommitStatus(this._getInitiator(), this._data);
                 if (status?.type === base_1.SwapCommitStateType.NOT_COMMITED &&
                     await this._verifyQuoteDefinitelyExpired())
                     return false;
@@ -142,7 +143,7 @@ class IEscrowSwap extends ISwap_1.ISwap {
         while (status?.type === base_1.SwapCommitStateType.COMMITED || status?.type === base_1.SwapCommitStateType.REFUNDABLE) {
             await (0, TimeoutUtils_1.timeoutPromise)(intervalSeconds * 1000, abortSignal);
             try {
-                status = await this.wrapper._contract.getCommitStatus(this._getInitiator(), this._data);
+                status = await this._contract.getCommitStatus(this._getInitiator(), this._data);
             }
             catch (e) {
                 this.logger.error("watchdogWaitTillResult(): Error when fetching commit status: ", e);

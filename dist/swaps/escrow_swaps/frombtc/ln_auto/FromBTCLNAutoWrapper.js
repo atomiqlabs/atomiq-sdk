@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.FromBTCLNAutoWrapper = void 0;
 const bolt11_1 = require("@atomiqlabs/bolt11");
 const base_1 = require("@atomiqlabs/base");
+const Intermediary_1 = require("../../../../intermediaries/Intermediary");
 const buffer_1 = require("buffer");
 const UserError_1 = require("../../../../errors/UserError");
 const IntermediaryError_1 = require("../../../../errors/IntermediaryError");
@@ -28,17 +29,16 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
      * @param unifiedStorage Storage interface for the current environment
      * @param unifiedChainEvents On-chain event listener
      * @param chain
-     * @param contract Underlying contract handling the swaps
      * @param prices Swap pricing handler
      * @param tokens
-     * @param swapDataDeserializer Deserializer for SwapData
+     * @param versionedContracts
      * @param lnApi
      * @param messenger
      * @param options
      * @param events Instance to use for emitting events
      */
-    constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, lnApi, messenger, options, events) {
-        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, lnApi, {
+    constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, versionedContracts, lnApi, messenger, options, events) {
+        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, versionedContracts, lnApi, {
             ...options,
             safetyFactor: options?.safetyFactor ?? 2,
             bitcoinBlocktime: options?.bitcoinBlocktime ?? 10 * 60,
@@ -142,20 +142,23 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
      * @param options Options as passed to the swap creation function
      * @param abortController
      *
+     * @param contractVersions
      * @private
      */
-    async preFetchClaimerBounty(signer, amountData, options, abortController) {
-        if (options.unsafeZeroWatchtowerFee)
-            return 0n;
-        const dummyAmount = BigInt(Math.floor(Math.random() * 0x1000000));
-        const dummySwapData = await this._contract.createSwapData(base_1.ChainSwapType.HTLC, this._chain.randomAddress(), signer, amountData.token, dummyAmount, this._contract.getHashForHtlc((0, Utils_1.randomBytes)(32)).toString("hex"), this.getRandomSequence(), BigInt(Math.floor(Date.now() / 1000)), false, true, BigInt(Math.floor(Math.random() * 0x10000)), BigInt(Math.floor(Math.random() * 0x10000)));
-        try {
-            const result = await this._contract.getClaimFee(this._chain.randomAddress(), dummySwapData);
-            return result * BigInt(Math.floor(options.feeSafetyFactor * 1000000)) / 1000000n;
-        }
-        catch (e) {
-            abortController.abort(e);
-        }
+    preFetchClaimerBounty(signer, amountData, options, abortController, contractVersions) {
+        return (0, Utils_1.mapArrayToObject)(contractVersions, async (contractVersion) => {
+            if (options.unsafeZeroWatchtowerFee)
+                return 0n;
+            const dummyAmount = BigInt(Math.floor(Math.random() * 0x1000000));
+            const dummySwapData = await this._contract(contractVersion).createSwapData(base_1.ChainSwapType.HTLC, this._chain.randomAddress(), signer, amountData.token, dummyAmount, this._contract(contractVersion).getHashForHtlc((0, Utils_1.randomBytes)(32)).toString("hex"), this.getRandomSequence(), BigInt(Math.floor(Date.now() / 1000)), false, true, BigInt(Math.floor(Math.random() * 0x10000)), BigInt(Math.floor(Math.random() * 0x10000)));
+            try {
+                const result = await this._contract(contractVersion).getClaimFee(this._chain.randomAddress(), dummySwapData);
+                return result * BigInt(Math.floor(options.feeSafetyFactor * 1000000)) / 1000000n;
+            }
+            catch (e) {
+                abortController.abort(e);
+            }
+        });
     }
     /**
      * Verifies response returned from intermediary
@@ -232,6 +235,7 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
             throw new UserError_1.UserError("Cannot specify `gasAmount` for swaps to a native token!");
         if (_options.description != null && buffer_1.Buffer.byteLength(_options.description, "utf8") > 500)
             throw new UserError_1.UserError("Invalid description length");
+        const lpVersions = Intermediary_1.Intermediary.getContractVersionsForLps(this.chainIdentifier, lps);
         let secret;
         let paymentHash;
         if (_options?.paymentHash != null) {
@@ -240,16 +244,17 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
         else {
             ({ secret, paymentHash } = this.getSecretAndHash());
         }
-        const claimHash = this._contract.getHashForHtlc(paymentHash);
+        const _hash = (0, Utils_1.mapArrayToObject)(lpVersions, (contractVersion) => {
+            return this._contract(contractVersion).getHashForHtlc(paymentHash).toString("hex");
+        });
         const nativeTokenAddress = this._chain.getNativeCurrencyAddress();
         const _abortController = (0, Utils_1.extendAbortController)(abortSignal);
-        preFetches ??= {};
-        const _preFetches = {
-            pricePrefetchPromise: preFetches?.pricePrefetchPromise ?? this.preFetchPrice(amountData, _abortController.signal),
-            usdPricePrefetchPromise: preFetches?.usdPricePrefetchPromise ?? this.preFetchUsdPrice(_abortController.signal),
-            claimerBountyPrefetch: preFetches?.claimerBountyPrefetch ?? this.preFetchClaimerBounty(recipient, amountData, _options, _abortController),
+        const _preFetches = preFetches ?? {
+            pricePrefetchPromise: this.preFetchPrice(amountData, _abortController.signal),
+            usdPricePrefetchPromise: this.preFetchUsdPrice(_abortController.signal),
+            claimerBountyPrefetch: this.preFetchClaimerBounty(recipient, amountData, _options, _abortController, lpVersions),
             gasTokenPricePrefetchPromise: _options.gasAmount !== 0n || !_options.unsafeZeroWatchtowerFee ?
-                (preFetches.gasTokenPricePrefetchPromise ??= this.preFetchPrice({ token: nativeTokenAddress }, _abortController.signal)) :
+                this.preFetchPrice({ token: nativeTokenAddress }, _abortController.signal) :
                 undefined
         };
         return lps.map(lp => {
@@ -258,8 +263,9 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
                 quote: (async () => {
                     if (lp.services[SwapType_1.SwapType.FROM_BTCLN_AUTO] == null)
                         throw new Error("LP service for processing from btcln auto swaps not found!");
+                    const version = lp.getContractVersion(this.chainIdentifier);
                     const abortController = (0, Utils_1.extendAbortController)(_abortController.signal);
-                    const liquidityPromise = this.preFetchIntermediaryLiquidity(amountData, lp, abortController);
+                    const liquidityPromise = this.preFetchIntermediaryLiquidity(amountData, lp, abortController, version);
                     const { lnCapacityPromise, resp } = await (0, RetryUtils_1.tryWithRetries)(async (retryCount) => {
                         const { lnPublicKey, response } = IntermediaryAPI_1.IntermediaryAPI.initFromBTCLNAuto(this.chainIdentifier, lp.url, {
                             paymentHash,
@@ -272,7 +278,7 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
                             additionalParams,
                             gasToken: this._chain.getNativeCurrencyAddress(),
                             gasAmount: _options.gasAmount,
-                            claimerBounty: (0, Utils_1.throwIfUndefined)(_preFetches.claimerBountyPrefetch)
+                            claimerBounty: (0, Utils_1.throwIfUndefined)(_preFetches.claimerBountyPrefetch[version])
                         }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined);
                         let lnCapacityPromise;
                         if (!_options.unsafeSkipLnNodeCheck) {
@@ -291,7 +297,7 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
                     if (decodedPr.timeExpireDate == null)
                         throw new IntermediaryError_1.IntermediaryError("Invalid returned swap invoice, no expiry date field");
                     const amountIn = (BigInt(decodedPr.millisatoshis) + 999n) / 1000n;
-                    const claimerBounty = (await _preFetches.claimerBountyPrefetch);
+                    const claimerBounty = (await _preFetches.claimerBountyPrefetch[version]);
                     try {
                         this.verifyReturnedData(resp, amountData, lp, _options, decodedPr, paymentHash, claimerBounty);
                         const [pricingInfo, gasPricingInfo] = await Promise.all([
@@ -312,10 +318,11 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
                             btcAmountGas: resp.btcAmountGas,
                             btcAmountSwap: resp.btcAmountSwap,
                             gasPricingInfo,
-                            initialSwapData: await this._contract.createSwapData(base_1.ChainSwapType.HTLC, lp.getAddress(this.chainIdentifier), recipient, amountData.token, resp.total, claimHash.toString("hex"), this.getRandomSequence(), BigInt(Math.floor(Date.now() / 1000)), false, true, _options.gasAmount + resp.claimerBounty, resp.claimerBounty, nativeTokenAddress),
+                            initialSwapData: await this._contract(version).createSwapData(base_1.ChainSwapType.HTLC, lp.getAddress(this.chainIdentifier), recipient, amountData.token, resp.total, _hash[version], this.getRandomSequence(), BigInt(Math.floor(Date.now() / 1000)), false, true, _options.gasAmount + resp.claimerBounty, resp.claimerBounty, nativeTokenAddress),
                             pr: resp.pr,
                             secret: secret?.toString("hex"),
-                            exactIn: amountData.exactIn ?? true
+                            exactIn: amountData.exactIn ?? true,
+                            contractVersion: version
                         };
                         const quote = new FromBTCLNAutoSwap_1.FromBTCLNAutoSwap(this, swapInit);
                         return quote;
@@ -356,6 +363,7 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
             description: options?.description,
             descriptionHash: (0, Utils_1.parseHashValueExact32Bytes)(options?.descriptionHash, "description hash")
         };
+        const lpVersions = Intermediary_1.Intermediary.getContractVersionsForLps(this.chainIdentifier, lps);
         const abortController = (0, Utils_1.extendAbortController)(abortSignal);
         const preFetches = {
             pricePrefetchPromise: this.preFetchPrice(amountData, abortController.signal),
@@ -363,7 +371,7 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
             gasTokenPricePrefetchPromise: _options.gasAmount !== 0n || !_options.unsafeZeroWatchtowerFee ?
                 this.preFetchPrice({ token: this._chain.getNativeCurrencyAddress() }, abortController.signal) :
                 undefined,
-            claimerBountyPrefetch: this.preFetchClaimerBounty(recipient, amountData, _options, abortController)
+            claimerBountyPrefetch: this.preFetchClaimerBounty(recipient, amountData, _options, abortController, lpVersions)
         };
         try {
             const exactOutAmountPromise = !amountData.exactIn ? preFetches.pricePrefetchPromise.then(price => this._prices.getToBtcSwapAmount(this.chainIdentifier, amountData.amount, amountData.token, abortController.signal, price)).catch(e => {
@@ -414,7 +422,7 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
     async _checkPastSwaps(pastSwaps) {
         const changedSwapSet = new Set();
         const swapExpiredStatus = {};
-        const checkStatusSwaps = [];
+        const checkStatusSwaps = {};
         await Promise.all(pastSwaps.map(async (pastSwap) => {
             if (pastSwap._shouldCheckIntermediary()) {
                 try {
@@ -434,14 +442,21 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
             if (pastSwap._shouldFetchOnchainState()) {
                 //Add to swaps for which status should be checked
                 if (pastSwap._data != null)
-                    checkStatusSwaps.push(pastSwap);
+                    (checkStatusSwaps[pastSwap._contractVersion ?? "v1"] ??= []).push(pastSwap);
             }
         }));
-        const swapStatuses = await this._contract.getCommitStatuses(checkStatusSwaps.map(val => ({ signer: val._getInitiator(), swapData: val._data })));
-        for (let pastSwap of checkStatusSwaps) {
-            const shouldSave = await pastSwap._sync(false, swapExpiredStatus[pastSwap.getId()], swapStatuses[pastSwap.getEscrowHash()], true);
-            if (shouldSave) {
-                changedSwapSet.add(pastSwap);
+        for (let version in checkStatusSwaps) {
+            if (this._versionedContracts[version] == null) {
+                this.logger.warn(`_checkPastSwaps(): No contract was found for ${this.chainIdentifier} version ${version}! Skipping these swaps!`);
+                continue;
+            }
+            const _checkStatusSwap = checkStatusSwaps[version];
+            const swapStatuses = await this._contract(version).getCommitStatuses(_checkStatusSwap.map(val => ({ signer: val._getInitiator(), swapData: val._data })));
+            for (let pastSwap of _checkStatusSwap) {
+                const shouldSave = await pastSwap._sync(false, swapExpiredStatus[pastSwap.getId()], swapStatuses[pastSwap.getEscrowHash()], true);
+                if (shouldSave) {
+                    changedSwapSet.add(pastSwap);
+                }
             }
         }
         const changedSwaps = [];
@@ -462,7 +477,7 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
     /**
      * @inheritDoc
      */
-    async recoverFromSwapDataAndState(init, state, lp) {
+    async recoverFromSwapDataAndState(init, state, contractVersion, lp) {
         const data = init.data;
         let paymentHash = data.getHTLCHashHint();
         let secret;
@@ -489,7 +504,8 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
             data,
             pr: paymentHash ?? undefined,
             secret,
-            exactIn: false
+            exactIn: false,
+            contractVersion
         };
         const swap = new FromBTCLNAutoSwap_1.FromBTCLNAutoSwap(this, swapInit);
         swap._commitTxId = await init.getInitTxId();

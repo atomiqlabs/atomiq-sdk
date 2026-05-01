@@ -102,7 +102,7 @@ export class ToBTCSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, To
 
             const foundVout = btcTx.outs.find(vout => {
                 if(requiredConfirmations!=null) {
-                    return this._data.getClaimHash()===this.wrapper._contract.getHashForOnchain(
+                    return this._data.getClaimHash()===this._contract.getHashForOnchain(
                         Buffer.from(vout.scriptPubKey.hex, "hex"),
                         BigInt(vout.value),
                         requiredConfirmations,
@@ -111,7 +111,7 @@ export class ToBTCSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, To
                 } else {
                     for(let i=1;i<=20;i++) {
                         if(
-                            this._data.getClaimHash()===this.wrapper._contract.getHashForOnchain(
+                            this._data.getClaimHash()===this._contract.getHashForOnchain(
                                 Buffer.from(vout.scriptPubKey.hex, "hex"),
                                 BigInt(vout.value),
                                 i,

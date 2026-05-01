@@ -52,15 +52,19 @@ export declare class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, 
      * @param unifiedStorage Storage interface for the current environment
      * @param unifiedChainEvents Smart chain on-chain event listener
      * @param chain
-     * @param contract Chain specific swap contract
+     * @param versionedContracts Chain specific versioned contracts
      * @param prices Swap pricing handler
      * @param tokens
-     * @param swapDataDeserializer Deserializer for chain specific SwapData
      * @param btcRpc Bitcoin RPC api
      * @param options
      * @param events Instance to use for emitting events
      */
-    constructor(chainIdentifier: string, unifiedStorage: UnifiedSwapStorage<T>, unifiedChainEvents: UnifiedSwapEventListener<T>, chain: T["ChainInterface"], contract: T["Contract"], prices: ISwapPrice, tokens: WrapperCtorTokens, swapDataDeserializer: new (data: any) => T["Data"], btcRpc: BitcoinRpc<any>, options?: AllOptional<ToBTCWrapperOptions>, events?: EventEmitter<{
+    constructor(chainIdentifier: string, unifiedStorage: UnifiedSwapStorage<T>, unifiedChainEvents: UnifiedSwapEventListener<T>, chain: T["ChainInterface"], prices: ISwapPrice, tokens: WrapperCtorTokens, versionedContracts: {
+        [version: string]: {
+            swapContract: T["Contract"];
+            swapDataConstructor: new (data: any) => T["Data"];
+        };
+    }, btcRpc: BitcoinRpc<any>, options?: AllOptional<ToBTCWrapperOptions>, events?: EventEmitter<{
         swapState: [ISwap];
     }>);
     /**
@@ -124,5 +128,5 @@ export declare class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, 
             blockTime: number;
             blockHeight: number;
         }>;
-    }, state: SwapCommitState, lp?: Intermediary): Promise<ToBTCSwap<T> | null>;
+    }, state: SwapCommitState, contractVersion: string, lp?: Intermediary): Promise<ToBTCSwap<T> | null>;
 }

@@ -122,7 +122,8 @@ export class OnchainForGasWrapper<T extends ChainType> extends ISwapWrapper<T, O
             swapFee: resp.swapFee,
             swapFeeBtc: resp.swapFeeSats,
             exactIn: false,
-            token
+            token,
+            contractVersion: "v1"
         } as OnchainForGasSwapInit);
         return quote;
     }

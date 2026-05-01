@@ -333,7 +333,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
      */
     async hasEnoughBalance() {
         const [balance, commitFee] = await Promise.all([
-            this.wrapper._contract.getBalance(this._getInitiator(), this._data.getToken(), false),
+            this._contract.getBalance(this._getInitiator(), this._data.getToken(), false),
             this._data.getToken() === this.wrapper._chain.getNativeCurrencyAddress() ? this.getCommitFee() : Promise.resolve(null)
         ]);
         let required = this._data.getAmount();
@@ -351,7 +351,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
      */
     async hasEnoughForTxFees() {
         const [balance, commitFee] = await Promise.all([
-            this.wrapper._contract.getBalance(this._getInitiator(), this.wrapper._chain.getNativeCurrencyAddress(), false),
+            this._contract.getBalance(this._getInitiator(), this.wrapper._chain.getNativeCurrencyAddress(), false),
             this.getCommitFee()
         ]);
         return {
@@ -461,7 +461,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
             this.initiated = true;
             await this._saveAndEmit();
         }
-        return await this.wrapper._contract.txsInit(this._getInitiator(), this._data, this.signatureData, skipChecks, this.feeRate).catch(e => Promise.reject(e instanceof base_1.SignatureVerificationError ? new Error("Request timed out") : e));
+        return await this._contract.txsInit(this._getInitiator(), this._data, this.signatureData, skipChecks, this.feeRate).catch(e => Promise.reject(e instanceof base_1.SignatureVerificationError ? new Error("Request timed out") : e));
     }
     /**
      * @inheritDoc
@@ -583,7 +583,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
                 }
                 return processed;
             case IntermediaryAPI_1.RefundAuthorizationResponseCodes.REFUND_DATA:
-                await this.wrapper._contract.isValidRefundAuthorization(this._data, resp.data);
+                await this._contract.isValidRefundAuthorization(this._data, resp.data);
                 this._state = ToBTCSwapState.REFUNDABLE;
                 if (save)
                     await this._saveAndEmit();
@@ -649,11 +649,11 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
                 return true;
             case IntermediaryAPI_1.RefundAuthorizationResponseCodes.REFUND_DATA:
                 const resultData = result.data;
-                await this.wrapper._contract.isValidRefundAuthorization(this._data, resultData);
+                await this._contract.isValidRefundAuthorization(this._data, resultData);
                 await this._saveAndEmit(ToBTCSwapState.REFUNDABLE);
                 return false;
             case IntermediaryAPI_1.RefundAuthorizationResponseCodes.EXPIRED:
-                if (await this.wrapper._contract.isExpired(this._getInitiator(), this._data))
+                if (await this._contract.isExpired(this._getInitiator(), this._data))
                     throw new Error("Swap expired");
                 throw new IntermediaryError_1.IntermediaryError("Swap expired");
             case IntermediaryAPI_1.RefundAuthorizationResponseCodes.NOT_FOUND:
@@ -669,7 +669,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
      * Get the estimated smart chain transaction fee of the refund transaction
      */
     async getRefundNetworkFee() {
-        const swapContract = this.wrapper._contract;
+        const swapContract = this._contract;
         return (0, TokenAmount_1.toTokenAmount)(await swapContract.getRefundFee(this._getInitiator(), this._data), this.wrapper._getNativeToken(), this.wrapper._prices);
     }
     /**
@@ -697,15 +697,15 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
         else {
             signer = this._getInitiator();
         }
-        if (await this.wrapper._contract.isExpired(this._getInitiator(), this._data)) {
-            return await this.wrapper._contract.txsRefund(signer, this._data, true, true);
+        if (await this._contract.isExpired(this._getInitiator(), this._data)) {
+            return await this._contract.txsRefund(signer, this._data, true, true);
         }
         else {
             if (this.url == null)
                 throw new Error("LP URL not known, cannot get cooperative refund message, wait till expiry to refund!");
             const res = await IntermediaryAPI_1.IntermediaryAPI.getRefundAuthorization(this.url, this.getLpIdentifier(), this._data.getSequence());
             if (res.code === IntermediaryAPI_1.RefundAuthorizationResponseCodes.REFUND_DATA) {
-                return await this.wrapper._contract.txsRefundWithAuthorization(signer, this._data, res.data, true, true);
+                return await this._contract.txsRefundWithAuthorization(signer, this._data, res.data, true, true);
             }
             throw new IntermediaryError_1.IntermediaryError("Invalid intermediary cooperative message returned");
         }
@@ -800,7 +800,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
                 //Check if quote is still valid
                 quoteExpired = quoteDefinitelyExpired ?? await this._verifyQuoteDefinitelyExpired();
             }
-            commitStatus ??= await this.wrapper._contract.getCommitStatus(this._getInitiator(), this._data);
+            commitStatus ??= await this._contract.getCommitStatus(this._getInitiator(), this._data);
             if (commitStatus != null && await this._forciblySetOnchainState(commitStatus))
                 return true;
             if ((this._state === ToBTCSwapState.CREATED || this._state === ToBTCSwapState.QUOTE_SOFT_EXPIRED)) {
@@ -909,7 +909,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
                 break;
             case ToBTCSwapState.COMMITED:
             case ToBTCSwapState.SOFT_CLAIMED:
-                const expired = await this.wrapper._contract.isExpired(this._getInitiator(), this._data);
+                const expired = await this._contract.isExpired(this._getInitiator(), this._data);
                 if (expired) {
                     this._state = ToBTCSwapState.REFUNDABLE;
                     if (save)

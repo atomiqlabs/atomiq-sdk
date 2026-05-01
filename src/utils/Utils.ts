@@ -47,6 +47,20 @@ export function promiseAny<T>(promises: Promise<T>[]): Promise<T> {
 }
 
 /**
+ * Maps an array to object properties using the translation function
+ *
+ * @param array
+ * @param translator
+ */
+export function mapArrayToObject<T extends string[], O>(array: T, translator: (key: T[number]) => O): {[key in T[number]]: O} {
+    const obj: any = {};
+    array.forEach((item) => {
+        obj[item] = translator(item);
+    });
+    return obj;
+}
+
+/**
  * Maps a JS object to another JS object based on the translation function, the translation function is called for every
  *  property (value/key) of the old object and returns the new value of for this property
  *

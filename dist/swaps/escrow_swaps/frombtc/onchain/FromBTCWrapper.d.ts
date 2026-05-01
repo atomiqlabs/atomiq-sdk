@@ -74,28 +74,38 @@ export declare class FromBTCWrapper<T extends ChainType> extends IFromBTCWrapper
     /**
      * @internal
      */
-    readonly _synchronizer: RelaySynchronizer<any, T["TX"], any>;
+    readonly _synchronizer: (version?: string) => RelaySynchronizer<any, T["TX"], any>;
     /**
      * @internal
      */
     readonly _btcRpc: BitcoinRpcWithAddressIndex<any>;
     private readonly btcRelay;
+    private readonly versionedBtcRelay;
+    private readonly versionedSynchronizer;
     /**
      * @param chainIdentifier
      * @param unifiedStorage Storage interface for the current environment
      * @param unifiedChainEvents On-chain event listener
      * @param chain
-     * @param contract Underlying contract handling the swaps
      * @param prices Pricing to use
      * @param tokens
-     * @param swapDataDeserializer Deserializer for SwapData
-     * @param btcRelay
-     * @param synchronizer Btc relay synchronizer
+     * @param versionedContracts
+     * @param versionedSynchronizer
      * @param btcRpc Bitcoin RPC which also supports getting transactions by txoHash
      * @param options
      * @param events Instance to use for emitting events
      */
-    constructor(chainIdentifier: string, unifiedStorage: UnifiedSwapStorage<T>, unifiedChainEvents: UnifiedSwapEventListener<T>, chain: T["ChainInterface"], contract: T["Contract"], prices: ISwapPrice, tokens: WrapperCtorTokens, swapDataDeserializer: new (data: any) => T["Data"], btcRelay: BtcRelay<any, T["TX"], any>, synchronizer: RelaySynchronizer<any, T["TX"], any>, btcRpc: BitcoinRpcWithAddressIndex<any>, options?: AllOptional<FromBTCWrapperOptions>, events?: EventEmitter<{
+    constructor(chainIdentifier: string, unifiedStorage: UnifiedSwapStorage<T>, unifiedChainEvents: UnifiedSwapEventListener<T>, chain: T["ChainInterface"], prices: ISwapPrice, tokens: WrapperCtorTokens, versionedContracts: {
+        [version: string]: {
+            swapContract: T["Contract"];
+            swapDataConstructor: new (data: any) => T["Data"];
+            btcRelay: BtcRelay<any, T["TX"], any>;
+        };
+    }, versionedSynchronizer: {
+        [version: string]: {
+            synchronizer: RelaySynchronizer<any, T["TX"], any>;
+        };
+    }, btcRpc: BitcoinRpcWithAddressIndex<any>, options?: AllOptional<FromBTCWrapperOptions>, events?: EventEmitter<{
         swapState: [ISwap];
     }>);
     /**
@@ -130,6 +140,7 @@ export declare class FromBTCWrapper<T extends ChainType> extends IFromBTCWrapper
      * @param amountData
      * @param options Options as passed to the swap creation function
      * @param abortController
+     * @param contractVersion
      *
      * @private
      */
@@ -187,5 +198,5 @@ export declare class FromBTCWrapper<T extends ChainType> extends IFromBTCWrapper
             blockTime: number;
             blockHeight: number;
         }>;
-    }, state: SwapCommitState, lp?: Intermediary): Promise<FromBTCSwap<T> | null>;
+    }, state: SwapCommitState, contractVersion: string, lp?: Intermediary): Promise<FromBTCSwap<T> | null>;
 }

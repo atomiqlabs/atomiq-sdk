@@ -83,7 +83,11 @@ export declare class IntermediaryDiscovery extends EventEmitter {
      * Swap contracts for checking intermediary signatures
      */
     swapContracts: {
-        [key: string]: SwapContract;
+        [chainIdentifier: string]: {
+            [contractVersion: string]: {
+                swapContract: SwapContract;
+            };
+        };
     };
     /**
      * Registry URL used as a source for the list of intermediaries, this should be a link to a
@@ -105,7 +109,11 @@ export declare class IntermediaryDiscovery extends EventEmitter {
      */
     private overrideNodeUrls?;
     constructor(swapContracts: {
-        [key: string]: SwapContract;
+        [chainIdentifier: string]: {
+            [contractVersion: string]: {
+                swapContract: SwapContract;
+            };
+        };
     }, registryUrl?: string, nodeUrls?: string[], httpRequestTimeout?: number, maxWaitForOthersTimeout?: number);
     /**
      * Fetches the URLs of swap intermediaries from registry or from a pre-defined array of node urls

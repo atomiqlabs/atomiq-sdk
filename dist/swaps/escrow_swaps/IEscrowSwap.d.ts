@@ -31,6 +31,10 @@ export declare abstract class IEscrowSwap<T extends ChainType = ChainType, D ext
      * @internal
      */
     _claimTxId?: string;
+    /**
+     * @internal
+     */
+    protected _contract: T["Contract"];
     protected constructor(wrapper: D["Wrapper"], obj: any);
     protected constructor(wrapper: D["Wrapper"], swapInit: IEscrowSwapInit<T["Data"]>);
     /**

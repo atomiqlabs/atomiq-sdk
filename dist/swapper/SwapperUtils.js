@@ -337,7 +337,8 @@ class SwapperUtils {
     async getSpendableBalance(wallet, token, options) {
         if (this.root._chains[token.chainId] == null)
             throw new Error("Invalid chain identifier! Unknown chain: " + token.chainId);
-        const { swapContract, chainInterface } = this.root._chains[token.chainId];
+        const { defaultVersion, versionedContracts, chainInterface } = this.root._chains[token.chainId];
+        const { swapContract } = versionedContracts[defaultVersion];
         let signer;
         if (typeof (wallet) === "string") {
             signer = wallet;

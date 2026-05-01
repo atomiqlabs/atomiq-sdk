@@ -29,12 +29,13 @@ export declare abstract class IToBTCWrapper<T extends ChainType, D extends IToBT
      * @param amountData
      * @param lp Intermediary
      * @param abortController
+     * @param contractVersion
      * @returns Intermediary's reputation or null if failed
      * @throws {IntermediaryError} If the intermediary vault doesn't exist
      *
      * @internal
      */
-    protected preFetchIntermediaryReputation(amountData: Omit<AmountData, "amount">, lp: Intermediary, abortController: AbortController): Promise<SingleChainReputationType | undefined>;
+    protected preFetchIntermediaryReputation(amountData: Omit<AmountData, "amount">, lp: Intermediary, abortController: AbortController, contractVersion: string): Promise<SingleChainReputationType | undefined>;
     /**
      * Pre-fetches feeRate for a given swap
      *
@@ -42,11 +43,16 @@ export declare abstract class IToBTCWrapper<T extends ChainType, D extends IToBT
      * @param amountData
      * @param claimHash optional hash of the swap or null
      * @param abortController
+     * @param contractVersions
      * @returns Fee rate
      *
      * @internal
      */
-    protected preFetchFeeRate(signer: string, amountData: Omit<AmountData, "amount">, claimHash: string | undefined, abortController: AbortController): Promise<string | undefined>;
+    protected preFetchFeeRate(signer: string, amountData: Omit<AmountData, "amount">, claimHash: {
+        [contractVersion: string]: string;
+    } | undefined, abortController: AbortController, contractVersions: string[]): {
+        [contractVersion: string]: Promise<string | undefined>;
+    };
     /**
      * @internal
      */

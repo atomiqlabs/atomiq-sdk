@@ -23,7 +23,7 @@
   "author": "adambor",
   "license": "ISC",
   "dependencies": {
-    "@atomiqlabs/base": "github:atomiqlabs/atomiq-base#develop",
+    "@atomiqlabs/base": "^13.5.0",
     "@atomiqlabs/bolt11": "1.6.1",
     "@atomiqlabs/btc-mempool": "^1.0.4",
     "@atomiqlabs/messenger-nostr": "^2.0.0",

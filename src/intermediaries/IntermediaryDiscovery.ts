@@ -1,6 +1,6 @@
 import {Intermediary, ServicesType} from "./Intermediary";
 import {SwapType} from "../enums/SwapType";
-import {SwapContract} from "@atomiqlabs/base";
+import {SpvVaultContract, SwapContract} from "@atomiqlabs/base";
 import {EventEmitter} from "events";
 import {Buffer} from "buffer";
 import {bigIntMax, bigIntMin, extendAbortController} from "../utils/Utils";
@@ -169,7 +169,7 @@ export class IntermediaryDiscovery extends EventEmitter {
     /**
      * Swap contracts for checking intermediary signatures
      */
-    swapContracts: {[chainIdentifier: string]: {[contractVersion: string]: {swapContract: SwapContract}}};
+    swapContracts: {[chainIdentifier: string]: {[contractVersion: string]: {swapContract: SwapContract, spvVaultContract: SpvVaultContract}}};
     /**
      * Registry URL used as a source for the list of intermediaries, this should be a link to a
      *  github-hosted JSON file
@@ -193,7 +193,7 @@ export class IntermediaryDiscovery extends EventEmitter {
     private overrideNodeUrls?: string[];
 
     constructor(
-        swapContracts: {[chainIdentifier: string]: {[contractVersion: string]: {swapContract: SwapContract}}},
+        swapContracts: {[chainIdentifier: string]: {[contractVersion: string]: {swapContract: SwapContract, spvVaultContract: SpvVaultContract}}},
         registryUrl: string = REGISTRY_URL,
         nodeUrls?: string[],
         httpRequestTimeout?: number,
@@ -489,6 +489,8 @@ export class IntermediaryDiscovery extends EventEmitter {
     /**
      * Returns swap candidates for a specific swap type & token address
      *
+     * @remark Also filters the LPs based on supported swap versions
+     *
      * @param chainIdentifier Chain identifier of the smart chain
      * @param swapType Swap protocol type
      * @param tokenAddress Token address
@@ -504,6 +506,10 @@ export class IntermediaryDiscovery extends EventEmitter {
             if(swapService.chainTokens==null) return false;
             if(swapService.chainTokens[chainIdentifier]==null) return false;
             if(!swapService.chainTokens[chainIdentifier].includes(tokenAddress.toString())) return false;
+            const contracts = this.swapContracts[chainIdentifier][e.getContractVersion(chainIdentifier) ?? "v1"];
+            if(contracts==null) return false;
+            if(swapType===SwapType.FROM_BTCLN_AUTO && !contracts.swapContract?.supportsInitWithoutClaimer) return false;
+            if(swapType===SwapType.SPV_VAULT_FROM_BTC && contracts.spvVaultContract==null) return false;
             return true;
         });
 

@@ -561,7 +561,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
             }
         });
 
-        const contracts = objectMap(chainsData, (data) => data.versions ?? {[data.defaultVersion ?? "v1"]: {swapContract: data.swapContract}});
+        const contracts = objectMap(chainsData, (data) => data.versions ?? {[data.defaultVersion ?? "v1"]: {swapContract: data.swapContract, spvVaultContract: data.spvVaultContract}});
         if(options.intermediaryUrl!=null) {
             this.intermediaryDiscovery = new IntermediaryDiscovery(contracts, options.registryUrl, Array.isArray(options.intermediaryUrl) ? options.intermediaryUrl : [options.intermediaryUrl], options.getRequestTimeout);
         } else {

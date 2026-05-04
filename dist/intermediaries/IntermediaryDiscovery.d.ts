@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { Intermediary } from "./Intermediary";
 import { SwapType } from "../enums/SwapType";
-import { SwapContract } from "@atomiqlabs/base";
+import { SpvVaultContract, SwapContract } from "@atomiqlabs/base";
 import { EventEmitter } from "events";
 /**
  * Swap handler type mapping for intermediary communication
@@ -86,6 +86,7 @@ export declare class IntermediaryDiscovery extends EventEmitter {
         [chainIdentifier: string]: {
             [contractVersion: string]: {
                 swapContract: SwapContract;
+                spvVaultContract: SpvVaultContract;
             };
         };
     };
@@ -112,6 +113,7 @@ export declare class IntermediaryDiscovery extends EventEmitter {
         [chainIdentifier: string]: {
             [contractVersion: string]: {
                 swapContract: SwapContract;
+                spvVaultContract: SpvVaultContract;
             };
         };
     }, registryUrl?: string, nodeUrls?: string[], httpRequestTimeout?: number, maxWaitForOthersTimeout?: number);
@@ -190,6 +192,8 @@ export declare class IntermediaryDiscovery extends EventEmitter {
     getSwapMaximum(chainIdentifier: string, swapType: SwapType, tokenAddress: string): number | null;
     /**
      * Returns swap candidates for a specific swap type & token address
+     *
+     * @remark Also filters the LPs based on supported swap versions
      *
      * @param chainIdentifier Chain identifier of the smart chain
      * @param swapType Swap protocol type

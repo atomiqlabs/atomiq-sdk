@@ -187,7 +187,7 @@ class Swapper extends events_1.EventEmitter {
                 versionedContracts
             };
         });
-        const contracts = (0, Utils_1.objectMap)(chainsData, (data) => data.versions ?? { [data.defaultVersion ?? "v1"]: { swapContract: data.swapContract } });
+        const contracts = (0, Utils_1.objectMap)(chainsData, (data) => data.versions ?? { [data.defaultVersion ?? "v1"]: { swapContract: data.swapContract, spvVaultContract: data.spvVaultContract } });
         if (options.intermediaryUrl != null) {
             this.intermediaryDiscovery = new IntermediaryDiscovery_1.IntermediaryDiscovery(contracts, options.registryUrl, Array.isArray(options.intermediaryUrl) ? options.intermediaryUrl : [options.intermediaryUrl], options.getRequestTimeout);
         }

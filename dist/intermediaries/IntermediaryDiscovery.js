@@ -365,6 +365,8 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
     /**
      * Returns swap candidates for a specific swap type & token address
      *
+     * @remark Also filters the LPs based on supported swap versions
+     *
      * @param chainIdentifier Chain identifier of the smart chain
      * @param swapType Swap protocol type
      * @param tokenAddress Token address
@@ -385,6 +387,13 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
             if (swapService.chainTokens[chainIdentifier] == null)
                 return false;
             if (!swapService.chainTokens[chainIdentifier].includes(tokenAddress.toString()))
+                return false;
+            const contracts = this.swapContracts[chainIdentifier][e.getContractVersion(chainIdentifier) ?? "v1"];
+            if (contracts == null)
+                return false;
+            if (swapType === SwapType_1.SwapType.FROM_BTCLN_AUTO && !contracts.swapContract?.supportsInitWithoutClaimer)
+                return false;
+            if (swapType === SwapType_1.SwapType.SPV_VAULT_FROM_BTC && contracts.spvVaultContract == null)
                 return false;
             return true;
         });

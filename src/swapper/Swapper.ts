@@ -65,6 +65,7 @@ import {NotNever} from "../utils/TypeUtils";
 import {IEscrowSwap} from "../swaps/escrow_swaps/IEscrowSwap";
 import {LightningInvoiceCreateService, isLightningInvoiceCreateService} from "../types/wallets/LightningInvoiceCreateService";
 import {SwapSide} from "../enums/SwapSide";
+import {IntermediaryAPI} from "../intermediaries/apis/IntermediaryAPI";
 import {BitcoinWalletUtxo, BitcoinWalletUtxoBase, IBitcoinWallet} from "../bitcoin/wallet/IBitcoinWallet";
 import {MinimalBitcoinWalletInterface} from "../types/wallets/MinimalBitcoinWalletInterface";
 import {toBitcoinWallet} from "../utils/BitcoinWalletUtils";
@@ -309,6 +310,10 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
      */
     readonly prices: ISwapPrice<T>;
     /**
+     * API for contacting LPs
+     */
+    readonly lpApi: IntermediaryAPI;
+    /**
      * Intermediary discovery instance
      */
     readonly intermediaryDiscovery: IntermediaryDiscovery;
@@ -363,6 +368,9 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
             this._tokens[chainId][tokenData.address] = this._tokensByTicker[chainId][tokenData.ticker] = tokenData;
         }
 
+        const lpApi = new IntermediaryAPI();
+        this.lpApi = lpApi;
+
         this.swapStateListener = (swap: ISwap) => {
             this.emit("swapState", swap);
         };
@@ -414,6 +422,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 pricing,
                 this._tokens[chainId],
                 versions,
+                lpApi,
                 {
                     getRequestTimeout: this.options.getRequestTimeout,
                     postRequestTimeout: this.options.postRequestTimeout,
@@ -429,6 +438,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 this._tokens[chainId],
                 versions,
                 this._bitcoinRpc,
+                lpApi,
                 {
                     getRequestTimeout: this.options.getRequestTimeout,
                     postRequestTimeout: this.options.postRequestTimeout,
@@ -445,6 +455,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 this._tokens[chainId],
                 versions,
                 lightningApi,
+                lpApi,
                 {
                     getRequestTimeout: this.options.getRequestTimeout,
                     postRequestTimeout: this.options.postRequestTimeout,
@@ -462,6 +473,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 versions,
                 versionedContracts,
                 this._bitcoinRpc,
+                lpApi,
                 {
                     getRequestTimeout: this.options.getRequestTimeout,
                     postRequestTimeout: this.options.postRequestTimeout,
@@ -476,6 +488,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 chainInterface,
                 pricing,
                 this._tokens[chainId],
+                lpApi,
                 {
                     getRequestTimeout: this.options.getRequestTimeout,
                     postRequestTimeout: this.options.postRequestTimeout,
@@ -490,6 +503,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 pricing,
                 this._tokens[chainId],
                 bitcoinRpc,
+                lpApi,
                 {
                     getRequestTimeout: this.options.getRequestTimeout,
                     postRequestTimeout: this.options.postRequestTimeout,
@@ -510,6 +524,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                     versions,
                     versionedContracts,
                     bitcoinRpc,
+                    lpApi,
                     {
                         getRequestTimeout: this.options.getRequestTimeout,
                         postRequestTimeout: this.options.postRequestTimeout,
@@ -531,6 +546,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                     versions,
                     lightningApi,
                     this.messenger,
+                    lpApi,
                     {
                         getRequestTimeout: this.options.getRequestTimeout,
                         postRequestTimeout: this.options.postRequestTimeout,
@@ -567,9 +583,9 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
 
         const contracts = objectMap(chainsData, (data) => data.versions ?? {[data.defaultVersion ?? "v1"]: {swapContract: data.swapContract, spvVaultContract: data.spvVaultContract}});
         if(options.intermediaryUrl!=null) {
-            this.intermediaryDiscovery = new IntermediaryDiscovery(contracts, options.registryUrl, Array.isArray(options.intermediaryUrl) ? options.intermediaryUrl : [options.intermediaryUrl], options.getRequestTimeout);
+            this.intermediaryDiscovery = new IntermediaryDiscovery(contracts, lpApi, options.registryUrl, Array.isArray(options.intermediaryUrl) ? options.intermediaryUrl : [options.intermediaryUrl], options.getRequestTimeout);
         } else {
-            this.intermediaryDiscovery = new IntermediaryDiscovery(contracts, options.registryUrl, undefined, options.getRequestTimeout);
+            this.intermediaryDiscovery = new IntermediaryDiscovery(contracts, lpApi, options.registryUrl, undefined, options.getRequestTimeout);
         }
 
         this.intermediaryDiscovery.on("removed", (intermediaries: Intermediary[]) => {

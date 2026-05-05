@@ -15,6 +15,7 @@ import {UserError} from "../../../errors/UserError";
 import { sha256 } from "@noble/hashes/sha256";
 import {IEscrowSwap} from "../IEscrowSwap";
 import {LNURLWithdrawParamsWithUrl} from "../../../types/lnurl/LNURLWithdraw";
+import {IntermediaryAPI} from "../../../intermediaries/apis/IntermediaryAPI";
 
 export type IFromBTCLNDefinition<T extends ChainType, W extends IFromBTCLNWrapper<T, any>, S extends IEscrowSwap<T>> = IFromBTCDefinition<T, W, S>;
 
@@ -42,6 +43,7 @@ export abstract class IFromBTCLNWrapper<
      * @param tokens
      * @param versionedContracts
      * @param lnApi
+     * @param lpApi
      * @param options
      * @param events Instance to use for emitting events
      */
@@ -59,10 +61,11 @@ export abstract class IFromBTCLNWrapper<
             }
         },
         lnApi: LightningNetworkApi,
+        lpApi: IntermediaryAPI,
         options: O,
         events?: EventEmitter<{swapState: [IEscrowSwap]}>
     ) {
-        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, options, versionedContracts, events);
+        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, lpApi, options, versionedContracts, events);
         this.lnApi = lnApi;
     }
 

@@ -9,7 +9,6 @@ const SwapType_1 = require("../../enums/SwapType");
 const Intermediary_1 = require("../../intermediaries/Intermediary");
 const Utils_1 = require("../../utils/Utils");
 const BitcoinUtils_1 = require("../../utils/BitcoinUtils");
-const IntermediaryAPI_1 = require("../../intermediaries/apis/IntermediaryAPI");
 const RequestError_1 = require("../../errors/RequestError");
 const IntermediaryError_1 = require("../../errors/IntermediaryError");
 const btc_signer_1 = require("@scure/btc-signer");
@@ -37,11 +36,12 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
      * @param versionedContracts
      * @param versionedSynchronizer
      * @param btcRpc Bitcoin RPC which also supports getting transactions by txoHash
+     * @param lpApi
      * @param options
      * @param events Instance to use for emitting events
      */
-    constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, versionedContracts, versionedSynchronizer, btcRpc, options, events) {
-        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, {
+    constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, versionedContracts, versionedSynchronizer, btcRpc, lpApi, options, events) {
+        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, lpApi, {
             ...options,
             bitcoinNetwork: options?.bitcoinNetwork ?? utils_1.TEST_NETWORK,
             maxConfirmations: options?.maxConfirmations ?? 6,
@@ -602,7 +602,7 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
                     const callerFeeRatePromise = this.computeCallerFeeShare(amountPromise, callerFeePrefetchPromise[version], amountData, _options, pricePrefetchPromise, gasTokenPricePrefetchPromise, abortController.signal);
                     try {
                         const resp = await (0, RetryUtils_1.tryWithRetries)(async (retryCount) => {
-                            return await IntermediaryAPI_1.IntermediaryAPI.prepareSpvFromBTC(this.chainIdentifier, lp.url, {
+                            return await this._lpApi.prepareSpvFromBTC(this.chainIdentifier, lp.url, {
                                 address: recipient,
                                 amount: (0, Utils_1.throwIfUndefined)(amountPromise, "Failed to compute swap amount"),
                                 token: amountData.token.toString(),

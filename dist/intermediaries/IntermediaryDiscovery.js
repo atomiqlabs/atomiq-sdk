@@ -6,7 +6,6 @@ const SwapType_1 = require("../enums/SwapType");
 const events_1 = require("events");
 const buffer_1 = require("buffer");
 const Utils_1 = require("../utils/Utils");
-const IntermediaryAPI_1 = require("./apis/IntermediaryAPI");
 const Logger_1 = require("../utils/Logger");
 const HttpUtils_1 = require("../http/HttpUtils");
 const RetryUtils_1 = require("../utils/RetryUtils");
@@ -94,7 +93,7 @@ const DEFAULT_CHAIN = "SOLANA";
  * @category LPs
  */
 class IntermediaryDiscovery extends events_1.EventEmitter {
-    constructor(swapContracts, registryUrl = REGISTRY_URL, nodeUrls, httpRequestTimeout, maxWaitForOthersTimeout) {
+    constructor(swapContracts, lpApi, registryUrl = REGISTRY_URL, nodeUrls, httpRequestTimeout, maxWaitForOthersTimeout) {
         super();
         /**
          * A current list of active intermediaries
@@ -105,6 +104,7 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
         this.overrideNodeUrls = nodeUrls;
         this.httpRequestTimeout = httpRequestTimeout;
         this.maxWaitForOthersTimeout = maxWaitForOthersTimeout;
+        this.lpApi = lpApi;
     }
     /**
      * Fetches the URLs of swap intermediaries from registry or from a pre-defined array of node urls
@@ -129,7 +129,7 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
      * @param abortSignal
      */
     async getNodeInfo(url, abortSignal) {
-        const response = await (0, RetryUtils_1.tryWithRetries)(() => IntermediaryAPI_1.IntermediaryAPI.getIntermediaryInfo(url, this.httpRequestTimeout, abortSignal), { maxRetries: 3, delay: 100, exponential: true }, undefined, abortSignal, "debug");
+        const response = await (0, RetryUtils_1.tryWithRetries)(() => this.lpApi.getIntermediaryInfo(url, this.httpRequestTimeout, abortSignal), { maxRetries: 3, delay: 100, exponential: true }, undefined, abortSignal, "debug");
         abortSignal?.throwIfAborted();
         const promises = [];
         const addresses = {};

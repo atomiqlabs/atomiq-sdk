@@ -693,7 +693,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
         checkIntervalSeconds ??= 5;
         let resp = { code: IntermediaryAPI_1.RefundAuthorizationResponseCodes.PENDING, msg: "" };
         while (!abortSignal?.aborted && (resp.code === IntermediaryAPI_1.RefundAuthorizationResponseCodes.PENDING || resp.code === IntermediaryAPI_1.RefundAuthorizationResponseCodes.NOT_FOUND)) {
-            resp = await IntermediaryAPI_1.IntermediaryAPI.getRefundAuthorization(this.url, this.getLpIdentifier(), this._data.getSequence());
+            resp = await this.wrapper._lpApi.getRefundAuthorization(this.url, this.getLpIdentifier(), this._data.getSequence());
             if (resp.code === IntermediaryAPI_1.RefundAuthorizationResponseCodes.PAID) {
                 const validResponse = await this._setPaymentResult(resp.data, true);
                 if (validResponse) {
@@ -727,7 +727,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
         if (this.isFinished() || this.isRefundable())
             return true;
         //Check if that maybe already concluded according to the LP
-        const resp = await IntermediaryAPI_1.IntermediaryAPI.getRefundAuthorization(this.url, this.getLpIdentifier(), this._data.getSequence());
+        const resp = await this.wrapper._lpApi.getRefundAuthorization(this.url, this.getLpIdentifier(), this._data.getSequence());
         switch (resp.code) {
             case IntermediaryAPI_1.RefundAuthorizationResponseCodes.PAID:
                 const processed = await this._setPaymentResult(resp.data, true);
@@ -858,7 +858,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
         else {
             if (this.url == null)
                 throw new Error("LP URL not known, cannot get cooperative refund message, wait till expiry to refund!");
-            const res = await IntermediaryAPI_1.IntermediaryAPI.getRefundAuthorization(this.url, this.getLpIdentifier(), this._data.getSequence());
+            const res = await this.wrapper._lpApi.getRefundAuthorization(this.url, this.getLpIdentifier(), this._data.getSequence());
             if (res.code === IntermediaryAPI_1.RefundAuthorizationResponseCodes.REFUND_DATA) {
                 return await this._contract.txsRefundWithAuthorization(signer, this._data, res.data, true, true);
             }

@@ -1167,7 +1167,7 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
         if(paymentHash==null)
             throw new Error("Failed to check LP payment received, payment hash not known (probably recovered swap?)");
 
-        const resp = await IntermediaryAPI.getInvoiceStatus(this.url, paymentHash.toString("hex"));
+        const resp = await this.wrapper._lpApi.getInvoiceStatus(this.url, paymentHash.toString("hex"));
         switch(resp.code) {
             case InvoiceStatusResponseCodes.PAID:
                 const data = new (this.wrapper._swapDataDeserializer(this._contractVersion))(resp.data.data);
@@ -1273,7 +1273,7 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
             if(this.url!=null) promises.push((async () => {
                 let resp: InvoiceStatusResponse = {code: InvoiceStatusResponseCodes.PENDING, msg: ""};
                 while(!abortController.signal.aborted && resp.code===InvoiceStatusResponseCodes.PENDING) {
-                    resp = await IntermediaryAPI.getInvoiceStatus(this.url!, paymentHash.toString("hex"));
+                    resp = await this.wrapper._lpApi.getInvoiceStatus(this.url!, paymentHash.toString("hex"));
                     if(resp.code===InvoiceStatusResponseCodes.PENDING)
                         await timeoutPromise(checkIntervalSeconds*1000, abortController.signal);
                 }

@@ -10,7 +10,6 @@ const Intermediary_1 = require("../../../../intermediaries/Intermediary");
 const IntermediaryError_1 = require("../../../../errors/IntermediaryError");
 const SwapType_1 = require("../../../../enums/SwapType");
 const Utils_1 = require("../../../../utils/Utils");
-const IntermediaryAPI_1 = require("../../../../intermediaries/apis/IntermediaryAPI");
 const RequestError_1 = require("../../../../errors/RequestError");
 const LNURL_1 = require("../../../../lnurl/LNURL");
 const IToBTCSwap_1 = require("../IToBTCSwap");
@@ -22,8 +21,8 @@ const RetryUtils_1 = require("../../../../utils/RetryUtils");
  * @category Swaps/Smart chain → Lightning
  */
 class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
-    constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, versionedContracts, options, events) {
-        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, {
+    constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, versionedContracts, lpApi, options, events) {
+        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, lpApi, {
             ...options,
             paymentTimeoutSeconds: options?.paymentTimeoutSeconds ?? 5 * 24 * 60 * 60,
             lightningBaseFee: options?.lightningBaseFee ?? 10,
@@ -154,7 +153,7 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
         const reputationPromise = this.preFetchIntermediaryReputation(amountData, lp, abortController, version);
         try {
             const { signDataPromise, resp } = await (0, RetryUtils_1.tryWithRetries)(async (retryCount) => {
-                const { signDataPrefetch, response } = IntermediaryAPI_1.IntermediaryAPI.initToBTCLN(this.chainIdentifier, lp.url, {
+                const { signDataPrefetch, response } = this._lpApi.initToBTCLN(this.chainIdentifier, lp.url, {
                     offerer: signer,
                     pr,
                     maxFee: await calculatedOptions.maxFee,
@@ -300,7 +299,7 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
         const reputationPromise = this.preFetchIntermediaryReputation(amountData, lp, abortController, version);
         try {
             const { signDataPromise, prepareResp } = await (0, RetryUtils_1.tryWithRetries)(async (retryCount) => {
-                const { signDataPrefetch, response } = IntermediaryAPI_1.IntermediaryAPI.prepareToBTCLNExactIn(this.chainIdentifier, lp.url, {
+                const { signDataPrefetch, response } = this._lpApi.prepareToBTCLNExactIn(this.chainIdentifier, lp.url, {
                     token: amountData.token,
                     offerer: signer,
                     pr: dummyPr,
@@ -326,7 +325,7 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
             }
             const invoice = await invoiceCreateService.getInvoice(Number(prepareResp.amount), abortController.signal);
             const parsedInvoice = (0, bolt11_1.decode)(invoice);
-            const resp = await (0, RetryUtils_1.tryWithRetries)((retryCount) => IntermediaryAPI_1.IntermediaryAPI.initToBTCLNExactIn(lp.url, {
+            const resp = await (0, RetryUtils_1.tryWithRetries)((retryCount) => this._lpApi.initToBTCLNExactIn(lp.url, {
                 pr: invoice,
                 reqId: prepareResp.reqId,
                 feeRate: (0, Utils_1.throwIfUndefined)(preFetches.feeRatePromise[version], "Network fee rate pre-fetch failed!"),

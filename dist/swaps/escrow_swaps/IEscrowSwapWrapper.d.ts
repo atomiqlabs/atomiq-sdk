@@ -9,6 +9,7 @@ import { EventEmitter } from "events";
 import { SwapType } from "../../enums/SwapType";
 import { IEscrowSwap } from "./IEscrowSwap";
 import { Intermediary } from "../../intermediaries/Intermediary";
+import { IntermediaryAPI } from "../../intermediaries/apis/IntermediaryAPI";
 export type IEscrowSwapDefinition<T extends ChainType, W extends IEscrowSwapWrapper<T, any>, S extends IEscrowSwap<T>> = SwapTypeDefinition<T, W, S>;
 /**
  * Base class for wrappers of escrow-based swaps (i.e. swaps utilizing PrTLC and HTLC primitives)
@@ -31,7 +32,7 @@ export declare abstract class IEscrowSwapWrapper<T extends ChainType, D extends 
             swapDataConstructor: new (data: any) => T["Data"];
         };
     };
-    constructor(chainIdentifier: string, unifiedStorage: UnifiedSwapStorage<T>, unifiedChainEvents: UnifiedSwapEventListener<T>, chain: T["ChainInterface"], prices: ISwapPrice, tokens: WrapperCtorTokens, options: O, versionedContracts: {
+    constructor(chainIdentifier: string, unifiedStorage: UnifiedSwapStorage<T>, unifiedChainEvents: UnifiedSwapEventListener<T>, chain: T["ChainInterface"], prices: ISwapPrice, tokens: WrapperCtorTokens, lpApi: IntermediaryAPI, options: O, versionedContracts: {
         [version: string]: {
             swapContract: T["Contract"];
             swapDataConstructor: new (data: any) => T["Data"];

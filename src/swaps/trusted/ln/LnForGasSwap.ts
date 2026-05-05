@@ -4,7 +4,7 @@ import {ChainType} from "@atomiqlabs/base";
 import {LnForGasSwapTypeDefinition, LnForGasWrapper} from "./LnForGasWrapper";
 import {extendAbortController, toBigInt} from "../../../utils/Utils";
 import {isISwapInit, ISwap, ISwapInit} from "../../ISwap";
-import {InvoiceStatusResponseCodes, TrustedIntermediaryAPI} from "../../../intermediaries/apis/TrustedIntermediaryAPI";
+import {TrustedInvoiceStatusResponseCodes} from "../../../intermediaries/apis/IntermediaryAPI";
 import {Fee} from "../../../types/fees/Fee";
 import {IAddressSwap} from "../../IAddressSwap";
 import {FeeType} from "../../../enums/FeeType";
@@ -615,12 +615,12 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
         const paymentHash = decodedPR.tagsObject.payment_hash;
         if(paymentHash==null) throw new Error("Invalid swap invoice, payment hash not found!");
 
-        const response = await TrustedIntermediaryAPI.getInvoiceStatus(
+        const response = await this.wrapper._lpApi.getTrustedInvoiceStatus(
             this.url, paymentHash, this.wrapper._options.getRequestTimeout
         );
         this.logger.debug("checkInvoicePaid(): LP response: ", response);
         switch(response.code) {
-            case InvoiceStatusResponseCodes.PAID:
+            case TrustedInvoiceStatusResponseCodes.PAID:
                 this.scTxId = response.data.txId;
                 const txStatus = await this.wrapper._chain.getTxIdStatus(this.scTxId);
                 if(txStatus==="success") {
@@ -629,7 +629,7 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
                     return true;
                 }
                 return null;
-            case InvoiceStatusResponseCodes.EXPIRED:
+            case TrustedInvoiceStatusResponseCodes.EXPIRED:
                 if(this._state===LnForGasSwapState.PR_CREATED) {
                     this._state = LnForGasSwapState.EXPIRED;
                 } else {
@@ -637,20 +637,20 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
                 }
                 if(save) await this._saveAndEmit();
                 return false;
-            case InvoiceStatusResponseCodes.TX_SENT:
+            case TrustedInvoiceStatusResponseCodes.TX_SENT:
                 this.scTxId = response.data.txId;
                 if(this._state===LnForGasSwapState.PR_CREATED) {
                     this._state = LnForGasSwapState.PR_PAID;
                     if(save) await this._saveAndEmit();
                 }
                 return null;
-            case InvoiceStatusResponseCodes.PENDING:
+            case TrustedInvoiceStatusResponseCodes.PENDING:
                 if(this._state===LnForGasSwapState.PR_CREATED) {
                     this._state = LnForGasSwapState.PR_PAID;
                     if(save) await this._saveAndEmit();
                 }
                 return null;
-            case InvoiceStatusResponseCodes.AWAIT_PAYMENT:
+            case TrustedInvoiceStatusResponseCodes.AWAIT_PAYMENT:
                 return null;
             default:
                 this._state = LnForGasSwapState.FAILED;

@@ -3,7 +3,7 @@ import {ChainType} from "@atomiqlabs/base";
 import {toBigInt} from "../../../utils/Utils";
 import {parsePsbtTransaction, toOutputScript} from "../../../utils/BitcoinUtils";
 import {isISwapInit, ISwap, ISwapInit} from "../../ISwap";
-import {AddressStatusResponseCodes, TrustedIntermediaryAPI} from "../../../intermediaries/apis/TrustedIntermediaryAPI";
+import {TrustedAddressStatusResponseCodes} from "../../../intermediaries/apis/IntermediaryAPI";
 import {OnchainForGasSwapTypeDefinition, OnchainForGasWrapper} from "./OnchainForGasWrapper";
 import {Fee} from "../../../types/fees/Fee";
 import {IBitcoinWallet, isIBitcoinWallet} from "../../../bitcoin/wallet/IBitcoinWallet";
@@ -616,20 +616,20 @@ export class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T,
         if(this._state===OnchainForGasSwapState.FINISHED) return false;
         if(this.url==null) return false;
 
-        const response = await TrustedIntermediaryAPI.getAddressStatus(
+        const response = await this.wrapper._lpApi.getTrustedAddressStatus(
             this.url, this.paymentHash, this.sequence, this.wrapper._options.getRequestTimeout
         );
         switch(response.code) {
-            case AddressStatusResponseCodes.AWAIT_PAYMENT:
+            case TrustedAddressStatusResponseCodes.AWAIT_PAYMENT:
                 if(this.txId!=null) {
                     this.txId = undefined;
                     if(save) await this._save();
                     return true;
                 }
                 return false;
-            case AddressStatusResponseCodes.AWAIT_CONFIRMATION:
-            case AddressStatusResponseCodes.PENDING:
-            case AddressStatusResponseCodes.TX_SENT:
+            case TrustedAddressStatusResponseCodes.AWAIT_CONFIRMATION:
+            case TrustedAddressStatusResponseCodes.PENDING:
+            case TrustedAddressStatusResponseCodes.TX_SENT:
                 const inputAmount = BigInt(response.data.adjustedAmount);
                 const outputAmount = BigInt(response.data.adjustedTotal);
                 const adjustedFee = response.data.adjustedFee==null ? null : BigInt(response.data.adjustedFee);
@@ -649,7 +649,7 @@ export class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T,
                     return true;
                 }
                 return false;
-            case AddressStatusResponseCodes.PAID:
+            case TrustedAddressStatusResponseCodes.PAID:
                 const txStatus = await this.wrapper._chain.getTxIdStatus(response.data.txId);
                 if(txStatus==="success") {
                     this._state = OnchainForGasSwapState.FINISHED;
@@ -658,16 +658,16 @@ export class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T,
                     return true;
                 }
                 return false;
-            case AddressStatusResponseCodes.EXPIRED:
+            case TrustedAddressStatusResponseCodes.EXPIRED:
                 this._state = OnchainForGasSwapState.EXPIRED;
                 if(save) await this._saveAndEmit();
                 return true;
-            case AddressStatusResponseCodes.REFUNDABLE:
+            case TrustedAddressStatusResponseCodes.REFUNDABLE:
                 if(this._state===OnchainForGasSwapState.REFUNDABLE) return null;
                 this._state = OnchainForGasSwapState.REFUNDABLE;
                 if(save) await this._saveAndEmit();
                 return true;
-            case AddressStatusResponseCodes.REFUNDED:
+            case TrustedAddressStatusResponseCodes.REFUNDED:
                 this._state = OnchainForGasSwapState.REFUNDED;
                 this.refundTxId = response.data.txId;
                 if(save) await this._saveAndEmit();
@@ -691,7 +691,7 @@ export class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T,
             return;
         }
         if(this.url==null) throw new Error("LP URL not known, cannot set refund address!");
-        await TrustedIntermediaryAPI.setRefundAddress(
+        await this.wrapper._lpApi.setTrustedRefundAddress(
             this.url, this.paymentHash, this.sequence, refundAddress, this.wrapper._options.getRequestTimeout
         );
         this.refundAddress = refundAddress;

@@ -904,7 +904,7 @@ export abstract class IToBTCSwap<
         while(!abortSignal?.aborted && (
             resp.code===RefundAuthorizationResponseCodes.PENDING || resp.code===RefundAuthorizationResponseCodes.NOT_FOUND
         )) {
-            resp = await IntermediaryAPI.getRefundAuthorization(this.url, this.getLpIdentifier(), this._data.getSequence());
+            resp = await this.wrapper._lpApi.getRefundAuthorization(this.url, this.getLpIdentifier(), this._data.getSequence());
             if(resp.code===RefundAuthorizationResponseCodes.PAID) {
                 const validResponse = await this._setPaymentResult(resp.data, true);
                 if(validResponse) {
@@ -937,7 +937,7 @@ export abstract class IToBTCSwap<
         if(this._state===ToBTCSwapState.CREATED || this._state==ToBTCSwapState.QUOTE_EXPIRED || this.url==null) return false;
         if(this.isFinished() || this.isRefundable()) return true;
         //Check if that maybe already concluded according to the LP
-        const resp = await IntermediaryAPI.getRefundAuthorization(this.url, this.getLpIdentifier(), this._data.getSequence());
+        const resp = await this.wrapper._lpApi.getRefundAuthorization(this.url, this.getLpIdentifier(), this._data.getSequence());
         switch(resp.code) {
             case RefundAuthorizationResponseCodes.PAID:
                 const processed = await this._setPaymentResult(resp.data, true);
@@ -1074,7 +1074,7 @@ export abstract class IToBTCSwap<
             return await this._contract.txsRefund(signer, this._data, true, true);
         } else {
             if(this.url==null) throw new Error("LP URL not known, cannot get cooperative refund message, wait till expiry to refund!");
-            const res = await IntermediaryAPI.getRefundAuthorization(this.url, this.getLpIdentifier(), this._data.getSequence());
+            const res = await this.wrapper._lpApi.getRefundAuthorization(this.url, this.getLpIdentifier(), this._data.getSequence());
             if(res.code===RefundAuthorizationResponseCodes.REFUND_DATA) {
                 return await this._contract.txsRefundWithAuthorization(
                     signer,

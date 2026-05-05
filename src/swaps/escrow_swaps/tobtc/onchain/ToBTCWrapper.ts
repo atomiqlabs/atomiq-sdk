@@ -82,6 +82,7 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
      * @param prices Swap pricing handler
      * @param tokens
      * @param btcRpc Bitcoin RPC api
+     * @param lpApi
      * @param options
      * @param events Instance to use for emitting events
      */
@@ -99,11 +100,12 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
             }
         },
         btcRpc: BitcoinRpc<any>,
+        lpApi: IntermediaryAPI,
         options?: AllOptional<ToBTCWrapperOptions>,
         events?: EventEmitter<{swapState: [ISwap]}>
     ) {
         super(
-            chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens,
+            chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, lpApi,
             {
                 ...options,
                 bitcoinNetwork: options?.bitcoinNetwork ?? TEST_NETWORK,
@@ -275,7 +277,7 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
 
                     try {
                         const {signDataPromise, resp} = await tryWithRetries(async(retryCount) => {
-                            const {signDataPrefetch, response} = IntermediaryAPI.initToBTC(this.chainIdentifier, lp.url, {
+                            const {signDataPrefetch, response} = this._lpApi.initToBTC(this.chainIdentifier, lp.url, {
                                 btcAddress: recipient,
                                 amount: amountData.amount,
                                 confirmationTarget: _options.confirmationTarget,

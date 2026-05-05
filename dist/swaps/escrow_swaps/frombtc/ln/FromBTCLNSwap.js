@@ -713,7 +713,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
         const paymentHash = this.getPaymentHash();
         if (paymentHash == null)
             throw new Error("Failed to check LP payment received, payment hash not known (probably recovered swap?)");
-        const resp = await IntermediaryAPI_1.IntermediaryAPI.getPaymentAuthorization(this.url, paymentHash.toString("hex"));
+        const resp = await this.wrapper._lpApi.getPaymentAuthorization(this.url, paymentHash.toString("hex"));
         switch (resp.code) {
             case IntermediaryAPI_1.PaymentAuthorizationResponseCodes.AUTH_DATA:
                 const data = new (this.wrapper._swapDataDeserializer(this._contractVersion))(resp.data.data);
@@ -836,7 +836,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             throw new Error("Swap payment hash not available, the swap was probably recovered!");
         let resp = { code: IntermediaryAPI_1.PaymentAuthorizationResponseCodes.PENDING, msg: "" };
         while (!abortController.signal.aborted && resp.code === IntermediaryAPI_1.PaymentAuthorizationResponseCodes.PENDING) {
-            resp = await IntermediaryAPI_1.IntermediaryAPI.getPaymentAuthorization(this.url, paymentHash.toString("hex"));
+            resp = await this.wrapper._lpApi.getPaymentAuthorization(this.url, paymentHash.toString("hex"));
             if (resp.code === IntermediaryAPI_1.PaymentAuthorizationResponseCodes.PENDING)
                 await (0, TimeoutUtils_1.timeoutPromise)(checkIntervalSeconds * 1000, abortController.signal);
         }

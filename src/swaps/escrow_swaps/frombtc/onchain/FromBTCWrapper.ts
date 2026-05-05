@@ -150,6 +150,7 @@ export class FromBTCWrapper<
      * @param versionedContracts
      * @param versionedSynchronizer
      * @param btcRpc Bitcoin RPC which also supports getting transactions by txoHash
+     * @param lpApi
      * @param options
      * @param events Instance to use for emitting events
      */
@@ -173,11 +174,12 @@ export class FromBTCWrapper<
             }
         },
         btcRpc: BitcoinRpcWithAddressIndex<any>,
+        lpApi: IntermediaryAPI,
         options?: AllOptional<FromBTCWrapperOptions>,
         events?: EventEmitter<{swapState: [ISwap]}>
     ) {
         super(
-            chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens,
+            chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, lpApi,
             {
                 ...options,
                 bitcoinNetwork: options?.bitcoinNetwork ?? TEST_NETWORK,
@@ -497,7 +499,7 @@ export class FromBTCWrapper<
 
                     try {
                         const {signDataPromise, resp} = await tryWithRetries(async(retryCount: number) => {
-                            const {signDataPrefetch, response} = IntermediaryAPI.initFromBTC(
+                            const {signDataPrefetch, response} = this._lpApi.initFromBTC(
                                 this.chainIdentifier, lp.url, nativeTokenAddress,
                                 {
                                     claimer: recipient,

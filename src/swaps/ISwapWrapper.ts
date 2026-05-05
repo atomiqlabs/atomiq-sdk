@@ -12,6 +12,7 @@ import {getLogger} from "../utils/Logger";
 import {PriceInfoType} from "../types/PriceInfoType";
 import {fromHumanReadableString} from "../utils/TokenUtils";
 import {UserError} from "../errors/UserError";
+import {IntermediaryAPI} from "../intermediaries/apis/IntermediaryAPI";
 
 export const DEFAULT_MAX_PARALLEL_SWAP_TICKS = 50;
 export const DEFAULT_MAX_PARALLEL_SWAP_SYNCS = 50;
@@ -150,6 +151,11 @@ export abstract class ISwapWrapper<
     readonly _tokens: {
         [tokenAddress: string]: SCToken<T["ChainId"]>
     };
+    /**
+     * LP API Used to communicate with the LPs
+     * @internal
+     */
+    readonly _lpApi: IntermediaryAPI;
 
 
     /**
@@ -169,6 +175,7 @@ export abstract class ISwapWrapper<
         chain: T["ChainInterface"],
         prices: ISwapPrice,
         tokens: WrapperCtorTokens,
+        lpApi: IntermediaryAPI,
         options: O,
         events?: EventEmitter<{swapState: [ISwap]}>
     ) {
@@ -184,6 +191,7 @@ export abstract class ISwapWrapper<
         this._chain = chain;
         this._prices = prices;
         this.events = events || new EventEmitter();
+        this._lpApi = lpApi;
         this._options = options;
         this._tokens = tokens;
     }

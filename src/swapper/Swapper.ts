@@ -69,6 +69,7 @@ import {IntermediaryAPI} from "../intermediaries/apis/IntermediaryAPI";
 import {BitcoinWalletUtxo, BitcoinWalletUtxoBase, IBitcoinWallet} from "../bitcoin/wallet/IBitcoinWallet";
 import {MinimalBitcoinWalletInterface} from "../types/wallets/MinimalBitcoinWalletInterface";
 import {toBitcoinWallet} from "../utils/BitcoinWalletUtils";
+import {getSignedKeyBasedAuthHandler} from "../intermediaries/auth/SignedKeyBasedAuth";
 
 /**
  * Configuration options for the Swapper
@@ -172,7 +173,14 @@ export type SwapperOptions = {
      * Automatically checks system time on initialize, if the system time drifts too far from the actual time
      *  (as checked from multiple server sources) it adjusts the `Date.now()` function to return proper actual time.
      */
-    automaticClockDriftCorrection?: boolean
+    automaticClockDriftCorrection?: boolean,
+    /**
+     * Used in centralized API deployments to allow higher rate limits from LPs
+     */
+    signedKeyBasedAuth?: {
+        certificate: string,
+        privateKey: string
+    }
 };
 
 /**
@@ -368,7 +376,11 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
             this._tokens[chainId][tokenData.address] = this._tokensByTicker[chainId][tokenData.ticker] = tokenData;
         }
 
-        const lpApi = new IntermediaryAPI();
+        const lpApi = new IntermediaryAPI(
+            this.options.signedKeyBasedAuth!=null
+                ? getSignedKeyBasedAuthHandler(this.options.signedKeyBasedAuth.certificate, this.options.signedKeyBasedAuth.privateKey)
+                : undefined
+        );
         this.lpApi = lpApi;
 
         this.swapStateListener = (swap: ISwap) => {

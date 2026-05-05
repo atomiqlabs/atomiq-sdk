@@ -37,6 +37,7 @@ const IEscrowSwap_1 = require("../swaps/escrow_swaps/IEscrowSwap");
 const LightningInvoiceCreateService_1 = require("../types/wallets/LightningInvoiceCreateService");
 const IntermediaryAPI_1 = require("../intermediaries/apis/IntermediaryAPI");
 const BitcoinWalletUtils_1 = require("../utils/BitcoinWalletUtils");
+const SignedKeyBasedAuth_1 = require("../intermediaries/auth/SignedKeyBasedAuth");
 /**
  * Core orchestrator for all atomiq swap operations
  *
@@ -89,7 +90,9 @@ class Swapper extends events_1.EventEmitter {
             this._tokensByTicker[chainId] ??= {};
             this._tokens[chainId][tokenData.address] = this._tokensByTicker[chainId][tokenData.ticker] = tokenData;
         }
-        const lpApi = new IntermediaryAPI_1.IntermediaryAPI();
+        const lpApi = new IntermediaryAPI_1.IntermediaryAPI(this.options.signedKeyBasedAuth != null
+            ? (0, SignedKeyBasedAuth_1.getSignedKeyBasedAuthHandler)(this.options.signedKeyBasedAuth.certificate, this.options.signedKeyBasedAuth.privateKey)
+            : undefined);
         this.lpApi = lpApi;
         this.swapStateListener = (swap) => {
             this.emit("swapState", swap);

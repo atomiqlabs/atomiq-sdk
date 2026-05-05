@@ -23,11 +23,12 @@ class IFromBTCLNWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
      * @param tokens
      * @param versionedContracts
      * @param lnApi
+     * @param lpApi
      * @param options
      * @param events Instance to use for emitting events
      */
-    constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, versionedContracts, lnApi, options, events) {
-        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, options, versionedContracts, events);
+    constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, versionedContracts, lnApi, lpApi, options, events) {
+        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, lpApi, options, versionedContracts, events);
         this.lnApi = lnApi;
     }
     /**

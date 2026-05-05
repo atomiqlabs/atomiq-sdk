@@ -9,7 +9,6 @@ const BitcoinUtils_1 = require("../../utils/BitcoinUtils");
 const btc_signer_1 = require("@scure/btc-signer");
 const buffer_1 = require("buffer");
 const IBitcoinWallet_1 = require("../../bitcoin/wallet/IBitcoinWallet");
-const IntermediaryAPI_1 = require("../../intermediaries/apis/IntermediaryAPI");
 const FeeType_1 = require("../../enums/FeeType");
 const PercentagePPM_1 = require("../../types/fees/PercentagePPM");
 const TokenAmount_1 = require("../../types/TokenAmount");
@@ -741,7 +740,7 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
         this.posted = true;
         await this._saveAndEmit(SpvFromBTCSwapState.SIGNED);
         try {
-            await IntermediaryAPI_1.IntermediaryAPI.initSpvFromBTC(this.chainIdentifier, this.url, {
+            await this.wrapper._lpApi.initSpvFromBTC(this.chainIdentifier, this.url, {
                 quoteId: this.quoteId,
                 psbtHex: buffer_1.Buffer.from(psbt.toPSBT(0)).toString("hex")
             });

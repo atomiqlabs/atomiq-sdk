@@ -39,6 +39,7 @@ import { LNURLPay } from "../types/lnurl/LNURLPay";
 import { NotNever } from "../utils/TypeUtils";
 import { LightningInvoiceCreateService } from "../types/wallets/LightningInvoiceCreateService";
 import { SwapSide } from "../enums/SwapSide";
+import { IntermediaryAPI } from "../intermediaries/apis/IntermediaryAPI";
 import { BitcoinWalletUtxo, IBitcoinWallet } from "../bitcoin/wallet/IBitcoinWallet";
 import { MinimalBitcoinWalletInterface } from "../types/wallets/MinimalBitcoinWalletInterface";
 /**
@@ -249,6 +250,10 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
      * Pricing API used by the SDK
      */
     readonly prices: ISwapPrice<T>;
+    /**
+     * API for contacting LPs
+     */
+    readonly lpApi: IntermediaryAPI;
     /**
      * Intermediary discovery instance
      */

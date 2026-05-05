@@ -15,7 +15,7 @@ exports.DEFAULT_MAX_PARALLEL_SWAP_SYNCS = 50;
  * @category Swaps/Base
  */
 class ISwapWrapper {
-    constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, options, events) {
+    constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, lpApi, options, events) {
         /**
          * Logger instance
          * @internal
@@ -42,6 +42,7 @@ class ISwapWrapper {
         this._chain = chain;
         this._prices = prices;
         this.events = events || new events_1.EventEmitter();
+        this._lpApi = lpApi;
         this._options = options;
         this._tokens = tokens;
     }

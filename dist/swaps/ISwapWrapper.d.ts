@@ -9,6 +9,7 @@ import { SwapType } from "../enums/SwapType";
 import { UnifiedSwapStorage } from "../storage/UnifiedSwapStorage";
 import { SCToken } from "../types/Token";
 import { PriceInfoType } from "../types/PriceInfoType";
+import { IntermediaryAPI } from "../intermediaries/apis/IntermediaryAPI";
 export declare const DEFAULT_MAX_PARALLEL_SWAP_TICKS = 50;
 export declare const DEFAULT_MAX_PARALLEL_SWAP_SYNCS = 50;
 /**
@@ -133,6 +134,11 @@ export declare abstract class ISwapWrapper<T extends ChainType, D extends SwapTy
         [tokenAddress: string]: SCToken<T["ChainId"]>;
     };
     /**
+     * LP API Used to communicate with the LPs
+     * @internal
+     */
+    readonly _lpApi: IntermediaryAPI;
+    /**
      * Chain identifier string of this wrapper
      */
     readonly chainIdentifier: T["ChainId"];
@@ -142,7 +148,7 @@ export declare abstract class ISwapWrapper<T extends ChainType, D extends SwapTy
     readonly events: EventEmitter<{
         swapState: [D["Swap"]];
     }>;
-    constructor(chainIdentifier: T["ChainId"], unifiedStorage: UnifiedSwapStorage<T>, unifiedChainEvents: UnifiedSwapEventListener<T>, chain: T["ChainInterface"], prices: ISwapPrice, tokens: WrapperCtorTokens, options: O, events?: EventEmitter<{
+    constructor(chainIdentifier: T["ChainId"], unifiedStorage: UnifiedSwapStorage<T>, unifiedChainEvents: UnifiedSwapEventListener<T>, chain: T["ChainInterface"], prices: ISwapPrice, tokens: WrapperCtorTokens, lpApi: IntermediaryAPI, options: O, events?: EventEmitter<{
         swapState: [ISwap];
     }>);
     /**

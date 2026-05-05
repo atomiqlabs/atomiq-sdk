@@ -5,6 +5,7 @@ import { ChainType, ClaimEvent, InitializeEvent, LightningNetworkApi, Messenger,
 import { Intermediary } from "../../../../intermediaries/Intermediary";
 import { Buffer } from "buffer";
 import { SwapType } from "../../../../enums/SwapType";
+import { IntermediaryAPI } from "../../../../intermediaries/apis/IntermediaryAPI";
 import { ISwapPrice } from "../../../../prices/abstract/ISwapPrice";
 import { EventEmitter } from "events";
 import { ISwapWrapperOptions, WrapperCtorTokens } from "../../../ISwapWrapper";
@@ -113,6 +114,7 @@ export declare class FromBTCLNAutoWrapper<T extends ChainType> extends IFromBTCL
      * @param versionedContracts
      * @param lnApi
      * @param messenger
+     * @param lpApi
      * @param options
      * @param events Instance to use for emitting events
      */
@@ -121,7 +123,7 @@ export declare class FromBTCLNAutoWrapper<T extends ChainType> extends IFromBTCL
             swapContract: T["Contract"];
             swapDataConstructor: new (data: any) => T["Data"];
         };
-    }, lnApi: LightningNetworkApi, messenger: Messenger, options?: AllOptional<FromBTCLNAutoWrapperOptions>, events?: EventEmitter<{
+    }, lnApi: LightningNetworkApi, messenger: Messenger, lpApi: IntermediaryAPI, options?: AllOptional<FromBTCLNAutoWrapperOptions>, events?: EventEmitter<{
         swapState: [ISwap];
     }>);
     /**

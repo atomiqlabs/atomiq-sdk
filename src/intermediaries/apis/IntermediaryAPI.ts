@@ -1,10 +1,10 @@
 import {RequestError} from "../../errors/RequestError";
 import {
-    FieldTypeEnum,
-    RequestSchemaResult,
+    FieldTypeEnum, RequestSchema,
+    RequestSchemaResult, RequestSchemaResultPromise,
     verifySchema
 } from "../../http/paramcoders/SchemaVerifier";
-import {streamingFetchPromise} from "../../http/paramcoders/client/StreamingFetchPromise";
+import {RequestBody, streamingFetchPromise} from "../../http/paramcoders/client/StreamingFetchPromise";
 import {extendAbortController, randomBytes} from "../../utils/Utils";
 import {httpGet, httpPost} from "../../http/HttpUtils";
 import {tryWithRetries} from "../../utils/RetryUtils";
@@ -329,7 +329,147 @@ export type SpvFromBTCInit = {
     psbtHex: string
 }
 
+/////////////////////////
+///// Trusted from BTCLN
+
+export enum TrustedInvoiceStatusResponseCodes {
+    EXPIRED=10001,
+    PAID=10000,
+    AWAIT_PAYMENT=10010,
+    PENDING=10011,
+    TX_SENT=10012
+}
+
+export type TrustedInvoiceStatusResponse = {
+    code: TrustedInvoiceStatusResponseCodes.TX_SENT | TrustedInvoiceStatusResponseCodes.PAID,
+    msg: string,
+    data: {
+        txId: string
+    }
+} | {
+    code: Exclude<TrustedInvoiceStatusResponseCodes, TrustedInvoiceStatusResponseCodes.TX_SENT | TrustedInvoiceStatusResponseCodes.PAID>,
+    msg: string
+};
+
+export type TrustedFromBTCLNInit = {
+    address: string,
+    amount: bigint,
+    token: string
+};
+
+const TrustedFromBTCLNResponseSchema = {
+    pr: FieldTypeEnum.String,
+    swapFee: FieldTypeEnum.BigInt,
+    swapFeeSats: FieldTypeEnum.BigInt,
+    total: FieldTypeEnum.BigInt
+} as const;
+
+export type TrustedFromBTCLNResponseType = RequestSchemaResult<typeof TrustedFromBTCLNResponseSchema>;
+
+/////////////////////////
+///// Trusted from BTC
+
+export enum TrustedAddressStatusResponseCodes {
+    EXPIRED=10001,
+    PAID=10000,
+    AWAIT_PAYMENT=10010,
+    AWAIT_CONFIRMATION=10011,
+    PENDING=10013,
+    TX_SENT=10012,
+    REFUNDED=10014,
+    DOUBLE_SPENT=10015,
+    REFUNDABLE=10016
+}
+
+export type TrustedAddressStatusResponse = {
+    code: TrustedAddressStatusResponseCodes.TX_SENT | TrustedAddressStatusResponseCodes.PAID,
+    msg: string,
+    data: {
+        adjustedAmount: string,
+        adjustedTotal: string,
+        adjustedFee?: string,
+        adjustedFeeSats?: string,
+        txId: string,
+        scTxId: string
+    }
+} | {
+    code: TrustedAddressStatusResponseCodes.AWAIT_CONFIRMATION | TrustedAddressStatusResponseCodes.PENDING,
+    msg: string,
+    data: {
+        adjustedAmount: string,
+        adjustedTotal: string,
+        adjustedFee?: string,
+        adjustedFeeSats?: string,
+        txId: string
+    }
+} | {
+    code: TrustedAddressStatusResponseCodes.REFUNDABLE,
+    msg: string,
+    data: {
+        adjustedAmount: string
+    }
+} | {
+    code: TrustedAddressStatusResponseCodes.REFUNDED | TrustedAddressStatusResponseCodes.DOUBLE_SPENT,
+    msg: string,
+    data: {
+        txId: string
+    }
+} | {
+    code: TrustedAddressStatusResponseCodes.AWAIT_PAYMENT | TrustedAddressStatusResponseCodes.EXPIRED,
+    msg: string
+};
+
+export type TrustedFromBTCInit = {
+    address: string,
+    amount: bigint,
+    token: string,
+    refundAddress?: string
+};
+
+const TrustedFromBTCResponseSchema = {
+    paymentHash: FieldTypeEnum.String,
+    sequence: FieldTypeEnum.BigInt,
+    btcAddress: FieldTypeEnum.String,
+    amountSats: FieldTypeEnum.BigInt,
+    swapFeeSats: FieldTypeEnum.BigInt,
+    swapFee: FieldTypeEnum.BigInt,
+    total: FieldTypeEnum.BigInt,
+    intermediaryKey: FieldTypeEnum.String,
+    recommendedFee: FieldTypeEnum.Number,
+    expiresAt: FieldTypeEnum.Number
+} as const;
+
+export type TrustedFromBTCResponseType = RequestSchemaResult<typeof TrustedFromBTCResponseSchema>;
+
 export class IntermediaryAPI {
+
+    requestHeaders?: (type: "GET" | "POST", url: string, body?: any) => Record<string, string>;
+
+    constructor(requestHeaders?: (type: "GET" | "POST", url: string, body?: any) => Record<string, string>) {
+        this.requestHeaders = requestHeaders;
+    }
+
+    httpGet<T>(url: string, timeout?: number, abortSignal?: AbortSignal, allowNon200: boolean = false): Promise<T> {
+        const headers = this.requestHeaders==null ? {} : this.requestHeaders("GET", url);
+        return httpGet(url, timeout, abortSignal, allowNon200, headers);
+    }
+
+    httpPost<T>(url: string, body: any, timeout?: number, abortSignal?: AbortSignal): Promise<T> {
+        const headers = this.requestHeaders==null ? {} : this.requestHeaders("POST", url, body);
+        return httpPost(url, body, timeout, abortSignal, headers);
+    }
+
+    streamingFetchPromise<T extends RequestSchema>(
+        url: string,
+        body: RequestBody,
+        schema: T,
+        timeout?: number,
+        signal?: AbortSignal,
+        streamRequest?: boolean
+    ): Promise<RequestSchemaResultPromise<T>> {
+        const headers = this.requestHeaders==null ? {} : this.requestHeaders("POST", url);
+        return streamingFetchPromise(url, body, schema, timeout, signal, streamRequest, headers);
+    }
 
     /**
      * Returns the information about a specific intermediary
@@ -341,7 +481,7 @@ export class IntermediaryAPI {
      * @throws {RequestError} If non-200 http response code is returned
      * @throws {Error} If the supplied nonce doesn't match the response
      */
-    static async getIntermediaryInfo(
+    async getIntermediaryInfo(
         baseUrl: string,
         timeout?: number,
         abortSignal?: AbortSignal
@@ -353,8 +493,8 @@ export class IntermediaryAPI {
         //We don't know whether the node supports only POST or also has GET info support enabled
         // here we try both, and abort when the first one returns (which should be GET)
         const response = await Promise.any([
-            httpGet<InfoHandlerResponse>(baseUrl+"/info?nonce="+nonce, timeout, abortController.signal),
-            httpPost<InfoHandlerResponse>(baseUrl+"/info", {
+            this.httpGet<InfoHandlerResponse>(baseUrl+"/info?nonce="+nonce, timeout, abortController.signal),
+            this.httpPost<InfoHandlerResponse>(baseUrl+"/info", {
                 nonce,
             }, timeout, abortController.signal)
         ]);
@@ -377,14 +517,14 @@ export class IntermediaryAPI {
      *
      * @throws {RequestError} If non-200 http response code is returned
      */
-    static async getRefundAuthorization(
+    async getRefundAuthorization(
         url: string,
         paymentHash: string,
         sequence: bigint,
         timeout?: number,
         abortSignal?: AbortSignal
     ): Promise<RefundAuthorizationResponse> {
-        return tryWithRetries(() => httpGet<RefundAuthorizationResponse>(
+        return tryWithRetries(() => this.httpGet<RefundAuthorizationResponse>(
             url + "/getRefundAuthorization"+
                 "?paymentHash=" + encodeURIComponent(paymentHash) +
                 "&sequence=" + encodeURIComponent(sequence.toString(10)),
@@ -403,13 +543,13 @@ export class IntermediaryAPI {
      *
      * @throws {RequestError} If non-200 http response code is returned
      */
-    static async getPaymentAuthorization(
+    async getPaymentAuthorization(
         url: string,
         paymentHash: string,
         timeout?: number,
         abortSignal?: AbortSignal
     ): Promise<PaymentAuthorizationResponse> {
-        return tryWithRetries(() => httpGet<PaymentAuthorizationResponse>(
+        return tryWithRetries(() => this.httpGet<PaymentAuthorizationResponse>(
             url+"/getInvoicePaymentAuth"+
                 "?paymentHash="+encodeURIComponent(paymentHash),
             timeout,
@@ -427,13 +567,13 @@ export class IntermediaryAPI {
      *
      * @throws {RequestError} If non-200 http response code is returned
      */
-    static async getInvoiceStatus(
+    async getInvoiceStatus(
         url: string,
         paymentHash: string,
         timeout?: number,
         abortSignal?: AbortSignal
     ): Promise<InvoiceStatusResponse> {
-        return tryWithRetries(() => httpGet<InvoiceStatusResponse>(
+        return tryWithRetries(() => this.httpGet<InvoiceStatusResponse>(
             url+"/getInvoiceStatus"+
             "?paymentHash="+encodeURIComponent(paymentHash),
             timeout,
@@ -453,7 +593,7 @@ export class IntermediaryAPI {
      *
      * @throws {RequestError} If non-200 http response code is returned
      */
-    static initToBTC(
+    initToBTC(
         chainIdentifier: string,
         baseUrl: string,
         init: ToBTCInit,
@@ -464,7 +604,7 @@ export class IntermediaryAPI {
         signDataPrefetch: Promise<any>,
         response: Promise<ToBTCResponseType>
     } {
-        const responseBodyPromise = streamingFetchPromise(baseUrl+"/tobtc/payInvoice?chain="+encodeURIComponent(chainIdentifier), {
+        const responseBodyPromise = this.streamingFetchPromise(baseUrl+"/tobtc/payInvoice?chain="+encodeURIComponent(chainIdentifier), {
             ...init.additionalParams,
             address: init.btcAddress,
             amount: init.amount.toString(10),
@@ -512,7 +652,7 @@ export class IntermediaryAPI {
      *
      * @throws {RequestError} If non-200 http response code is returned
      */
-    static initFromBTC(
+    initFromBTC(
         chainIdentifier: string,
         baseUrl: string,
         depositToken: string,
@@ -524,7 +664,7 @@ export class IntermediaryAPI {
         signDataPrefetch: Promise<any>,
         response: Promise<FromBTCResponseType>
     } {
-        const responseBodyPromise = streamingFetchPromise(
+        const responseBodyPromise = this.streamingFetchPromise(
             baseUrl+"/frombtc/getAddress?chain="+encodeURIComponent(chainIdentifier)+"&depositToken="+encodeURIComponent(depositToken),
             {
                 ...init.additionalParams,
@@ -585,7 +725,7 @@ export class IntermediaryAPI {
      *
      * @throws {RequestError} If non-200 http response code is returned
      */
-    static initFromBTCLN(
+    initFromBTCLN(
         chainIdentifier: string,
         baseUrl: string,
         depositToken: string,
@@ -597,7 +737,7 @@ export class IntermediaryAPI {
         lnPublicKey: Promise<string | null>,
         response: Promise<FromBTCLNResponseType>
     } {
-        const responseBodyPromise = streamingFetchPromise(
+        const responseBodyPromise = this.streamingFetchPromise(
             baseUrl+"/frombtcln/createInvoice?chain="+encodeURIComponent(chainIdentifier)+"&depositToken="+encodeURIComponent(depositToken),
             {
                 ...init.additionalParams,
@@ -648,7 +788,7 @@ export class IntermediaryAPI {
      *
      * @throws {RequestError} If non-200 http response code is returned
      */
-    static initFromBTCLNAuto(
+    initFromBTCLNAuto(
         chainIdentifier: string,
         baseUrl: string,
         init: FromBTCLNAutoInit,
@@ -659,7 +799,7 @@ export class IntermediaryAPI {
         lnPublicKey: Promise<string | null>,
         response: Promise<FromBTCLNAutoResponseType>
     } {
-        const responseBodyPromise = streamingFetchPromise(
+        const responseBodyPromise = this.streamingFetchPromise(
             baseUrl+"/frombtcln_auto/createInvoice?chain="+encodeURIComponent(chainIdentifier),
             {
                 ...init.additionalParams,
@@ -712,7 +852,7 @@ export class IntermediaryAPI {
      *
      * @throws {RequestError} If non-200 http response code is returned
      */
-    static initToBTCLN(
+    initToBTCLN(
         chainIdentifier: string,
         baseUrl: string,
         init: ToBTCLNInit,
@@ -723,7 +863,7 @@ export class IntermediaryAPI {
         signDataPrefetch: Promise<any>,
         response: Promise<ToBTCLNResponseType>
     } {
-        const responseBodyPromise = streamingFetchPromise(baseUrl+"/tobtcln/payInvoice?chain="+encodeURIComponent(chainIdentifier), {
+        const responseBodyPromise = this.streamingFetchPromise(baseUrl+"/tobtcln/payInvoice?chain="+encodeURIComponent(chainIdentifier), {
             exactIn: false,
             ...init.additionalParams,
             pr: init.pr,
@@ -768,14 +908,14 @@ export class IntermediaryAPI {
      *
      * @throws {RequestError} If non-200 http response code is returned
      */
-    static async initToBTCLNExactIn(
+    async initToBTCLNExactIn(
         baseUrl: string,
         init: ToBTCLNInitExactIn,
         timeout?: number,
         abortSignal?: AbortSignal,
         streamRequest?: boolean
     ): Promise<ToBTCLNResponseType> {
-        const responseBody = await streamingFetchPromise(baseUrl+"/tobtcln/payInvoiceExactIn", {
+        const responseBody = await this.streamingFetchPromise(baseUrl+"/tobtcln/payInvoiceExactIn", {
             ...init.additionalParams,
             pr: init.pr,
             reqId: init.reqId,
@@ -810,7 +950,7 @@ export class IntermediaryAPI {
      *
      * @throws {RequestError} If non-200 http response code is returned
      */
-    static prepareToBTCLNExactIn(
+    prepareToBTCLNExactIn(
         chainIdentifier: string,
         baseUrl: string,
         init: ToBTCLNPrepareExactIn,
@@ -821,7 +961,7 @@ export class IntermediaryAPI {
         signDataPrefetch: Promise<any>,
         response: Promise<ToBTCLNPrepareExactInResponseType>
     } {
-        const responseBodyPromise = streamingFetchPromise(baseUrl+"/tobtcln/payInvoice?chain="+encodeURIComponent(chainIdentifier), {
+        const responseBodyPromise = this.streamingFetchPromise(baseUrl+"/tobtcln/payInvoice?chain="+encodeURIComponent(chainIdentifier), {
             exactIn: true,
             ...init.additionalParams,
             pr: init.pr,
@@ -866,7 +1006,7 @@ export class IntermediaryAPI {
      *
      * @throws {RequestError} If non-200 http response code is returned
      */
-    static prepareSpvFromBTC(
+    prepareSpvFromBTC(
         chainIdentifier: string,
         baseUrl: string,
         init: SpvFromBTCPrepare,
@@ -884,7 +1024,7 @@ export class IntermediaryAPI {
             const amount = await init.amount;
             return amount.toString(10);
         })();
-        const responseBodyPromise = streamingFetchPromise(baseUrl+"/frombtc_spv/getQuote?chain="+encodeURIComponent(chainIdentifier), {
+        const responseBodyPromise = this.streamingFetchPromise(baseUrl+"/frombtc_spv/getQuote?chain="+encodeURIComponent(chainIdentifier), {
             exactOut: init.exactOut,
             ...init.additionalParams,
             address: init.address,
@@ -929,7 +1069,7 @@ export class IntermediaryAPI {
      *
      * @throws {RequestError} If non-200 http response code is returned
      */
-    static initSpvFromBTC(
+    initSpvFromBTC(
         chainIdentifier: string,
         url: string,
         init: SpvFromBTCInit,
@@ -937,7 +1077,7 @@ export class IntermediaryAPI {
         abortSignal?: AbortSignal,
         streamRequest?: boolean
     ): Promise<SpvFromBTCInitResponseType> {
-        const responseBodyPromise = streamingFetchPromise(url+"/postQuote?chain="+encodeURIComponent(chainIdentifier), {
+        const responseBodyPromise = this.streamingFetchPromise(url+"/postQuote?chain="+encodeURIComponent(chainIdentifier), {
             quoteId: init.quoteId,
             psbtHex: init.psbtHex
         }, {
@@ -958,6 +1098,150 @@ export class IntermediaryAPI {
             if(result==null) throw new RequestError("Cannot parse the response with the expected schema", 200);
             return result;
         });
+    }
+
+
+    /**
+     * Fetches the invoice status from the intermediary node
+     *
+     * @param url Url of the trusted intermediary
+     * @param paymentHash Payment hash of the lightning invoice
+     * @param timeout Timeout in milliseconds
+     * @param abortSignal
+     * @throws {RequestError} if non-200 http response is returned
+     */
+    async getTrustedInvoiceStatus(
+        url: string,
+        paymentHash: string,
+        timeout?: number,
+        abortSignal?: AbortSignal
+    ): Promise<TrustedInvoiceStatusResponse> {
+        return tryWithRetries(() => this.httpGet<TrustedInvoiceStatusResponse>(
+            url+"/getInvoiceStatus?paymentHash="+encodeURIComponent(paymentHash),
+            timeout, abortSignal
+        ), undefined, RequestError, abortSignal);
+    }
+
+    /**
+     * Initiate a trusted swap from BTCLN to SC native currency, retries!
+     *
+     * @param chainIdentifier
+     * @param baseUrl Base url of the trusted swap intermediary
+     * @param init Initialization parameters
+     * @param timeout Timeout in milliseconds for the request
+     * @param abortSignal
+     * @throws {RequestError} If the response is non-200
+     */
+    async initTrustedFromBTCLN(
+        chainIdentifier: string,
+        baseUrl: string,
+        init: TrustedFromBTCLNInit,
+        timeout?: number,
+        abortSignal?: AbortSignal
+    ): Promise<TrustedFromBTCLNResponseType> {
+        const resp = await tryWithRetries(
+            () => this.httpGet<{code: number, msg: string, data?: any}>(
+                baseUrl+"/lnforgas/createInvoice" +
+                "?address="+encodeURIComponent(init.address) +
+                "&amount="+encodeURIComponent(init.amount.toString(10))+
+                "&chain="+encodeURIComponent(chainIdentifier)+
+                "&token="+encodeURIComponent(init.token),
+                timeout,
+                abortSignal
+            ), undefined, RequestError, abortSignal
+        );
+
+        if(resp.code!==10000) throw RequestError.parse(JSON.stringify(resp), 400);
+        const res = verifySchema(resp.data, TrustedFromBTCLNResponseSchema);
+        if(res==null) throw new Error("Invalid response returned from LP");
+        return res;
+    }
+
+    /**
+     * Fetches the address status from the intermediary node
+     *
+     * @param url Url of the trusted intermediary
+     * @param paymentHash Payment hash of the swap
+     * @param sequence Sequence number of the swap
+     * @param timeout Timeout in milliseconds
+     * @param abortSignal
+     * @throws {RequestError} if non-200 http response is returned
+     */
+    async getTrustedAddressStatus(
+        url: string,
+        paymentHash: string,
+        sequence: bigint,
+        timeout?: number,
+        abortSignal?: AbortSignal
+    ): Promise<TrustedAddressStatusResponse> {
+        return tryWithRetries(() => this.httpGet<TrustedAddressStatusResponse>(
+            url+"/getAddressStatus?paymentHash="+encodeURIComponent(paymentHash)+"&sequence="+encodeURIComponent(sequence.toString(10)),
+            timeout, abortSignal
+        ), undefined, RequestError, abortSignal);
+    }
+
+    /**
+     * Sets the refund address for an on-chain gas swap
+     *
+     * @param url Url of the trusted intermediary
+     * @param paymentHash Payment hash of the swap
+     * @param sequence Sequence number of the swap
+     * @param refundAddress Refund address to set for the swap
+     * @param timeout Timeout in milliseconds
+     * @param abortSignal
+     * @throws {RequestError} if non-200 http response is returned
+     */
+    async setTrustedRefundAddress(
+        url: string,
+        paymentHash: string,
+        sequence: bigint,
+        refundAddress: string,
+        timeout?: number,
+        abortSignal?: AbortSignal
+    ): Promise<void> {
+        return tryWithRetries(() => this.httpGet<void>(
+            url+"/setRefundAddress" +
+            "?paymentHash="+encodeURIComponent(paymentHash)+
+            "&sequence="+encodeURIComponent(sequence.toString(10))+
+            "&refundAddress="+encodeURIComponent(refundAddress),
+            timeout, abortSignal
+        ), undefined, RequestError, abortSignal);
+    }
+
+    /**
+     * Initiate a trusted swap from BTC to SC native currency, retries!
+     *
+     * @param chainIdentifier
+     * @param baseUrl Base url of the trusted swap intermediary
+     * @param init Initialization parameters
+     * @param timeout Timeout in milliseconds for the request
+     * @param abortSignal
+     * @throws {RequestError} If the response is non-200
+     */
+    async initTrustedFromBTC(
+        chainIdentifier: string,
+        baseUrl: string,
+        init: TrustedFromBTCInit,
+        timeout?: number,
+        abortSignal?: AbortSignal
+    ): Promise<TrustedFromBTCResponseType> {
+        const resp = await tryWithRetries(
+            () => this.httpGet<{code: number, msg: string, data?: any}>(
+                baseUrl+"/frombtc_trusted/getAddress?chain="+encodeURIComponent(chainIdentifier)+
+                "&address="+encodeURIComponent(init.address)+
+                "&amount="+encodeURIComponent(init.amount.toString(10))+
+                (init.refundAddress==null ? "" : "&refundAddress="+encodeURIComponent(init.refundAddress))+
+                "&exactIn=true"+
+                "&token="+encodeURIComponent(init.token),
+                timeout,
+                abortSignal
+            ), undefined, RequestError, abortSignal
+        );
+
+        if(resp.code!==10000) throw RequestError.parse(JSON.stringify(resp), 400);
+        const res = verifySchema(resp.data, TrustedFromBTCResponseSchema);
+        if(res==null) throw new Error("Invalid response returned from LP");
+        return res;
     }
 
 }

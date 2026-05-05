@@ -890,7 +890,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
         if(paymentHash==null)
             throw new Error("Failed to check LP payment received, payment hash not known (probably recovered swap?)");
 
-        const resp = await IntermediaryAPI.getPaymentAuthorization(this.url, paymentHash.toString("hex"));
+        const resp = await this.wrapper._lpApi.getPaymentAuthorization(this.url, paymentHash.toString("hex"));
         switch(resp.code) {
             case PaymentAuthorizationResponseCodes.AUTH_DATA:
                 const data = new (this.wrapper._swapDataDeserializer(this._contractVersion))(resp.data.data);
@@ -1014,7 +1014,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
 
         let resp: PaymentAuthorizationResponse = {code: PaymentAuthorizationResponseCodes.PENDING, msg: ""};
         while(!abortController.signal.aborted && resp.code===PaymentAuthorizationResponseCodes.PENDING) {
-            resp = await IntermediaryAPI.getPaymentAuthorization(this.url, paymentHash.toString("hex"));
+            resp = await this.wrapper._lpApi.getPaymentAuthorization(this.url, paymentHash.toString("hex"));
             if(resp.code===PaymentAuthorizationResponseCodes.PENDING)
                 await timeoutPromise(checkIntervalSeconds*1000, abortController.signal);
         }

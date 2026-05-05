@@ -1015,7 +1015,7 @@ export class SpvFromBTCSwap<T extends ChainType>
         await this._saveAndEmit(SpvFromBTCSwapState.SIGNED);
 
         try {
-            await IntermediaryAPI.initSpvFromBTC(
+            await this.wrapper._lpApi.initSpvFromBTC(
                 this.chainIdentifier,
                 this.url,
                 {

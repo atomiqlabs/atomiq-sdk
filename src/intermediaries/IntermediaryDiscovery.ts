@@ -192,8 +192,14 @@ export class IntermediaryDiscovery extends EventEmitter {
      */
     private overrideNodeUrls?: string[];
 
+    /**
+     * @private
+     */
+    private lpApi: IntermediaryAPI;
+
     constructor(
         swapContracts: {[chainIdentifier: string]: {[contractVersion: string]: {swapContract: SwapContract, spvVaultContract: SpvVaultContract}}},
+        lpApi: IntermediaryAPI,
         registryUrl: string = REGISTRY_URL,
         nodeUrls?: string[],
         httpRequestTimeout?: number,
@@ -205,6 +211,7 @@ export class IntermediaryDiscovery extends EventEmitter {
         this.overrideNodeUrls = nodeUrls;
         this.httpRequestTimeout = httpRequestTimeout;
         this.maxWaitForOthersTimeout = maxWaitForOthersTimeout;
+        this.lpApi = lpApi;
     }
 
     /**
@@ -242,7 +249,7 @@ export class IntermediaryDiscovery extends EventEmitter {
         info: InfoHandlerResponseEnvelope
     }> {
         const response = await tryWithRetries(
-            () => IntermediaryAPI.getIntermediaryInfo(url, this.httpRequestTimeout, abortSignal),
+            () => this.lpApi.getIntermediaryInfo(url, this.httpRequestTimeout, abortSignal),
             {maxRetries: 3, delay: 100, exponential: true},
             undefined,
             abortSignal,

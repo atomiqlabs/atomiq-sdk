@@ -16,6 +16,7 @@ import {EventEmitter} from "events";
 import {SwapType} from "../../enums/SwapType";
 import {IEscrowSwap} from "./IEscrowSwap";
 import {Intermediary} from "../../intermediaries/Intermediary";
+import {IntermediaryAPI} from "../../intermediaries/apis/IntermediaryAPI";
 
 export type IEscrowSwapDefinition<T extends ChainType, W extends IEscrowSwapWrapper<T, any>, S extends IEscrowSwap<T>> = SwapTypeDefinition<T, W, S>;
 
@@ -65,6 +66,7 @@ export abstract class IEscrowSwapWrapper<
         chain: T["ChainInterface"],
         prices: ISwapPrice,
         tokens: WrapperCtorTokens,
+        lpApi: IntermediaryAPI,
         options: O,
         versionedContracts: {
             [version: string]: {
@@ -74,7 +76,7 @@ export abstract class IEscrowSwapWrapper<
         },
         events?: EventEmitter<{swapState: [ISwap]}>
     ) {
-        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, options, events);
+        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, lpApi, options, events);
         this._versionedContracts = versionedContracts;
     }
 

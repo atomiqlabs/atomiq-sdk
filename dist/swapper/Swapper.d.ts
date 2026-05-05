@@ -143,6 +143,13 @@ export type SwapperOptions = {
      *  (as checked from multiple server sources) it adjusts the `Date.now()` function to return proper actual time.
      */
     automaticClockDriftCorrection?: boolean;
+    /**
+     * Used in centralized API deployments to allow higher rate limits from LPs
+     */
+    signedKeyBasedAuth?: {
+        certificate: string;
+        privateKey: string;
+    };
 };
 /**
  * Type representing multiple blockchain configurations

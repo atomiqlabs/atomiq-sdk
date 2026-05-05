@@ -1,5 +1,4 @@
 import {ISwapWrapper, ISwapWrapperOptions, SwapTypeDefinition, WrapperCtorTokens} from "../../ISwapWrapper";
-import {TrustedIntermediaryAPI} from "../../../intermediaries/apis/TrustedIntermediaryAPI";
 import {IntermediaryError} from "../../../errors/IntermediaryError";
 import {BitcoinRpcWithAddressIndex, ChainType} from "@atomiqlabs/base";
 import {OnchainForGasSwap, OnchainForGasSwapInit, OnchainForGasSwapState} from "./OnchainForGasSwap";
@@ -11,6 +10,7 @@ import {UnifiedSwapEventListener} from "../../../events/UnifiedSwapEventListener
 import {UnifiedSwapStorage} from "../../../storage/UnifiedSwapStorage";
 import {ISwap} from "../../ISwap";
 import {BTC_NETWORK} from "@scure/btc-signer/utils";
+import {IntermediaryAPI} from "../../../intermediaries/apis/IntermediaryAPI";
 
 export type OnchainForGasWrapperOptions = ISwapWrapperOptions & {
     bitcoinNetwork: BTC_NETWORK
@@ -57,6 +57,7 @@ export class OnchainForGasWrapper<T extends ChainType> extends ISwapWrapper<T, O
      * @param prices Pricing to use
      * @param tokens
      * @param btcRpc Bitcoin RPC which also supports getting transactions by txoHash
+     * @param lpApi
      * @param options
      * @param events Instance to use for emitting events
      */
@@ -68,10 +69,11 @@ export class OnchainForGasWrapper<T extends ChainType> extends ISwapWrapper<T, O
         prices: ISwapPrice,
         tokens: WrapperCtorTokens,
         btcRpc: BitcoinRpcWithAddressIndex<any>,
+        lpApi: IntermediaryAPI,
         options: OnchainForGasWrapperOptions,
         events?: EventEmitter<{swapState: [ISwap]}>
     ) {
-        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, options, events);
+        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, lpApi, options, events);
         this._btcRpc = btcRpc;
     }
 
@@ -91,7 +93,7 @@ export class OnchainForGasWrapper<T extends ChainType> extends ISwapWrapper<T, O
 
         const token = this._chain.getNativeCurrencyAddress();
 
-        const resp = await TrustedIntermediaryAPI.initTrustedFromBTC(this.chainIdentifier, lpUrl, {
+        const resp = await this._lpApi.initTrustedFromBTC(this.chainIdentifier, lpUrl, {
             address: recipient,
             amount,
             refundAddress,

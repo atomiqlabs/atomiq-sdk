@@ -9,8 +9,8 @@ const base_1 = require("@atomiqlabs/base");
  * @category Swaps/Abstract
  */
 class IEscrowSwapWrapper extends ISwapWrapper_1.ISwapWrapper {
-    constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, options, versionedContracts, events) {
-        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, options, events);
+    constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, lpApi, options, versionedContracts, events) {
+        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, lpApi, options, events);
         /**
          * @internal
          */

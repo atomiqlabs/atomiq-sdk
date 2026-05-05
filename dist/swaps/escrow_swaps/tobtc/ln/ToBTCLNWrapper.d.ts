@@ -7,6 +7,7 @@ import { ISwapWrapperOptions, WrapperCtorTokens } from "../../../ISwapWrapper";
 import { ISwapPrice } from "../../../../prices/abstract/ISwapPrice";
 import { EventEmitter } from "events";
 import { SwapType } from "../../../../enums/SwapType";
+import { IntermediaryAPI } from "../../../../intermediaries/apis/IntermediaryAPI";
 import { UnifiedSwapEventListener } from "../../../../events/UnifiedSwapEventListener";
 import { UnifiedSwapStorage } from "../../../../storage/UnifiedSwapStorage";
 import { ISwap } from "../../../ISwap";
@@ -87,7 +88,7 @@ export declare class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T
             swapContract: T["Contract"];
             swapDataConstructor: new (data: any) => T["Data"];
         };
-    }, options?: AllOptional<ToBTCLNWrapperOptions>, events?: EventEmitter<{
+    }, lpApi: IntermediaryAPI, options?: AllOptional<ToBTCLNWrapperOptions>, events?: EventEmitter<{
         swapState: [ISwap];
     }>);
     private toRequiredSwapOptions;

@@ -10,7 +10,6 @@ const UserError_1 = require("../../../../errors/UserError");
 const IntermediaryError_1 = require("../../../../errors/IntermediaryError");
 const SwapType_1 = require("../../../../enums/SwapType");
 const Utils_1 = require("../../../../utils/Utils");
-const IntermediaryAPI_1 = require("../../../../intermediaries/apis/IntermediaryAPI");
 const RequestError_1 = require("../../../../errors/RequestError");
 const IFromBTCLNWrapper_1 = require("../IFromBTCLNWrapper");
 const RetryUtils_1 = require("../../../../utils/RetryUtils");
@@ -31,11 +30,12 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
      * @param tokens
      * @param versionedContracts
      * @param lnApi
+     * @param lpApi
      * @param options
      * @param events Instance to use for emitting events
      */
-    constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, versionedContracts, lnApi, options, events) {
-        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, versionedContracts, lnApi, {
+    constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, versionedContracts, lnApi, lpApi, options, events) {
+        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, versionedContracts, lnApi, lpApi, {
             ...options,
             safetyFactor: options?.safetyFactor ?? 2,
             bitcoinBlocktime: options?.bitcoinBlocktime ?? 10 * 60,
@@ -193,7 +193,7 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
                     const abortController = (0, Utils_1.extendAbortController)(_abortController.signal);
                     const liquidityPromise = this.preFetchIntermediaryLiquidity(amountData, lp, abortController, version);
                     const { lnCapacityPromise, resp } = await (0, RetryUtils_1.tryWithRetries)(async (retryCount) => {
-                        const { lnPublicKey, response } = IntermediaryAPI_1.IntermediaryAPI.initFromBTCLN(this.chainIdentifier, lp.url, nativeTokenAddress, {
+                        const { lnPublicKey, response } = this._lpApi.initFromBTCLN(this.chainIdentifier, lp.url, nativeTokenAddress, {
                             paymentHash,
                             amount: amountData.amount,
                             claimer: recipient,

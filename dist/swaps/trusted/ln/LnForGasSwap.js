@@ -5,7 +5,7 @@ const bolt11_1 = require("@atomiqlabs/bolt11");
 const SwapType_1 = require("../../../enums/SwapType");
 const Utils_1 = require("../../../utils/Utils");
 const ISwap_1 = require("../../ISwap");
-const TrustedIntermediaryAPI_1 = require("../../../intermediaries/apis/TrustedIntermediaryAPI");
+const IntermediaryAPI_1 = require("../../../intermediaries/apis/IntermediaryAPI");
 const FeeType_1 = require("../../../enums/FeeType");
 const PercentagePPM_1 = require("../../../types/fees/PercentagePPM");
 const TokenAmount_1 = require("../../../types/TokenAmount");
@@ -493,10 +493,10 @@ class LnForGasSwap extends ISwap_1.ISwap {
         const paymentHash = decodedPR.tagsObject.payment_hash;
         if (paymentHash == null)
             throw new Error("Invalid swap invoice, payment hash not found!");
-        const response = await TrustedIntermediaryAPI_1.TrustedIntermediaryAPI.getInvoiceStatus(this.url, paymentHash, this.wrapper._options.getRequestTimeout);
+        const response = await this.wrapper._lpApi.getTrustedInvoiceStatus(this.url, paymentHash, this.wrapper._options.getRequestTimeout);
         this.logger.debug("checkInvoicePaid(): LP response: ", response);
         switch (response.code) {
-            case TrustedIntermediaryAPI_1.InvoiceStatusResponseCodes.PAID:
+            case IntermediaryAPI_1.TrustedInvoiceStatusResponseCodes.PAID:
                 this.scTxId = response.data.txId;
                 const txStatus = await this.wrapper._chain.getTxIdStatus(this.scTxId);
                 if (txStatus === "success") {
@@ -506,7 +506,7 @@ class LnForGasSwap extends ISwap_1.ISwap {
                     return true;
                 }
                 return null;
-            case TrustedIntermediaryAPI_1.InvoiceStatusResponseCodes.EXPIRED:
+            case IntermediaryAPI_1.TrustedInvoiceStatusResponseCodes.EXPIRED:
                 if (this._state === LnForGasSwapState.PR_CREATED) {
                     this._state = LnForGasSwapState.EXPIRED;
                 }
@@ -516,7 +516,7 @@ class LnForGasSwap extends ISwap_1.ISwap {
                 if (save)
                     await this._saveAndEmit();
                 return false;
-            case TrustedIntermediaryAPI_1.InvoiceStatusResponseCodes.TX_SENT:
+            case IntermediaryAPI_1.TrustedInvoiceStatusResponseCodes.TX_SENT:
                 this.scTxId = response.data.txId;
                 if (this._state === LnForGasSwapState.PR_CREATED) {
                     this._state = LnForGasSwapState.PR_PAID;
@@ -524,14 +524,14 @@ class LnForGasSwap extends ISwap_1.ISwap {
                         await this._saveAndEmit();
                 }
                 return null;
-            case TrustedIntermediaryAPI_1.InvoiceStatusResponseCodes.PENDING:
+            case IntermediaryAPI_1.TrustedInvoiceStatusResponseCodes.PENDING:
                 if (this._state === LnForGasSwapState.PR_CREATED) {
                     this._state = LnForGasSwapState.PR_PAID;
                     if (save)
                         await this._saveAndEmit();
                 }
                 return null;
-            case TrustedIntermediaryAPI_1.InvoiceStatusResponseCodes.AWAIT_PAYMENT:
+            case IntermediaryAPI_1.TrustedInvoiceStatusResponseCodes.AWAIT_PAYMENT:
                 return null;
             default:
                 this._state = LnForGasSwapState.FAILED;

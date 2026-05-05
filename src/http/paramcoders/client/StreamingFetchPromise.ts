@@ -46,6 +46,7 @@ logger.info("Environment supports request stream: "+supportsRequestStreams);
  * @param timeout Timeout in millseconds for the request to succeed & all its response properties to resolve
  * @param signal Abort signal
  * @param streamRequest Whether the request should be streamed or not
+ * @param _headers
  * @throws {RequestError} When the response code is not 200
  */
 export async function streamingFetchPromise<T extends RequestSchema>(
@@ -54,12 +55,13 @@ export async function streamingFetchPromise<T extends RequestSchema>(
     schema: T,
     timeout?: number,
     signal?: AbortSignal,
-    streamRequest?: boolean
+    streamRequest?: boolean,
+    _headers: Record<string, string> = {}
 ): Promise<RequestSchemaResultPromise<T>> {
     if(streamRequest==null) streamRequest = supportsRequestStreams;
     if(timeout!=null) signal = timeoutSignal(timeout, new Error("Network request timed out"), signal);
 
-    const headers: Record<string, string> = {};
+    const headers = {..._headers};
     const init: RequestInit = {
         method: "POST",
         headers

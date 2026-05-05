@@ -35,6 +35,7 @@ const LNURLPay_1 = require("../types/lnurl/LNURLPay");
 const RetryUtils_1 = require("../utils/RetryUtils");
 const IEscrowSwap_1 = require("../swaps/escrow_swaps/IEscrowSwap");
 const LightningInvoiceCreateService_1 = require("../types/wallets/LightningInvoiceCreateService");
+const IntermediaryAPI_1 = require("../intermediaries/apis/IntermediaryAPI");
 const BitcoinWalletUtils_1 = require("../utils/BitcoinWalletUtils");
 /**
  * Core orchestrator for all atomiq swap operations
@@ -88,6 +89,8 @@ class Swapper extends events_1.EventEmitter {
             this._tokensByTicker[chainId] ??= {};
             this._tokens[chainId][tokenData.address] = this._tokensByTicker[chainId][tokenData.ticker] = tokenData;
         }
+        const lpApi = new IntermediaryAPI_1.IntermediaryAPI();
+        this.lpApi = lpApi;
         this.swapStateListener = (swap) => {
             this.emit("swapState", swap);
         };
@@ -118,35 +121,35 @@ class Swapper extends events_1.EventEmitter {
             const unifiedSwapStorage = new UnifiedSwapStorage_1.UnifiedSwapStorage(storageHandler, this.options.noSwapCache);
             const unifiedChainEvents = new UnifiedSwapEventListener_1.UnifiedSwapEventListener(unifiedSwapStorage, chainEvents);
             const wrappers = {};
-            wrappers[SwapType_1.SwapType.TO_BTCLN] = new ToBTCLNWrapper_1.ToBTCLNWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, {
+            wrappers[SwapType_1.SwapType.TO_BTCLN] = new ToBTCLNWrapper_1.ToBTCLNWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, lpApi, {
                 getRequestTimeout: this.options.getRequestTimeout,
                 postRequestTimeout: this.options.postRequestTimeout,
                 saveUninitializedSwaps: this.options.saveUninitializedSwaps,
             });
-            wrappers[SwapType_1.SwapType.TO_BTC] = new ToBTCWrapper_1.ToBTCWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, this._bitcoinRpc, {
+            wrappers[SwapType_1.SwapType.TO_BTC] = new ToBTCWrapper_1.ToBTCWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, this._bitcoinRpc, lpApi, {
                 getRequestTimeout: this.options.getRequestTimeout,
                 postRequestTimeout: this.options.postRequestTimeout,
                 saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                 bitcoinNetwork: this._btcNetwork
             });
-            wrappers[SwapType_1.SwapType.FROM_BTCLN] = new FromBTCLNWrapper_1.FromBTCLNWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, lightningApi, {
+            wrappers[SwapType_1.SwapType.FROM_BTCLN] = new FromBTCLNWrapper_1.FromBTCLNWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, lightningApi, lpApi, {
                 getRequestTimeout: this.options.getRequestTimeout,
                 postRequestTimeout: this.options.postRequestTimeout,
                 saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                 unsafeSkipLnNodeCheck: this.bitcoinNetwork === base_1.BitcoinNetwork.TESTNET4 || this.bitcoinNetwork === base_1.BitcoinNetwork.REGTEST
             });
-            wrappers[SwapType_1.SwapType.FROM_BTC] = new FromBTCWrapper_1.FromBTCWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, versionedContracts, this._bitcoinRpc, {
+            wrappers[SwapType_1.SwapType.FROM_BTC] = new FromBTCWrapper_1.FromBTCWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, versionedContracts, this._bitcoinRpc, lpApi, {
                 getRequestTimeout: this.options.getRequestTimeout,
                 postRequestTimeout: this.options.postRequestTimeout,
                 saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                 bitcoinNetwork: this._btcNetwork
             });
-            wrappers[SwapType_1.SwapType.TRUSTED_FROM_BTCLN] = new LnForGasWrapper_1.LnForGasWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], {
+            wrappers[SwapType_1.SwapType.TRUSTED_FROM_BTCLN] = new LnForGasWrapper_1.LnForGasWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], lpApi, {
                 getRequestTimeout: this.options.getRequestTimeout,
                 postRequestTimeout: this.options.postRequestTimeout,
                 saveUninitializedSwaps: this.options.saveUninitializedSwaps,
             });
-            wrappers[SwapType_1.SwapType.TRUSTED_FROM_BTC] = new OnchainForGasWrapper_1.OnchainForGasWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], bitcoinRpc, {
+            wrappers[SwapType_1.SwapType.TRUSTED_FROM_BTC] = new OnchainForGasWrapper_1.OnchainForGasWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], bitcoinRpc, lpApi, {
                 getRequestTimeout: this.options.getRequestTimeout,
                 postRequestTimeout: this.options.postRequestTimeout,
                 saveUninitializedSwaps: this.options.saveUninitializedSwaps,
@@ -154,7 +157,7 @@ class Swapper extends events_1.EventEmitter {
             });
             // This is gated on the default version of the contracts
             if (spvVaultContract != null) {
-                wrappers[SwapType_1.SwapType.SPV_VAULT_FROM_BTC] = new SpvFromBTCWrapper_1.SpvFromBTCWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, versionedContracts, bitcoinRpc, {
+                wrappers[SwapType_1.SwapType.SPV_VAULT_FROM_BTC] = new SpvFromBTCWrapper_1.SpvFromBTCWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, versionedContracts, bitcoinRpc, lpApi, {
                     getRequestTimeout: this.options.getRequestTimeout,
                     postRequestTimeout: this.options.postRequestTimeout,
                     saveUninitializedSwaps: this.options.saveUninitializedSwaps,
@@ -163,7 +166,7 @@ class Swapper extends events_1.EventEmitter {
             }
             // This is gated on the default version of the contracts
             if (swapContract.supportsInitWithoutClaimer) {
-                wrappers[SwapType_1.SwapType.FROM_BTCLN_AUTO] = new FromBTCLNAutoWrapper_1.FromBTCLNAutoWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, lightningApi, this.messenger, {
+                wrappers[SwapType_1.SwapType.FROM_BTCLN_AUTO] = new FromBTCLNAutoWrapper_1.FromBTCLNAutoWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, lightningApi, this.messenger, lpApi, {
                     getRequestTimeout: this.options.getRequestTimeout,
                     postRequestTimeout: this.options.postRequestTimeout,
                     saveUninitializedSwaps: this.options.saveUninitializedSwaps,
@@ -190,10 +193,10 @@ class Swapper extends events_1.EventEmitter {
         });
         const contracts = (0, Utils_1.objectMap)(chainsData, (data) => data.versions ?? { [data.defaultVersion ?? "v1"]: { swapContract: data.swapContract, spvVaultContract: data.spvVaultContract } });
         if (options.intermediaryUrl != null) {
-            this.intermediaryDiscovery = new IntermediaryDiscovery_1.IntermediaryDiscovery(contracts, options.registryUrl, Array.isArray(options.intermediaryUrl) ? options.intermediaryUrl : [options.intermediaryUrl], options.getRequestTimeout);
+            this.intermediaryDiscovery = new IntermediaryDiscovery_1.IntermediaryDiscovery(contracts, lpApi, options.registryUrl, Array.isArray(options.intermediaryUrl) ? options.intermediaryUrl : [options.intermediaryUrl], options.getRequestTimeout);
         }
         else {
-            this.intermediaryDiscovery = new IntermediaryDiscovery_1.IntermediaryDiscovery(contracts, options.registryUrl, undefined, options.getRequestTimeout);
+            this.intermediaryDiscovery = new IntermediaryDiscovery_1.IntermediaryDiscovery(contracts, lpApi, options.registryUrl, undefined, options.getRequestTimeout);
         }
         this.intermediaryDiscovery.on("removed", (intermediaries) => {
             this.emit("lpsRemoved", intermediaries);

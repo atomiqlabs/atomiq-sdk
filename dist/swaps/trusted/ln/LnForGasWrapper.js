@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.LnForGasWrapper = void 0;
 const LnForGasSwap_1 = require("./LnForGasSwap");
 const ISwapWrapper_1 = require("../../ISwapWrapper");
-const TrustedIntermediaryAPI_1 = require("../../../intermediaries/apis/TrustedIntermediaryAPI");
 const bolt11_1 = require("@atomiqlabs/bolt11");
 const IntermediaryError_1 = require("../../../errors/IntermediaryError");
 const SwapType_1 = require("../../../enums/SwapType");
@@ -47,7 +46,7 @@ class LnForGasWrapper extends ISwapWrapper_1.ISwapWrapper {
             throw new Error("Not initialized, call init() first!");
         const lpUrl = typeof (lpOrUrl) === "string" ? lpOrUrl : lpOrUrl.url;
         const token = this._chain.getNativeCurrencyAddress();
-        const resp = await TrustedIntermediaryAPI_1.TrustedIntermediaryAPI.initTrustedFromBTCLN(this.chainIdentifier, lpUrl, {
+        const resp = await this._lpApi.initTrustedFromBTCLN(this.chainIdentifier, lpUrl, {
             address: recipient,
             amount,
             token

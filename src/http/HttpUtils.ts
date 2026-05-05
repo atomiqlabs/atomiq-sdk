@@ -29,13 +29,15 @@ export function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit & {
  * @param timeout Timeout (in milliseconds) for the request to conclude
  * @param abortSignal
  * @param allowNon200 Whether to allow non-200 status code HTTP responses
+ * @param headers
  * @throws {RequestError} if non 200 response code was returned or body cannot be parsed
  */
-export async function httpGet<T>(url: string, timeout?: number, abortSignal?: AbortSignal, allowNon200: boolean = false): Promise<T> {
+export async function httpGet<T>(url: string, timeout?: number, abortSignal?: AbortSignal, allowNon200: boolean = false, headers: Record<string, string> = {}): Promise<T> {
     const init = {
         method: "GET",
         timeout,
-        signal: abortSignal
+        signal: abortSignal,
+        headers
     };
 
     const response: Response = await fetchWithTimeout(url, init);
@@ -65,14 +67,18 @@ export async function httpGet<T>(url: string, timeout?: number, abortSignal?: Ab
  * @param body A HTTP request body to send to the server
  * @param timeout Timeout (in milliseconds) for the request to conclude
  * @param abortSignal
+ * @param headers
  * @throws {RequestError} if non 200 response code was returned
  */
-export async function httpPost<T>(url: string, body: any, timeout?: number, abortSignal?: AbortSignal): Promise<T> {
+export async function httpPost<T>(url: string, body: any, timeout?: number, abortSignal?: AbortSignal, headers: Record<string, string> = {}): Promise<T> {
     const init = {
         method: "POST",
         timeout,
         body: JSON.stringify(body),
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+            ...headers,
+            'Content-Type': 'application/json'
+        },
         signal: abortSignal
     };
 

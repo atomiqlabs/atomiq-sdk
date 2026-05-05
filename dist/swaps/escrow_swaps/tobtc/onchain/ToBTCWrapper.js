@@ -10,7 +10,6 @@ const IntermediaryError_1 = require("../../../../errors/IntermediaryError");
 const SwapType_1 = require("../../../../enums/SwapType");
 const Utils_1 = require("../../../../utils/Utils");
 const BitcoinUtils_1 = require("../../../../utils/BitcoinUtils");
-const IntermediaryAPI_1 = require("../../../../intermediaries/apis/IntermediaryAPI");
 const RequestError_1 = require("../../../../errors/RequestError");
 const utils_1 = require("@scure/btc-signer/utils");
 const RetryUtils_1 = require("../../../../utils/RetryUtils");
@@ -30,11 +29,12 @@ class ToBTCWrapper extends IToBTCWrapper_1.IToBTCWrapper {
      * @param prices Swap pricing handler
      * @param tokens
      * @param btcRpc Bitcoin RPC api
+     * @param lpApi
      * @param options
      * @param events Instance to use for emitting events
      */
-    constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, versionedContracts, btcRpc, options, events) {
-        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, {
+    constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, versionedContracts, btcRpc, lpApi, options, events) {
+        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, lpApi, {
             ...options,
             bitcoinNetwork: options?.bitcoinNetwork ?? utils_1.TEST_NETWORK,
             safetyFactor: options?.safetyFactor ?? 2,
@@ -174,7 +174,7 @@ class ToBTCWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                     const reputationPromise = this.preFetchIntermediaryReputation(amountData, lp, abortController, version);
                     try {
                         const { signDataPromise, resp } = await (0, RetryUtils_1.tryWithRetries)(async (retryCount) => {
-                            const { signDataPrefetch, response } = IntermediaryAPI_1.IntermediaryAPI.initToBTC(this.chainIdentifier, lp.url, {
+                            const { signDataPrefetch, response } = this._lpApi.initToBTC(this.chainIdentifier, lp.url, {
                                 btcAddress: recipient,
                                 amount: amountData.amount,
                                 confirmationTarget: _options.confirmationTarget,

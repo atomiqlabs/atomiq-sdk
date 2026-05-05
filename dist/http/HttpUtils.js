@@ -30,13 +30,15 @@ exports.fetchWithTimeout = fetchWithTimeout;
  * @param timeout Timeout (in milliseconds) for the request to conclude
  * @param abortSignal
  * @param allowNon200 Whether to allow non-200 status code HTTP responses
+ * @param headers
  * @throws {RequestError} if non 200 response code was returned or body cannot be parsed
  */
-async function httpGet(url, timeout, abortSignal, allowNon200 = false) {
+async function httpGet(url, timeout, abortSignal, allowNon200 = false, headers = {}) {
     const init = {
         method: "GET",
         timeout,
-        signal: abortSignal
+        signal: abortSignal,
+        headers
     };
     const response = await fetchWithTimeout(url, init);
     if (response.status !== 200) {
@@ -65,14 +67,18 @@ exports.httpGet = httpGet;
  * @param body A HTTP request body to send to the server
  * @param timeout Timeout (in milliseconds) for the request to conclude
  * @param abortSignal
+ * @param headers
  * @throws {RequestError} if non 200 response code was returned
  */
-async function httpPost(url, body, timeout, abortSignal) {
+async function httpPost(url, body, timeout, abortSignal, headers = {}) {
     const init = {
         method: "POST",
         timeout,
         body: JSON.stringify(body),
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            ...headers,
+            'Content-Type': 'application/json'
+        },
         signal: abortSignal
     };
     const response = timeout == null ? await fetch(url, init) : await fetchWithTimeout(url, init);

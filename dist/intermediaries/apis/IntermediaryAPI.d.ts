@@ -1,6 +1,7 @@
 /// <reference types="node" />
 /// <reference types="node" />
-import { FieldTypeEnum, RequestSchemaResult } from "../../http/paramcoders/SchemaVerifier";
+import { FieldTypeEnum, RequestSchema, RequestSchemaResult, RequestSchemaResultPromise } from "../../http/paramcoders/SchemaVerifier";
+import { RequestBody } from "../../http/paramcoders/client/StreamingFetchPromise";
 export type InfoHandlerResponse = {
     envelope: string;
     chains: {
@@ -264,7 +265,108 @@ export type SpvFromBTCInit = {
     quoteId: string;
     psbtHex: string;
 };
+export declare enum TrustedInvoiceStatusResponseCodes {
+    EXPIRED = 10001,
+    PAID = 10000,
+    AWAIT_PAYMENT = 10010,
+    PENDING = 10011,
+    TX_SENT = 10012
+}
+export type TrustedInvoiceStatusResponse = {
+    code: TrustedInvoiceStatusResponseCodes.TX_SENT | TrustedInvoiceStatusResponseCodes.PAID;
+    msg: string;
+    data: {
+        txId: string;
+    };
+} | {
+    code: Exclude<TrustedInvoiceStatusResponseCodes, TrustedInvoiceStatusResponseCodes.TX_SENT | TrustedInvoiceStatusResponseCodes.PAID>;
+    msg: string;
+};
+export type TrustedFromBTCLNInit = {
+    address: string;
+    amount: bigint;
+    token: string;
+};
+declare const TrustedFromBTCLNResponseSchema: {
+    readonly pr: FieldTypeEnum.String;
+    readonly swapFee: FieldTypeEnum.BigInt;
+    readonly swapFeeSats: FieldTypeEnum.BigInt;
+    readonly total: FieldTypeEnum.BigInt;
+};
+export type TrustedFromBTCLNResponseType = RequestSchemaResult<typeof TrustedFromBTCLNResponseSchema>;
+export declare enum TrustedAddressStatusResponseCodes {
+    EXPIRED = 10001,
+    PAID = 10000,
+    AWAIT_PAYMENT = 10010,
+    AWAIT_CONFIRMATION = 10011,
+    PENDING = 10013,
+    TX_SENT = 10012,
+    REFUNDED = 10014,
+    DOUBLE_SPENT = 10015,
+    REFUNDABLE = 10016
+}
+export type TrustedAddressStatusResponse = {
+    code: TrustedAddressStatusResponseCodes.TX_SENT | TrustedAddressStatusResponseCodes.PAID;
+    msg: string;
+    data: {
+        adjustedAmount: string;
+        adjustedTotal: string;
+        adjustedFee?: string;
+        adjustedFeeSats?: string;
+        txId: string;
+        scTxId: string;
+    };
+} | {
+    code: TrustedAddressStatusResponseCodes.AWAIT_CONFIRMATION | TrustedAddressStatusResponseCodes.PENDING;
+    msg: string;
+    data: {
+        adjustedAmount: string;
+        adjustedTotal: string;
+        adjustedFee?: string;
+        adjustedFeeSats?: string;
+        txId: string;
+    };
+} | {
+    code: TrustedAddressStatusResponseCodes.REFUNDABLE;
+    msg: string;
+    data: {
+        adjustedAmount: string;
+    };
+} | {
+    code: TrustedAddressStatusResponseCodes.REFUNDED | TrustedAddressStatusResponseCodes.DOUBLE_SPENT;
+    msg: string;
+    data: {
+        txId: string;
+    };
+} | {
+    code: TrustedAddressStatusResponseCodes.AWAIT_PAYMENT | TrustedAddressStatusResponseCodes.EXPIRED;
+    msg: string;
+};
+export type TrustedFromBTCInit = {
+    address: string;
+    amount: bigint;
+    token: string;
+    refundAddress?: string;
+};
+declare const TrustedFromBTCResponseSchema: {
+    readonly paymentHash: FieldTypeEnum.String;
+    readonly sequence: FieldTypeEnum.BigInt;
+    readonly btcAddress: FieldTypeEnum.String;
+    readonly amountSats: FieldTypeEnum.BigInt;
+    readonly swapFeeSats: FieldTypeEnum.BigInt;
+    readonly swapFee: FieldTypeEnum.BigInt;
+    readonly total: FieldTypeEnum.BigInt;
+    readonly intermediaryKey: FieldTypeEnum.String;
+    readonly recommendedFee: FieldTypeEnum.Number;
+    readonly expiresAt: FieldTypeEnum.Number;
+};
+export type TrustedFromBTCResponseType = RequestSchemaResult<typeof TrustedFromBTCResponseSchema>;
 export declare class IntermediaryAPI {
+    requestHeaders?: (type: "GET" | "POST", url: string, body?: any) => Record<string, string>;
+    constructor(requestHeaders?: (type: "GET" | "POST", url: string, body?: any) => Record<string, string>);
+    httpGet<T>(url: string, timeout?: number, abortSignal?: AbortSignal, allowNon200?: boolean): Promise<T>;
+    httpPost<T>(url: string, body: any, timeout?: number, abortSignal?: AbortSignal): Promise<T>;
+    streamingFetchPromise<T extends RequestSchema>(url: string, body: RequestBody, schema: T, timeout?: number, signal?: AbortSignal, streamRequest?: boolean): Promise<RequestSchemaResultPromise<T>>;
     /**
      * Returns the information about a specific intermediary
      *
@@ -275,7 +377,7 @@ export declare class IntermediaryAPI {
      * @throws {RequestError} If non-200 http response code is returned
      * @throws {Error} If the supplied nonce doesn't match the response
      */
-    static getIntermediaryInfo(baseUrl: string, timeout?: number, abortSignal?: AbortSignal): Promise<InfoHandlerResponse>;
+    getIntermediaryInfo(baseUrl: string, timeout?: number, abortSignal?: AbortSignal): Promise<InfoHandlerResponse>;
     /**
      * Returns the information about an outcome of the To BTC swap
      *
@@ -287,7 +389,7 @@ export declare class IntermediaryAPI {
      *
      * @throws {RequestError} If non-200 http response code is returned
      */
-    static getRefundAuthorization(url: string, paymentHash: string, sequence: bigint, timeout?: number, abortSignal?: AbortSignal): Promise<RefundAuthorizationResponse>;
+    getRefundAuthorization(url: string, paymentHash: string, sequence: bigint, timeout?: number, abortSignal?: AbortSignal): Promise<RefundAuthorizationResponse>;
     /**
      * Returns the information about the payment of the From BTCLN swaps
      *
@@ -298,7 +400,7 @@ export declare class IntermediaryAPI {
      *
      * @throws {RequestError} If non-200 http response code is returned
      */
-    static getPaymentAuthorization(url: string, paymentHash: string, timeout?: number, abortSignal?: AbortSignal): Promise<PaymentAuthorizationResponse>;
+    getPaymentAuthorization(url: string, paymentHash: string, timeout?: number, abortSignal?: AbortSignal): Promise<PaymentAuthorizationResponse>;
     /**
      * Returns the status of the payment of the From BTCLN swaps
      *
@@ -309,7 +411,7 @@ export declare class IntermediaryAPI {
      *
      * @throws {RequestError} If non-200 http response code is returned
      */
-    static getInvoiceStatus(url: string, paymentHash: string, timeout?: number, abortSignal?: AbortSignal): Promise<InvoiceStatusResponse>;
+    getInvoiceStatus(url: string, paymentHash: string, timeout?: number, abortSignal?: AbortSignal): Promise<InvoiceStatusResponse>;
     /**
      * Initiate To BTC swap with an intermediary
      *
@@ -322,7 +424,7 @@ export declare class IntermediaryAPI {
      *
      * @throws {RequestError} If non-200 http response code is returned
      */
-    static initToBTC(chainIdentifier: string, baseUrl: string, init: ToBTCInit, timeout?: number, abortSignal?: AbortSignal, streamRequest?: boolean): {
+    initToBTC(chainIdentifier: string, baseUrl: string, init: ToBTCInit, timeout?: number, abortSignal?: AbortSignal, streamRequest?: boolean): {
         signDataPrefetch: Promise<any>;
         response: Promise<ToBTCResponseType>;
     };
@@ -339,7 +441,7 @@ export declare class IntermediaryAPI {
      *
      * @throws {RequestError} If non-200 http response code is returned
      */
-    static initFromBTC(chainIdentifier: string, baseUrl: string, depositToken: string, init: FromBTCInit, timeout?: number, abortSignal?: AbortSignal, streamRequest?: boolean): {
+    initFromBTC(chainIdentifier: string, baseUrl: string, depositToken: string, init: FromBTCInit, timeout?: number, abortSignal?: AbortSignal, streamRequest?: boolean): {
         signDataPrefetch: Promise<any>;
         response: Promise<FromBTCResponseType>;
     };
@@ -356,7 +458,7 @@ export declare class IntermediaryAPI {
      *
      * @throws {RequestError} If non-200 http response code is returned
      */
-    static initFromBTCLN(chainIdentifier: string, baseUrl: string, depositToken: string, init: FromBTCLNInit, timeout?: number, abortSignal?: AbortSignal, streamRequest?: boolean): {
+    initFromBTCLN(chainIdentifier: string, baseUrl: string, depositToken: string, init: FromBTCLNInit, timeout?: number, abortSignal?: AbortSignal, streamRequest?: boolean): {
         lnPublicKey: Promise<string | null>;
         response: Promise<FromBTCLNResponseType>;
     };
@@ -372,7 +474,7 @@ export declare class IntermediaryAPI {
      *
      * @throws {RequestError} If non-200 http response code is returned
      */
-    static initFromBTCLNAuto(chainIdentifier: string, baseUrl: string, init: FromBTCLNAutoInit, timeout?: number, abortSignal?: AbortSignal, streamRequest?: boolean): {
+    initFromBTCLNAuto(chainIdentifier: string, baseUrl: string, init: FromBTCLNAutoInit, timeout?: number, abortSignal?: AbortSignal, streamRequest?: boolean): {
         lnPublicKey: Promise<string | null>;
         response: Promise<FromBTCLNAutoResponseType>;
     };
@@ -388,7 +490,7 @@ export declare class IntermediaryAPI {
      *
      * @throws {RequestError} If non-200 http response code is returned
      */
-    static initToBTCLN(chainIdentifier: string, baseUrl: string, init: ToBTCLNInit, timeout?: number, abortSignal?: AbortSignal, streamRequest?: boolean): {
+    initToBTCLN(chainIdentifier: string, baseUrl: string, init: ToBTCLNInit, timeout?: number, abortSignal?: AbortSignal, streamRequest?: boolean): {
         signDataPrefetch: Promise<any>;
         response: Promise<ToBTCLNResponseType>;
     };
@@ -403,7 +505,7 @@ export declare class IntermediaryAPI {
      *
      * @throws {RequestError} If non-200 http response code is returned
      */
-    static initToBTCLNExactIn(baseUrl: string, init: ToBTCLNInitExactIn, timeout?: number, abortSignal?: AbortSignal, streamRequest?: boolean): Promise<ToBTCLNResponseType>;
+    initToBTCLNExactIn(baseUrl: string, init: ToBTCLNInitExactIn, timeout?: number, abortSignal?: AbortSignal, streamRequest?: boolean): Promise<ToBTCLNResponseType>;
     /**
      * Prepare To BTCLN exact in swap with an intermediary
      *
@@ -416,7 +518,7 @@ export declare class IntermediaryAPI {
      *
      * @throws {RequestError} If non-200 http response code is returned
      */
-    static prepareToBTCLNExactIn(chainIdentifier: string, baseUrl: string, init: ToBTCLNPrepareExactIn, timeout?: number, abortSignal?: AbortSignal, streamRequest?: boolean): {
+    prepareToBTCLNExactIn(chainIdentifier: string, baseUrl: string, init: ToBTCLNPrepareExactIn, timeout?: number, abortSignal?: AbortSignal, streamRequest?: boolean): {
         signDataPrefetch: Promise<any>;
         response: Promise<ToBTCLNPrepareExactInResponseType>;
     };
@@ -432,7 +534,7 @@ export declare class IntermediaryAPI {
      *
      * @throws {RequestError} If non-200 http response code is returned
      */
-    static prepareSpvFromBTC(chainIdentifier: string, baseUrl: string, init: SpvFromBTCPrepare, timeout?: number, abortSignal?: AbortSignal, streamRequest?: boolean): Promise<SpvFromBTCPrepareResponseType>;
+    prepareSpvFromBTC(chainIdentifier: string, baseUrl: string, init: SpvFromBTCPrepare, timeout?: number, abortSignal?: AbortSignal, streamRequest?: boolean): Promise<SpvFromBTCPrepareResponseType>;
     /**
      * Prepare From BTC swap via new spv vault swaps with an intermediary
      *
@@ -445,6 +547,61 @@ export declare class IntermediaryAPI {
      *
      * @throws {RequestError} If non-200 http response code is returned
      */
-    static initSpvFromBTC(chainIdentifier: string, url: string, init: SpvFromBTCInit, timeout?: number, abortSignal?: AbortSignal, streamRequest?: boolean): Promise<SpvFromBTCInitResponseType>;
+    initSpvFromBTC(chainIdentifier: string, url: string, init: SpvFromBTCInit, timeout?: number, abortSignal?: AbortSignal, streamRequest?: boolean): Promise<SpvFromBTCInitResponseType>;
+    /**
+     * Fetches the invoice status from the intermediary node
+     *
+     * @param url Url of the trusted intermediary
+     * @param paymentHash Payment hash of the lightning invoice
+     * @param timeout Timeout in milliseconds
+     * @param abortSignal
+     * @throws {RequestError} if non-200 http response is returned
+     */
+    getTrustedInvoiceStatus(url: string, paymentHash: string, timeout?: number, abortSignal?: AbortSignal): Promise<TrustedInvoiceStatusResponse>;
+    /**
+     * Initiate a trusted swap from BTCLN to SC native currency, retries!
+     *
+     * @param chainIdentifier
+     * @param baseUrl Base url of the trusted swap intermediary
+     * @param init Initialization parameters
+     * @param timeout Timeout in milliseconds for the request
+     * @param abortSignal
+     * @throws {RequestError} If the response is non-200
+     */
+    initTrustedFromBTCLN(chainIdentifier: string, baseUrl: string, init: TrustedFromBTCLNInit, timeout?: number, abortSignal?: AbortSignal): Promise<TrustedFromBTCLNResponseType>;
+    /**
+     * Fetches the address status from the intermediary node
+     *
+     * @param url Url of the trusted intermediary
+     * @param paymentHash Payment hash of the swap
+     * @param sequence Sequence number of the swap
+     * @param timeout Timeout in milliseconds
+     * @param abortSignal
+     * @throws {RequestError} if non-200 http response is returned
+     */
+    getTrustedAddressStatus(url: string, paymentHash: string, sequence: bigint, timeout?: number, abortSignal?: AbortSignal): Promise<TrustedAddressStatusResponse>;
+    /**
+     * Sets the refund address for an on-chain gas swap
+     *
+     * @param url Url of the trusted intermediary
+     * @param paymentHash Payment hash of the swap
+     * @param sequence Sequence number of the swap
+     * @param refundAddress Refund address to set for the swap
+     * @param timeout Timeout in milliseconds
+     * @param abortSignal
+     * @throws {RequestError} if non-200 http response is returned
+     */
+    setTrustedRefundAddress(url: string, paymentHash: string, sequence: bigint, refundAddress: string, timeout?: number, abortSignal?: AbortSignal): Promise<void>;
+    /**
+     * Initiate a trusted swap from BTC to SC native currency, retries!
+     *
+     * @param chainIdentifier
+     * @param baseUrl Base url of the trusted swap intermediary
+     * @param init Initialization parameters
+     * @param timeout Timeout in milliseconds for the request
+     * @param abortSignal
+     * @throws {RequestError} If the response is non-200
+     */
+    initTrustedFromBTC(chainIdentifier: string, baseUrl: string, init: TrustedFromBTCInit, timeout?: number, abortSignal?: AbortSignal): Promise<TrustedFromBTCResponseType>;
 }
 export {};

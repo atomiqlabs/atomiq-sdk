@@ -13,6 +13,7 @@ import { Intermediary } from "../../../intermediaries/Intermediary";
 import { PaymentRequestObject, TagsObject } from "@atomiqlabs/bolt11";
 import { IEscrowSwap } from "../IEscrowSwap";
 import { LNURLWithdrawParamsWithUrl } from "../../../types/lnurl/LNURLWithdraw";
+import { IntermediaryAPI } from "../../../intermediaries/apis/IntermediaryAPI";
 export type IFromBTCLNDefinition<T extends ChainType, W extends IFromBTCLNWrapper<T, any>, S extends IEscrowSwap<T>> = IFromBTCDefinition<T, W, S>;
 /**
  * Base class for wrappers of escrow-based Lightning -> Smart chain swaps
@@ -33,6 +34,7 @@ export declare abstract class IFromBTCLNWrapper<T extends ChainType, D extends I
      * @param tokens
      * @param versionedContracts
      * @param lnApi
+     * @param lpApi
      * @param options
      * @param events Instance to use for emitting events
      */
@@ -41,7 +43,7 @@ export declare abstract class IFromBTCLNWrapper<T extends ChainType, D extends I
             swapContract: T["Contract"];
             swapDataConstructor: new (data: any) => T["Data"];
         };
-    }, lnApi: LightningNetworkApi, options: O, events?: EventEmitter<{
+    }, lnApi: LightningNetworkApi, lpApi: IntermediaryAPI, options: O, events?: EventEmitter<{
         swapState: [IEscrowSwap];
     }>);
     /**

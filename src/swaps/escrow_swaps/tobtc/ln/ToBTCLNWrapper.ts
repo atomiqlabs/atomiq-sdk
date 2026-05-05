@@ -110,11 +110,12 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
                 swapDataConstructor: new (data: any) => T["Data"]
             }
         },
+        lpApi: IntermediaryAPI,
         options?: AllOptional<ToBTCLNWrapperOptions>,
         events?: EventEmitter<{swapState: [ISwap]}>
     ) {
         super(
-            chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens,
+            chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, lpApi,
             {
                 ...options,
                 paymentTimeoutSeconds: options?.paymentTimeoutSeconds ?? 5*24*60*60,
@@ -286,7 +287,7 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
 
         try {
             const {signDataPromise, resp} = await tryWithRetries(async(retryCount: number) => {
-                const {signDataPrefetch, response} = IntermediaryAPI.initToBTCLN(this.chainIdentifier, lp.url, {
+                const {signDataPrefetch, response} = this._lpApi.initToBTCLN(this.chainIdentifier, lp.url, {
                     offerer: signer,
                     pr,
                     maxFee: await calculatedOptions.maxFee,
@@ -481,7 +482,7 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
 
         try {
             const {signDataPromise, prepareResp} = await tryWithRetries(async(retryCount: number) => {
-                const {signDataPrefetch, response} = IntermediaryAPI.prepareToBTCLNExactIn(this.chainIdentifier, lp.url, {
+                const {signDataPrefetch, response} = this._lpApi.prepareToBTCLNExactIn(this.chainIdentifier, lp.url, {
                     token: amountData.token,
                     offerer: signer,
                     pr: dummyPr,
@@ -511,7 +512,7 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
             const parsedInvoice = bolt11Decode(invoice);
 
             const resp = await tryWithRetries(
-                (retryCount: number) => IntermediaryAPI.initToBTCLNExactIn(lp.url, {
+                (retryCount: number) => this._lpApi.initToBTCLNExactIn(lp.url, {
                     pr: invoice,
                     reqId: prepareResp.reqId,
                     feeRate: throwIfUndefined(preFetches.feeRatePromise[version], "Network fee rate pre-fetch failed!"),

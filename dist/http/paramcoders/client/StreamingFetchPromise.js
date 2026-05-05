@@ -39,14 +39,15 @@ logger.info("Environment supports request stream: " + supportsRequestStreams);
  * @param timeout Timeout in millseconds for the request to succeed & all its response properties to resolve
  * @param signal Abort signal
  * @param streamRequest Whether the request should be streamed or not
+ * @param _headers
  * @throws {RequestError} When the response code is not 200
  */
-async function streamingFetchPromise(url, body, schema, timeout, signal, streamRequest) {
+async function streamingFetchPromise(url, body, schema, timeout, signal, streamRequest, _headers = {}) {
     if (streamRequest == null)
         streamRequest = supportsRequestStreams;
     if (timeout != null)
         signal = (0, TimeoutUtils_1.timeoutSignal)(timeout, new Error("Network request timed out"), signal);
-    const headers = {};
+    const headers = { ..._headers };
     const init = {
         method: "POST",
         headers

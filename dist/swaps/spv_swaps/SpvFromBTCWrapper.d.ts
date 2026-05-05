@@ -9,6 +9,7 @@ import { UnifiedSwapEventListener } from "../../events/UnifiedSwapEventListener"
 import { ISwapPrice } from "../../prices/abstract/ISwapPrice";
 import { EventEmitter } from "events";
 import { Intermediary } from "../../intermediaries/Intermediary";
+import { IntermediaryAPI } from "../../intermediaries/apis/IntermediaryAPI";
 import { CoinselectAddressTypes } from "../../bitcoin/coinselect2";
 import { Transaction } from "@scure/btc-signer";
 import { ISwap } from "../ISwap";
@@ -138,6 +139,7 @@ export declare class SpvFromBTCWrapper<T extends ChainType> extends ISwapWrapper
      * @param versionedContracts
      * @param versionedSynchronizer
      * @param btcRpc Bitcoin RPC which also supports getting transactions by txoHash
+     * @param lpApi
      * @param options
      * @param events Instance to use for emitting events
      */
@@ -151,7 +153,7 @@ export declare class SpvFromBTCWrapper<T extends ChainType> extends ISwapWrapper
         [version: string]: {
             synchronizer: RelaySynchronizer<any, T["TX"], any>;
         };
-    }, btcRpc: BitcoinRpcWithAddressIndex<any>, options?: AllOptional<SpvFromBTCWrapperOptions>, events?: EventEmitter<{
+    }, btcRpc: BitcoinRpcWithAddressIndex<any>, lpApi: IntermediaryAPI, options?: AllOptional<SpvFromBTCWrapperOptions>, events?: EventEmitter<{
         swapState: [ISwap];
     }>);
     private processEventFront;

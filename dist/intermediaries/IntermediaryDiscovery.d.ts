@@ -3,6 +3,7 @@ import { Intermediary } from "./Intermediary";
 import { SwapType } from "../enums/SwapType";
 import { SpvVaultContract, SwapContract } from "@atomiqlabs/base";
 import { EventEmitter } from "events";
+import { IntermediaryAPI } from "./apis/IntermediaryAPI";
 /**
  * Swap handler type mapping for intermediary communication
  *
@@ -109,6 +110,10 @@ export declare class IntermediaryDiscovery extends EventEmitter {
      * @private
      */
     private overrideNodeUrls?;
+    /**
+     * @private
+     */
+    private lpApi;
     constructor(swapContracts: {
         [chainIdentifier: string]: {
             [contractVersion: string]: {
@@ -116,7 +121,7 @@ export declare class IntermediaryDiscovery extends EventEmitter {
                 spvVaultContract: SpvVaultContract;
             };
         };
-    }, registryUrl?: string, nodeUrls?: string[], httpRequestTimeout?: number, maxWaitForOthersTimeout?: number);
+    }, lpApi: IntermediaryAPI, registryUrl?: string, nodeUrls?: string[], httpRequestTimeout?: number, maxWaitForOthersTimeout?: number);
     /**
      * Fetches the URLs of swap intermediaries from registry or from a pre-defined array of node urls
      *

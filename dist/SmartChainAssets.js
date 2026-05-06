@@ -6,6 +6,16 @@ exports.SmartChainAssets = void 0;
  * @category Tokens
  */
 exports.SmartChainAssets = {
+    _TESTNET_strkBTC: {
+        pricing: {
+            binancePair: "$fixed-100000000",
+            okxPair: "$fixed-100000000",
+            coinGeckoCoinId: "$fixed-100000000",
+            coinPaprikaCoinId: "$fixed-100000000",
+            krakenPair: "$fixed-100000000"
+        },
+        name: "strkBTC (dev)"
+    },
     _TESTNET_WBTC_VESU: {
         pricing: {
             binancePair: "WBTCBTC",
@@ -25,6 +35,16 @@ exports.SmartChainAssets = {
             krakenPair: "$fixed-100000000"
         },
         name: "pegBTC (dev)"
+    },
+    strkBTC: {
+        pricing: {
+            binancePair: "$fixed-100000000",
+            okxPair: "$fixed-100000000",
+            coinGeckoCoinId: "$fixed-100000000",
+            coinPaprikaCoinId: "$fixed-100000000",
+            krakenPair: "$fixed-100000000"
+        },
+        name: "strkBTC"
     },
     WBTC: {
         pricing: {

@@ -3,6 +3,16 @@
  * @category Tokens
  */
 export declare const SmartChainAssets: {
+    readonly _TESTNET_strkBTC: {
+        readonly pricing: {
+            readonly binancePair: "$fixed-100000000";
+            readonly okxPair: "$fixed-100000000";
+            readonly coinGeckoCoinId: "$fixed-100000000";
+            readonly coinPaprikaCoinId: "$fixed-100000000";
+            readonly krakenPair: "$fixed-100000000";
+        };
+        readonly name: "strkBTC (dev)";
+    };
     readonly _TESTNET_WBTC_VESU: {
         readonly pricing: {
             readonly binancePair: "WBTCBTC";
@@ -22,6 +32,16 @@ export declare const SmartChainAssets: {
             readonly krakenPair: "$fixed-100000000";
         };
         readonly name: "pegBTC (dev)";
+    };
+    readonly strkBTC: {
+        readonly pricing: {
+            readonly binancePair: "$fixed-100000000";
+            readonly okxPair: "$fixed-100000000";
+            readonly coinGeckoCoinId: "$fixed-100000000";
+            readonly coinPaprikaCoinId: "$fixed-100000000";
+            readonly krakenPair: "$fixed-100000000";
+        };
+        readonly name: "strkBTC";
     };
     readonly WBTC: {
         readonly pricing: {

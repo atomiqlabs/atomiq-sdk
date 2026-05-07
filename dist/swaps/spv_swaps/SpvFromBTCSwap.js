@@ -254,7 +254,7 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
         if (this.pricingInfo == null)
             return;
         const usdPricePerBtc = this.pricingInfo.realPriceUsdPerBitcoin;
-        this.pricingInfo = await this.wrapper._prices.isValidAmountReceive(this.chainIdentifier, this.btcAmountSwap, this.pricingInfo.satsBaseFee, this.pricingInfo.feePPM, this.getOutputWithoutFee().rawAmount, this.outputSwapToken);
+        this.pricingInfo = await this.wrapper._prices.isValidAmountReceive(this.chainIdentifier, this.btcAmountSwap, this.pricingInfo.satsBaseFee, this.pricingInfo.feePPM, this.getOutputWithoutFee().rawAmount, this.outputSwapToken, undefined, undefined, this.swapFeeBtc);
         this.pricingInfo.realPriceUsdPerBitcoin = usdPricePerBtc;
     }
     //////////////////////////////

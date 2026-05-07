@@ -179,15 +179,15 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
             const data = new this._swapDataDeserializer(resp.data);
             data.setOfferer(signer);
             await this.verifyReturnedData(signer, resp, parsedPr, amountData.token, lp, calculatedOptions, data);
+            const swapFeeBtc = resp.swapFee * amountOut / (data.getAmount() - totalFee);
             const [pricingInfo, signatureExpiry, reputation] = await Promise.all([
-                this.verifyReturnedPrice(lp.services[SwapType_1.SwapType.TO_BTCLN], true, amountOut, data.getAmount(), amountData.token, { networkFee: resp.maxFee }, preFetches.pricePreFetchPromise, preFetches.usdPricePrefetchPromise, abortController.signal),
+                this.verifyReturnedPrice(lp.services[SwapType_1.SwapType.TO_BTCLN], true, amountOut, data.getAmount(), amountData.token, { networkFee: resp.maxFee, swapFeeBtc }, preFetches.pricePreFetchPromise, preFetches.usdPricePrefetchPromise, abortController.signal),
                 this.verifyReturnedSignature(signer, data, resp, preFetches.feeRatePromise, signDataPromise, abortController.signal),
                 reputationPromise
             ]);
             abortController.signal.throwIfAborted();
             if (reputation != null)
                 lp.reputation[amountData.token.toString()] = reputation;
-            const swapFeeBtc = resp.swapFee * amountOut / (data.getAmount() - totalFee);
             const quote = new ToBTCLNSwap_1.ToBTCLNSwap(this, {
                 pricingInfo,
                 url: lp.url,
@@ -328,15 +328,15 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
             const data = new this._swapDataDeserializer(resp.data);
             data.setOfferer(signer);
             await this.verifyReturnedData(signer, resp, parsedInvoice, amountData.token, lp, calculatedOptions, data, amountData.amount);
+            const swapFeeBtc = resp.swapFee * amountOut / (data.getAmount() - totalFee);
             const [pricingInfo, signatureExpiry, reputation] = await Promise.all([
-                this.verifyReturnedPrice(lp.services[SwapType_1.SwapType.TO_BTCLN], true, prepareResp.amount, data.getAmount(), amountData.token, { networkFee: resp.maxFee }, preFetches.pricePreFetchPromise, preFetches.usdPricePrefetchPromise, abortSignal),
+                this.verifyReturnedPrice(lp.services[SwapType_1.SwapType.TO_BTCLN], true, prepareResp.amount, data.getAmount(), amountData.token, { networkFee: resp.maxFee, swapFeeBtc }, preFetches.pricePreFetchPromise, preFetches.usdPricePrefetchPromise, abortSignal),
                 this.verifyReturnedSignature(signer, data, resp, preFetches.feeRatePromise, signDataPromise, abortController.signal),
                 reputationPromise
             ]);
             abortController.signal.throwIfAborted();
             if (reputation != null)
                 lp.reputation[amountData.token.toString()] = reputation;
-            const swapFeeBtc = resp.swapFee * amountOut / (data.getAmount() - totalFee);
             const quote = new ToBTCLNSwap_1.ToBTCLNSwap(this, {
                 pricingInfo,
                 url: lp.url,

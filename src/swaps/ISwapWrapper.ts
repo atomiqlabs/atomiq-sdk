@@ -259,7 +259,8 @@ export abstract class ISwapWrapper<
         amountToken: bigint,
         token: string,
         feeData: {
-            networkFee?: bigint
+            networkFee?: bigint,
+            swapFeeBtc?: bigint
         },
         pricePrefetchPromise: Promise<bigint | undefined> = Promise.resolve(undefined),
         usdPricePrefetchPromise: Promise<number | undefined> = Promise.resolve(undefined),
@@ -271,8 +272,8 @@ export abstract class ISwapWrapper<
 
         const [isValidAmount, usdPrice] = await Promise.all([
             send ?
-                this._prices.isValidAmountSend(this.chainIdentifier, amountSats, swapBaseFee, swapFeePPM, amountToken, token, abortSignal, await pricePrefetchPromise) :
-                this._prices.isValidAmountReceive(this.chainIdentifier, amountSats, swapBaseFee, swapFeePPM, amountToken, token, abortSignal, await pricePrefetchPromise),
+                this._prices.isValidAmountSend(this.chainIdentifier, amountSats, swapBaseFee, swapFeePPM, amountToken, token, abortSignal, await pricePrefetchPromise, feeData.swapFeeBtc) :
+                this._prices.isValidAmountReceive(this.chainIdentifier, amountSats, swapBaseFee, swapFeePPM, amountToken, token, abortSignal, await pricePrefetchPromise, feeData.swapFeeBtc),
             usdPricePrefetchPromise.then(value => {
                 if(value!=null) return value;
                 return this._prices.preFetchUsdPrice(abortSignal);

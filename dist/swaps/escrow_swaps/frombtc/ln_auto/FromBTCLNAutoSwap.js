@@ -206,7 +206,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
         if (this.pricingInfo == null || this.btcAmountSwap == null)
             return;
         const usdPricePerBtc = this.pricingInfo.realPriceUsdPerBitcoin;
-        this.pricingInfo = await this.wrapper._prices.isValidAmountReceive(this.chainIdentifier, this.btcAmountSwap, this.pricingInfo.satsBaseFee, this.pricingInfo.feePPM, this.getOutputAmountWithoutFee(), this.getSwapData().getToken());
+        this.pricingInfo = await this.wrapper._prices.isValidAmountReceive(this.chainIdentifier, this.btcAmountSwap, this.pricingInfo.satsBaseFee, this.pricingInfo.feePPM, this.getOutputAmountWithoutFee(), this.getSwapData().getToken(), undefined, undefined, this.swapFeeBtc);
         this.pricingInfo.realPriceUsdPerBitcoin = usdPricePerBtc;
     }
     //////////////////////////////

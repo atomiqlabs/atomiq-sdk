@@ -398,7 +398,10 @@ export class SpvFromBTCSwap<T extends ChainType>
             this.pricingInfo.satsBaseFee,
             this.pricingInfo.feePPM,
             this.getOutputWithoutFee().rawAmount,
-            this.outputSwapToken
+            this.outputSwapToken,
+            undefined,
+            undefined,
+            this.swapFeeBtc
         );
         this.pricingInfo.realPriceUsdPerBitcoin = usdPricePerBtc;
     }

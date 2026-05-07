@@ -114,8 +114,8 @@ class ISwapWrapper {
             amountToken = amountToken - feeData.networkFee;
         const [isValidAmount, usdPrice] = await Promise.all([
             send ?
-                this._prices.isValidAmountSend(this.chainIdentifier, amountSats, swapBaseFee, swapFeePPM, amountToken, token, abortSignal, await pricePrefetchPromise) :
-                this._prices.isValidAmountReceive(this.chainIdentifier, amountSats, swapBaseFee, swapFeePPM, amountToken, token, abortSignal, await pricePrefetchPromise),
+                this._prices.isValidAmountSend(this.chainIdentifier, amountSats, swapBaseFee, swapFeePPM, amountToken, token, abortSignal, await pricePrefetchPromise, feeData.swapFeeBtc) :
+                this._prices.isValidAmountReceive(this.chainIdentifier, amountSats, swapBaseFee, swapFeePPM, amountToken, token, abortSignal, await pricePrefetchPromise, feeData.swapFeeBtc),
             usdPricePrefetchPromise.then(value => {
                 if (value != null)
                     return value;

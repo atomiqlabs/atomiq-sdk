@@ -100,6 +100,7 @@ export abstract class ISwapPrice<T extends MultiChain = MultiChain> {
      * @param tokenAddress Token address to be paid
      * @param abortSignal
      * @param preFetchedPrice An optional price pre-fetched with {@link preFetchPrice}
+     * @param realSwapFeeSats
      */
     public async isValidAmountSend<C extends ChainIds<T>>(
         chainIdentifier: C,
@@ -109,11 +110,15 @@ export abstract class ISwapPrice<T extends MultiChain = MultiChain> {
         paidToken: bigint,
         tokenAddress: string,
         abortSignal?: AbortSignal,
-        preFetchedPrice?: bigint | null
+        preFetchedPrice?: bigint | null,
+        realSwapFeeSats?: bigint
     ): Promise<PriceInfoType> {
-        const totalSats = (amountSats * (1000000n + feePPM) / 1000000n)
-            + satsBaseFee;
+        if(realSwapFeeSats!=undefined && realSwapFeeSats<0) throw new Error("Invalid swap fee! Swap fee cannot be negative!");
+        const totalSats = realSwapFeeSats!=undefined
+            ? amountSats + realSwapFeeSats
+            : (amountSats * (1000000n + feePPM) / 1000000n) + satsBaseFee;
         const totalUSats = totalSats * 1000000n;
+
         const swapPriceUSatPerToken = totalUSats * (10n ** BigInt(this.getDecimalsThrowing(chainIdentifier, tokenAddress))) / paidToken;
 
         if(this.shouldIgnore(chainIdentifier, tokenAddress)) return {
@@ -185,6 +190,7 @@ export abstract class ISwapPrice<T extends MultiChain = MultiChain> {
      * @param tokenAddress Token address to be received
      * @param abortSignal
      * @param preFetchedPrice An optional price pre-fetched with {@link preFetchPrice}
+     * @param realSwapFeeSats
      */
     public async isValidAmountReceive<C extends ChainIds<T>>(
         chainIdentifier: C,
@@ -194,11 +200,18 @@ export abstract class ISwapPrice<T extends MultiChain = MultiChain> {
         receiveToken: bigint,
         tokenAddress: string,
         abortSignal?: AbortSignal,
-        preFetchedPrice?: bigint | null
+        preFetchedPrice?: bigint | null,
+        realSwapFeeSats?: bigint
     ): Promise<PriceInfoType> {
-        const totalSats = (amountSats * (1000000n - feePPM) / 1000000n)
-            - satsBaseFee;
+        if(realSwapFeeSats!=undefined) {
+            if(realSwapFeeSats>=amountSats) throw new Error("Invalid swap fee! Larger than or equal to total output amount!");
+            if(realSwapFeeSats<0) throw new Error("Invalid swap fee! Must be non-negative!");
+        }
+        const totalSats = realSwapFeeSats!=undefined
+            ? amountSats - realSwapFeeSats
+            : (amountSats * (1000000n - feePPM) / 1000000n) - satsBaseFee;
         const totalUSats = totalSats * 1000000n;
+
         const swapPriceUSatPerToken = totalUSats * (10n ** BigInt(this.getDecimalsThrowing(chainIdentifier, tokenAddress))) / receiveToken;
 
         if(this.shouldIgnore(chainIdentifier, tokenAddress)) return {

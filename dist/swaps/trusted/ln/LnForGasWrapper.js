@@ -62,7 +62,7 @@ class LnForGasWrapper extends ISwapWrapper_1.ISwapWrapper {
             throw new IntermediaryError_1.IntermediaryError("Invalid total returned");
         const pricingInfo = await this.verifyReturnedPrice(typeof (lpOrUrl) === "string" || lpOrUrl.services[SwapType_1.SwapType.TRUSTED_FROM_BTCLN] == null ?
             { swapFeePPM: 10000, swapBaseFee: 10 } :
-            lpOrUrl.services[SwapType_1.SwapType.TRUSTED_FROM_BTCLN], false, amountIn, amount, token, {});
+            lpOrUrl.services[SwapType_1.SwapType.TRUSTED_FROM_BTCLN], false, amountIn, amount, token, { swapFeeBtc: resp.swapFeeSats });
         const quoteInit = {
             pr: resp.pr,
             outputAmount: resp.total,

@@ -59,10 +59,14 @@ class ISwapPrice {
      * @param tokenAddress Token address to be paid
      * @param abortSignal
      * @param preFetchedPrice An optional price pre-fetched with {@link preFetchPrice}
+     * @param realSwapFeeSats
      */
-    async isValidAmountSend(chainIdentifier, amountSats, satsBaseFee, feePPM, paidToken, tokenAddress, abortSignal, preFetchedPrice) {
-        const totalSats = (amountSats * (1000000n + feePPM) / 1000000n)
-            + satsBaseFee;
+    async isValidAmountSend(chainIdentifier, amountSats, satsBaseFee, feePPM, paidToken, tokenAddress, abortSignal, preFetchedPrice, realSwapFeeSats) {
+        if (realSwapFeeSats != undefined && realSwapFeeSats < 0)
+            throw new Error("Invalid swap fee! Swap fee cannot be negative!");
+        const totalSats = realSwapFeeSats != undefined
+            ? amountSats + realSwapFeeSats
+            : (amountSats * (1000000n + feePPM) / 1000000n) + satsBaseFee;
         const totalUSats = totalSats * 1000000n;
         const swapPriceUSatPerToken = totalUSats * (10n ** BigInt(this.getDecimalsThrowing(chainIdentifier, tokenAddress))) / paidToken;
         if (this.shouldIgnore(chainIdentifier, tokenAddress))
@@ -122,10 +126,18 @@ class ISwapPrice {
      * @param tokenAddress Token address to be received
      * @param abortSignal
      * @param preFetchedPrice An optional price pre-fetched with {@link preFetchPrice}
+     * @param realSwapFeeSats
      */
-    async isValidAmountReceive(chainIdentifier, amountSats, satsBaseFee, feePPM, receiveToken, tokenAddress, abortSignal, preFetchedPrice) {
-        const totalSats = (amountSats * (1000000n - feePPM) / 1000000n)
-            - satsBaseFee;
+    async isValidAmountReceive(chainIdentifier, amountSats, satsBaseFee, feePPM, receiveToken, tokenAddress, abortSignal, preFetchedPrice, realSwapFeeSats) {
+        if (realSwapFeeSats != undefined) {
+            if (realSwapFeeSats >= amountSats)
+                throw new Error("Invalid swap fee! Larger than or equal to total output amount!");
+            if (realSwapFeeSats < 0)
+                throw new Error("Invalid swap fee! Must be non-negative!");
+        }
+        const totalSats = realSwapFeeSats != undefined
+            ? amountSats - realSwapFeeSats
+            : (amountSats * (1000000n - feePPM) / 1000000n) - satsBaseFee;
         const totalUSats = totalSats * 1000000n;
         const swapPriceUSatPerToken = totalUSats * (10n ** BigInt(this.getDecimalsThrowing(chainIdentifier, tokenAddress))) / receiveToken;
         if (this.shouldIgnore(chainIdentifier, tokenAddress))

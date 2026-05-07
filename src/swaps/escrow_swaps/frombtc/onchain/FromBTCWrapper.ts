@@ -487,12 +487,14 @@ export class FromBTCWrapper<
                         const data: T["Data"] = new this._swapDataDeserializer(resp.data);
                         data.setClaimer(recipient);
 
+                        const swapFeeBtc = resp.swapFee * resp.amount / (data.getAmount() - resp.swapFee);
+
                         this.verifyReturnedData(recipient, resp, amountData, lp, _options, data, sequence, (await claimerBountyPrefetchPromise)!, nativeTokenAddress);
                         const [pricingInfo, signatureExpiry] = await Promise.all([
                             //Get intermediary's liquidity
                             this.verifyReturnedPrice(
                                 lp.services[SwapType.FROM_BTC], false, resp.amount, resp.total,
-                                amountData.token, {}, pricePrefetchPromise, usdPricePrefetchPromise, abortController.signal
+                                amountData.token, {swapFeeBtc}, pricePrefetchPromise, usdPricePrefetchPromise, abortController.signal
                             ),
                             this.verifyReturnedSignature(recipient, data, resp, feeRatePromise, signDataPromise, abortController.signal),
                             this.verifyIntermediaryLiquidity(data.getAmount(), throwIfUndefined(liquidityPromise)),
@@ -503,7 +505,7 @@ export class FromBTCWrapper<
                             url: lp.url,
                             expiry: signatureExpiry,
                             swapFee: resp.swapFee,
-                            swapFeeBtc: resp.swapFee * resp.amount / (data.getAmount() - resp.swapFee),
+                            swapFeeBtc,
                             feeRate: (await feeRatePromise)!,
                             signatureData: resp,
                             data,

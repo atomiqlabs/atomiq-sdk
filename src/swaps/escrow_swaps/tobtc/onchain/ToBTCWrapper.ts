@@ -289,11 +289,15 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
                         const data: T["Data"] = new this._swapDataDeserializer(resp.data);
                         data.setOfferer(signer);
 
+                        const inputWithoutFees = data.getAmount() - resp.swapFee - resp.networkFee;
+                        const swapFeeBtc = resp.swapFee * resp.amount / inputWithoutFees;
+                        const networkFeeBtc = resp.networkFee * resp.amount / inputWithoutFees;
+
                         this.verifyReturnedData(signer, resp, amountData, lp, _options, data, hash);
                         const [pricingInfo, signatureExpiry, reputation] = await Promise.all([
                             this.verifyReturnedPrice(
                                 lp.services[SwapType.TO_BTC], true, resp.amount, data.getAmount(),
-                                amountData.token, resp, pricePreFetchPromise, usdPricePrefetchPromise, abortController.signal
+                                amountData.token, {networkFee: resp.networkFee, swapFeeBtc}, pricePreFetchPromise, usdPricePrefetchPromise, abortController.signal
                             ),
                             this.verifyReturnedSignature(signer, data, resp, feeRatePromise, signDataPromise, abortController.signal),
                             reputationPromise
@@ -301,10 +305,6 @@ export class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCDef
                         abortController.signal.throwIfAborted();
 
                         if(reputation!=null) lp.reputation[amountData.token.toString()] = reputation;
-
-                        const inputWithoutFees = data.getAmount() - resp.swapFee - resp.networkFee;
-                        const swapFeeBtc = resp.swapFee * resp.amount / inputWithoutFees;
-                        const networkFeeBtc = resp.networkFee * resp.amount / inputWithoutFees
 
                         const quote = new ToBTCSwap<T>(this, {
                             pricingInfo,

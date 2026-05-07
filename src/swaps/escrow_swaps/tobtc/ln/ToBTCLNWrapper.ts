@@ -309,10 +309,12 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
 
             await this.verifyReturnedData(signer, resp, parsedPr, amountData.token, lp, calculatedOptions, data);
 
+            const swapFeeBtc = resp.swapFee * amountOut / (data.getAmount() - totalFee);
+
             const [pricingInfo, signatureExpiry, reputation] = await Promise.all([
                 this.verifyReturnedPrice(
                     lp.services[SwapType.TO_BTCLN], true, amountOut, data.getAmount(),
-                    amountData.token, {networkFee: resp.maxFee},
+                    amountData.token, {networkFee: resp.maxFee, swapFeeBtc},
                     preFetches.pricePreFetchPromise, preFetches.usdPricePrefetchPromise, abortController.signal
                 ),
                 this.verifyReturnedSignature(
@@ -323,8 +325,6 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
             abortController.signal.throwIfAborted();
 
             if(reputation!=null) lp.reputation[amountData.token.toString()] = reputation;
-
-            const swapFeeBtc = resp.swapFee * amountOut / (data.getAmount() - totalFee);
 
             const quote = new ToBTCLNSwap<T>(this, {
                 pricingInfo,
@@ -512,10 +512,12 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
 
             await this.verifyReturnedData(signer, resp, parsedInvoice, amountData.token, lp, calculatedOptions, data, amountData.amount);
 
+            const swapFeeBtc = resp.swapFee * amountOut / (data.getAmount() - totalFee);
+
             const [pricingInfo, signatureExpiry, reputation] = await Promise.all([
                 this.verifyReturnedPrice(
                     lp.services[SwapType.TO_BTCLN], true, prepareResp.amount, data.getAmount(),
-                    amountData.token, {networkFee: resp.maxFee},
+                    amountData.token, {networkFee: resp.maxFee, swapFeeBtc},
                     preFetches.pricePreFetchPromise, preFetches.usdPricePrefetchPromise, abortSignal
                 ),
                 this.verifyReturnedSignature(
@@ -526,8 +528,6 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
             abortController.signal.throwIfAborted();
 
             if(reputation!=null) lp.reputation[amountData.token.toString()] = reputation;
-
-            const swapFeeBtc = resp.swapFee * amountOut / (data.getAmount() - totalFee);
 
             const quote = new ToBTCLNSwap<T>(this, {
                 pricingInfo,

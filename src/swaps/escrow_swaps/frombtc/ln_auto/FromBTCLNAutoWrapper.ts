@@ -457,13 +457,13 @@ export class FromBTCLNAutoWrapper<
                                 lp.services[SwapType.FROM_BTCLN_AUTO],
                                 false, resp.btcAmountSwap,
                                 resp.total,
-                                amountData.token, {}, _preFetches.pricePrefetchPromise, _preFetches.usdPricePrefetchPromise, abortController.signal
+                                amountData.token, {swapFeeBtc: resp.swapFeeBtc}, _preFetches.pricePrefetchPromise, _preFetches.usdPricePrefetchPromise, abortController.signal
                             ),
                             _options.gasAmount===0n ? Promise.resolve(undefined) : this.verifyReturnedPrice(
                                 {...lp.services[SwapType.FROM_BTCLN_AUTO], swapBaseFee: 0}, //Base fee should be charged only on the amount, not on gas
                                 false, resp.btcAmountGas,
                                 resp.totalGas + resp.claimerBounty,
-                                nativeTokenAddress, {}, _preFetches.gasTokenPricePrefetchPromise, _preFetches.usdPricePrefetchPromise, abortController.signal
+                                nativeTokenAddress, {swapFeeBtc: resp.gasSwapFeeBtc}, _preFetches.gasTokenPricePrefetchPromise, _preFetches.usdPricePrefetchPromise, abortController.signal
                             ),
                             this.verifyIntermediaryLiquidity(resp.total, throwIfUndefined(liquidityPromise)),
                             _options.unsafeSkipLnNodeCheck ? Promise.resolve() : this.verifyLnNodeCapacity(lp, decodedPr, lnCapacityPromise, abortController.signal)

@@ -315,28 +315,39 @@ export abstract class ISwap<
     public async refreshPriceData(): Promise<void> {
         if(this.pricingInfo==null) return;
         const priceUsdPerBtc = this.pricingInfo.realPriceUsdPerBitcoin;
-        const input = this.getInput();
         const output = this.getOutput();
-        if(input.isUnknown || output.isUnknown) return;
+        if(output.isUnknown) return;
 
-        if(isSCToken(input.token) && this.getDirection()===SwapDirection.TO_BTC) {
+        if(isSCToken(this.getInputToken()) && this.getDirection()===SwapDirection.TO_BTC) {
+            const input = this.getInputWithoutFee();
+            if(input.isUnknown) return;
+
             this.pricingInfo = await this.wrapper._prices.isValidAmountSend(
                 this.chainIdentifier,
                 output.rawAmount!,
                 this.pricingInfo.satsBaseFee,
                 this.pricingInfo.feePPM,
-                input.rawAmount!,
-                input.token.address
+                input.rawAmount! + this.swapFee,
+                input.token.address,
+                undefined,
+                undefined,
+                this.swapFeeBtc
             );
             this.pricingInfo.realPriceUsdPerBitcoin = priceUsdPerBtc;
         } else if(isSCToken(output.token) && this.getDirection()===SwapDirection.FROM_BTC) {
+            const input = this.getInput();
+            if(input.isUnknown) return;
+
             this.pricingInfo = await this.wrapper._prices.isValidAmountReceive(
                 this.chainIdentifier,
                 input.rawAmount!,
                 this.pricingInfo.satsBaseFee,
                 this.pricingInfo.feePPM,
                 output.rawAmount!,
-                output.token.address
+                output.token.address,
+                undefined,
+                undefined,
+                this.swapFeeBtc
             );
             this.pricingInfo.realPriceUsdPerBitcoin = priceUsdPerBtc;
         }

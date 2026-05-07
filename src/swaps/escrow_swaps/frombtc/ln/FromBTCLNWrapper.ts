@@ -334,12 +334,14 @@ export class FromBTCLNWrapper<
                     if(decodedPr.timeExpireDate==null) throw new IntermediaryError("Invalid returned swap invoice, no expiry date field");
                     const amountIn = (BigInt(decodedPr.millisatoshis) + 999n) / 1000n;
 
+                    const swapFeeBtc = resp.swapFee * amountIn / (resp.total - resp.swapFee);
+
                     try {
                         this.verifyReturnedData(resp, amountData, lp, _options, decodedPr, paymentHash);
                         const [pricingInfo] = await Promise.all([
                             this.verifyReturnedPrice(
                                 lp.services[SwapType.FROM_BTCLN], false, amountIn, resp.total,
-                                amountData.token, {}, _preFetches.pricePrefetchPromise, _preFetches.usdPricePrefetchPromise, abortController.signal
+                                amountData.token, {swapFeeBtc}, _preFetches.pricePrefetchPromise, _preFetches.usdPricePrefetchPromise, abortController.signal
                             ),
                             this.verifyIntermediaryLiquidity(resp.total, throwIfUndefined(liquidityPromise)),
                             lnCapacityPromise!=null ? this.verifyLnNodeCapacity(lp, decodedPr, lnCapacityPromise, abortController.signal) : Promise.resolve()
@@ -350,7 +352,7 @@ export class FromBTCLNWrapper<
                             url: lp.url,
                             expiry: decodedPr.timeExpireDate*1000,
                             swapFee: resp.swapFee,
-                            swapFeeBtc: resp.swapFee * amountIn / (resp.total - resp.swapFee),
+                            swapFeeBtc,
                             feeRate: (await _preFetches.feeRatePromise)!,
                             initialSwapData: await this._contract.createSwapData(
                                 ChainSwapType.HTLC, lp.getAddress(this.chainIdentifier), recipient, amountData.token,

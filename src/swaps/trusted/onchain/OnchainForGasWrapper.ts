@@ -105,7 +105,7 @@ export class OnchainForGasWrapper<T extends ChainType> extends ISwapWrapper<T, O
                 {swapFeePPM: 10000, swapBaseFee: 10} :
                 lpOrUrl.services[SwapType.TRUSTED_FROM_BTC],
             false, resp.amountSats,
-            amount, this._chain.getNativeCurrencyAddress(), {}
+            amount, this._chain.getNativeCurrencyAddress(), {swapFeeBtc: resp.swapFeeSats}
         );
 
         const quote = new OnchainForGasSwap(this, {

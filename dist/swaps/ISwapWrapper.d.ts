@@ -194,6 +194,7 @@ export declare abstract class ISwapWrapper<T extends ChainType, D extends SwapTy
         swapFeePPM: number;
     }, send: boolean, amountSats: bigint, amountToken: bigint, token: string, feeData: {
         networkFee?: bigint;
+        swapFeeBtc?: bigint;
     }, pricePrefetchPromise?: Promise<bigint | undefined>, usdPricePrefetchPromise?: Promise<number | undefined>, abortSignal?: AbortSignal): Promise<PriceInfoType>;
     /**
      * Processes a single smart chain on-chain event

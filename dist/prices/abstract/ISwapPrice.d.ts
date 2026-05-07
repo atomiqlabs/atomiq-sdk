@@ -64,8 +64,9 @@ export declare abstract class ISwapPrice<T extends MultiChain = MultiChain> {
      * @param tokenAddress Token address to be paid
      * @param abortSignal
      * @param preFetchedPrice An optional price pre-fetched with {@link preFetchPrice}
+     * @param realSwapFeeSats
      */
-    isValidAmountSend<C extends ChainIds<T>>(chainIdentifier: C, amountSats: bigint, satsBaseFee: bigint, feePPM: bigint, paidToken: bigint, tokenAddress: string, abortSignal?: AbortSignal, preFetchedPrice?: bigint | null): Promise<PriceInfoType>;
+    isValidAmountSend<C extends ChainIds<T>>(chainIdentifier: C, amountSats: bigint, satsBaseFee: bigint, feePPM: bigint, paidToken: bigint, tokenAddress: string, abortSignal?: AbortSignal, preFetchedPrice?: bigint | null, realSwapFeeSats?: bigint): Promise<PriceInfoType>;
     /**
      * Recomputes pricing info without fetching the current price
      *
@@ -88,8 +89,9 @@ export declare abstract class ISwapPrice<T extends MultiChain = MultiChain> {
      * @param tokenAddress Token address to be received
      * @param abortSignal
      * @param preFetchedPrice An optional price pre-fetched with {@link preFetchPrice}
+     * @param realSwapFeeSats
      */
-    isValidAmountReceive<C extends ChainIds<T>>(chainIdentifier: C, amountSats: bigint, satsBaseFee: bigint, feePPM: bigint, receiveToken: bigint, tokenAddress: string, abortSignal?: AbortSignal, preFetchedPrice?: bigint | null): Promise<PriceInfoType>;
+    isValidAmountReceive<C extends ChainIds<T>>(chainIdentifier: C, amountSats: bigint, satsBaseFee: bigint, feePPM: bigint, receiveToken: bigint, tokenAddress: string, abortSignal?: AbortSignal, preFetchedPrice?: bigint | null, realSwapFeeSats?: bigint): Promise<PriceInfoType>;
     /**
      * Pre-fetches the pricing data for a given token, such that further calls to {@link isValidAmountReceive} or
      *  {@link isValidAmountSend} are quicker and don't need to wait for the price fetch

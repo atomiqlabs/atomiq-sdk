@@ -69,7 +69,7 @@ class OnchainForGasWrapper extends ISwapWrapper_1.ISwapWrapper {
             throw new IntermediaryError_1.IntermediaryError("Invalid total returned");
         const pricingInfo = await this.verifyReturnedPrice(typeof (lpOrUrl) === "string" || lpOrUrl.services[SwapType_1.SwapType.TRUSTED_FROM_BTC] == null ?
             { swapFeePPM: 10000, swapBaseFee: 10 } :
-            lpOrUrl.services[SwapType_1.SwapType.TRUSTED_FROM_BTC], false, resp.amountSats, amount, this._chain.getNativeCurrencyAddress(), {});
+            lpOrUrl.services[SwapType_1.SwapType.TRUSTED_FROM_BTC], false, resp.amountSats, amount, this._chain.getNativeCurrencyAddress(), { swapFeeBtc: resp.swapFeeSats });
         const quote = new OnchainForGasSwap_1.OnchainForGasSwap(this, {
             paymentHash: resp.paymentHash,
             sequence: resp.sequence,

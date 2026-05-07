@@ -309,7 +309,10 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
             this.pricingInfo.satsBaseFee,
             this.pricingInfo.feePPM,
             this.getOutputAmountWithoutFee(),
-            this.getSwapData().getToken()
+            this.getSwapData().getToken(),
+            undefined,
+            undefined,
+            this.swapFeeBtc
         );
         this.pricingInfo.realPriceUsdPerBitcoin = usdPricePerBtc;
     }

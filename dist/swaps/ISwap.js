@@ -164,16 +164,21 @@ class ISwap {
         if (this.pricingInfo == null)
             return;
         const priceUsdPerBtc = this.pricingInfo.realPriceUsdPerBitcoin;
-        const input = this.getInput();
         const output = this.getOutput();
-        if (input.isUnknown || output.isUnknown)
+        if (output.isUnknown)
             return;
-        if ((0, Token_1.isSCToken)(input.token) && this.getDirection() === SwapDirection_1.SwapDirection.TO_BTC) {
-            this.pricingInfo = await this.wrapper._prices.isValidAmountSend(this.chainIdentifier, output.rawAmount, this.pricingInfo.satsBaseFee, this.pricingInfo.feePPM, input.rawAmount, input.token.address);
+        if ((0, Token_1.isSCToken)(this.getInputToken()) && this.getDirection() === SwapDirection_1.SwapDirection.TO_BTC) {
+            const input = this.getInputWithoutFee();
+            if (input.isUnknown)
+                return;
+            this.pricingInfo = await this.wrapper._prices.isValidAmountSend(this.chainIdentifier, output.rawAmount, this.pricingInfo.satsBaseFee, this.pricingInfo.feePPM, input.rawAmount + this.swapFee, input.token.address, undefined, undefined, this.swapFeeBtc);
             this.pricingInfo.realPriceUsdPerBitcoin = priceUsdPerBtc;
         }
         else if ((0, Token_1.isSCToken)(output.token) && this.getDirection() === SwapDirection_1.SwapDirection.FROM_BTC) {
-            this.pricingInfo = await this.wrapper._prices.isValidAmountReceive(this.chainIdentifier, input.rawAmount, this.pricingInfo.satsBaseFee, this.pricingInfo.feePPM, output.rawAmount, output.token.address);
+            const input = this.getInput();
+            if (input.isUnknown)
+                return;
+            this.pricingInfo = await this.wrapper._prices.isValidAmountReceive(this.chainIdentifier, input.rawAmount, this.pricingInfo.satsBaseFee, this.pricingInfo.feePPM, output.rawAmount, output.token.address, undefined, undefined, this.swapFeeBtc);
             this.pricingInfo.realPriceUsdPerBitcoin = priceUsdPerBtc;
         }
     }

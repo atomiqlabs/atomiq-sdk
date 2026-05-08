@@ -47,6 +47,13 @@ export type SpvFromBTCOptions = {
      */
     feeSafetyFactor?: number;
     /**
+     * Instruct the LP to create a "sticky address" for your destination wallet address. After the first successful
+     *  swap with that LP, the used bitcoin address will be permanently linked to your destination wallet address. So
+     *  all subsequent swaps to the same address will yield the same LP deposit bitcoin address. Useful for corporate
+     *  whitelist-only wallets
+     */
+    stickyAddress?: boolean;
+    /**
      * @deprecated Use `maxAllowedBitcoinFeeRate` instead!
      */
     maxAllowedNetworkFeeRate?: number;

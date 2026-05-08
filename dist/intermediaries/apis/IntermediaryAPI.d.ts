@@ -243,6 +243,7 @@ export type SpvFromBTCPrepare = SwapInit & {
     exactOut: boolean;
     callerFeeRate: Promise<bigint>;
     frontingFeeRate: bigint;
+    stickyAddress?: boolean;
 };
 declare const SpvFromBTCInitResponseSchema: {
     readonly txId: FieldTypeEnum.String;

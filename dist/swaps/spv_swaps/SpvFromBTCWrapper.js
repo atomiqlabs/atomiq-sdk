@@ -460,6 +460,7 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
                                 gasAmount: _options.gasAmount,
                                 callerFeeRate: (0, Utils_1.throwIfUndefined)(callerFeePrefetchPromise, "Caller fee prefetch failed!"),
                                 frontingFeeRate: 0n,
+                                stickyAddress: options?.stickyAddress,
                                 additionalParams
                             }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined);
                         }, undefined, e => e instanceof RequestError_1.RequestError, abortController.signal);

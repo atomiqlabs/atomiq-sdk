@@ -3,11 +3,13 @@ import {BTC_NETWORK, NETWORK, pubECDSA, randomPrivateKeyBytes, TEST_NETWORK} fro
 import {getAddress, Transaction, WIF} from "@scure/btc-signer";
 import {Buffer} from "buffer";
 import {identifyAddressType, BitcoinWallet} from "./BitcoinWallet";
-import {BitcoinNetwork, BitcoinRpcWithAddressIndex} from "@atomiqlabs/base";
+import {BitcoinNetwork, BitcoinRpcWithAddressIndex, getLogger} from "@atomiqlabs/base";
 import {HDKey} from "@scure/bip32";
 import {entropyToMnemonic, generateMnemonic, mnemonicToSeed} from "@scure/bip39";
 import {wordlist} from "@scure/bip39/wordlists/english.js";
 import {sha256} from "@noble/hashes/sha2";
+
+const logger = getLogger("SingleAddressBitcoinWallet: ");
 
 /**
  * Bitcoin wallet implementation deriving a single address from a WIF encoded private key
@@ -42,11 +44,21 @@ export class SingleAddressBitcoinWallet extends BitcoinWallet {
             const address = getAddress("wpkh", this.privKey, network);
             if(address==null) throw new Error("Failed to generate p2wpkh address from the provided private key!");
             this.address = address;
+            this.addressType = identifyAddressType(this.address, network);
         } else {
             this.address = addressDataOrWIF.address;
+            this.addressType = identifyAddressType(this.address, network);
             this.pubkey = Buffer.from(addressDataOrWIF.publicKey, "hex");
+            // Some wallets seem to be returning a full 33-byte compressed pubkey instead of a taproot
+            //  32-byte long X-only key. Handle these cases here
+            if(this.addressType==="p2tr") {
+                if(this.pubkey.length!==33) return;
+                const leadingByte = this.pubkey[0];
+                if(leadingByte!==0x03 && leadingByte!==0x02) throw new Error("Invalid public key passed for taproot bitcoin wallet, expected an X-only 32-byte public key, or a compressed 33-byte public key");
+                logger.debug(`constructor(): Converting compressed public key ${addressDataOrWIF.publicKey} to taproot X-only 32-byte public key`);
+                this.pubkey = this.pubkey.slice(1);
+            }
         }
-        this.addressType = identifyAddressType(this.address, network);
     }
 
     /**

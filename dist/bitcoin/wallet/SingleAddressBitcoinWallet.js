@@ -5,10 +5,12 @@ const utils_1 = require("@scure/btc-signer/utils");
 const btc_signer_1 = require("@scure/btc-signer");
 const buffer_1 = require("buffer");
 const BitcoinWallet_1 = require("./BitcoinWallet");
+const base_1 = require("@atomiqlabs/base");
 const bip32_1 = require("@scure/bip32");
 const bip39_1 = require("@scure/bip39");
 const english_js_1 = require("@scure/bip39/wordlists/english.js");
 const sha2_1 = require("@noble/hashes/sha2");
+const logger = (0, base_1.getLogger)("SingleAddressBitcoinWallet: ");
 /**
  * Bitcoin wallet implementation deriving a single address from a WIF encoded private key
  *
@@ -32,12 +34,24 @@ class SingleAddressBitcoinWallet extends BitcoinWallet_1.BitcoinWallet {
             if (address == null)
                 throw new Error("Failed to generate p2wpkh address from the provided private key!");
             this.address = address;
+            this.addressType = (0, BitcoinWallet_1.identifyAddressType)(this.address, network);
         }
         else {
             this.address = addressDataOrWIF.address;
+            this.addressType = (0, BitcoinWallet_1.identifyAddressType)(this.address, network);
             this.pubkey = buffer_1.Buffer.from(addressDataOrWIF.publicKey, "hex");
+            // Some wallets seem to be returning a full 33-byte compressed pubkey instead of a taproot
+            //  32-byte long X-only key. Handle these cases here
+            if (this.addressType === "p2tr") {
+                if (this.pubkey.length !== 33)
+                    return;
+                const leadingByte = this.pubkey[0];
+                if (leadingByte !== 0x03 && leadingByte !== 0x02)
+                    throw new Error("Invalid public key passed for taproot bitcoin wallet, expected an X-only 32-byte public key, or a compressed 33-byte public key");
+                logger.debug(`constructor(): Converting compressed public key ${addressDataOrWIF.publicKey} to taproot X-only 32-byte public key`);
+                this.pubkey = this.pubkey.slice(1);
+            }
         }
-        this.addressType = (0, BitcoinWallet_1.identifyAddressType)(this.address, network);
     }
     /**
      * Returns all the wallet addresses controlled by the wallet

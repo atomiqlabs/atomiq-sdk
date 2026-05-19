@@ -382,8 +382,15 @@ export class FromBTCLNAutoWrapper<
             descriptionHash: parseHashValueExact32Bytes(options?.descriptionHash, "description hash")
         };
 
-        if(amountData.token===this._chain.getNativeCurrencyAddress() && _options.gasAmount!==0n)
-            throw new UserError("Cannot specify `gasAmount` for swaps to a native token!");
+
+        if(
+            _options.gasAmount!==0n &&
+            (
+                this._chain.shouldGetNativeTokenDrop!=null
+                    ? !this._chain.shouldGetNativeTokenDrop(amountData.token)
+                    : amountData.token===this._chain.getNativeCurrencyAddress()
+            )
+        ) throw new UserError("Cannot specify `gasAmount` for swaps to a native token!");
 
         if(_options.description!=null && Buffer.byteLength(_options.description, "utf8") > 500)
             throw new UserError("Invalid description length");

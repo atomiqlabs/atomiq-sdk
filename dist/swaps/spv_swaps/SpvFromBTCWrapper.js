@@ -466,7 +466,10 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
             feeSafetyFactor: options?.feeSafetyFactor ?? 1.25,
             maxAllowedBitcoinFeeRate: options?.maxAllowedBitcoinFeeRate ?? options?.maxAllowedNetworkFeeRate ?? Infinity
         };
-        if (amountData.token === this._chain.getNativeCurrencyAddress() && _options.gasAmount !== 0n)
+        if (_options.gasAmount !== 0n &&
+            (this._chain.shouldGetNativeTokenDrop != null
+                ? !this._chain.shouldGetNativeTokenDrop(amountData.token)
+                : amountData.token === this._chain.getNativeCurrencyAddress()))
             throw new UserError_1.UserError("Cannot specify `gasAmount` for swaps to a native token!");
         const lpVersions = Intermediary_1.Intermediary.getContractVersionsForLps(this.chainIdentifier, lps);
         const _abortController = (0, Utils_1.extendAbortController)(abortSignal);

@@ -231,7 +231,10 @@ class FromBTCLNAutoWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
             description: options?.description,
             descriptionHash: (0, Utils_1.parseHashValueExact32Bytes)(options?.descriptionHash, "description hash")
         };
-        if (amountData.token === this._chain.getNativeCurrencyAddress() && _options.gasAmount !== 0n)
+        if (_options.gasAmount !== 0n &&
+            (this._chain.shouldGetNativeTokenDrop != null
+                ? !this._chain.shouldGetNativeTokenDrop(amountData.token)
+                : amountData.token === this._chain.getNativeCurrencyAddress()))
             throw new UserError_1.UserError("Cannot specify `gasAmount` for swaps to a native token!");
         if (_options.description != null && buffer_1.Buffer.byteLength(_options.description, "utf8") > 500)
             throw new UserError_1.UserError("Invalid description length");

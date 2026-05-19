@@ -643,8 +643,14 @@ export class SpvFromBTCWrapper<
             maxAllowedBitcoinFeeRate: options?.maxAllowedBitcoinFeeRate ?? options?.maxAllowedNetworkFeeRate ?? Infinity
         };
 
-        if(amountData.token===this._chain.getNativeCurrencyAddress() && _options.gasAmount!==0n)
-            throw new UserError("Cannot specify `gasAmount` for swaps to a native token!");
+        if(
+            _options.gasAmount!==0n &&
+            (
+                this._chain.shouldGetNativeTokenDrop!=null
+                    ? !this._chain.shouldGetNativeTokenDrop(amountData.token)
+                    : amountData.token===this._chain.getNativeCurrencyAddress()
+            )
+        ) throw new UserError("Cannot specify `gasAmount` for swaps to a native token!");
 
         const lpVersions = Intermediary.getContractVersionsForLps(this.chainIdentifier, lps);
 

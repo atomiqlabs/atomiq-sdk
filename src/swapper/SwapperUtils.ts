@@ -455,6 +455,18 @@ export class SwapperUtils<T extends MultiChain> {
     }
 
     /**
+     * Returns whether when swapping to the provided token a gas drop can be requested
+     *
+     * @param token
+     */
+    destinationTokenSupportsGasDrop<ChainIdentifier extends ChainIds<T>>(token: SCToken<ChainIdentifier>): boolean {
+        if(this.root._chains[token.chainId]==null) throw new Error("Invalid chain identifier! Unknown chain: "+token.chainId);
+        const {chainInterface} = this.root._chains[token.chainId];
+        if(chainInterface.shouldGetNativeTokenDrop!=null) return chainInterface.shouldGetNativeTokenDrop(token.address);
+        return chainInterface.getNativeCurrencyAddress() !== token.address;
+    }
+
+    /**
      * Returns a random signer for a given smart chain
      *
      * @param chainIdentifier

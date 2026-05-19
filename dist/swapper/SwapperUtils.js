@@ -374,6 +374,19 @@ class SwapperUtils {
         return this.root._tokens[chainIdentifier][this.root._chains[chainIdentifier].chainInterface.getNativeCurrencyAddress()];
     }
     /**
+     * Returns whether when swapping to the provided token a gas drop can be requested
+     *
+     * @param token
+     */
+    destinationTokenSupportsGasDrop(token) {
+        if (this.root._chains[token.chainId] == null)
+            throw new Error("Invalid chain identifier! Unknown chain: " + token.chainId);
+        const { chainInterface } = this.root._chains[token.chainId];
+        if (chainInterface.shouldGetNativeTokenDrop != null)
+            return chainInterface.shouldGetNativeTokenDrop(token.address);
+        return chainInterface.getNativeCurrencyAddress() !== token.address;
+    }
+    /**
      * Returns a random signer for a given smart chain
      *
      * @param chainIdentifier

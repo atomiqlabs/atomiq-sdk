@@ -217,7 +217,7 @@ class FromBTCLNWrapper extends IFromBTCLNWrapper_1.IFromBTCLNWrapper {
                     if (decodedPr.timeExpireDate == null)
                         throw new IntermediaryError_1.IntermediaryError("Invalid returned swap invoice, no expiry date field");
                     const amountIn = (BigInt(decodedPr.millisatoshis) + 999n) / 1000n;
-                    const swapFeeBtc = resp.swapFee * amountIn / (resp.total - resp.swapFee);
+                    const swapFeeBtc = resp.swapFee * amountIn / (resp.total + resp.swapFee);
                     try {
                         this.verifyReturnedData(resp, amountData, lp, _options, decodedPr, paymentHash);
                         const [pricingInfo] = await Promise.all([

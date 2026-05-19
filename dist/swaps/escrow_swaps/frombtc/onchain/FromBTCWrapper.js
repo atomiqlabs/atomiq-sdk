@@ -309,7 +309,7 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
                         }, undefined, e => e instanceof RequestError_1.RequestError, abortController.signal);
                         const data = new this._swapDataDeserializer(resp.data);
                         data.setClaimer(recipient);
-                        const swapFeeBtc = resp.swapFee * resp.amount / (data.getAmount() - resp.swapFee);
+                        const swapFeeBtc = resp.swapFee * resp.amount / (data.getAmount() + resp.swapFee);
                         this.verifyReturnedData(recipient, resp, amountData, lp, _options, data, sequence, (await claimerBountyPrefetchPromise), nativeTokenAddress);
                         const [pricingInfo, signatureExpiry] = await Promise.all([
                             //Get intermediary's liquidity

@@ -487,7 +487,7 @@ export class FromBTCWrapper<
                         const data: T["Data"] = new this._swapDataDeserializer(resp.data);
                         data.setClaimer(recipient);
 
-                        const swapFeeBtc = resp.swapFee * resp.amount / (data.getAmount() - resp.swapFee);
+                        const swapFeeBtc = resp.swapFee * resp.amount / (data.getAmount() + resp.swapFee);
 
                         this.verifyReturnedData(recipient, resp, amountData, lp, _options, data, sequence, (await claimerBountyPrefetchPromise)!, nativeTokenAddress);
                         const [pricingInfo, signatureExpiry] = await Promise.all([

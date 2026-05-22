@@ -8,8 +8,16 @@
 
   "servers": [
     {
-      "url": "{scheme}://{host}{basePath}",
-      "description": "Default mounting convention for `SwapperApi` HTTP integrations.",
+      "url": "https://mainnet.swaps-api.atomiq.exchange",
+      "description": "Public mainnet REST API."
+    },
+    {
+      "url": "https://testnet4.swaps-api.atomiq.exchange",
+      "description": "Public testnet4 REST API. Uses Bitcoin testnet4 network and usual testnets/devnets of other chains."
+    },
+    {
+      "url": "{scheme}://{host}",
+      "description": "Self hosted via the REST API docker.",
       "variables": {
         "scheme": {
           "default": "https",
@@ -19,11 +27,7 @@
           ]
         },
         "host": {
-          "default": "example.com"
-        },
-        "basePath": {
-          "default": "/api",
-          "description": "Default path prefix used by the SDK integration example."
+          "default": "yourdomain.com"
         }
       }
     }

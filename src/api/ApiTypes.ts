@@ -206,15 +206,15 @@ export type ApiEndpoint<TInput, TOutput, Type extends "GET" | "POST"> = {
     /** Structured schema describing the accepted input payload. */
     inputSchema: InputSchema<TInput>;
     /** Typed endpoint implementation that receives already-validated input. */
-    callback: (input: TInput) => Promise<TOutput>;
+    callback: (input: TInput, abortSignal?: AbortSignal) => Promise<TOutput>;
     /** Raw endpoint implementation that parses unknown input into the typed callback. */
-    callbackRaw: (input: unknown) => Promise<TOutput>;
+    callbackRaw: (input: unknown, abortSignal?: AbortSignal) => Promise<TOutput>;
 }
 
 export function createApiEndpoint<TInput, TOutput, Type extends "GET" | "POST">(
     type: Type,
     description: string,
-    callback:  (input: TInput) => Promise<TOutput>,
+    callback:  (input: TInput, abortSignal?: AbortSignal) => Promise<TOutput>,
     inputSchema: InputSchema<TInput>
 ): ApiEndpoint<TInput, TOutput, Type> {
     return {
@@ -222,8 +222,8 @@ export function createApiEndpoint<TInput, TOutput, Type extends "GET" | "POST">(
         description,
         callback,
         inputSchema,
-        callbackRaw: input => {
-            return callback(parseApiInput(inputSchema, input));
+        callbackRaw: (input, abortSignal?: AbortSignal) => {
+            return callback(parseApiInput(inputSchema, input), abortSignal);
         }
     }
 }

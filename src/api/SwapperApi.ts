@@ -488,18 +488,18 @@ export class SwapperApi<T extends MultiChain> {
         };
     }
 
-    private async submitTransaction(input: SubmitTransactionInput): Promise<SubmitTransactionOutput> {
+    private async submitTransaction(input: SubmitTransactionInput, abortSignal?: AbortSignal): Promise<SubmitTransactionOutput> {
         const swap = await this.swapper.getSwapById(input.swapId);
         if (swap == null) {
             throw new Error("Swap not found: " + input.swapId);
         }
 
         return {
-            txHashes: await swap._submitExecutionTransactions(input.signedTxs, undefined, undefined, this.config?.idempotentTxSubmission)
+            txHashes: await swap._submitExecutionTransactions(input.signedTxs, abortSignal, undefined, this.config?.idempotentTxSubmission)
         }
     }
 
-    private async settleWithLnurl(input: SettleWithLnurlInput): Promise<SettleWithLnurlOutput> {
+    private async settleWithLnurl(input: SettleWithLnurlInput, abortSignal?: AbortSignal): Promise<SettleWithLnurlOutput> {
         const swap = await this.swapper.getSwapById(input.swapId);
         if (swap == null) throw new Error("Swap not found: " + input.swapId);
 
@@ -529,10 +529,10 @@ export class SwapperApi<T extends MultiChain> {
         let success: boolean;
         if (swap instanceof FromBTCLNAutoSwap) {
             // For non-legacy swap, we don't need to wait till the swap advances all the way to committed state
-            success = await swap._waitForLpPaymentReceived(2);
+            success = await swap._waitForLpPaymentReceived(2, abortSignal);
         } else {
             // For legacy swap waitForPayment waits just for the swap to transition into PR_PAID
-            success = await swap.waitForPayment(undefined, 2);
+            success = await swap.waitForPayment(undefined, 2, abortSignal);
         }
 
         if(!success) throw new Error("Failed to settle the swap with the LNURL-withdraw link!");

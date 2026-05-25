@@ -149,7 +149,7 @@ export class SwapperApi<T extends MultiChain> {
         this.config ??= {};
         this.config.syncOnGetStatus ??= true;
         this.endpoints = {
-            createSwap: createApiEndpoint<CreateSwapInput, CreateSwapOutput, "POST">("POST", "Create a new cross-chain atomic swap. Returns a swap ID and initial state. After creation, poll getSwapStatus periodically to get the next required action.", this.createSwap.bind(this), {
+            createSwap: createApiEndpoint<CreateSwapInput, CreateSwapOutput, "POST">("POST", "Create a new cross-chain atomic swap. Returns a swap object with swapId, swapType, state, quote (containing inputAmount, outputAmount, fees as ApiAmount objects with amount/rawAmount/decimals/symbol/chain fields, expiry, and outputAddress), steps array, and optional lnurl. After creation, poll getSwapStatus periodically to get the next required action.", this.createSwap.bind(this), {
                 srcToken: { type: "string", required: true, description: "Source token ticker (e.g. 'BITCOIN-BTC', 'LIGHTNING-BTC', 'STARKNET-STRK', 'SOLANA-SOL')" },
                 dstToken: { type: "string", required: true, description: "Destination token ticker" },
                 amount: { type: "bigint", required: true, description: "Amount in base units as an integer" },
@@ -162,15 +162,15 @@ export class SwapperApi<T extends MultiChain> {
                 lightningInvoiceDescriptionHash: { type: "string", required: false, description: "Description hash for Lightning invoice (hex)" },
                 lightningPaymentHTLCTimeout: { type: "number", required: false, description: "Custom expiry time in seconds" }
             }),
-            listSwaps: createApiEndpoint<ListSwapsInput, ListSwapsOutput, "GET">("GET", "List all swaps for a given signer address. Optionally filter by smart chain.", this.listSwaps.bind(this), {
+            listSwaps: createApiEndpoint<ListSwapsInput, ListSwapsOutput, "GET">("GET", "List all swaps for a given signer address. Returns an array of swap objects, each with swapId, swapType, state, quote, steps, and terminal state flags (isFinished, isSuccess, isFailed, isExpired). Optionally filter by smart chain.", this.listSwaps.bind(this), {
                 signer: { type: "string", required: true, description: "Smart chain signer address to filter swaps for" },
                 chainId: { type: "string", required: false, description: "Optional smart chain identifier to filter swaps" }
             }),
-            listPendingSwaps: createApiEndpoint<ListPendingSwapsInput, ListPendingSwapsOutput, "GET">("GET", "List swaps that require user action for a given signer address.", this.listPendingSwaps.bind(this), {
+            listPendingSwaps: createApiEndpoint<ListPendingSwapsInput, ListPendingSwapsOutput, "GET">("GET", "List swaps that require user action for a given signer address. Returns an array of swap objects with the same structure as listSwaps.", this.listPendingSwaps.bind(this), {
                 signer: { type: "string", required: true, description: "Smart chain signer address to filter pending swaps for" },
                 chainId: { type: "string", required: false, description: "Optional smart chain identifier to filter pending swaps" }
             }),
-            getSupportedTokens: createApiEndpoint<GetSupportedTokensInput, GetSupportedTokensOutput, "GET">("GET", "List all tokens available as swap input or output. Returns token identifiers like BITCOIN-BTC, LIGHTNING-BTC, STARKNET-STRK, SOLANA-SOL.", this.getSupportedTokens.bind(this), {
+            getSupportedTokens: createApiEndpoint<GetSupportedTokensInput, GetSupportedTokensOutput, "GET">("GET", "List all tokens available as swap input or output. Returns an array of ApiToken objects, each with id (e.g. BITCOIN-BTC, LIGHTNING-BTC, STARKNET-STRK), chainId, ticker, name, decimals, and address.", this.getSupportedTokens.bind(this), {
                 side: {
                     type: "string",
                     required: true,
@@ -178,7 +178,7 @@ export class SwapperApi<T extends MultiChain> {
                     allowedValues: ["INPUT", "OUTPUT"]
                 }
             }),
-            getSwapCounterTokens: createApiEndpoint<GetSwapCounterTokensInput, GetSwapCounterTokensOutput, "GET">("GET", "Get tokens that can be swapped against a given token. Use to discover valid trading pairs.", this.getSwapCounterTokens.bind(this), {
+            getSwapCounterTokens: createApiEndpoint<GetSwapCounterTokensInput, GetSwapCounterTokensOutput, "GET">("GET", "Get tokens that can be swapped against a given token. Returns an array of ApiToken objects (id, chainId, ticker, name, decimals, address). Use to discover valid trading pairs.", this.getSwapCounterTokens.bind(this), {
                 token: {
                     type: "string",
                     required: true,
@@ -191,23 +191,23 @@ export class SwapperApi<T extends MultiChain> {
                     allowedValues: ["INPUT", "OUTPUT"]
                 }
             }),
-            getSwapLimits: createApiEndpoint<GetSwapLimitsInput, GetSwapLimitsOutput, "GET">("GET", "Get minimum and maximum swap amounts for a source/destination token pair. Amounts are in base units.", this.getSwapLimits.bind(this), {
+            getSwapLimits: createApiEndpoint<GetSwapLimitsInput, GetSwapLimitsOutput, "GET">("GET", "Get minimum and maximum swap amounts for a source/destination token pair. Returns {input: {min, max?}, output: {min, max?}} where each value is an ApiAmount object with amount (decimal string), rawAmount (base units string), decimals, symbol, and chain.", this.getSwapLimits.bind(this), {
                 srcToken: { type: "string", required: true, description: "Source token identifier accepted by the API, e.g. BITCOIN-BTC, LIGHTNING-BTC, STARKNET-STRK" },
                 dstToken: { type: "string", required: true, description: "Destination token identifier accepted by the API, e.g. BITCOIN-BTC, LIGHTNING-BTC, STARKNET-STRK" }
             }),
-            parseAddress: createApiEndpoint<ParseAddressInput, ParseAddressOutput, "GET">("GET", "Parse and validate an address, Lightning invoice, LNURL, or Bitcoin URI. Returns structured address information.", this.parseAddress.bind(this), {
+            parseAddress: createApiEndpoint<ParseAddressInput, ParseAddressOutput, "GET">("GET", "Parse and validate an address, Lightning invoice, LNURL, or Bitcoin URI. Returns {address, type} and optionally lnurl (ApiLNURL with pay/withdraw details), min/max/amount (as ApiAmount objects).", this.parseAddress.bind(this), {
                 address: { type: "string", required: true, description: "Address, invoice, LNURL, or URI string to parse" }
             }),
-            getSpendableBalance: createApiEndpoint<GetSpendableBalanceInput, GetSpendableBalanceOutput, "GET">("GET", "Get the spendable balance for a wallet address and token, accounting for chain fees.", this.getSpendableBalance.bind(this), {
+            getSpendableBalance: createApiEndpoint<GetSpendableBalanceInput, GetSpendableBalanceOutput, "GET">("GET", "Get the spendable balance for a wallet address and token, accounting for chain fees. Returns {balance: ApiAmount, feeRate?} where ApiAmount has amount (decimal string), rawAmount (base units string), decimals, symbol, and chain.", this.getSpendableBalance.bind(this), {
                 wallet: { type: "string", required: true, description: "Wallet address to query" },
-                token: { type: "string", required: true, description: "Token identifier accepted by the API, e.g. BTC, STARKNET-STRK, or a token address" },
+                token: { type: "string", required: true, description: "Token identifier accepted by the API, e.g. BITCOIN-BTC, STARKNET-STRK, or a token address" },
                 targetChain: { type: "string", required: false, description: "Destination smart chain for Bitcoin SPV-vault fee estimation" },
                 gasDrop: { type: "boolean", required: false, description: "Whether to include gas-drop footprint when estimating Bitcoin SPV-vault spendable balance" },
                 feeRate: { type: "string", required: false, description: "Manual fee rate override" },
                 minBitcoinFeeRate: { type: "number", required: false, description: "Minimum Bitcoin fee rate to enforce" },
                 feeMultiplier: { type: "number", required: false, description: "Multiplier applied to smart-chain native token commit fee estimate" }
             }),
-            getSwapStatus: createApiEndpoint<GetSwapStatusInput, GetSwapStatusOutput, "GET">("GET", "Get the current status and next required action for a swap. Returns actions like SignPSBT (Bitcoin), SignSmartChainTransaction, SendToAddress, or Wait. Poll this repeatedly until isFinished is true. Typical polling interval: 30-60 seconds.", this.getSwapStatus.bind(this), {
+            getSwapStatus: createApiEndpoint<GetSwapStatusInput, GetSwapStatusOutput, "GET">("GET", "Get the current status and next required action for a swap. Returns swap state, terminal flags (isFinished, isSuccess, isFailed, isExpired), and a currentAction object. Handle each action type: SignPSBT — ask user to sign the Bitcoin PSBT with their wallet, then submit via submitTransaction. SignSmartChainTransaction — ask user to sign with their Solana/Starknet/EVM wallet, then submit via submitTransaction. SendToAddress — show the address and amount to the user, they pay externally, keep polling. Wait — poll again after pollTimeSeconds. Poll repeatedly until isFinished is true.", this.getSwapStatus.bind(this), {
                 swapId: { type: "string", required: true, description: "The swap identifier" },
                 secret: { type: "string", required: false, description: "Revealed swap secret pre-image (in hexadecimal format) for lightning network swaps" },
                 bitcoinAddress: { type: "string", required: false, description: "Bitcoin wallet address to obtain funded PSBT" },
@@ -215,7 +215,7 @@ export class SwapperApi<T extends MultiChain> {
                 bitcoinFeeRate: { type: "number", required: false, description: "Fee rate to use when creating a funded PSBT" },
                 signer: { type: "string", required: false, description: "Alternative different smart chain signer to use for refunds and manual settlement" }
             }),
-            submitTransaction: createApiEndpoint<SubmitTransactionInput, SubmitTransactionOutput, "POST">("POST", "Submit signed transaction(s) for a swap. Call this after the user has signed the transaction returned by getSwapStatus.", this.submitTransaction.bind(this), {
+            submitTransaction: createApiEndpoint<SubmitTransactionInput, SubmitTransactionOutput, "POST">("POST", "Submit signed transaction(s) for a swap. Call this after the user has signed the transaction returned by getSwapStatus. Returns {txHashes: string[]} with the submitted transaction hashes. After submission, continue polling getSwapStatus.", this.submitTransaction.bind(this), {
                 swapId: { type: "string", required: true, description: "The swap identifier" },
                 signedTxs: {
                     type: "array",
@@ -224,7 +224,7 @@ export class SwapperApi<T extends MultiChain> {
                     items: {type: "string", required: true, description: "Single string-serialized & signed transaction"}
                 }
             }),
-            settleWithLnurl: createApiEndpoint<SettleWithLnurlInput, SettleWithLnurlOutput, "POST">("POST", "Settle a Lightning Network swap using an LNURL-withdraw link.", this.settleWithLnurl.bind(this), {
+            settleWithLnurl: createApiEndpoint<SettleWithLnurlInput, SettleWithLnurlOutput, "POST">("POST", "Settle a Lightning Network swap using an LNURL-withdraw link. Returns {paymentHash: string} on success.", this.settleWithLnurl.bind(this), {
                 swapId: { type: "string", required: true, description: "The swap identifier" },
                 lnurlWithdraw: { type: "string", required: false, description: "LNURL-withdraw link to use to settle the Lightning network swap, if the swap was already created with the LNURL-withdraw link, this is optional" }
             })

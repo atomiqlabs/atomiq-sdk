@@ -150,7 +150,7 @@ export class SwapperApi<T extends MultiChain> {
         this.config.syncOnGetStatus ??= true;
         this.endpoints = {
             createSwap: createApiEndpoint<CreateSwapInput, CreateSwapOutput, "POST">("POST", "Create a new cross-chain atomic swap. Returns a swap ID and initial state. After creation, poll getSwapStatus periodically to get the next required action.", this.createSwap.bind(this), {
-                srcToken: { type: "string", required: true, description: "Source token ticker (e.g. 'BTC', 'BTCLN', 'STARKNET-STRK', 'SOLANA-SOL')" },
+                srcToken: { type: "string", required: true, description: "Source token ticker (e.g. 'BITCOIN-BTC', 'LIGHTNING-BTC', 'STARKNET-STRK', 'SOLANA-SOL')" },
                 dstToken: { type: "string", required: true, description: "Destination token ticker" },
                 amount: { type: "bigint", required: true, description: "Amount in base units as an integer" },
                 amountType: { type: "string", required: true, description: "EXACT_IN or EXACT_OUT", allowedValues: ["EXACT_IN", "EXACT_OUT"] },
@@ -170,7 +170,7 @@ export class SwapperApi<T extends MultiChain> {
                 signer: { type: "string", required: true, description: "Smart chain signer address to filter pending swaps for" },
                 chainId: { type: "string", required: false, description: "Optional smart chain identifier to filter pending swaps" }
             }),
-            getSupportedTokens: createApiEndpoint<GetSupportedTokensInput, GetSupportedTokensOutput, "GET">("GET", "List all tokens available as swap input or output. Returns token identifiers like BTC, BTCLN, STARKNET-STRK, SOLANA-SOL.", this.getSupportedTokens.bind(this), {
+            getSupportedTokens: createApiEndpoint<GetSupportedTokensInput, GetSupportedTokensOutput, "GET">("GET", "List all tokens available as swap input or output. Returns token identifiers like BITCOIN-BTC, LIGHTNING-BTC, STARKNET-STRK, SOLANA-SOL.", this.getSupportedTokens.bind(this), {
                 side: {
                     type: "string",
                     required: true,
@@ -182,7 +182,7 @@ export class SwapperApi<T extends MultiChain> {
                 token: {
                     type: "string",
                     required: true,
-                    description: "Token identifier accepted by the API, e.g. BTC, BTCLN, STARKNET-STRK, or a token address"
+                    description: "Token identifier accepted by the API, e.g. BITCOIN-BTC, LIGHTNING-BTC, STARKNET-STRK, or a token address"
                 },
                 side: {
                     type: "string",
@@ -192,8 +192,8 @@ export class SwapperApi<T extends MultiChain> {
                 }
             }),
             getSwapLimits: createApiEndpoint<GetSwapLimitsInput, GetSwapLimitsOutput, "GET">("GET", "Get minimum and maximum swap amounts for a source/destination token pair. Amounts are in base units.", this.getSwapLimits.bind(this), {
-                srcToken: { type: "string", required: true, description: "Source token identifier accepted by the API, e.g. BTC, BTCLN, STARKNET-STRK" },
-                dstToken: { type: "string", required: true, description: "Destination token identifier accepted by the API, e.g. BTC, BTCLN, STARKNET-STRK" }
+                srcToken: { type: "string", required: true, description: "Source token identifier accepted by the API, e.g. BITCOIN-BTC, LIGHTNING-BTC, STARKNET-STRK" },
+                dstToken: { type: "string", required: true, description: "Destination token identifier accepted by the API, e.g. BITCOIN-BTC, LIGHTNING-BTC, STARKNET-STRK" }
             }),
             parseAddress: createApiEndpoint<ParseAddressInput, ParseAddressOutput, "GET">("GET", "Parse and validate an address, Lightning invoice, LNURL, or Bitcoin URI. Returns structured address information.", this.parseAddress.bind(this), {
                 address: { type: "string", required: true, description: "Address, invoice, LNURL, or URI string to parse" }

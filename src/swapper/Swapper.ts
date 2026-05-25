@@ -1108,6 +1108,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         options?: SpvFromBTCOptions
     ): Promise<SpvFromBTCSwap<T[ChainIdentifier]>> {
         if(this._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
+        if(this._chains[chainIdentifier].wrappers[SwapType.SPV_VAULT_FROM_BTC]==null) throw new Error("Chain "+chainIdentifier+" doesn't support new BTC swap protocol (spv vault swaps)!");
         if(!this._chains[chainIdentifier].chainInterface.isValidAddress(recipient, true)) throw new Error("Invalid "+chainIdentifier+" address");
         recipient = this._chains[chainIdentifier].chainInterface.normalizeAddress(recipient);
         const amountData = {
@@ -1285,6 +1286,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         options?: FromBTCLNAutoOptions
     ): Promise<FromBTCLNAutoSwap<T[ChainIdentifier]>> {
         if(this._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
+        if(this._chains[chainIdentifier].wrappers[SwapType.FROM_BTCLN_AUTO]==null) throw new Error("Chain "+chainIdentifier+" doesn't support new lightning swap protocol (from btcln auto)!");
         if(!this._chains[chainIdentifier].chainInterface.isValidAddress(recipient, true)) throw new Error("Invalid "+chainIdentifier+" address");
         recipient = this._chains[chainIdentifier].chainInterface.normalizeAddress(recipient);
         const amountData = {
@@ -1331,6 +1333,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         options?: FromBTCLNAutoOptions
     ): Promise<FromBTCLNAutoSwap<T[ChainIdentifier]>> {
         if(this._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
+        if(this._chains[chainIdentifier].wrappers[SwapType.FROM_BTCLN_AUTO]==null) throw new Error("Chain "+chainIdentifier+" doesn't support new lightning swap protocol (from btcln auto)!");
         if(typeof(lnurl)==="string" && !this.Utils.isValidLNURL(lnurl)) throw new Error("Invalid LNURL-withdraw link");
         if(!this._chains[chainIdentifier].chainInterface.isValidAddress(recipient, true)) throw new Error("Invalid "+chainIdentifier+" address");
         recipient = this._chains[chainIdentifier].chainInterface.normalizeAddress(recipient);

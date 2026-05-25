@@ -606,6 +606,8 @@ class Swapper extends events_1.EventEmitter {
     async createFromBTCSwapNew(chainIdentifier, recipient, tokenAddress, amount, exactOut = false, additionalParams = this.options.defaultAdditionalParameters, options) {
         if (this._chains[chainIdentifier] == null)
             throw new Error("Invalid chain identifier! Unknown chain: " + chainIdentifier);
+        if (this._chains[chainIdentifier].wrappers[SwapType_1.SwapType.SPV_VAULT_FROM_BTC] == null)
+            throw new Error("Chain " + chainIdentifier + " doesn't support new BTC swap protocol (spv vault swaps)!");
         if (!this._chains[chainIdentifier].chainInterface.isValidAddress(recipient, true))
             throw new Error("Invalid " + chainIdentifier + " address");
         recipient = this._chains[chainIdentifier].chainInterface.normalizeAddress(recipient);
@@ -706,6 +708,8 @@ class Swapper extends events_1.EventEmitter {
     async createFromBTCLNSwapNew(chainIdentifier, recipient, tokenAddress, amount, exactOut = false, additionalParams = this.options.defaultAdditionalParameters, options) {
         if (this._chains[chainIdentifier] == null)
             throw new Error("Invalid chain identifier! Unknown chain: " + chainIdentifier);
+        if (this._chains[chainIdentifier].wrappers[SwapType_1.SwapType.FROM_BTCLN_AUTO] == null)
+            throw new Error("Chain " + chainIdentifier + " doesn't support new lightning swap protocol (from btcln auto)!");
         if (!this._chains[chainIdentifier].chainInterface.isValidAddress(recipient, true))
             throw new Error("Invalid " + chainIdentifier + " address");
         recipient = this._chains[chainIdentifier].chainInterface.normalizeAddress(recipient);
@@ -732,6 +736,8 @@ class Swapper extends events_1.EventEmitter {
     async createFromBTCLNSwapNewViaLNURL(chainIdentifier, recipient, tokenAddress, lnurl, amount, exactOut = false, additionalParams = this.options.defaultAdditionalParameters, options) {
         if (this._chains[chainIdentifier] == null)
             throw new Error("Invalid chain identifier! Unknown chain: " + chainIdentifier);
+        if (this._chains[chainIdentifier].wrappers[SwapType_1.SwapType.FROM_BTCLN_AUTO] == null)
+            throw new Error("Chain " + chainIdentifier + " doesn't support new lightning swap protocol (from btcln auto)!");
         if (typeof (lnurl) === "string" && !this.Utils.isValidLNURL(lnurl))
             throw new Error("Invalid LNURL-withdraw link");
         if (!this._chains[chainIdentifier].chainInterface.isValidAddress(recipient, true))

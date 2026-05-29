@@ -144,12 +144,14 @@ export type InputSchema<TInput> = {
 export type ApiEndpoint<TInput, TOutput, Type extends "GET" | "POST"> = {
     /** HTTP method used by the endpoint. */
     type: Type;
+    /** Human-readable description of what this endpoint does, written for AI agent consumption. */
+    description: string;
     /** Structured schema describing the accepted input payload. */
     inputSchema: InputSchema<TInput>;
     /** Typed endpoint implementation that receives already-validated input. */
-    callback: (input: TInput) => Promise<TOutput>;
+    callback: (input: TInput, abortSignal?: AbortSignal) => Promise<TOutput>;
     /** Raw endpoint implementation that parses unknown input into the typed callback. */
-    callbackRaw: (input: unknown) => Promise<TOutput>;
+    callbackRaw: (input: unknown, abortSignal?: AbortSignal) => Promise<TOutput>;
 };
-export declare function createApiEndpoint<TInput, TOutput, Type extends "GET" | "POST">(type: Type, callback: (input: TInput) => Promise<TOutput>, inputSchema: InputSchema<TInput>): ApiEndpoint<TInput, TOutput, Type>;
+export declare function createApiEndpoint<TInput, TOutput, Type extends "GET" | "POST">(type: Type, description: string, callback: (input: TInput, abortSignal?: AbortSignal) => Promise<TOutput>, inputSchema: InputSchema<TInput>): ApiEndpoint<TInput, TOutput, Type>;
 export {};

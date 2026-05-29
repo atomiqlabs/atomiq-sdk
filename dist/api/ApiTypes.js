@@ -61,13 +61,14 @@ function toApiLNURL(lnurl, swapper) {
     };
 }
 exports.toApiLNURL = toApiLNURL;
-function createApiEndpoint(type, callback, inputSchema) {
+function createApiEndpoint(type, description, callback, inputSchema) {
     return {
         type,
+        description,
         callback,
         inputSchema,
-        callbackRaw: input => {
-            return callback((0, ApiParser_1.parseApiInput)(inputSchema, input));
+        callbackRaw: (input, abortSignal) => {
+            return callback((0, ApiParser_1.parseApiInput)(inputSchema, input), abortSignal);
         }
     };
 }

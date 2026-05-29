@@ -365,7 +365,7 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
     /**
      * Returns swap candidates for a specific swap type & token address
      *
-     * @remark Also filters the LPs based on supported swap versions
+     * @remarks Also filters the LPs based on supported swap versions
      *
      * @param chainIdentifier Chain identifier of the smart chain
      * @param swapType Swap protocol type

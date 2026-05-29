@@ -84,8 +84,8 @@ class SwapperApi {
         this.config ??= {};
         this.config.syncOnGetStatus ??= true;
         this.endpoints = {
-            createSwap: (0, ApiTypes_1.createApiEndpoint)("POST", this.createSwap.bind(this), {
-                srcToken: { type: "string", required: true, description: "Source token ticker (e.g. 'BTC', 'BTCLN', 'STARKNET-STRK', 'SOLANA-SOL')" },
+            createSwap: (0, ApiTypes_1.createApiEndpoint)("POST", "Create a new cross-chain atomic swap. Returns a swap object with swapId, swapType, state, quote (containing inputAmount, outputAmount, fees as ApiAmount objects with amount/rawAmount/decimals/symbol/chain fields, expiry, and outputAddress), steps array, and optional lnurl. After creation, poll getSwapStatus periodically to get the next required action.", this.createSwap.bind(this), {
+                srcToken: { type: "string", required: true, description: "Source token ticker (e.g. 'BITCOIN-BTC', 'LIGHTNING-BTC', 'STARKNET-STRK', 'SOLANA-SOL')" },
                 dstToken: { type: "string", required: true, description: "Destination token ticker" },
                 amount: { type: "bigint", required: true, description: "Amount in base units as an integer" },
                 amountType: { type: "string", required: true, description: "EXACT_IN or EXACT_OUT", allowedValues: ["EXACT_IN", "EXACT_OUT"] },
@@ -97,15 +97,15 @@ class SwapperApi {
                 lightningInvoiceDescriptionHash: { type: "string", required: false, description: "Description hash for Lightning invoice (hex)" },
                 lightningPaymentHTLCTimeout: { type: "number", required: false, description: "Custom expiry time in seconds" }
             }),
-            listSwaps: (0, ApiTypes_1.createApiEndpoint)("GET", this.listSwaps.bind(this), {
+            listSwaps: (0, ApiTypes_1.createApiEndpoint)("GET", "List all swaps for a given signer address. Returns an array of swap objects, each with swapId, swapType, state, quote, steps, and terminal state flags (isFinished, isSuccess, isFailed, isExpired). Optionally filter by smart chain.", this.listSwaps.bind(this), {
                 signer: { type: "string", required: true, description: "Smart chain signer address to filter swaps for" },
                 chainId: { type: "string", required: false, description: "Optional smart chain identifier to filter swaps" }
             }),
-            listPendingSwaps: (0, ApiTypes_1.createApiEndpoint)("GET", this.listPendingSwaps.bind(this), {
+            listPendingSwaps: (0, ApiTypes_1.createApiEndpoint)("GET", "List swaps that require user action for a given signer address. Returns an array of swap objects with the same structure as listSwaps.", this.listPendingSwaps.bind(this), {
                 signer: { type: "string", required: true, description: "Smart chain signer address to filter pending swaps for" },
                 chainId: { type: "string", required: false, description: "Optional smart chain identifier to filter pending swaps" }
             }),
-            getSupportedTokens: (0, ApiTypes_1.createApiEndpoint)("GET", this.getSupportedTokens.bind(this), {
+            getSupportedTokens: (0, ApiTypes_1.createApiEndpoint)("GET", "List all tokens available as swap input or output. Returns an array of ApiToken objects, each with id (e.g. BITCOIN-BTC, LIGHTNING-BTC, STARKNET-STRK), chainId, ticker, name, decimals, and address.", this.getSupportedTokens.bind(this), {
                 side: {
                     type: "string",
                     required: true,
@@ -113,11 +113,11 @@ class SwapperApi {
                     allowedValues: ["INPUT", "OUTPUT"]
                 }
             }),
-            getSwapCounterTokens: (0, ApiTypes_1.createApiEndpoint)("GET", this.getSwapCounterTokens.bind(this), {
+            getSwapCounterTokens: (0, ApiTypes_1.createApiEndpoint)("GET", "Get tokens that can be swapped against a given token. Returns an array of ApiToken objects (id, chainId, ticker, name, decimals, address). Use to discover valid trading pairs.", this.getSwapCounterTokens.bind(this), {
                 token: {
                     type: "string",
                     required: true,
-                    description: "Token identifier accepted by the API, e.g. BTC, BTCLN, STARKNET-STRK, or a token address"
+                    description: "Token identifier accepted by the API, e.g. BITCOIN-BTC, LIGHTNING-BTC, STARKNET-STRK, or a token address"
                 },
                 side: {
                     type: "string",
@@ -126,23 +126,23 @@ class SwapperApi {
                     allowedValues: ["INPUT", "OUTPUT"]
                 }
             }),
-            getSwapLimits: (0, ApiTypes_1.createApiEndpoint)("GET", this.getSwapLimits.bind(this), {
-                srcToken: { type: "string", required: true, description: "Source token identifier accepted by the API, e.g. BTC, BTCLN, STARKNET-STRK" },
-                dstToken: { type: "string", required: true, description: "Destination token identifier accepted by the API, e.g. BTC, BTCLN, STARKNET-STRK" }
+            getSwapLimits: (0, ApiTypes_1.createApiEndpoint)("GET", "Get minimum and maximum swap amounts for a source/destination token pair. Returns {input: {min, max?}, output: {min, max?}} where each value is an ApiAmount object with amount (decimal string), rawAmount (base units string), decimals, symbol, and chain.", this.getSwapLimits.bind(this), {
+                srcToken: { type: "string", required: true, description: "Source token identifier accepted by the API, e.g. BITCOIN-BTC, LIGHTNING-BTC, STARKNET-STRK" },
+                dstToken: { type: "string", required: true, description: "Destination token identifier accepted by the API, e.g. BITCOIN-BTC, LIGHTNING-BTC, STARKNET-STRK" }
             }),
-            parseAddress: (0, ApiTypes_1.createApiEndpoint)("GET", this.parseAddress.bind(this), {
+            parseAddress: (0, ApiTypes_1.createApiEndpoint)("GET", "Parse and validate an address, Lightning invoice, LNURL, or Bitcoin URI. Returns {address, type} and optionally lnurl (ApiLNURL with pay/withdraw details), min/max/amount (as ApiAmount objects).", this.parseAddress.bind(this), {
                 address: { type: "string", required: true, description: "Address, invoice, LNURL, or URI string to parse" }
             }),
-            getSpendableBalance: (0, ApiTypes_1.createApiEndpoint)("GET", this.getSpendableBalance.bind(this), {
+            getSpendableBalance: (0, ApiTypes_1.createApiEndpoint)("GET", "Get the spendable balance for a wallet address and token, accounting for chain fees. Returns {balance: ApiAmount, feeRate?} where ApiAmount has amount (decimal string), rawAmount (base units string), decimals, symbol, and chain.", this.getSpendableBalance.bind(this), {
                 wallet: { type: "string", required: true, description: "Wallet address to query" },
-                token: { type: "string", required: true, description: "Token identifier accepted by the API, e.g. BTC, STARKNET-STRK, or a token address" },
+                token: { type: "string", required: true, description: "Token identifier accepted by the API, e.g. BITCOIN-BTC, STARKNET-STRK, or a token address" },
                 targetChain: { type: "string", required: false, description: "Destination smart chain for Bitcoin SPV-vault fee estimation" },
                 gasDrop: { type: "boolean", required: false, description: "Whether to include gas-drop footprint when estimating Bitcoin SPV-vault spendable balance" },
                 feeRate: { type: "string", required: false, description: "Manual fee rate override" },
                 minBitcoinFeeRate: { type: "number", required: false, description: "Minimum Bitcoin fee rate to enforce" },
                 feeMultiplier: { type: "number", required: false, description: "Multiplier applied to smart-chain native token commit fee estimate" }
             }),
-            getSwapStatus: (0, ApiTypes_1.createApiEndpoint)("GET", this.getSwapStatus.bind(this), {
+            getSwapStatus: (0, ApiTypes_1.createApiEndpoint)("GET", "Get the current status and next required action for a swap. Returns swap state, terminal flags (isFinished, isSuccess, isFailed, isExpired), and a currentAction object. Handle each action type: SignPSBT — ask user to sign the Bitcoin PSBT with their wallet, then submit via submitTransaction. SignSmartChainTransaction — ask user to sign with their Solana/Starknet/EVM wallet, then submit via submitTransaction. SendToAddress — show the address and amount to the user, they pay externally, keep polling. Wait — poll again after pollTimeSeconds. Poll repeatedly until isFinished is true.", this.getSwapStatus.bind(this), {
                 swapId: { type: "string", required: true, description: "The swap identifier" },
                 secret: { type: "string", required: false, description: "Revealed swap secret pre-image (in hexadecimal format) for lightning network swaps" },
                 bitcoinAddress: { type: "string", required: false, description: "Bitcoin wallet address to obtain funded PSBT" },
@@ -150,7 +150,7 @@ class SwapperApi {
                 bitcoinFeeRate: { type: "number", required: false, description: "Fee rate to use when creating a funded PSBT" },
                 signer: { type: "string", required: false, description: "Alternative different smart chain signer to use for refunds and manual settlement" }
             }),
-            submitTransaction: (0, ApiTypes_1.createApiEndpoint)("POST", this.submitTransaction.bind(this), {
+            submitTransaction: (0, ApiTypes_1.createApiEndpoint)("POST", "Submit signed transaction(s) for a swap. Call this after the user has signed the transaction returned by getSwapStatus. Returns {txHashes: string[]} with the submitted transaction hashes. After submission, continue polling getSwapStatus.", this.submitTransaction.bind(this), {
                 swapId: { type: "string", required: true, description: "The swap identifier" },
                 signedTxs: {
                     type: "array",
@@ -159,7 +159,7 @@ class SwapperApi {
                     items: { type: "string", required: true, description: "Single string-serialized & signed transaction" }
                 }
             }),
-            settleWithLnurl: (0, ApiTypes_1.createApiEndpoint)("POST", this.settleWithLnurl.bind(this), {
+            settleWithLnurl: (0, ApiTypes_1.createApiEndpoint)("POST", "Settle a Lightning Network swap using an LNURL-withdraw link. Returns {paymentHash: string} on success.", this.settleWithLnurl.bind(this), {
                 swapId: { type: "string", required: true, description: "The swap identifier" },
                 lnurlWithdraw: { type: "string", required: false, description: "LNURL-withdraw link to use to settle the Lightning network swap, if the swap was already created with the LNURL-withdraw link, this is optional" }
             })
@@ -377,16 +377,16 @@ class SwapperApi {
             } : undefined
         };
     }
-    async submitTransaction(input) {
+    async submitTransaction(input, abortSignal) {
         const swap = await this.swapper.getSwapById(input.swapId);
         if (swap == null) {
             throw new Error("Swap not found: " + input.swapId);
         }
         return {
-            txHashes: await swap._submitExecutionTransactions(input.signedTxs, undefined, undefined, this.config?.idempotentTxSubmission)
+            txHashes: await swap._submitExecutionTransactions(input.signedTxs, abortSignal, undefined, this.config?.idempotentTxSubmission)
         };
     }
-    async settleWithLnurl(input) {
+    async settleWithLnurl(input, abortSignal) {
         const swap = await this.swapper.getSwapById(input.swapId);
         if (swap == null)
             throw new Error("Swap not found: " + input.swapId);
@@ -415,11 +415,11 @@ class SwapperApi {
         let success;
         if (swap instanceof FromBTCLNAutoSwap_1.FromBTCLNAutoSwap) {
             // For non-legacy swap, we don't need to wait till the swap advances all the way to committed state
-            success = await swap._waitForLpPaymentReceived(2);
+            success = await swap._waitForLpPaymentReceived(2, abortSignal);
         }
         else {
             // For legacy swap waitForPayment waits just for the swap to transition into PR_PAID
-            success = await swap.waitForPayment(undefined, 2);
+            success = await swap.waitForPayment(undefined, 2, abortSignal);
         }
         if (!success)
             throw new Error("Failed to settle the swap with the LNURL-withdraw link!");

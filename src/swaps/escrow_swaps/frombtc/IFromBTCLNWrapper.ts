@@ -38,10 +38,9 @@ export abstract class IFromBTCLNWrapper<
      * @param unifiedStorage Storage interface for the current environment
      * @param unifiedChainEvents On-chain event listener
      * @param chain
-     * @param contract Underlying contract handling the swaps
      * @param prices Swap pricing handler
      * @param tokens
-     * @param swapDataDeserializer Deserializer for SwapData
+     * @param versionedContracts
      * @param lnApi
      * @param options
      * @param events Instance to use for emitting events
@@ -51,15 +50,19 @@ export abstract class IFromBTCLNWrapper<
         unifiedStorage: UnifiedSwapStorage<T>,
         unifiedChainEvents: UnifiedSwapEventListener<T>,
         chain: T["ChainInterface"],
-        contract: T["Contract"],
         prices: ISwapPrice,
         tokens: WrapperCtorTokens,
-        swapDataDeserializer: new (data: any) => T["Data"],
+        versionedContracts: {
+            [version: string]: {
+                swapContract: T["Contract"],
+                swapDataConstructor: new (data: any) => T["Data"]
+            }
+        },
         lnApi: LightningNetworkApi,
         options: O,
         events?: EventEmitter<{swapState: [IEscrowSwap]}>
     ) {
-        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, contract, prices, tokens, swapDataDeserializer, options, events);
+        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, options, versionedContracts, events);
         this.lnApi = lnApi;
     }
 

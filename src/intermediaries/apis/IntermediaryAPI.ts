@@ -14,7 +14,8 @@ export type InfoHandlerResponse = {
     chains: {
         [chainIdentifier: string]: {
             address: string,
-            signature: string
+            signature: string,
+            contractVersion?: string,
         }
     }
 };

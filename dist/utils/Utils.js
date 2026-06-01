@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.parseHashValueExact32Bytes = exports.toDecimal = exports.fromDecimal = exports.getTxoHash = exports.randomBytes = exports.toBigInt = exports.bigIntCompare = exports.bigIntMax = exports.bigIntMin = exports.extendAbortController = exports.mapToArray = exports.objectMap = exports.promiseAny = exports.throwIfUndefined = void 0;
+exports.parseHashValueExact32Bytes = exports.toDecimal = exports.fromDecimal = exports.getTxoHash = exports.randomBytes = exports.toBigInt = exports.bigIntCompare = exports.bigIntMax = exports.bigIntMin = exports.extendAbortController = exports.mapToArray = exports.objectMap = exports.mapArrayToObject = exports.promiseAny = exports.throwIfUndefined = void 0;
 const buffer_1 = require("buffer");
 const utils_1 = require("@noble/hashes/utils");
 const sha2_1 = require("@noble/hashes/sha2");
@@ -48,6 +48,20 @@ function promiseAny(promises) {
     });
 }
 exports.promiseAny = promiseAny;
+/**
+ * Maps an array to object properties using the translation function
+ *
+ * @param array
+ * @param translator
+ */
+function mapArrayToObject(array, translator) {
+    const obj = {};
+    array.forEach((item) => {
+        obj[item] = translator(item);
+    });
+    return obj;
+}
+exports.mapArrayToObject = mapArrayToObject;
 /**
  * Maps a JS object to another JS object based on the translation function, the translation function is called for every
  *  property (value/key) of the old object and returns the new value of for this property

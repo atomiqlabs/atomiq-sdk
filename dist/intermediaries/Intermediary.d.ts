@@ -51,6 +51,12 @@ export declare class Intermediary {
         [chainIdentifier: string]: string;
     };
     /**
+     * Contract versions of the intermediary on smart chains
+     */
+    readonly contractVersions: {
+        [chainIdentifier: string]: string;
+    };
+    /**
      * Swap protocol services offered by the intermediary
      */
     readonly services: ServicesType;
@@ -97,6 +103,8 @@ export declare class Intermediary {
         [chainIdentifier: string]: string;
     }, services: ServicesType, reputation?: {
         [chainIdentifier: string]: SingleChainReputationType;
+    }, contractVersions?: {
+        [chainIdentifier: string]: string;
     });
     /**
      * Returns the input/output swap limit for given swap type, chain and token
@@ -154,4 +162,17 @@ export declare class Intermediary {
      * @param chainIdentifier Chain identifier of the smart chain
      */
     getAddress(chainIdentifier: string): string;
+    /**
+     * Returns the contract version used by the intermediary for a given chain
+     *
+     * @param chainIdentifier
+     */
+    getContractVersion(chainIdentifier: string): string;
+    /**
+     * Returns the range of contract versions used by the LPs
+     *
+     * @param chainIdentifier
+     * @param lps
+     */
+    static getContractVersionsForLps(chainIdentifier: string, lps: Intermediary[]): string[];
 }

@@ -133,13 +133,21 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
         abortSignal?.throwIfAborted();
         const promises = [];
         const addresses = {};
+        const contractVersions = {};
         for (let chain in response.chains) {
             if (this.swapContracts[chain] != null) {
+                const { signature, address, contractVersion } = response.chains[chain];
+                const _contractVersion = contractVersion ?? "v1";
+                const contract = this.swapContracts[chain][_contractVersion];
+                if (contract == null) {
+                    logger.warn("getNodeInfo(): Unknown chain contract version " + _contractVersion + " for " + chain + " reported by intermediary: " + url);
+                    continue;
+                }
                 promises.push((async () => {
-                    const { signature, address } = response.chains[chain];
                     try {
-                        await this.swapContracts[chain].isValidDataSignature(buffer_1.Buffer.from(response.envelope), signature, address);
+                        await contract.swapContract.isValidDataSignature(buffer_1.Buffer.from(response.envelope), signature, address);
                         addresses[chain] = address;
+                        contractVersions[chain] = _contractVersion;
                     }
                     catch (e) {
                         logger.warn("getNodeInfo(): Failed to verify " + chain + " signature for intermediary: " + url);
@@ -171,6 +179,7 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
         }
         return {
             addresses,
+            contractVersions,
             info
         };
     }
@@ -188,7 +197,7 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
             for (let key in nodeInfo.info.services) {
                 services[swapHandlerTypeToSwapType(key)] = nodeInfo.info.services[key];
             }
-            return new Intermediary_1.Intermediary(url, nodeInfo.addresses, services);
+            return new Intermediary_1.Intermediary(url, nodeInfo.addresses, services, undefined, nodeInfo.contractVersions);
         }
         catch (e) {
             logger.warn("fetchIntermediaries(): Intermediary " + url + ` is unreachable due to ${e.name ?? e.message} error, skipping...`);
@@ -356,6 +365,8 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
     /**
      * Returns swap candidates for a specific swap type & token address
      *
+     * @remark Also filters the LPs based on supported swap versions
+     *
      * @param chainIdentifier Chain identifier of the smart chain
      * @param swapType Swap protocol type
      * @param tokenAddress Token address
@@ -376,6 +387,13 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
             if (swapService.chainTokens[chainIdentifier] == null)
                 return false;
             if (!swapService.chainTokens[chainIdentifier].includes(tokenAddress.toString()))
+                return false;
+            const contracts = this.swapContracts[chainIdentifier][e.getContractVersion(chainIdentifier) ?? "v1"];
+            if (contracts == null)
+                return false;
+            if (swapType === SwapType_1.SwapType.FROM_BTCLN_AUTO && !contracts.swapContract?.supportsInitWithoutClaimer)
+                return false;
+            if (swapType === SwapType_1.SwapType.SPV_VAULT_FROM_BTC && contracts.spvVaultContract == null)
                 return false;
             return true;
         });

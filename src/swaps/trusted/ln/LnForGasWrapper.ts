@@ -81,7 +81,8 @@ export class LnForGasWrapper<T extends ChainType> extends ISwapWrapper<T, LnForG
             swapFee: resp.swapFee,
             swapFeeBtc: resp.swapFeeSats,
             token,
-            exactIn: false
+            exactIn: false,
+            contractVersion: "v1"
         };
         const quote = new LnForGasSwap(this, quoteInit);
         return quote;

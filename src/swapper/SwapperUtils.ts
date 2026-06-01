@@ -404,7 +404,9 @@ export class SwapperUtils<T extends MultiChain> {
         feeRate?: any
     }): Promise<TokenAmount> {
         if(this.root._chains[token.chainId]==null) throw new Error("Invalid chain identifier! Unknown chain: "+token.chainId);
-        const {swapContract, chainInterface} = this.root._chains[token.chainId];
+        const {defaultVersion, versionedContracts, chainInterface} = this.root._chains[token.chainId];
+
+        const {swapContract} = versionedContracts[defaultVersion];
 
         let signer: string;
         if(typeof(wallet)==="string") {
@@ -450,6 +452,18 @@ export class SwapperUtils<T extends MultiChain> {
     getNativeToken<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier): SCToken<ChainIdentifier> {
         if(this.root._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
         return this.root._tokens[chainIdentifier][this.root._chains[chainIdentifier].chainInterface.getNativeCurrencyAddress()] as SCToken<ChainIdentifier>;
+    }
+
+    /**
+     * Returns whether when swapping to the provided token a gas drop can be requested
+     *
+     * @param token
+     */
+    destinationTokenSupportsGasDrop<ChainIdentifier extends ChainIds<T>>(token: SCToken<ChainIdentifier>): boolean {
+        if(this.root._chains[token.chainId]==null) throw new Error("Invalid chain identifier! Unknown chain: "+token.chainId);
+        const {chainInterface} = this.root._chains[token.chainId];
+        if(chainInterface.shouldGetNativeTokenDrop!=null) return chainInterface.shouldGetNativeTokenDrop(token.address);
+        return chainInterface.getNativeCurrencyAddress() !== token.address;
     }
 
     /**

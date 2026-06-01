@@ -55,7 +55,7 @@ class IEscrowSelfInitSwap extends IEscrowSwap_1.IEscrowSwap {
         while (!expired) {
             await (0, TimeoutUtils_1.timeoutPromise)(intervalSeconds * 1000, abortSignal);
             try {
-                expired = await this.wrapper._contract.isInitAuthorizationExpired(this._data, this.signatureData);
+                expired = await this._contract.isInitAuthorizationExpired(this._data, this.signatureData);
             }
             catch (e) {
                 this.logger.error("watchdogWaitTillSignatureExpiry(): Error when checking signature expiry: ", e);
@@ -71,13 +71,13 @@ class IEscrowSelfInitSwap extends IEscrowSwap_1.IEscrowSwap {
      * @internal
      */
     getCommitFee() {
-        return this.wrapper._contract.getCommitFee(this._getInitiator(), this.getSwapData(), this.feeRate);
+        return this._contract.getCommitFee(this._getInitiator(), this.getSwapData(), this.feeRate);
     }
     /**
      * Returns the transaction fee paid on the smart chain side to initiate the escrow
      */
     async getSmartChainNetworkFee() {
-        const swapContract = this.wrapper._contract;
+        const swapContract = this._contract;
         return (0, TokenAmount_1.toTokenAmount)(await (swapContract.getRawCommitFee != null ?
             swapContract.getRawCommitFee(this._getInitiator(), this.getSwapData(), this.feeRate) :
             swapContract.getCommitFee(this._getInitiator(), this.getSwapData(), this.feeRate)), this.wrapper._getNativeToken(), this.wrapper._prices);
@@ -90,7 +90,7 @@ class IEscrowSelfInitSwap extends IEscrowSwap_1.IEscrowSwap {
     async _verifyQuoteDefinitelyExpired() {
         if (this._data == null || this.signatureData == null)
             throw new Error("data or signature data are null!");
-        return this.wrapper._contract.isInitAuthorizationExpired(this._data, this.signatureData);
+        return this._contract.isInitAuthorizationExpired(this._data, this.signatureData);
     }
     /**
      * Checks if the swap's quote is still valid
@@ -99,7 +99,7 @@ class IEscrowSelfInitSwap extends IEscrowSwap_1.IEscrowSwap {
         if (this._data == null || this.signatureData == null)
             throw new Error("data or signature data are null!");
         try {
-            await this.wrapper._contract.isValidInitAuthorization(this._getInitiator(), this._data, this.signatureData, this.feeRate);
+            await this._contract.isValidInitAuthorization(this._getInitiator(), this._data, this.signatureData, this.feeRate);
             return true;
         }
         catch (e) {

@@ -139,6 +139,12 @@ export declare class SwapperUtils<T extends MultiChain> {
      */
     getNativeToken<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier): SCToken<ChainIdentifier>;
     /**
+     * Returns whether when swapping to the provided token a gas drop can be requested
+     *
+     * @param token
+     */
+    destinationTokenSupportsGasDrop<ChainIdentifier extends ChainIds<T>>(token: SCToken<ChainIdentifier>): boolean;
+    /**
      * Returns a random signer for a given smart chain
      *
      * @param chainIdentifier

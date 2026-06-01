@@ -474,16 +474,16 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
         required: TokenAmount<SCToken<T["ChainId"]>, true>
     }> {
         const [balance, feeRate] = await Promise.all([
-            this.wrapper._contract.getBalance(this._getInitiator(), this.wrapper._chain.getNativeCurrencyAddress(), false),
-            this.feeRate!=null ? Promise.resolve<string>(this.feeRate) : this.wrapper._contract.getInitFeeRate(
+            this._contract.getBalance(this._getInitiator(), this.wrapper._chain.getNativeCurrencyAddress(), false),
+            this.feeRate!=null ? Promise.resolve<string>(this.feeRate) : this._contract.getInitFeeRate(
                 this.getSwapData().getOfferer(),
                 this.getSwapData().getClaimer(),
                 this.getSwapData().getToken(),
                 this.getSwapData().getClaimHash()
             )
         ]);
-        const commitFee = await this.wrapper._contract.getCommitFee(this._getInitiator(), this.getSwapData(), feeRate);
-        const claimFee = await this.wrapper._contract.getClaimFee(this._getInitiator(), this.getSwapData(), feeRate);
+        const commitFee = await this._contract.getCommitFee(this._getInitiator(), this.getSwapData(), feeRate);
+        const claimFee = await this._contract.getClaimFee(this._getInitiator(), this.getSwapData(), feeRate);
         const totalFee = commitFee + claimFee + this.getSwapData().getTotalDeposit();
         return {
             enoughBalance: balance >= totalFee,
@@ -494,7 +494,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
 
     private isValidSecretPreimage(secret: string) {
         const paymentHash = Buffer.from(sha256(Buffer.from(secret, "hex")));
-        const claimHash = this.wrapper._contract.getHashForHtlc(paymentHash).toString("hex");
+        const claimHash = this._contract.getHashForHtlc(paymentHash).toString("hex");
         return this.getSwapData().getClaimHash()===claimHash;
     }
 
@@ -716,10 +716,10 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
         const resp = await IntermediaryAPI.getPaymentAuthorization(this.url, paymentHash.toString("hex"));
         switch(resp.code) {
             case PaymentAuthorizationResponseCodes.AUTH_DATA:
-                const data = new this.wrapper._swapDataDeserializer(resp.data.data);
+                const data = new (this.wrapper._swapDataDeserializer(this._contractVersion))(resp.data.data);
                 try {
                     await this.checkIntermediaryReturnedAuthData(this._getInitiator(), data, resp.data);
-                    this.expiry = await this.wrapper._contract.getInitAuthorizationExpiry(
+                    this.expiry = await this._contract.getInitAuthorizationExpiry(
                         data,
                         resp.data
                     );
@@ -773,8 +773,8 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
         if (data.hasSuccessAction()) throw new IntermediaryError("Invalid has success action");
 
         await Promise.all([
-            this.wrapper._contract.isValidInitAuthorization(this._getInitiator(), data, signature, this.feeRate),
-            this.wrapper._contract.getCommitStatus(data.getClaimer(), data)
+            this._contract.isValidInitAuthorization(this._getInitiator(), data, signature, this.feeRate),
+            this._contract.getCommitStatus(data.getClaimer(), data)
                 .then(status => {
                     if (status?.type !== SwapCommitStateType.NOT_COMMITED)
                         throw new Error("Swap already committed on-chain!");
@@ -846,9 +846,9 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
 
         if(resp.code===PaymentAuthorizationResponseCodes.AUTH_DATA) {
             const sigData = resp.data;
-            const swapData = new this.wrapper._swapDataDeserializer(resp.data.data);
+            const swapData = new (this.wrapper._swapDataDeserializer(this._contractVersion))(resp.data.data);
             await this.checkIntermediaryReturnedAuthData(this._getInitiator(), swapData, sigData);
-            this.expiry = await this.wrapper._contract.getInitAuthorizationExpiry(
+            this.expiry = await this._contract.getInitAuthorizationExpiry(
                 swapData,
                 sigData
             );
@@ -972,7 +972,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
         if(!this.isValidSecretPreimage(useSecret))
             throw new Error("Invalid swap secret pre-image provided!");
 
-        return this.wrapper._contract.txsClaimWithSecret(
+        return this._contract.txsClaimWithSecret(
             address ?? this._getInitiator(),
             this._data, useSecret, true, true
         );
@@ -1092,7 +1092,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
      *  to settle the swap on the smart chain destination side.
      */
     async getCommitAndClaimNetworkFee(): Promise<TokenAmount<SCToken<T["ChainId"]>, true>> {
-        const swapContract: T["Contract"] = this.wrapper._contract;
+        const swapContract: T["Contract"] = this._contract;
         const feeRate = this.feeRate ?? await swapContract.getInitFeeRate(
             this.getSwapData().getOfferer(),
             this.getSwapData().getClaimer(),
@@ -1123,7 +1123,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
      *  call {@link commit} first and then {@link claim}.
      */
     canCommitAndClaimInOneShot(): boolean {
-        return this.wrapper._contract.initAndClaimWithSecret!=null;
+        return this._contract.initAndClaimWithSecret!=null;
     }
 
     /**
@@ -1154,7 +1154,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
             throw new Error("Invalid swap secret pre-image provided!");
 
         const initTxs = await this.txsCommit(skipChecks);
-        const claimTxs = await this.wrapper._contract.txsClaimWithSecret(
+        const claimTxs = await this._contract.txsClaimWithSecret(
             this._getInitiator(), this._data, useSecret,
             true, true, undefined,
             true
@@ -1311,7 +1311,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
             }
 
             //Check if it's already successfully paid
-            commitStatus ??= await this.wrapper._contract.getCommitStatus(this._getInitiator(), this._data!);
+            commitStatus ??= await this._contract.getCommitStatus(this._getInitiator(), this._data!);
             if(commitStatus!=null && await this._forciblySetOnchainState(commitStatus)) return true;
 
             //Set the state on expiry here
@@ -1382,7 +1382,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
         if(await this.syncStateFromChain(quoteDefinitelyExpired, commitStatus)) changed = true;
 
         if(this._state===FromBTCLNSwapState.CLAIM_COMMITED) {
-            const expired = await this.wrapper._contract.isExpired(this._getInitiator(), this._data!);
+            const expired = await this._contract.isExpired(this._getInitiator(), this._data!);
             if(expired) {
                 this._state = FromBTCLNSwapState.EXPIRED;
                 changed = true;
@@ -1447,7 +1447,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
                 }
                 break;
             case FromBTCLNSwapState.CLAIM_COMMITED:
-                const expired = await this.wrapper._contract.isExpired(this._getInitiator(), this._data!);
+                const expired = await this._contract.isExpired(this._getInitiator(), this._data!);
                 if(expired) {
                     this._state = FromBTCLNSwapState.EXPIRED;
                     if(save) await this._saveAndEmit();

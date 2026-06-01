@@ -84,7 +84,8 @@ class OnchainForGasWrapper extends ISwapWrapper_1.ISwapWrapper {
             swapFee: resp.swapFee,
             swapFeeBtc: resp.swapFeeSats,
             exactIn: false,
-            token
+            token,
+            contractVersion: "v1"
         });
         return quote;
     }

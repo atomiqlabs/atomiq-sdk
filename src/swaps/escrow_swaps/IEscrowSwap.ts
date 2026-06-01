@@ -50,6 +50,11 @@ export abstract class IEscrowSwap<
      */
     _claimTxId?: string;
 
+    /**
+     * @internal
+     */
+    protected _contract: T["Contract"];
+
     protected constructor(wrapper: D["Wrapper"], obj: any);
     protected constructor(wrapper: D["Wrapper"], swapInit: IEscrowSwapInit<T["Data"]>);
     protected constructor(
@@ -61,12 +66,14 @@ export abstract class IEscrowSwap<
         if(isIEscrowSwapInit(swapInitOrObj)) {
             this._data = swapInitOrObj.data;
         } else {
-            if(swapInitOrObj.data!=null) this._data = new wrapper._swapDataDeserializer(swapInitOrObj.data);
+            if(swapInitOrObj.data!=null) this._data = new (wrapper._swapDataDeserializer(this._contractVersion))(swapInitOrObj.data);
 
             this._commitTxId = swapInitOrObj.commitTxId;
             this._claimTxId = swapInitOrObj.claimTxId;
             this._refundTxId = swapInitOrObj.refundTxId;
         }
+
+        this._contract = wrapper._contract(this._contractVersion);
     }
 
     /**
@@ -170,7 +177,7 @@ export abstract class IEscrowSwap<
         while(status?.type===SwapCommitStateType.NOT_COMMITED) {
             await timeoutPromise(intervalSeconds*1000, abortSignal);
             try {
-                status = await this.wrapper._contract.getCommitStatus(this._getInitiator(), this._data);
+                status = await this._contract.getCommitStatus(this._getInitiator(), this._data);
                 if(
                     status?.type===SwapCommitStateType.NOT_COMMITED &&
                     await this._verifyQuoteDefinitelyExpired()
@@ -200,7 +207,7 @@ export abstract class IEscrowSwap<
         while(status?.type===SwapCommitStateType.COMMITED || status?.type===SwapCommitStateType.REFUNDABLE) {
             await timeoutPromise(intervalSeconds*1000, abortSignal);
             try {
-                status = await this.wrapper._contract.getCommitStatus(this._getInitiator(), this._data);
+                status = await this._contract.getCommitStatus(this._getInitiator(), this._data);
             } catch (e) {
                 this.logger.error("watchdogWaitTillResult(): Error when fetching commit status: ", e);
             }

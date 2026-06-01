@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { Intermediary } from "./Intermediary";
 import { SwapType } from "../enums/SwapType";
-import { SwapContract } from "@atomiqlabs/base";
+import { SpvVaultContract, SwapContract } from "@atomiqlabs/base";
 import { EventEmitter } from "events";
 /**
  * Swap handler type mapping for intermediary communication
@@ -83,7 +83,12 @@ export declare class IntermediaryDiscovery extends EventEmitter {
      * Swap contracts for checking intermediary signatures
      */
     swapContracts: {
-        [key: string]: SwapContract;
+        [chainIdentifier: string]: {
+            [contractVersion: string]: {
+                swapContract: SwapContract;
+                spvVaultContract: SpvVaultContract;
+            };
+        };
     };
     /**
      * Registry URL used as a source for the list of intermediaries, this should be a link to a
@@ -105,7 +110,12 @@ export declare class IntermediaryDiscovery extends EventEmitter {
      */
     private overrideNodeUrls?;
     constructor(swapContracts: {
-        [key: string]: SwapContract;
+        [chainIdentifier: string]: {
+            [contractVersion: string]: {
+                swapContract: SwapContract;
+                spvVaultContract: SpvVaultContract;
+            };
+        };
     }, registryUrl?: string, nodeUrls?: string[], httpRequestTimeout?: number, maxWaitForOthersTimeout?: number);
     /**
      * Fetches the URLs of swap intermediaries from registry or from a pre-defined array of node urls
@@ -182,6 +192,8 @@ export declare class IntermediaryDiscovery extends EventEmitter {
     getSwapMaximum(chainIdentifier: string, swapType: SwapType, tokenAddress: string): number | null;
     /**
      * Returns swap candidates for a specific swap type & token address
+     *
+     * @remark Also filters the LPs based on supported swap versions
      *
      * @param chainIdentifier Chain identifier of the smart chain
      * @param swapType Swap protocol type

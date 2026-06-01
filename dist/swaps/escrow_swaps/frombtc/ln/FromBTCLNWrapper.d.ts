@@ -79,15 +79,19 @@ export declare class FromBTCLNWrapper<T extends ChainType> extends IFromBTCLNWra
      * @param unifiedStorage Storage interface for the current environment
      * @param unifiedChainEvents On-chain event listener
      * @param chain
-     * @param contract Underlying contract handling the swaps
      * @param prices Swap pricing handler
      * @param tokens
-     * @param swapDataDeserializer Deserializer for SwapData
+     * @param versionedContracts
      * @param lnApi
      * @param options
      * @param events Instance to use for emitting events
      */
-    constructor(chainIdentifier: string, unifiedStorage: UnifiedSwapStorage<T>, unifiedChainEvents: UnifiedSwapEventListener<T>, chain: T["ChainInterface"], contract: T["Contract"], prices: ISwapPrice, tokens: WrapperCtorTokens, swapDataDeserializer: new (data: any) => T["Data"], lnApi: LightningNetworkApi, options?: AllOptional<FromBTCLNWrapperOptions>, events?: EventEmitter<{
+    constructor(chainIdentifier: string, unifiedStorage: UnifiedSwapStorage<T>, unifiedChainEvents: UnifiedSwapEventListener<T>, chain: T["ChainInterface"], prices: ISwapPrice, tokens: WrapperCtorTokens, versionedContracts: {
+        [version: string]: {
+            swapContract: T["Contract"];
+            swapDataConstructor: new (data: any) => T["Data"];
+        };
+    }, lnApi: LightningNetworkApi, options?: AllOptional<FromBTCLNWrapperOptions>, events?: EventEmitter<{
         swapState: [ISwap];
     }>);
     /**
@@ -136,8 +140,10 @@ export declare class FromBTCLNWrapper<T extends ChainType> extends IFromBTCLNWra
      */
     create(recipient: string, amountData: AmountData, lps: Intermediary[], options?: FromBTCLNOptions, additionalParams?: Record<string, any>, abortSignal?: AbortSignal, preFetches?: {
         usdPricePrefetchPromise: Promise<number | undefined>;
-        pricePrefetchPromise?: Promise<bigint | undefined>;
-        feeRatePromise?: Promise<string | undefined>;
+        pricePrefetchPromise: Promise<bigint | undefined>;
+        feeRatePromise: {
+            [contractVersion: string]: Promise<string | undefined>;
+        };
     }): {
         quote: Promise<FromBTCLNSwap<T>>;
         intermediary: Intermediary;
@@ -180,5 +186,5 @@ export declare class FromBTCLNWrapper<T extends ChainType> extends IFromBTCLNWra
             blockTime: number;
             blockHeight: number;
         }>;
-    }, state: SwapCommitState, lp?: Intermediary): Promise<FromBTCLNSwap<T> | null>;
+    }, state: SwapCommitState, contractVersion: string, lp?: Intermediary): Promise<FromBTCLNSwap<T> | null>;
 }

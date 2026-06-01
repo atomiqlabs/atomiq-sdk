@@ -89,7 +89,7 @@ export abstract class IEscrowSelfInitSwap<
         while(!expired) {
             await timeoutPromise(intervalSeconds*1000, abortSignal);
             try {
-                expired = await this.wrapper._contract.isInitAuthorizationExpired(this._data, this.signatureData);
+                expired = await this._contract.isInitAuthorizationExpired(this._data, this.signatureData);
             } catch (e) {
                 this.logger.error("watchdogWaitTillSignatureExpiry(): Error when checking signature expiry: ", e);
             }
@@ -106,14 +106,14 @@ export abstract class IEscrowSelfInitSwap<
      * @internal
      */
     protected getCommitFee(): Promise<bigint> {
-        return this.wrapper._contract.getCommitFee(this._getInitiator(), this.getSwapData(), this.feeRate);
+        return this._contract.getCommitFee(this._getInitiator(), this.getSwapData(), this.feeRate);
     }
 
     /**
      * Returns the transaction fee paid on the smart chain side to initiate the escrow
      */
     async getSmartChainNetworkFee(): Promise<TokenAmount<SCToken<T["ChainId"]>, true>> {
-        const swapContract: T["Contract"] = this.wrapper._contract;
+        const swapContract: T["Contract"] = this._contract;
         return toTokenAmount(
             await (
                 swapContract.getRawCommitFee!=null ?
@@ -178,7 +178,7 @@ export abstract class IEscrowSelfInitSwap<
     async _verifyQuoteDefinitelyExpired(): Promise<boolean> {
         if(this._data==null || this.signatureData==null) throw new Error("data or signature data are null!");
 
-        return this.wrapper._contract.isInitAuthorizationExpired(
+        return this._contract.isInitAuthorizationExpired(
             this._data!, this.signatureData!
         );
     }
@@ -190,7 +190,7 @@ export abstract class IEscrowSelfInitSwap<
         if(this._data==null || this.signatureData==null) throw new Error("data or signature data are null!");
 
         try {
-            await this.wrapper._contract.isValidInitAuthorization(
+            await this._contract.isValidInitAuthorization(
                 this._getInitiator(), this._data!, this.signatureData!, this.feeRate
             );
             return true;

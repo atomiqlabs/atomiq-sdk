@@ -951,7 +951,7 @@ class Swapper extends events_1.EventEmitter {
         if (wallet.getUtxoPool == null)
             throw new Error("Wallet needs to support the `getUtxoPool()` function!");
         const walletUtxosPromise = wallet.getUtxoPool();
-        const bitcoinFeeRatePromise = wallet.getFeeRate();
+        const bitcoinFeeRatePromise = options?.bitcoinFeeRate ?? wallet.getFeeRate();
         const swap = await this.createFromBTCSwapNew(dstToken.chainId, dstAddress, dstToken.address, null, false, undefined, {
             ...options,
             sourceWalletUtxos: walletUtxosPromise,

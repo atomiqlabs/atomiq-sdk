@@ -48,7 +48,7 @@ export function maxSendable (
     value: number,
     fee: number
 } {
-    if (!isFinite(utils.uintOrNaN(feeRate))) throw new Error("Invalid feeRate passed!");
+    if (!isFinite(utils.numberOrNaN(feeRate))) throw new Error("Invalid feeRate passed!");
 
     const outputs = additionalOutputs ?? [];
     const inputs = requiredInputs ?? [];

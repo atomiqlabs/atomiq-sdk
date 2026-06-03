@@ -18,7 +18,7 @@ export function accumulative (
     effectiveFeeRate?: number,
     fee: number
 } {
-    if (!isFinite(utils.uintOrNaN(feeRate))) throw new Error("Invalid feeRate passed!");
+    if (!isFinite(utils.numberOrNaN(feeRate))) throw new Error("Invalid feeRate passed!");
 
     const inputs = requiredInputs==null ? [] : [...requiredInputs];
     let bytesAccum = utils.transactionBytes(inputs, outputs, type);

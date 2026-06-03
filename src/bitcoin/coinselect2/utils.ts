@@ -132,6 +132,13 @@ function transactionBytes (
     return Math.ceil(size);
 }
 
+function numberOrNaN(v: number): number {
+    if (typeof v !== 'number') return NaN;
+    if (!isFinite(v)) return NaN;
+    if (v < 0) return NaN;
+    return v;
+}
+
 function uintOrNaN(v: number): number {
   if (typeof v !== 'number') return NaN;
   if (!isFinite(v)) return NaN;
@@ -224,5 +231,6 @@ export const utils = {
   sumForgiving: sumForgiving,
   transactionBytes: transactionBytes,
   uintOrNaN: uintOrNaN,
+  numberOrNaN: numberOrNaN,
   isDetrimentalInput
 };

@@ -52,6 +52,7 @@ declare function transactionBytes(inputs: {
     script?: Buffer;
     type?: CoinselectAddressTypes;
 }[], changeType?: CoinselectAddressTypes): number;
+declare function numberOrNaN(v: number): number;
 declare function uintOrNaN(v: number): number;
 declare function sumForgiving(range: {
     value: number;
@@ -75,6 +76,7 @@ export declare const utils: {
     sumForgiving: typeof sumForgiving;
     transactionBytes: typeof transactionBytes;
     uintOrNaN: typeof uintOrNaN;
+    numberOrNaN: typeof numberOrNaN;
     isDetrimentalInput: typeof isDetrimentalInput;
 };
 export {};

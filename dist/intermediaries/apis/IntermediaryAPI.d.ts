@@ -234,17 +234,27 @@ declare const SpvFromBTCPrepareResponseSchema: {
     readonly callerFeeShare: FieldTypeEnum.BigInt;
     readonly frontingFeeShare: FieldTypeEnum.BigInt;
     readonly executionFeeShare: FieldTypeEnum.BigInt;
+    readonly usedUtxoInputCalculation: FieldTypeEnum.BooleanOptional;
 };
 export type SpvFromBTCPrepareResponseType = RequestSchemaResult<typeof SpvFromBTCPrepareResponseSchema>;
 export type SpvFromBTCPrepare = SwapInit & {
     address: string;
-    amount: bigint;
+    amount: Promise<bigint>;
     gasAmount: bigint;
     gasToken: string;
     exactOut: boolean;
     callerFeeRate: Promise<bigint>;
     frontingFeeRate: bigint;
     stickyAddress?: boolean;
+    amountUtxos?: Promise<{
+        value: number;
+        vSize: number;
+        cpfp?: {
+            effectiveVSize: number;
+            effectiveFeeRate: number;
+        };
+    }[] | undefined>;
+    amountFeeRate?: Promise<number | undefined>;
 };
 declare const SpvFromBTCInitResponseSchema: {
     readonly txId: FieldTypeEnum.String;

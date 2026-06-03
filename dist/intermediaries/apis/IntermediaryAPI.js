@@ -123,7 +123,8 @@ const SpvFromBTCPrepareResponseSchema = {
     gasSwapFee: SchemaVerifier_1.FieldTypeEnum.BigInt,
     callerFeeShare: SchemaVerifier_1.FieldTypeEnum.BigInt,
     frontingFeeShare: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    executionFeeShare: SchemaVerifier_1.FieldTypeEnum.BigInt
+    executionFeeShare: SchemaVerifier_1.FieldTypeEnum.BigInt,
+    usedUtxoInputCalculation: SchemaVerifier_1.FieldTypeEnum.BooleanOptional
 };
 const SpvFromBTCInitResponseSchema = {
     txId: SchemaVerifier_1.FieldTypeEnum.String
@@ -534,17 +535,31 @@ class IntermediaryAPI {
      * @throws {RequestError} If non-200 http response code is returned
      */
     static prepareSpvFromBTC(chainIdentifier, baseUrl, init, timeout, abortSignal, streamRequest) {
+        //We need to make sure we only send the amount parameter after the amountUtxos and amountFeeRate resolve
+        // this is needed, because in the LP code to maintain backwards compatibility the amountUtxos and amountFeeRate
+        // params are checked immediately after the amount param (and other params) are received, if amount were sent
+        // first without the amountUtxos or amountFeeRate populated these fields would've been skipped altogether
+        const amountPromise = (async () => {
+            if (init.amountUtxos != null)
+                await init.amountUtxos;
+            if (init.amountFeeRate != null)
+                await init.amountFeeRate;
+            const amount = await init.amount;
+            return amount.toString(10);
+        })();
         const responseBodyPromise = (0, StreamingFetchPromise_1.streamingFetchPromise)(baseUrl + "/frombtc_spv/getQuote?chain=" + encodeURIComponent(chainIdentifier), {
             exactOut: init.exactOut,
             ...init.additionalParams,
             address: init.address,
-            amount: init.amount.toString(10),
+            amount: amountPromise,
             token: init.token,
             gasAmount: init.gasAmount.toString(10),
             gasToken: init.gasToken,
             frontingFeeRate: init.frontingFeeRate.toString(10),
             callerFeeRate: init.callerFeeRate.then(val => val.toString(10)),
-            stickyAddress: init.stickyAddress
+            stickyAddress: init.stickyAddress,
+            amountUtxos: init.amountUtxos,
+            amountFeeRate: init.amountFeeRate
         }, {
             code: SchemaVerifier_1.FieldTypeEnum.Number,
             msg: SchemaVerifier_1.FieldTypeEnum.String,

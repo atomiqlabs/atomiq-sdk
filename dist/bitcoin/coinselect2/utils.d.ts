@@ -59,11 +59,13 @@ declare function sumForgiving(range: {
 declare function sumOrNaN(range: {
     value: number;
 }[]): number;
-declare function finalize(inputs: CoinselectTxInput[], outputs: CoinselectTxOutput[], feeRate: number, changeType: CoinselectAddressTypes, cpfpAddFee?: number): {
-    inputs?: CoinselectTxInput[];
+declare function finalize<T extends Omit<CoinselectTxInput, "txId" | "address" | "vout" | "outputScript">>(inputs: T[], outputs: CoinselectTxOutput[], feeRate: number, changeType: CoinselectAddressTypes | null, cpfpAddFee?: number): {
+    inputs?: T[];
     outputs?: CoinselectTxOutput[];
+    effectiveFeeRate?: number;
     fee: number;
 };
+declare function isDetrimentalInput(feeRate: number, utxo: Omit<CoinselectTxInput, "txId" | "address" | "vout" | "outputScript">): boolean;
 export declare const utils: {
     dustThreshold: typeof dustThreshold;
     finalize: typeof finalize;
@@ -73,5 +75,6 @@ export declare const utils: {
     sumForgiving: typeof sumForgiving;
     transactionBytes: typeof transactionBytes;
     uintOrNaN: typeof uintOrNaN;
+    isDetrimentalInput: typeof isDetrimentalInput;
 };
 export {};

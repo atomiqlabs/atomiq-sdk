@@ -148,39 +148,71 @@ function sumOrNaN(range: {value: number}[]): number {
   return range.reduce((a, x)  => a + uintOrNaN(x.value), 0);
 }
 
-function finalize(
-    inputs: CoinselectTxInput[],
+function finalize<T extends Omit<CoinselectTxInput, "txId" | "address" | "vout" | "outputScript">>(
+    inputs: T[],
     outputs: CoinselectTxOutput[],
     feeRate: number,
-    changeType: CoinselectAddressTypes,
+    changeType: CoinselectAddressTypes | null,
     cpfpAddFee: number = 0
 ): {
-    inputs?: CoinselectTxInput[],
+    inputs?: T[],
     outputs?: CoinselectTxOutput[],
+    effectiveFeeRate?: number,
     fee: number
 } {
-  const bytesAccum = transactionBytes(inputs, outputs, changeType);
+  const bytesAccum = transactionBytes(inputs, outputs, changeType ?? undefined);
   logger.debug("finalize(): Transaction bytes: ", bytesAccum);
 
-  const feeAfterExtraOutput = (feeRate * (bytesAccum + outputBytes({type: changeType}))) + cpfpAddFee;
-  logger.debug("finalize(): TX fee after adding change output: ", feeAfterExtraOutput);
-  const remainderAfterExtraOutput = Math.floor(sumOrNaN(inputs) - (sumOrNaN(outputs) + feeAfterExtraOutput));
-  logger.debug("finalize(): Leaves change (changeType="+changeType+") value: ", remainderAfterExtraOutput);
+  if(changeType!=null) {
+      const feeAfterExtraOutput = (feeRate * (bytesAccum + outputBytes({type: changeType}))) + cpfpAddFee;
+      logger.debug("finalize(): TX fee after adding change output: ", feeAfterExtraOutput);
+      const remainderAfterExtraOutput = Math.floor(sumOrNaN(inputs) - (sumOrNaN(outputs) + feeAfterExtraOutput));
+      logger.debug("finalize(): Leaves change (changeType="+changeType+") value: ", remainderAfterExtraOutput);
 
-  // is it worth a change output?
-  if (remainderAfterExtraOutput >= dustThreshold({type: changeType})) {
-    outputs = outputs.concat({ value: remainderAfterExtraOutput, type: changeType })
+      // is it worth a change output?
+      if (remainderAfterExtraOutput >= dustThreshold({type: changeType})) {
+          outputs = outputs.concat({ value: remainderAfterExtraOutput, type: changeType })
+      }
   }
 
   const fee = sumOrNaN(inputs) - sumOrNaN(outputs);
   logger.debug("finalize(): Re-calculated total fee: ", fee);
-  if (!isFinite(fee)) return { fee: (feeRate * bytesAccum) + cpfpAddFee }
+  if (!isFinite(fee) || fee<0) return { fee: (feeRate * bytesAccum) + cpfpAddFee }
+
+  let txVSize = utils.transactionBytes(inputs, outputs);
+  let txFee = fee;
+  const cpfpSortedInputs = [...inputs].sort(
+      (a, b) => (b.cpfp?.txEffectiveFeeRate ?? 0) - (a.cpfp?.txEffectiveFeeRate ?? 0)
+  );
+  cpfpSortedInputs.forEach(input => {
+    if(input.cpfp==null) return;
+      const currentEffectiveFeeRate = txFee / txVSize;
+      if(currentEffectiveFeeRate > input.cpfp.txEffectiveFeeRate) {
+        txVSize += input.cpfp.txVsize;
+        txFee += input.cpfp.txVsize * input.cpfp.txEffectiveFeeRate;
+      }
+    }
+  );
 
   return {
     inputs: inputs,
     outputs: outputs,
+    effectiveFeeRate: txFee / txVSize,
     fee: fee
   }
+}
+
+function isDetrimentalInput(
+    feeRate: number,
+    utxo: Omit<CoinselectTxInput, "txId" | "address" | "vout" | "outputScript">
+) {
+    const utxoBytes = utils.inputBytes(utxo);
+    const utxoFee = feeRate * utxoBytes;
+    let cpfpFee = 0;
+    if(utxo.cpfp!=null && utxo.cpfp.txEffectiveFeeRate<feeRate) cpfpFee = Math.ceil(utxo.cpfp.txVsize*(feeRate - utxo.cpfp.txEffectiveFeeRate));
+
+    // skip detrimental input
+    return utxoFee + cpfpFee > utxo.value;
 }
 
 export const utils = {
@@ -191,5 +223,6 @@ export const utils = {
   sumOrNaN: sumOrNaN,
   sumForgiving: sumForgiving,
   transactionBytes: transactionBytes,
-  uintOrNaN: uintOrNaN
+  uintOrNaN: uintOrNaN,
+  isDetrimentalInput
 };

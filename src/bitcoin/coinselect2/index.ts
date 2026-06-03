@@ -20,6 +20,7 @@ export function coinSelect (
 ): {
     inputs?: CoinselectTxInput[],
     outputs?: CoinselectTxOutput[],
+    effectiveFeeRate?: number,
     fee: number
 } {
     // order by descending value, minus the inputs approximate fee
@@ -38,10 +39,10 @@ export function coinSelect (
 }
 
 export function maxSendable (
-    utxos: CoinselectTxInput[],
+    utxos: Omit<CoinselectTxInput, "txId" | "address" | "vout" | "outputScript">[],
     output: {script: Buffer, type: CoinselectAddressTypes},
     feeRate: number,
-    requiredInputs?: CoinselectTxInput[],
+    requiredInputs?: Omit<CoinselectTxInput, "txId" | "address" | "vout" | "outputScript">[],
     additionalOutputs?: {script: Buffer, value: number}[],
 ): {
     value: number,
@@ -61,7 +62,7 @@ export function maxSendable (
         const utxoBytes = utils.inputBytes(utxo);
         const utxoFee = feeRate * utxoBytes;
         let cpfpFee = 0;
-        if(utxo.cpfp!=null && utxo.cpfp.txEffectiveFeeRate<feeRate) cpfpFee = utxo.cpfp.txVsize*(feeRate - utxo.cpfp.txEffectiveFeeRate);
+        if(utxo.cpfp!=null && utxo.cpfp.txEffectiveFeeRate<feeRate) cpfpFee = Math.ceil(utxo.cpfp.txVsize*(feeRate - utxo.cpfp.txEffectiveFeeRate));
         const utxoValue = utils.uintOrNaN(utxo.value);
 
         // skip detrimental input

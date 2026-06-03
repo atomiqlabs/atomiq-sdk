@@ -39,6 +39,8 @@ import { LNURLPay } from "../types/lnurl/LNURLPay";
 import { NotNever } from "../utils/TypeUtils";
 import { LightningInvoiceCreateService } from "../types/wallets/LightningInvoiceCreateService";
 import { SwapSide } from "../enums/SwapSide";
+import { BitcoinWalletUtxo, IBitcoinWallet } from "../bitcoin/wallet/IBitcoinWallet";
+import { MinimalBitcoinWalletInterface } from "../types/wallets/MinimalBitcoinWalletInterface";
 /**
  * Configuration options for the Swapper
  * @category Core
@@ -346,7 +348,7 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
      * @param additionalParams Additional parameters sent to the LP when creating the swap
      * @param options Additional options for the swap
      */
-    createFromBTCSwapNew<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier, recipient: string, tokenAddress: string, amount: bigint, exactOut?: boolean, additionalParams?: Record<string, any> | undefined, options?: SpvFromBTCOptions): Promise<SpvFromBTCSwap<T[ChainIdentifier]>>;
+    createFromBTCSwapNew<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier, recipient: string, tokenAddress: string, amount: bigint | null, exactOut?: boolean, additionalParams?: Record<string, any> | undefined, options?: SpvFromBTCOptions): Promise<SpvFromBTCSwap<T[ChainIdentifier]>>;
     /**
      * Creates LEGACY Bitcoin -> Smart chain ({@link SwapType.FROM_BTC}) swap
      *
@@ -505,6 +507,44 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
     swap<C extends ChainIds<T>>(srcToken: Token<C> | string, dstToken: Token<C> | string, amount: bigint | string | undefined, exactIn: boolean | SwapAmountType, src: undefined | string | LNURLWithdraw, dst: string | LNURLPay | LightningInvoiceCreateService, options?: FromBTCLNOptions | SpvFromBTCOptions | FromBTCOptions | ToBTCOptions | (ToBTCLNOptions & {
         comment?: string;
     }) | FromBTCLNAutoOptions): Promise<ISwap<T[C]>>;
+    /**
+     * A helper function to sweep all the funds from a given wallet in a single swap, after getting the quote you can
+     *  execute the swap by passing the returned `feeRate` and `utxos` to the {@link SpvFromBTCSwap.execute},
+     *  {@link SpvFromBTCSwap.getFundedPsbt} or {@link SpvFromBTCSwap.sendBitcoinTransaction} functions along
+     *  with `spendFully=true`.
+     *
+     * @example
+     * Create the swap first using this function
+     * ```ts
+     * const {swap, utxos, btcFeeRate} = await swapper.sweepBitcoinWallet(wallet, Tokens.CITREA.CBTC, dstAddress);
+     * ```
+     * Then execute it using one of these execution paths - ensure that you supply the returned `utxos`, `btcFeeRate`
+     *  params and also set `spendFully` to `true`!
+     *
+     * a) Execute and pass the returned utxos and btcFeeRate:
+     * ```ts
+     * await swap.execute(wallet, undefined, {feeRate: btcFeeRate, utxos: utxos, spendFully: true});
+     * ```
+     *
+     * b) Get funded PSBT to sign externally:
+     * ```ts
+     * const {psbt, psbtHex, psbtBase64, signInputs} = await swap.getFundedPsbt(wallet, btcFeeRate, undefined, utxos, true);
+     * // Sign the psbt at the specified signInputs indices
+     * const signedPsbt = ...;
+     * // Then submit back to the SDK
+     * await swap.submitPsbt(signedPsbt);
+     * ```
+     *
+     * c) Only sign and send the signed PSBT with the provided wallet:
+     * ```ts
+     * await swap.sendBitcoinTransaction(wallet, btcFeeRate, utxos, true);
+     * ```
+     */
+    sweepBitcoinWallet<C extends ChainIds<T>>(srcWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, _dstToken: SCToken<C> | string, dstAddress: string, options?: SpvFromBTCOptions): Promise<{
+        swap: SpvFromBTCSwap<T[C]>;
+        utxos: BitcoinWalletUtxo[];
+        btcFeeRate: number;
+    }>;
     /**
      * Returns all swaps
      */

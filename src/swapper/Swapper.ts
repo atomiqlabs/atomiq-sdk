@@ -65,6 +65,9 @@ import {NotNever} from "../utils/TypeUtils";
 import {IEscrowSwap} from "../swaps/escrow_swaps/IEscrowSwap";
 import {LightningInvoiceCreateService, isLightningInvoiceCreateService} from "../types/wallets/LightningInvoiceCreateService";
 import {SwapSide} from "../enums/SwapSide";
+import {BitcoinWalletUtxo, BitcoinWalletUtxoBase, IBitcoinWallet} from "../bitcoin/wallet/IBitcoinWallet";
+import {MinimalBitcoinWalletInterface} from "../types/wallets/MinimalBitcoinWalletInterface";
+import {toBitcoinWallet} from "../utils/BitcoinWalletUtils";
 
 /**
  * Configuration options for the Swapper
@@ -745,7 +748,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
             quote: Promise<S>,
             intermediary: Intermediary
         }[]>,
-        amountData: AmountData,
+        amountData: { amount?: bigint, token: string, exactIn: boolean },
         swapType: SwapType,
         maxWaitTimeMS: number = 2000
     ): Promise<S> {
@@ -755,7 +758,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
 
         const inBtc: boolean = swapType===SwapType.TO_BTCLN || swapType===SwapType.TO_BTC ? !amountData.exactIn : amountData.exactIn;
 
-        if(!inBtc) {
+        if(!inBtc || amountData.amount==null) {
             //Get candidates not based on the amount
             candidates = this.intermediaryDiscovery.getSwapCandidates(chainIdentifier, swapType, amountData.token);
         } else {
@@ -769,7 +772,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
             await this.intermediaryDiscovery.reloadIntermediaries();
             swapLimitsChanged = true;
 
-            if(!inBtc) {
+            if(!inBtc || amountData.amount==null) {
                 //Get candidates not based on the amount
                 candidates = this.intermediaryDiscovery.getSwapCandidates(chainIdentifier, swapType, amountData.token);
             } else {
@@ -859,8 +862,10 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                         }
                         if(min!=null && max!=null) {
                             let msg = "Swap amount too high or too low! Try swapping a different amount.";
-                            if(min > amountData.amount) msg = "Swap amount too low! Try swapping a higher amount.";
-                            if(max < amountData.amount) msg = "Swap amount too high! Try swapping a lower amount.";
+                            if(amountData.amount!=null) {
+                                if(min > amountData.amount) msg = "Swap amount too low! Try swapping a higher amount.";
+                                if(max < amountData.amount) msg = "Swap amount too high! Try swapping a lower amount.";
+                            }
                             reject(new OutOfBoundsError(msg, 400, min, max));
                             return;
                         }
@@ -1102,7 +1107,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         chainIdentifier: ChainIdentifier,
         recipient: string,
         tokenAddress: string,
-        amount: bigint,
+        amount: bigint | null,
         exactOut: boolean = false,
         additionalParams: Record<string, any> | undefined = this.options.defaultAdditionalParameters,
         options?: SpvFromBTCOptions
@@ -1112,7 +1117,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         if(!this._chains[chainIdentifier].chainInterface.isValidAddress(recipient, true)) throw new Error("Invalid "+chainIdentifier+" address");
         recipient = this._chains[chainIdentifier].chainInterface.normalizeAddress(recipient);
         const amountData = {
-            amount,
+            amount: amount ?? undefined,
             token: tokenAddress,
             exactIn: !exactOut
         };
@@ -1574,6 +1579,73 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
             }
         }
         throw new Error("Unsupported swap type");
+    }
+
+    /**
+     * A helper function to sweep all the funds from a given wallet in a single swap, after getting the quote you can
+     *  execute the swap by passing the returned `feeRate` and `utxos` to the {@link SpvFromBTCSwap.execute},
+     *  {@link SpvFromBTCSwap.getFundedPsbt} or {@link SpvFromBTCSwap.sendBitcoinTransaction} functions along
+     *  with `spendFully=true`.
+     *
+     * @example
+     * Create the swap first using this function
+     * ```ts
+     * const {swap, utxos, btcFeeRate} = await swapper.sweepBitcoinWallet(wallet, Tokens.CITREA.CBTC, dstAddress);
+     * ```
+     * Then execute it using one of these execution paths - ensure that you supply the returned `utxos`, `btcFeeRate`
+     *  params and also set `spendFully` to `true`!
+     *
+     * a) Execute and pass the returned utxos and btcFeeRate:
+     * ```ts
+     * await swap.execute(wallet, undefined, {feeRate: btcFeeRate, utxos: utxos, spendFully: true});
+     * ```
+     *
+     * b) Get funded PSBT to sign externally:
+     * ```ts
+     * const {psbt, psbtHex, psbtBase64, signInputs} = await swap.getFundedPsbt(wallet, btcFeeRate, undefined, utxos, true);
+     * // Sign the psbt at the specified signInputs indices
+     * const signedPsbt = ...;
+     * // Then submit back to the SDK
+     * await swap.submitPsbt(signedPsbt);
+     * ```
+     *
+     * c) Only sign and send the signed PSBT with the provided wallet:
+     * ```ts
+     * await swap.sendBitcoinTransaction(wallet, btcFeeRate, utxos, true);
+     * ```
+     */
+    async sweepBitcoinWallet<C extends ChainIds<T>>(
+        srcWallet: IBitcoinWallet | MinimalBitcoinWalletInterface,
+        _dstToken: SCToken<C> | string,
+        dstAddress: string,
+        options?: SpvFromBTCOptions
+    ): Promise<{
+        swap: SpvFromBTCSwap<T[C]>,
+        utxos: BitcoinWalletUtxo[],
+        btcFeeRate: number
+    }> {
+        const dstToken = typeof(_dstToken)==="string" ? this.getToken(_dstToken) as Token<C> : _dstToken;
+        if(!isSCToken<C>(dstToken)) throw new Error("Destination token must be a smart chain token!");
+
+        const wallet = toBitcoinWallet(srcWallet, this._bitcoinRpc, this.bitcoinNetwork);
+        if(wallet.getUtxoPool==null) throw new Error("Wallet needs to support the `getUtxoPool()` function!");
+
+        const walletUtxosPromise = wallet.getUtxoPool();
+        const bitcoinFeeRatePromise = wallet.getFeeRate();
+
+        const swap = await this.createFromBTCSwapNew(
+            dstToken.chainId, dstAddress, dstToken.address, null, false, undefined, {
+                ...options,
+                sourceWalletUtxos: walletUtxosPromise,
+                bitcoinFeeRate: bitcoinFeeRatePromise
+            }
+        );
+
+        return {
+            swap,
+            utxos: await walletUtxosPromise,
+            btcFeeRate: Math.max(swap.minimumBtcFeeRate, await bitcoinFeeRatePromise)
+        };
     }
 
     /**

@@ -80,8 +80,8 @@ class SingleAddressBitcoinWallet extends BitcoinWallet_1.BitcoinWallet {
     /**
      * @inheritDoc
      */
-    async fundPsbt(inputPsbt, feeRate) {
-        const { psbt } = await super._fundPsbt(this.toBitcoinWalletAccounts(), inputPsbt, feeRate);
+    async fundPsbt(inputPsbt, feeRate, utxos, spendFully) {
+        const { psbt } = await super._fundPsbt(this.toBitcoinWalletAccounts(), inputPsbt, feeRate, utxos, spendFully);
         if (psbt == null) {
             throw new Error("Not enough balance!");
         }
@@ -133,8 +133,14 @@ class SingleAddressBitcoinWallet extends BitcoinWallet_1.BitcoinWallet {
     /**
      * @inheritDoc
      */
-    getSpendableBalance(psbt, feeRate) {
-        return this._getSpendableBalance([{ address: this.address, addressType: this.addressType }], psbt, feeRate);
+    getSpendableBalance(psbt, feeRate, outputAddressType, utxos) {
+        return this._getSpendableBalance([{ address: this.address, addressType: this.addressType }], psbt, feeRate, outputAddressType, utxos);
+    }
+    /**
+     * @inheritDoc
+     */
+    async getUtxoPool() {
+        return this._getUtxoPool(this.address, this.addressType);
     }
     /**
      * Generates a new random private key WIF that can be used to instantiate the bitcoin wallet instance

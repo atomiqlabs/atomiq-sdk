@@ -15,6 +15,7 @@ export function accumulative (
 ): {
     inputs?: CoinselectTxInput[],
     outputs?: CoinselectTxOutput[],
+    effectiveFeeRate?: number,
     fee: number
 } {
     if (!isFinite(utils.uintOrNaN(feeRate))) throw new Error("Invalid feeRate passed!");

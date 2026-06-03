@@ -42,7 +42,7 @@ function maxSendable(utxos, output, feeRate, requiredInputs, additionalOutputs) 
         const utxoFee = feeRate * utxoBytes;
         let cpfpFee = 0;
         if (utxo.cpfp != null && utxo.cpfp.txEffectiveFeeRate < feeRate)
-            cpfpFee = utxo.cpfp.txVsize * (feeRate - utxo.cpfp.txEffectiveFeeRate);
+            cpfpFee = Math.ceil(utxo.cpfp.txVsize * (feeRate - utxo.cpfp.txEffectiveFeeRate));
         const utxoValue = utils_1.utils.uintOrNaN(utxo.value);
         // skip detrimental input
         if (utxoFee + cpfpFee > utxo.value) {

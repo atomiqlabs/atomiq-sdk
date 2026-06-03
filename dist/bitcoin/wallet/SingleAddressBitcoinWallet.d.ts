@@ -6,6 +6,7 @@ import { Transaction } from "@scure/btc-signer";
 import { Buffer } from "buffer";
 import { BitcoinWallet } from "./BitcoinWallet";
 import { BitcoinNetwork, BitcoinRpcWithAddressIndex } from "@atomiqlabs/base";
+import { BitcoinWalletUtxo, BitcoinWalletUtxoBase } from "./IBitcoinWallet";
 /**
  * Bitcoin wallet implementation deriving a single address from a WIF encoded private key
  *
@@ -37,7 +38,7 @@ export declare class SingleAddressBitcoinWallet extends BitcoinWallet {
     /**
      * @inheritDoc
      */
-    fundPsbt(inputPsbt: Transaction, feeRate?: number): Promise<Transaction>;
+    fundPsbt(inputPsbt: Transaction, feeRate?: number, utxos?: BitcoinWalletUtxo[], spendFully?: boolean): Promise<Transaction>;
     /**
      * @inheritDoc
      */
@@ -68,11 +69,15 @@ export declare class SingleAddressBitcoinWallet extends BitcoinWallet {
     /**
      * @inheritDoc
      */
-    getSpendableBalance(psbt?: Transaction, feeRate?: number): Promise<{
+    getSpendableBalance(psbt?: Transaction, feeRate?: number, outputAddressType?: CoinselectAddressTypes, utxos?: BitcoinWalletUtxoBase[]): Promise<{
         balance: bigint;
         feeRate: number;
         totalFee: number;
     }>;
+    /**
+     * @inheritDoc
+     */
+    getUtxoPool(): Promise<BitcoinWalletUtxo[]>;
     /**
      * Generates a new random private key WIF that can be used to instantiate the bitcoin wallet instance
      *

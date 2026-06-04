@@ -500,8 +500,6 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
             if (walletUtxos.length === 0)
                 throw new UserError_1.UserError("Wallet doesn't have any BTC balance");
             const spendableBalance = await BitcoinWallet_1.BitcoinWallet.getSpendableBalance(walletUtxos, bitcoinFeeRate, this.getDummySwapPsbt(includeGas), exports.REQUIRED_SPV_SWAP_LP_ADDRESS_TYPE);
-            if (spendableBalance.balance <= 0n)
-                throw new UserError_1.UserError("Wallet doesn't have enough BTC balance to cover transaction fees");
             return spendableBalance.balance;
         }
         catch (e) {
@@ -679,6 +677,12 @@ class SpvFromBTCWrapper extends ISwapWrapper_1.ISwapWrapper {
                         return quote;
                     }
                     catch (e) {
+                        if (e instanceof RequestError_1.OutOfBoundsError) {
+                            const amountResult = await amountPromise.catch(() => undefined);
+                            if (_options.sourceWalletUtxos != null && amountResult != null && amountResult <= 0n) {
+                                e = new UserError_1.UserError("Wallet doesn't have enough BTC balance to cover transaction fees");
+                            }
+                        }
                         abortController.abort(e);
                         throw e;
                     }

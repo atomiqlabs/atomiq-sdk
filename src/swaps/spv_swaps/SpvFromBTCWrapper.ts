@@ -29,7 +29,7 @@ import {
     toOutputScript
 } from "../../utils/BitcoinUtils";
 import {IntermediaryAPI, SpvFromBTCPrepareResponseType} from "../../intermediaries/apis/IntermediaryAPI";
-import {RequestError} from "../../errors/RequestError";
+import {OutOfBoundsError, RequestError} from "../../errors/RequestError";
 import {IntermediaryError} from "../../errors/IntermediaryError";
 import {CoinselectAddressTypes} from "../../bitcoin/coinselect2";
 import {OutScript, Transaction} from "@scure/btc-signer";
@@ -696,8 +696,6 @@ export class SpvFromBTCWrapper<
                 walletUtxos, bitcoinFeeRate,
                 this.getDummySwapPsbt(includeGas), REQUIRED_SPV_SWAP_LP_ADDRESS_TYPE
             );
-            if(spendableBalance.balance<=0n)
-                throw new UserError("Wallet doesn't have enough BTC balance to cover transaction fees");
             return spendableBalance.balance;
         } catch (e) {
             abortController.abort(e);
@@ -944,6 +942,12 @@ export class SpvFromBTCWrapper<
                         const quote = new SpvFromBTCSwap<T>(this, swapInit);
                         return quote;
                     } catch (e) {
+                        if(e instanceof OutOfBoundsError) {
+                            const amountResult = await amountPromise.catch(() => undefined);
+                            if(_options.sourceWalletUtxos!=null && amountResult!=null && amountResult<=0n) {
+                                e = new UserError("Wallet doesn't have enough BTC balance to cover transaction fees");
+                            }
+                        }
                         abortController.abort(e);
                         throw e;
                     }

@@ -1,32 +1,14 @@
 import {coinSelect, maxSendable, CoinselectAddressTypes, CoinselectTxInput} from "../coinselect2";
 import {BTC_NETWORK, NETWORK, TEST_NETWORK} from "@scure/btc-signer/utils"
 import {p2wpkh, OutScript, Transaction, p2tr, Address} from "@scure/btc-signer";
-import {IBitcoinWallet} from "./IBitcoinWallet";
+import {BitcoinWalletUtxo, BitcoinWalletUtxoBase, IBitcoinWallet} from "./IBitcoinWallet";
 import {Buffer} from "buffer";
 import {randomBytes} from "../../utils/Utils";
-import {toCoinselectAddressType, toOutputScript} from "../../utils/BitcoinUtils";
+import {getDummyOutputScript, toCoinselectAddressType, toOutputScript} from "../../utils/BitcoinUtils";
 import {TransactionInputUpdate} from "@scure/btc-signer/psbt";
 import {getLogger} from "../../utils/Logger";
 import {BitcoinNetwork, BitcoinRpcWithAddressIndex} from "@atomiqlabs/base";
-
-/**
- * UTXO data structure for Bitcoin wallets
- *
- * @category Bitcoin
- */
-export type BitcoinWalletUtxo = {
-    vout: number,
-    txId: string,
-    value: number,
-    type: CoinselectAddressTypes,
-    outputScript: Buffer,
-    address: string,
-    cpfp?: {
-        txVsize: number,
-        txEffectiveFeeRate: number
-    },
-    confirmed: boolean
-};
+import {utils} from "../coinselect2/utils";
 
 /**
  * Identifies the address type of a Bitcoin address
@@ -200,15 +182,18 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
             addressType: CoinselectAddressTypes,
         }[],
         psbt: Transaction,
-        feeRate?: number
+        _feeRate?: number,
+        utxos?: BitcoinWalletUtxo[],
+        spendFully?: boolean
     ): Promise<{
         fee: number,
         psbt?: Transaction,
         inputAddressIndexes?: {[address: string]: number[]}
     }> {
-        if(feeRate==null) feeRate = await this.getFeeRate();
+        const feeRate = _feeRate ?? await this.getFeeRate();
+        const utxoPool: BitcoinWalletUtxo[] = utxos ?? (await Promise.all(sendingAccounts.map(acc => this._getUtxoPool(acc.address, acc.addressType)))).flat();
 
-        const utxoPool: BitcoinWalletUtxo[] = (await Promise.all(sendingAccounts.map(acc => this._getUtxoPool(acc.address, acc.addressType)))).flat();
+        if(spendFully && utxoPool==null) throw new Error("Cannot fully spend when no utxos are passed!");
 
         logger.debug("_fundPsbt(): fee rate: "+feeRate+" utxo pool: ", utxoPool);
 
@@ -247,13 +232,24 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
         }
         logger.debug("_fundPsbt(): Coinselect targets: ", targets);
 
-        let coinselectResult = coinSelect(utxoPool, targets, feeRate, sendingAccounts[0].addressType, requiredInputs);
+        let coinselectResult = spendFully
+            ? utils.finalize(requiredInputs.concat(utxoPool.filter(utxo => !utils.isDetrimentalInput(feeRate, utxo))), targets, feeRate, null)
+            : coinSelect(utxoPool, targets, feeRate, sendingAccounts[0].addressType, requiredInputs);
         logger.debug("_fundPsbt(): Coinselect result: ", coinselectResult);
 
-        if(coinselectResult.inputs==null || coinselectResult.outputs==null) {
+        if(coinselectResult.inputs==null || coinselectResult.outputs==null || coinselectResult.effectiveFeeRate==null) {
             return {
                 fee: coinselectResult.fee
             };
+        }
+
+        if(spendFully && feeRate!=null) {
+            const maximumAllowedFeeRate = (1.5*feeRate) + 10;
+            if(coinselectResult.effectiveFeeRate > maximumAllowedFeeRate)
+                throw new Error(`Effective fee rate too high, feeRate: ${coinselectResult.effectiveFeeRate} sats/vB, maximum: ${maximumAllowedFeeRate} sats/vB!`);
+            const minimumAllowedFeeRate = 0.9*feeRate;
+            if(coinselectResult.effectiveFeeRate < minimumAllowedFeeRate)
+                throw new Error(`Effective fee rate too low, feeRate: ${coinselectResult.effectiveFeeRate} sats/vB, minimum: ${minimumAllowedFeeRate} sats/vB!`);
         }
 
         // Remove in/outs that are already in the PSBT
@@ -346,16 +342,59 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
             addressType: CoinselectAddressTypes,
         }[],
         psbt?: Transaction,
-        feeRate?: number
+        feeRate?: number,
+        outputAddressType?: CoinselectAddressTypes,
+        utxoPool?: BitcoinWalletUtxoBase[]
     ): Promise<{
         balance: bigint,
         feeRate: number,
         totalFee: number
     }> {
         feeRate ??= await this.getFeeRate();
+        utxoPool ??= (await Promise.all(sendingAccounts.map(acc => this._getUtxoPool(acc.address, acc.addressType)))).flat();
 
-        const utxoPool: BitcoinWalletUtxo[] = (await Promise.all(sendingAccounts.map(acc => this._getUtxoPool(acc.address, acc.addressType)))).flat();
+        return {
+            ...BitcoinWallet.getSpendableBalance(
+                utxoPool ?? (await Promise.all(sendingAccounts.map(acc => this._getUtxoPool(acc.address, acc.addressType)))).flat(),
+                feeRate ?? await this.getFeeRate(),
+                psbt,
+                outputAddressType
+            ),
+            feeRate
+        };
+    }
 
+    abstract sendTransaction(address: string, amount: bigint, feeRate?: number): Promise<string>;
+    abstract fundPsbt(psbt: Transaction, feeRate?: number, utxos?: BitcoinWalletUtxo[], spendFully?: boolean): Promise<Transaction>;
+    abstract signPsbt(psbt: Transaction, signInputs: number[]): Promise<Transaction>;
+
+    abstract getTransactionFee(address: string, amount: bigint, feeRate?: number): Promise<number>;
+    abstract getFundedPsbtFee(psbt: Transaction, feeRate?: number): Promise<number>;
+
+    abstract getReceiveAddress(): string;
+    abstract getBalance(): Promise<{
+        confirmedBalance: bigint,
+        unconfirmedBalance: bigint
+    }>;
+    abstract getSpendableBalance(psbt?: Transaction, feeRate?: number): Promise<{
+        balance: bigint,
+        feeRate: number,
+        totalFee: number
+    }>;
+
+    static bitcoinNetworkToObject(network: BitcoinNetwork): BTC_NETWORK {
+        return btcNetworkMapping[network];
+    }
+
+    static getSpendableBalance(
+        utxoPool: BitcoinWalletUtxoBase[],
+        feeRate: number,
+        psbt?: Transaction,
+        outputAddressType?: CoinselectAddressTypes
+    ): {
+        balance: bigint,
+        totalFee: number
+    } {
         const requiredInputs: CoinselectTxInput[] = [];
         if(psbt!=null) for(let i=0;i<psbt.inputsLength;i++) {
             const input = psbt.getInput(i);
@@ -387,42 +426,15 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
             })
         }
 
-        const target = OutScript.encode({
-            type: "wsh",
-            hash: randomBytes(32)
-        });
-
-        let coinselectResult = maxSendable(utxoPool, {script: Buffer.from(target), type: "p2wsh"}, feeRate, requiredInputs, additionalOutputs);
+        const target: Uint8Array = getDummyOutputScript(outputAddressType ?? "p2wsh");
+        let coinselectResult = maxSendable(utxoPool, {script: Buffer.from(target), type: outputAddressType ?? "p2wsh"}, feeRate, requiredInputs, additionalOutputs);
 
         logger.debug("_getSpendableBalance(): Max spendable result: ", coinselectResult);
 
         return {
-            feeRate: feeRate,
             balance: BigInt(Math.floor(coinselectResult.value)),
             totalFee: coinselectResult.fee
         }
-    }
-
-    abstract sendTransaction(address: string, amount: bigint, feeRate?: number): Promise<string>;
-    abstract fundPsbt(psbt: Transaction, feeRate?: number): Promise<Transaction>;
-    abstract signPsbt(psbt: Transaction, signInputs: number[]): Promise<Transaction>;
-
-    abstract getTransactionFee(address: string, amount: bigint, feeRate?: number): Promise<number>;
-    abstract getFundedPsbtFee(psbt: Transaction, feeRate?: number): Promise<number>;
-
-    abstract getReceiveAddress(): string;
-    abstract getBalance(): Promise<{
-        confirmedBalance: bigint,
-        unconfirmedBalance: bigint
-    }>;
-    abstract getSpendableBalance(psbt?: Transaction, feeRate?: number): Promise<{
-        balance: bigint,
-        feeRate: number,
-        totalFee: number
-    }>;
-
-    static bitcoinNetworkToObject(network: BitcoinNetwork): BTC_NETWORK {
-        return btcNetworkMapping[network];
     }
 
 }

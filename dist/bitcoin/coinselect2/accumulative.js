@@ -7,7 +7,7 @@ const logger = (0, Logger_1.getLogger)("CoinSelect: ");
 // add inputs until we reach or surpass the target value (or deplete)
 // worst-case: O(n)
 function accumulative(utxos, outputs, feeRate, type, requiredInputs) {
-    if (!isFinite(utils_1.utils.uintOrNaN(feeRate)))
+    if (!isFinite(utils_1.utils.numberOrNaN(feeRate)))
         throw new Error("Invalid feeRate passed!");
     const inputs = requiredInputs == null ? [] : [...requiredInputs];
     let bytesAccum = utils_1.utils.transactionBytes(inputs, outputs, type);

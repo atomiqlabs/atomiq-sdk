@@ -637,8 +637,12 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
      * @param _bitcoinWallet Sender's bitcoin wallet
      * @param feeRate Optional fee rate in sats/vB for the transaction
      * @param additionalOutputs additional outputs to add to the PSBT - can be used to collect fees from users
+     * @param utxos Pre-fetched list of UTXOs to spend from
+     * @param spendFully Instructs the wallet to spend all the passed UTXOs in the transaction without creating any
+     *  change output, if the `feeRate` is passed, it will also enforce that the feeRate in sats/vB for the resulting
+     *  transaction is not more than 50% and 10 sats/vB larger (considering also the CPFP adjustments)
      */
-    async getFundedPsbt(_bitcoinWallet, feeRate, additionalOutputs) {
+    async getFundedPsbt(_bitcoinWallet, feeRate, additionalOutputs, utxos, spendFully) {
         const bitcoinWallet = (0, BitcoinWalletUtils_1.toBitcoinWallet)(_bitcoinWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
         if (feeRate != null) {
             if (feeRate < this.minimumBtcFeeRate)
@@ -655,7 +659,7 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
                     script: output.outputScript ?? (0, BitcoinUtils_1.toOutputScript)(this.wrapper._options.bitcoinNetwork, output.address)
                 });
             });
-        psbt = await bitcoinWallet.fundPsbt(psbt, feeRate);
+        psbt = await bitcoinWallet.fundPsbt(psbt, feeRate, utxos, spendFully);
         psbt.updateInput(1, { sequence: in1sequence });
         //Sign every input except the first one
         const signInputs = [];
@@ -759,8 +763,8 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
     /**
      * @inheritDoc
      */
-    async sendBitcoinTransaction(wallet, feeRate) {
-        const { psbt, psbtBase64, psbtHex, signInputs } = await this.getFundedPsbt(wallet, feeRate);
+    async sendBitcoinTransaction(wallet, feeRate, utxos, spendFully) {
+        const { psbt, psbtBase64, psbtHex, signInputs } = await this.getFundedPsbt(wallet, feeRate, undefined, utxos, spendFully);
         let signedPsbt;
         if ((0, IBitcoinWallet_1.isIBitcoinWallet)(wallet)) {
             signedPsbt = await wallet.signPsbt(psbt, signInputs);
@@ -795,7 +799,7 @@ class SpvFromBTCSwap extends ISwap_1.ISwap {
         if (this._state === SpvFromBTCSwapState.CLAIMED || this._state === SpvFromBTCSwapState.FRONTED)
             throw new Error("Swap already settled or fronted!");
         if (this._state === SpvFromBTCSwapState.CREATED) {
-            const txId = await this.sendBitcoinTransaction(wallet, options?.feeRate);
+            const txId = await this.sendBitcoinTransaction(wallet, options?.feeRate, options?.utxos, options?.spendFully);
             if (callbacks?.onSourceTransactionSent != null)
                 callbacks.onSourceTransactionSent(txId);
         }

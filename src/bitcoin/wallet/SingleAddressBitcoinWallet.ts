@@ -8,6 +8,7 @@ import {HDKey} from "@scure/bip32";
 import {entropyToMnemonic, generateMnemonic, mnemonicToSeed} from "@scure/bip39";
 import {wordlist} from "@scure/bip39/wordlists/english.js";
 import {sha256} from "@noble/hashes/sha2";
+import {BitcoinWalletUtxo, BitcoinWalletUtxoBase} from "./IBitcoinWallet";
 
 const logger = getLogger("SingleAddressBitcoinWallet: ");
 
@@ -88,8 +89,8 @@ export class SingleAddressBitcoinWallet extends BitcoinWallet {
     /**
      * @inheritDoc
      */
-    async fundPsbt(inputPsbt: Transaction, feeRate?: number): Promise<Transaction> {
-        const {psbt} = await super._fundPsbt(this.toBitcoinWalletAccounts(), inputPsbt, feeRate);
+    async fundPsbt(inputPsbt: Transaction, feeRate?: number, utxos?: BitcoinWalletUtxo[], spendFully?: boolean): Promise<Transaction> {
+        const {psbt} = await super._fundPsbt(this.toBitcoinWalletAccounts(), inputPsbt, feeRate, utxos, spendFully);
         if(psbt==null) {
             throw new Error("Not enough balance!");
         }
@@ -150,12 +151,19 @@ export class SingleAddressBitcoinWallet extends BitcoinWallet {
     /**
      * @inheritDoc
      */
-    getSpendableBalance(psbt?: Transaction, feeRate?: number): Promise<{
+    getSpendableBalance(psbt?: Transaction, feeRate?: number, outputAddressType?: CoinselectAddressTypes, utxos?: BitcoinWalletUtxoBase[]): Promise<{
         balance: bigint,
         feeRate: number,
         totalFee: number
     }> {
-        return this._getSpendableBalance([{address: this.address, addressType: this.addressType}], psbt, feeRate);
+        return this._getSpendableBalance([{address: this.address, addressType: this.addressType}], psbt, feeRate, outputAddressType, utxos);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    async getUtxoPool(): Promise<BitcoinWalletUtxo[]> {
+        return this._getUtxoPool(this.address, this.addressType);
     }
 
     /**

@@ -5,10 +5,10 @@ const coinselect2_1 = require("../coinselect2");
 const utils_1 = require("@scure/btc-signer/utils");
 const btc_signer_1 = require("@scure/btc-signer");
 const buffer_1 = require("buffer");
-const Utils_1 = require("../../utils/Utils");
 const BitcoinUtils_1 = require("../../utils/BitcoinUtils");
 const Logger_1 = require("../../utils/Logger");
 const base_1 = require("@atomiqlabs/base");
+const utils_2 = require("../coinselect2/utils");
 /**
  * Identifies the address type of a Bitcoin address
  *
@@ -135,10 +135,11 @@ class BitcoinWallet {
         });
         return this._fundPsbt(sendingAccounts, psbt, feeRate);
     }
-    async _fundPsbt(sendingAccounts, psbt, feeRate) {
-        if (feeRate == null)
-            feeRate = await this.getFeeRate();
-        const utxoPool = (await Promise.all(sendingAccounts.map(acc => this._getUtxoPool(acc.address, acc.addressType)))).flat();
+    async _fundPsbt(sendingAccounts, psbt, _feeRate, utxos, spendFully) {
+        const feeRate = _feeRate ?? await this.getFeeRate();
+        const utxoPool = utxos ?? (await Promise.all(sendingAccounts.map(acc => this._getUtxoPool(acc.address, acc.addressType)))).flat();
+        if (spendFully && utxoPool == null)
+            throw new Error("Cannot fully spend when no utxos are passed!");
         logger.debug("_fundPsbt(): fee rate: " + feeRate + " utxo pool: ", utxoPool);
         const accountPubkeys = {};
         sendingAccounts.forEach(acc => accountPubkeys[acc.address] = acc.pubkey);
@@ -177,12 +178,22 @@ class BitcoinWallet {
             });
         }
         logger.debug("_fundPsbt(): Coinselect targets: ", targets);
-        let coinselectResult = (0, coinselect2_1.coinSelect)(utxoPool, targets, feeRate, sendingAccounts[0].addressType, requiredInputs);
+        let coinselectResult = spendFully
+            ? utils_2.utils.finalize(requiredInputs.concat(utxoPool.filter(utxo => !utils_2.utils.isDetrimentalInput(feeRate, utxo))), targets, feeRate, null)
+            : (0, coinselect2_1.coinSelect)(utxoPool, targets, feeRate, sendingAccounts[0].addressType, requiredInputs);
         logger.debug("_fundPsbt(): Coinselect result: ", coinselectResult);
-        if (coinselectResult.inputs == null || coinselectResult.outputs == null) {
+        if (coinselectResult.inputs == null || coinselectResult.outputs == null || coinselectResult.effectiveFeeRate == null) {
             return {
                 fee: coinselectResult.fee
             };
+        }
+        if (spendFully && feeRate != null) {
+            const maximumAllowedFeeRate = (1.5 * feeRate) + 10;
+            if (coinselectResult.effectiveFeeRate > maximumAllowedFeeRate)
+                throw new Error(`Effective fee rate too high, feeRate: ${coinselectResult.effectiveFeeRate} sats/vB, maximum: ${maximumAllowedFeeRate} sats/vB!`);
+            const minimumAllowedFeeRate = 0.9 * feeRate;
+            if (coinselectResult.effectiveFeeRate < minimumAllowedFeeRate)
+                throw new Error(`Effective fee rate too low, feeRate: ${coinselectResult.effectiveFeeRate} sats/vB, minimum: ${minimumAllowedFeeRate} sats/vB!`);
         }
         // Remove in/outs that are already in the PSBT
         coinselectResult.inputs.splice(0, psbt.inputsLength);
@@ -264,9 +275,18 @@ class BitcoinWallet {
             inputAddressIndexes
         };
     }
-    async _getSpendableBalance(sendingAccounts, psbt, feeRate) {
+    async _getSpendableBalance(sendingAccounts, psbt, feeRate, outputAddressType, utxoPool) {
         feeRate ??= await this.getFeeRate();
-        const utxoPool = (await Promise.all(sendingAccounts.map(acc => this._getUtxoPool(acc.address, acc.addressType)))).flat();
+        utxoPool ??= (await Promise.all(sendingAccounts.map(acc => this._getUtxoPool(acc.address, acc.addressType)))).flat();
+        return {
+            ...BitcoinWallet.getSpendableBalance(utxoPool ?? (await Promise.all(sendingAccounts.map(acc => this._getUtxoPool(acc.address, acc.addressType)))).flat(), feeRate ?? await this.getFeeRate(), psbt, outputAddressType),
+            feeRate
+        };
+    }
+    static bitcoinNetworkToObject(network) {
+        return btcNetworkMapping[network];
+    }
+    static getSpendableBalance(utxoPool, feeRate, psbt, outputAddressType) {
         const requiredInputs = [];
         if (psbt != null)
             for (let i = 0; i < psbt.inputsLength; i++) {
@@ -303,20 +323,13 @@ class BitcoinWallet {
                     script: buffer_1.Buffer.from(output.script)
                 });
             }
-        const target = btc_signer_1.OutScript.encode({
-            type: "wsh",
-            hash: (0, Utils_1.randomBytes)(32)
-        });
-        let coinselectResult = (0, coinselect2_1.maxSendable)(utxoPool, { script: buffer_1.Buffer.from(target), type: "p2wsh" }, feeRate, requiredInputs, additionalOutputs);
+        const target = (0, BitcoinUtils_1.getDummyOutputScript)(outputAddressType ?? "p2wsh");
+        let coinselectResult = (0, coinselect2_1.maxSendable)(utxoPool, { script: buffer_1.Buffer.from(target), type: outputAddressType ?? "p2wsh" }, feeRate, requiredInputs, additionalOutputs);
         logger.debug("_getSpendableBalance(): Max spendable result: ", coinselectResult);
         return {
-            feeRate: feeRate,
             balance: BigInt(Math.floor(coinselectResult.value)),
             totalFee: coinselectResult.fee
         };
-    }
-    static bitcoinNetworkToObject(network) {
-        return btcNetworkMapping[network];
     }
 }
 exports.BitcoinWallet = BitcoinWallet;

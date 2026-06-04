@@ -1,29 +1,8 @@
-/// <reference types="node" />
-/// <reference types="node" />
 import { CoinselectAddressTypes } from "../coinselect2";
 import { BTC_NETWORK } from "@scure/btc-signer/utils";
 import { Transaction } from "@scure/btc-signer";
-import { IBitcoinWallet } from "./IBitcoinWallet";
-import { Buffer } from "buffer";
+import { BitcoinWalletUtxo, BitcoinWalletUtxoBase, IBitcoinWallet } from "./IBitcoinWallet";
 import { BitcoinNetwork, BitcoinRpcWithAddressIndex } from "@atomiqlabs/base";
-/**
- * UTXO data structure for Bitcoin wallets
- *
- * @category Bitcoin
- */
-export type BitcoinWalletUtxo = {
-    vout: number;
-    txId: string;
-    value: number;
-    type: CoinselectAddressTypes;
-    outputScript: Buffer;
-    address: string;
-    cpfp?: {
-        txVsize: number;
-        txEffectiveFeeRate: number;
-    };
-    confirmed: boolean;
-};
 /**
  * Identifies the address type of a Bitcoin address
  *
@@ -96,7 +75,7 @@ export declare abstract class BitcoinWallet implements IBitcoinWallet {
         pubkey: string;
         address: string;
         addressType: CoinselectAddressTypes;
-    }[], psbt: Transaction, feeRate?: number): Promise<{
+    }[], psbt: Transaction, _feeRate?: number, utxos?: BitcoinWalletUtxo[], spendFully?: boolean): Promise<{
         fee: number;
         psbt?: Transaction;
         inputAddressIndexes?: {
@@ -106,13 +85,13 @@ export declare abstract class BitcoinWallet implements IBitcoinWallet {
     protected _getSpendableBalance(sendingAccounts: {
         address: string;
         addressType: CoinselectAddressTypes;
-    }[], psbt?: Transaction, feeRate?: number): Promise<{
+    }[], psbt?: Transaction, feeRate?: number, outputAddressType?: CoinselectAddressTypes, utxoPool?: BitcoinWalletUtxoBase[]): Promise<{
         balance: bigint;
         feeRate: number;
         totalFee: number;
     }>;
     abstract sendTransaction(address: string, amount: bigint, feeRate?: number): Promise<string>;
-    abstract fundPsbt(psbt: Transaction, feeRate?: number): Promise<Transaction>;
+    abstract fundPsbt(psbt: Transaction, feeRate?: number, utxos?: BitcoinWalletUtxo[], spendFully?: boolean): Promise<Transaction>;
     abstract signPsbt(psbt: Transaction, signInputs: number[]): Promise<Transaction>;
     abstract getTransactionFee(address: string, amount: bigint, feeRate?: number): Promise<number>;
     abstract getFundedPsbtFee(psbt: Transaction, feeRate?: number): Promise<number>;
@@ -127,4 +106,8 @@ export declare abstract class BitcoinWallet implements IBitcoinWallet {
         totalFee: number;
     }>;
     static bitcoinNetworkToObject(network: BitcoinNetwork): BTC_NETWORK;
+    static getSpendableBalance(utxoPool: BitcoinWalletUtxoBase[], feeRate: number, psbt?: Transaction, outputAddressType?: CoinselectAddressTypes): {
+        balance: bigint;
+        totalFee: number;
+    };
 }

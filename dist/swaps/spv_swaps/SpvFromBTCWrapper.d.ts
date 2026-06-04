@@ -9,11 +9,12 @@ import { UnifiedSwapEventListener } from "../../events/UnifiedSwapEventListener"
 import { ISwapPrice } from "../../prices/abstract/ISwapPrice";
 import { EventEmitter } from "events";
 import { Intermediary } from "../../intermediaries/Intermediary";
+import { CoinselectAddressTypes } from "../../bitcoin/coinselect2";
 import { Transaction } from "@scure/btc-signer";
 import { ISwap } from "../ISwap";
 import { IClaimableSwapWrapper } from "../IClaimableSwapWrapper";
-import { AmountData } from "../../types/AmountData";
 import { AllOptional } from "../../utils/TypeUtils";
+import { BitcoinWalletUtxoBase } from "../../bitcoin/wallet/IBitcoinWallet";
 export type SpvFromBTCOptions = {
     /**
      * Optional additional native token to receive as an output of the swap (e.g. STRK on Starknet or cBTC on Citrea).
@@ -54,6 +55,16 @@ export type SpvFromBTCOptions = {
      */
     stickyAddress?: boolean;
     /**
+     * A bitcoin wallet UTXOs to fully use as an input for this swap, use this option along with passing `amount` as
+     *  `undefined` when you want to swap the full BTC balance of the wallet in a single swap
+     */
+    sourceWalletUtxos?: BitcoinWalletUtxoBase[] | Promise<BitcoinWalletUtxoBase[]>;
+    /**
+     * Bitcoin fee rate to use when deriving `maxAllowedBitcoinFeeRate` and when calculating the input amount based
+     *  on the `sourceWalletUtxos`
+     */
+    bitcoinFeeRate?: Promise<number> | number;
+    /**
      * @deprecated Use `maxAllowedBitcoinFeeRate` instead!
      */
     maxAllowedNetworkFeeRate?: number;
@@ -68,6 +79,8 @@ export type SpvFromBTCWrapperOptions = ISwapWrapperOptions & {
     maxBtcFeeOffset: number;
 };
 export type SpvFromBTCTypeDefinition<T extends ChainType> = SwapTypeDefinition<T, SpvFromBTCWrapper<T>, SpvFromBTCSwap<T>>;
+export declare const REQUIRED_SPV_SWAP_VAULT_ADDRESS_TYPE: CoinselectAddressTypes;
+export declare const REQUIRED_SPV_SWAP_LP_ADDRESS_TYPE: CoinselectAddressTypes;
 /**
  * New spv vault (UTXO-controlled vault) based swaps for Bitcoin -> Smart chain swaps not requiring
  *  any initiation on the destination chain, and with the added possibility for the user to receive
@@ -162,13 +175,25 @@ export declare class SpvFromBTCWrapper<T extends ChainType> extends ISwapWrapper
      *
      * @param amountData
      * @param options Options as passed to the swap creation function
-     * @param pricePrefetch
-     * @param nativeTokenPricePrefetch
      * @param abortController
      * @param contractVersion
      * @private
      */
-    private preFetchCallerFeeShare;
+    private preFetchCallerFeeInNativeToken;
+    /**
+     * Pre-fetches caller (watchtower) bounty data for the swap. Doesn't throw, instead returns null and aborts the
+     *  provided abortController
+     *
+     * @param amountPrefetch
+     * @param totalFeeInNativeTokenPrefetch
+     * @param amountData
+     * @param options Options as passed to the swap creation function
+     * @param pricePrefetch
+     * @param nativeTokenPricePrefetch
+     * @param abortSignal
+     * @private
+     */
+    private computeCallerFeeShare;
     /**
      * Verifies response returned from intermediary
      *
@@ -177,12 +202,15 @@ export declare class SpvFromBTCWrapper<T extends ChainType> extends ISwapWrapper
      * @param lp Intermediary
      * @param options Options as passed to the swap creation function
      * @param callerFeeShare
-     * @param bitcoinFeeRatePromise Maximum accepted fee rate from the LPs
+     * @param maxBitcoinFeeRatePromise Maximum accepted fee rate from the LPs
+     * @param bitcoinFeeRatePromise
      * @param abortSignal
      * @private
      * @throws {IntermediaryError} in case the response is invalid
      */
     private verifyReturnedData;
+    private amountPrefetch;
+    private bitcoinFeeRatePrefetch;
     /**
      * Returns a newly created Bitcoin -> Smart chain swap using the SPV vault (UTXO-controlled vault) swap protocol,
      *  with the passed amount. Also allows specifying additional "gas drop" native token that the receipient receives
@@ -195,7 +223,11 @@ export declare class SpvFromBTCWrapper<T extends ChainType> extends ISwapWrapper
      * @param additionalParams Optional additional parameters sent to the LP when creating the swap
      * @param abortSignal Abort signal
      */
-    create(recipient: string, amountData: AmountData, lps: Intermediary[], options?: SpvFromBTCOptions, additionalParams?: Record<string, any>, abortSignal?: AbortSignal): {
+    create(recipient: string, amountData: {
+        amount?: bigint;
+        token: string;
+        exactIn: boolean;
+    }, lps: Intermediary[], options?: SpvFromBTCOptions, additionalParams?: Record<string, any>, abortSignal?: AbortSignal): {
         quote: Promise<SpvFromBTCSwap<T>>;
         intermediary: Intermediary;
     }[];

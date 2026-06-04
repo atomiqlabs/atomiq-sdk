@@ -28,7 +28,7 @@ function coinSelect(utxos, outputs, feeRate, type, requiredInputs) {
 }
 exports.coinSelect = coinSelect;
 function maxSendable(utxos, output, feeRate, requiredInputs, additionalOutputs) {
-    if (!isFinite(utils_1.utils.uintOrNaN(feeRate)))
+    if (!isFinite(utils_1.utils.numberOrNaN(feeRate)))
         throw new Error("Invalid feeRate passed!");
     const outputs = additionalOutputs ?? [];
     const inputs = requiredInputs ?? [];
@@ -42,7 +42,7 @@ function maxSendable(utxos, output, feeRate, requiredInputs, additionalOutputs) 
         const utxoFee = feeRate * utxoBytes;
         let cpfpFee = 0;
         if (utxo.cpfp != null && utxo.cpfp.txEffectiveFeeRate < feeRate)
-            cpfpFee = utxo.cpfp.txVsize * (feeRate - utxo.cpfp.txEffectiveFeeRate);
+            cpfpFee = Math.ceil(utxo.cpfp.txVsize * (feeRate - utxo.cpfp.txEffectiveFeeRate));
         const utxoValue = utils_1.utils.uintOrNaN(utxo.value);
         // skip detrimental input
         if (utxoFee + cpfpFee > utxo.value) {

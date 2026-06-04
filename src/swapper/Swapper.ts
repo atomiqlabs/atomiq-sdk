@@ -1673,7 +1673,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         const bitcoinFeeRatePromise = options?.bitcoinFeeRate ?? wallet.getFeeRate();
 
         const swap = await this.createFromBTCSwapNew(
-            dstToken.chainId, dstAddress, dstToken.address, null, false, undefined, {
+            dstToken.chainId as C, dstAddress, dstToken.address, null, false, undefined, {
                 ...options,
                 sourceWalletUtxos: walletUtxosPromise,
                 bitcoinFeeRate: bitcoinFeeRatePromise

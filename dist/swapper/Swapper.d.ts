@@ -150,6 +150,11 @@ export type SwapperOptions = {
         certificate: string;
         privateKey: string;
     };
+    /**
+     * If you set the option to `true` the chains for which the RPC is unresponsive are skipped and not initialized
+     *  letting the swapper continue with only the available chains with responsive RPCs
+     */
+    gracefullyHandleChainErrors?: boolean;
 };
 /**
  * Type representing multiple blockchain configurations

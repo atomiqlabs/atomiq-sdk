@@ -995,7 +995,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
         if (!this.isValidSecretPreimage(useSecret))
             throw new Error("Invalid swap secret pre-image provided!");
         const initTxs = await this.txsCommit(skipChecks);
-        const claimTxs = await this._contract.txsClaimWithSecret(this._getInitiator(), this._data, useSecret, true, true, undefined, true);
+        const claimTxs = await this._contract.txsClaimWithSecret(this._getInitiator(), this._data, useSecret, true, true);
         return initTxs.concat(claimTxs);
     }
     /**

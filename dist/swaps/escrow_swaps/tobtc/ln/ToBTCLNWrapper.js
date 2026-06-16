@@ -25,6 +25,7 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
         super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, lpApi, {
             ...options,
             paymentTimeoutSeconds: options?.paymentTimeoutSeconds ?? 5 * 24 * 60 * 60,
+            maxPaymentTimeoutSeconds: options?.maxPaymentTimeoutSeconds ?? 10 * 24 * 60 * 60,
             lightningBaseFee: options?.lightningBaseFee ?? 10,
             lightningFeePPM: options?.lightningFeePPM ?? 2000
         }, versionedContracts, events);
@@ -130,6 +131,33 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
         }
     }
     /**
+     * Returns the expiry seconds to use to calculate expiration timeout for HTLC, considers the `expirySeconds` and
+     *  `maxExpirySeconds` params.
+     *
+     * @param parsedPr
+     * @param options
+     * @private
+     */
+    getExpirySeconds(parsedPr, options) {
+        let expirySeconds = options?.expirySeconds;
+        let longExpiry = false;
+        if (parsedPr.tagsObject.min_final_cltv_expiry != null &&
+            parsedPr.tagsObject.min_final_cltv_expiry > 144) {
+            expirySeconds ??= this._options.paymentTimeoutSeconds;
+            let maxExpirySeconds = options?.maxExpirySeconds;
+            if (maxExpirySeconds != null) {
+                if (maxExpirySeconds < expirySeconds)
+                    throw new Error(`maxExpirySeconds must be strictly larger than the regular expiration seconds: ${expirySeconds}`);
+            }
+            maxExpirySeconds ??= this._options.maxPaymentTimeoutSeconds;
+            if (maxExpirySeconds > expirySeconds) {
+                expirySeconds = Math.min(maxExpirySeconds, ((parsedPr.tagsObject.min_final_cltv_expiry - 144) * 600 * 2) + expirySeconds);
+                longExpiry = true;
+            }
+        }
+        return { expirySeconds, longExpiry };
+    }
+    /**
      * Returns the quote/swap from a given intermediary
      *
      * @param signer Smartchain signer initiating the swap
@@ -203,7 +231,8 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                 confidence: resp.confidence,
                 pr,
                 exactIn: false,
-                contractVersion: version
+                contractVersion: version,
+                longExpiry: calculatedOptions.longExpiry
             });
             return quote;
         }
@@ -231,7 +260,11 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
             throw new UserError_1.UserError("Must be an invoice with amount");
         const amountOut = (BigInt(parsedPr.millisatoshis) + 999n) / 1000n;
         const lpVersions = Intermediary_1.Intermediary.getContractVersionsForLps(this.chainIdentifier, lps);
-        const _options = this.toRequiredSwapOptions({ ...amountData, amount: amountOut }, options);
+        const { expirySeconds, longExpiry } = this.getExpirySeconds(parsedPr, options);
+        const _options = {
+            ...this.toRequiredSwapOptions({ ...amountData, amount: amountOut }, { ...options, expirySeconds }),
+            longExpiry
+        };
         if (parsedPr.tagsObject.payment_hash == null)
             throw new Error("Provided lightning invoice doesn't contain payment hash field!");
         await this.checkPaymentHashWasPaid(parsedPr.tagsObject.payment_hash);
@@ -361,7 +394,8 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                 confidence: resp.confidence,
                 pr: invoice,
                 exactIn: true,
-                contractVersion: version
+                contractVersion: version,
+                longExpiry: calculatedOptions?.longExpiry
             });
             return quote;
         }
@@ -396,11 +430,16 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                 this.preFetchSignData(Promise.resolve(true), contractVersion) :
                 undefined;
         });
-        const _options = this.toRequiredSwapOptions(amountData, options, pricePreFetchPromise, _abortController.signal);
         try {
             const invoiceCreateService = await invoiceCreateServicePromise;
             if (amountData.exactIn) {
                 const dummyInvoice = await invoiceCreateService.getInvoice(invoiceCreateService.minMsats == null ? 1 : Number(invoiceCreateService.minMsats / 1000n), _abortController.signal);
+                const parsedDummyInvoice = (0, bolt11_1.decode)(dummyInvoice);
+                const { expirySeconds, longExpiry } = this.getExpirySeconds(parsedDummyInvoice, options);
+                const _options = {
+                    ...this.toRequiredSwapOptions(amountData, { ...options, expirySeconds }, pricePreFetchPromise, _abortController.signal),
+                    longExpiry
+                };
                 return lps.map(lp => {
                     return {
                         quote: this.getIntermediaryQuoteExactIn(signer, amountData, invoiceCreateService, lp, dummyInvoice, _options, {

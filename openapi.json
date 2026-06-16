@@ -1674,6 +1674,24 @@
           }
         }
       },
+      "SwapOutputFlags": {
+        "type": "object",
+        "description": "Additional swap flags. These are currently populated for smart-chain-to-Lightning swaps.",
+        "properties": {
+          "lightningRecipientIsNonCustodialWallet": {
+            "type": "boolean",
+            "description": "For smart-chain-to-Lightning swaps. Indicates that the Lightning recipient appears to be a non-custodial wallet that must be online to receive the payment."
+          },
+          "lightningPaymentWillLikelyFail": {
+            "type": "boolean",
+            "description": "For smart-chain-to-Lightning swaps. Indicates that the Lightning payment probe failed and the payment will likely fail."
+          },
+          "lightningPaymentWithLongHTLCExpiration": {
+            "type": "boolean",
+            "description": "For smart-chain-to-Lightning swaps. Indicates that the swap uses a longer than usual HTLC expiration because the Lightning invoice requires a larger final CLTV delta."
+          }
+        }
+      },
       "SwapOutputBase": {
         "type": "object",
         "description": "Base serialized swap data returned by API endpoints that expose swap details.",
@@ -1714,6 +1732,9 @@
           },
           "lnurl": {
             "$ref": "#/components/schemas/SwapOutputLNURL"
+          },
+          "flags": {
+            "$ref": "#/components/schemas/SwapOutputFlags"
           }
         }
       },
@@ -1777,7 +1798,11 @@
           },
           "lightningPaymentHTLCTimeout": {
             "type": "number",
-            "description": "Only for smart-chain-to-Lightning swaps. Optional override for the HTLC timeout in seconds. Longer timeouts allow more Lightning routing hops to be considered, but may lead to longer funds lockup if the LP is non-cooperative."
+            "description": "Only for smart-chain-to-Lightning swaps. Optional override for the HTLC timeout in seconds. Defaults to 5 days. Longer timeouts allow more Lightning routing hops to be considered, but may lead to longer funds lockup if the LP is non-cooperative. For invoices with `min_final_cltv_expiry` greater than 144, this timeout may be extended up to `lightningPaymentMaxHTLCTimeout`; when that happens, the response flag `lightningPaymentWithLongHTLCExpiration` is set to `true`."
+          },
+          "lightningPaymentMaxHTLCTimeout": {
+            "type": "number",
+            "description": "Only for smart-chain-to-Lightning swaps. Optional maximum HTLC timeout in seconds. Defaults to 10 days. Allows `lightningPaymentHTLCTimeout` to be increased when paying invoices with `min_final_cltv_expiry` greater than 144, which is common for systems with longer potential settlement times. If the resulting timeout is longer than `lightningPaymentHTLCTimeout`, the response flag `lightningPaymentWithLongHTLCExpiration` is set to `true`."
           }
         },
         "example": {

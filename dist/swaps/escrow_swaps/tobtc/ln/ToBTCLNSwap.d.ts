@@ -15,6 +15,7 @@ export type ToBTCLNSwapInit<T extends SwapData> = IToBTCSwapInit<T> & {
     pr?: string;
     lnurl?: string;
     successAction?: LNURLPaySuccessAction;
+    longExpiry?: boolean;
 };
 export declare function isToBTCLNSwapInit<T extends SwapData>(obj: any): obj is ToBTCLNSwapInit<T>;
 /**
@@ -34,6 +35,7 @@ export declare class ToBTCLNSwap<T extends ChainType = ChainType> extends IToBTC
     protected readonly logger: LoggerType;
     private readonly usesClaimHashAsId;
     private readonly confidence;
+    private readonly longExpiry?;
     private pr?;
     private secret?;
     private lnurl?;
@@ -89,6 +91,13 @@ export declare class ToBTCLNSwap<T extends ChainType = ChainType> extends IToBTC
      *  for such a wallet **to be online** when attempting to make a swap sending to such a wallet
      */
     isPayingToNonCustodialWallet(): boolean;
+    /**
+     * Returns whether the swap requires longer than usual HTLC expiration, this means in the case that the LP is not
+     *  cooperative the user will have to wait longer for the unilateral refund to become available. The longer
+     *  expiration times might be required when sending lightning payments to systems with long potential settlement
+     *  times (like Arkade or Bark).
+     */
+    hasLongExpiration(): boolean;
     /**
      * @inheritDoc
      * @internal

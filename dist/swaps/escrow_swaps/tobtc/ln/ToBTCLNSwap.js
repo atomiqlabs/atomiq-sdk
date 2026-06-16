@@ -16,6 +16,7 @@ function isToBTCLNSwapInit(obj) {
         (obj.pr == null || typeof (obj.pr) === "string") &&
         (obj.lnurl == null || typeof (obj.lnurl) === "string") &&
         (obj.successAction == null || (0, LNURL_1.isLNURLPaySuccessAction)(obj.successAction)) &&
+        (obj.longExpiry == null || typeof (obj.longExpiry) === "boolean") &&
         (0, IToBTCSwap_1.isIToBTCSwapInit)(obj);
 }
 exports.isToBTCLNSwapInit = isToBTCLNSwapInit;
@@ -53,6 +54,7 @@ class ToBTCLNSwap extends IToBTCSwap_1.IToBTCSwap {
             this.pr = initOrObj.pr;
             this.lnurl = initOrObj.lnurl;
             this.successAction = initOrObj.successAction;
+            this.longExpiry = initOrObj.longExpiry;
             this.usesClaimHashAsId = true;
         }
         else {
@@ -61,6 +63,7 @@ class ToBTCLNSwap extends IToBTCSwap_1.IToBTCSwap {
             this.lnurl = initOrObj.lnurl;
             this.successAction = initOrObj.successAction;
             this.secret = initOrObj.secret;
+            this.longExpiry = initOrObj.longExpiry;
             this.usesClaimHashAsId = initOrObj.usesClaimHashAsId ?? false;
         }
         this.logger = (0, Logger_1.getLogger)("ToBTCLN(" + this.getIdentifierHashString() + "): ");
@@ -168,6 +171,15 @@ class ToBTCLNSwap extends IToBTCSwap_1.IToBTCSwap {
         return false;
     }
     /**
+     * Returns whether the swap requires longer than usual HTLC expiration, this means in the case that the LP is not
+     *  cooperative the user will have to wait longer for the unilateral refund to become available. The longer
+     *  expiration times might be required when sending lightning payments to systems with long potential settlement
+     *  times (like Arkade or Bark).
+     */
+    hasLongExpiration() {
+        return this.longExpiry ?? false;
+    }
+    /**
      * @inheritDoc
      * @internal
      */
@@ -249,6 +261,7 @@ class ToBTCLNSwap extends IToBTCSwap_1.IToBTCSwap {
             secret: this.secret,
             lnurl: this.lnurl,
             successAction: this.successAction,
+            longExpiry: this.longExpiry,
             usesClaimHashAsId: this.usesClaimHashAsId
         };
     }

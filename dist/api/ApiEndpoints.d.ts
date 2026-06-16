@@ -53,6 +53,15 @@ export type SwapOutputBase = {
         /** LNURL success action returned after a successful payment via LNURL-pay link, if specified in the LNURL. */
         successAction?: LNURLDecodedSuccessAction;
     };
+    /** Additional flags for the swap */
+    flags?: {
+        /** Indicates that the recipient of the smart-chain to Lightning swap is a non-custodial wallet, which has to be online to receive */
+        lightningRecipientIsNonCustodialWallet?: boolean;
+        /** Indicates that the smart-chain to Lightning swap will likely fail since the probe attempt failing */
+        lightningPaymentWillLikelyFail?: boolean;
+        /** Indicates that the smart-chain to Lightning swaps requires a longer than usual HTLC expiry, due to params of the invoice being paid */
+        lightningPaymentWithLongHTLCExpiration?: boolean;
+    };
 };
 /**
  * Input for creating a new swap
@@ -104,9 +113,22 @@ export type CreateSwapInput = {
      *
      * Optional override for the HTLC timeout in seconds (default is 5 days), longer timeouts allow more lightning
      *  network hops to be considered when routing the destination lightning network payment, but might lead to longer
-     *  funds lockup in case of non-cooperative LP.
+     *  funds lockup in case of non-cooperative LP. Might be extended up to `lightningPaymentMaxHTLCTimeout` (default
+     *  10 days) if the lightning invoice that is being paid explictly requires longer timeouts due to
+     *  `min_final_cltv_expiry` > 144. If the resulting expiration is longer than the `lightningPaymentHTLCTimeout` due
+     *  to this, the swap will be flagged with `lightningPaymentWithLongHTLCExpiration=true`
      */
     lightningPaymentHTLCTimeout?: number;
+    /**
+     * Only for smart chain to Lightning swaps.
+     *
+     * Optional override for the **maximum** HTLC timeout in seconds (default is 10 days). Allow the increase of the default
+     *  `lightningPaymentHTLCTimeout` parameter up to the number of seconds specified here if necessary, this is only
+     *  applied to invoices with `min_final_cltv_expiry` > 144, this is usually the case when sending lightning payments
+     *  to systems with long potential settlement times (like Arkade or Bark). If the resulting expiration is longer
+     *  than the `lightningPaymentHTLCTimeout` due to this, the swap will be flagged with `lightningPaymentWithLongHTLCExpiration=true`
+     */
+    lightningPaymentMaxHTLCTimeout?: number;
 };
 /**
  * Output from create swap endpoint

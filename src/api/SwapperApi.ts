@@ -38,6 +38,7 @@ import {SwapExecutionStep} from "../types/SwapExecutionStep";
 import {SwapStateInfo} from "../types/SwapStateInfo";
 import {IEscrowSwap} from "../swaps/escrow_swaps/IEscrowSwap";
 import {ToBTCLNSwap} from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNSwap";
+import {isSwapType} from "../utils/SwapUtils";
 
 function requiresSecretRevealForApi(swap: ISwap, state: number): boolean | undefined {
     if(swap instanceof FromBTCLNSwap) {
@@ -63,6 +64,14 @@ function createSwapOutputBase(
     const swapFeeEntry = feeBreakdown.find(f => f.type === FeeType.SWAP);
     const networkFeeEntry = feeBreakdown.find(f => f.type === FeeType.NETWORK_OUTPUT);
 
+    const flags: any = {};
+
+    if(isSwapType(swap, SwapType.TO_BTCLN)) {
+        flags.lightningRecipientIsNonCustodialWallet = swap.isPayingToNonCustodialWallet();
+        flags.lightningPaymentWillLikelyFail = swap.willLikelyFail();
+        flags.lightningPaymentWithLongHTLCExpiration = swap.hasLongExpiration();
+    }
+
     return {
         swapId: swap.getId(),
         swapType: SwapType[swap.getType()],
@@ -87,6 +96,8 @@ function createSwapOutputBase(
             expiry: swap.getQuoteExpiry(),
             outputAddress: swap.getOutputAddress()!
         },
+
+        flags,
 
         createdAt: swap.createdAt,
 
@@ -160,7 +171,8 @@ export class SwapperApi<T extends MultiChain> {
                 paymentHash: { type: "string", required: false, description: "Custom payment hash for Lightning swaps" },
                 lightningInvoiceDescription: { type: "string", required: false, description: "Description for Lightning invoice" },
                 lightningInvoiceDescriptionHash: { type: "string", required: false, description: "Description hash for Lightning invoice (hex)" },
-                lightningPaymentHTLCTimeout: { type: "number", required: false, description: "Custom expiry time in seconds" }
+                lightningPaymentHTLCTimeout: { type: "number", required: false, description: "Custom expiry time in seconds" },
+                lightningPaymentMaxHTLCTimeout: { type: "number", required: false, description: "Custom maximum expiry time in seconds" }
             }),
             listSwaps: createApiEndpoint<ListSwapsInput, ListSwapsOutput, "GET">("GET", "List all swaps for a given signer address. Returns an array of swap objects, each with swapId, swapType, state, quote, steps, and terminal state flags (isFinished, isSuccess, isFailed, isExpired). Optionally filter by smart chain.", this.listSwaps.bind(this), {
                 signer: { type: "string", required: true, description: "Smart chain signer address to filter swaps for" },
@@ -267,6 +279,7 @@ export class SwapperApi<T extends MultiChain> {
         if (input.lightningInvoiceDescription != null) options.description = input.lightningInvoiceDescription;
         if (input.lightningInvoiceDescriptionHash != null) options.descriptionHash = Buffer.from(input.lightningInvoiceDescriptionHash, "hex");
         if (input.lightningPaymentHTLCTimeout != null) options.expirySeconds = input.lightningPaymentHTLCTimeout;
+        if (input.lightningPaymentMaxHTLCTimeout != null) options.maxExpirySeconds = input.lightningPaymentMaxHTLCTimeout;
 
         // swapper.swap() handles routing based on token types
         const swap = await this.swapper.swap(

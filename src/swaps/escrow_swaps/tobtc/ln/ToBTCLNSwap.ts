@@ -17,6 +17,7 @@ export type ToBTCLNSwapInit<T extends SwapData> = IToBTCSwapInit<T> & {
     pr?: string;
     lnurl?: string;
     successAction?: LNURLPaySuccessAction;
+    longExpiry?: boolean;
 };
 
 export function isToBTCLNSwapInit<T extends SwapData>(obj: any): obj is ToBTCLNSwapInit<T> {
@@ -24,6 +25,7 @@ export function isToBTCLNSwapInit<T extends SwapData>(obj: any): obj is ToBTCLNS
         (obj.pr==null || typeof (obj.pr) === "string") &&
         (obj.lnurl == null || typeof (obj.lnurl) === "string") &&
         (obj.successAction == null || isLNURLPaySuccessAction(obj.successAction)) &&
+        (obj.longExpiry == null || typeof (obj.longExpiry) === "boolean") &&
         isIToBTCSwapInit<T>(obj);
 }
 
@@ -51,6 +53,7 @@ export class ToBTCLNSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, 
 
     private readonly usesClaimHashAsId: boolean;
     private readonly confidence: number;
+    private readonly longExpiry?: boolean;
     private pr?: string;
     private secret?: string;
 
@@ -78,6 +81,7 @@ export class ToBTCLNSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, 
             this.pr = initOrObj.pr;
             this.lnurl = initOrObj.lnurl;
             this.successAction = initOrObj.successAction;
+            this.longExpiry = initOrObj.longExpiry;
             this.usesClaimHashAsId = true;
         } else {
             this.confidence = initOrObj.confidence;
@@ -85,6 +89,7 @@ export class ToBTCLNSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, 
             this.lnurl = initOrObj.lnurl;
             this.successAction = initOrObj.successAction;
             this.secret = initOrObj.secret;
+            this.longExpiry = initOrObj.longExpiry;
             this.usesClaimHashAsId = initOrObj.usesClaimHashAsId ?? false;
         }
 
@@ -210,6 +215,16 @@ export class ToBTCLNSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, 
     }
 
     /**
+     * Returns whether the swap requires longer than usual HTLC expiration, this means in the case that the LP is not
+     *  cooperative the user will have to wait longer for the unilateral refund to become available. The longer
+     *  expiration times might be required when sending lightning payments to systems with long potential settlement
+     *  times (like Arkade or Bark).
+     */
+    hasLongExpiration(): boolean {
+        return this.longExpiry ?? false;
+    }
+
+    /**
      * @inheritDoc
      * @internal
      */
@@ -297,6 +312,7 @@ export class ToBTCLNSwap<T extends ChainType = ChainType> extends IToBTCSwap<T, 
             secret: this.secret,
             lnurl: this.lnurl,
             successAction: this.successAction,
+            longExpiry: this.longExpiry,
             usesClaimHashAsId: this.usesClaimHashAsId
         };
     }

@@ -29,11 +29,24 @@ export type ToBTCLNOptions = {
      * HTLC expiration timeout in seconds to use when offering the HTLC to the LP. Larger expirations mean that more
      *  lightning network payment paths can be considered (every hop in the lightning network payment adds additional
      *  timeout requirement). On the other side, larger expiration also means that user's funds are locked for longer
-     *  in case of a non-cooperative LP.
+     *  in case of a non-cooperative LP. Might be extended up to `maxExpirySeconds` if the lightning invoice that is
+     *  being paid explictly requires longer timeouts due to `min_final_cltv_expiry` > 144. If the resulting expiration
+     *  is longer than the `expirySeconds` due to this, the swap will be flagged with
+     *  {@link ToBTCLNSwap.hasLongExpiration}.
      *
      * Uses 5 days as default.
      */
     expirySeconds?: number,
+    /**
+     * Allow the increase of the default `expirySeconds` parameter up to the number of seconds specified here if
+     *  necessary, this is only applied to invoices with `min_final_cltv_expiry` > 144, this is usually the case when
+     *  sending lightning payments to systems with long potential settlement times (like Arkade or Bark). If the
+     *  resulting expiration is longer than the `expirySeconds` due to this, the swap will be flagged with
+     *  {@link ToBTCLNSwap.hasLongExpiration}.
+     *
+     * Uses 10 days as default.
+     */
+    maxExpirySeconds?: number,
     /**
      * Maximum fee for routing the swap output payment through the lightning network. Higher fee percentages means that
      *  more payment routes can be considered (every hop in the lightning network payment adds additional fee
@@ -80,7 +93,8 @@ export type ToBTCLNOptions = {
 export type ToBTCLNWrapperOptions = ISwapWrapperOptions & {
     lightningBaseFee: number,
     lightningFeePPM: number,
-    paymentTimeoutSeconds: number
+    paymentTimeoutSeconds: number,
+    maxPaymentTimeoutSeconds: number
 };
 
 export type ToBTCLNDefinition<T extends ChainType> = IToBTCDefinition<T, ToBTCLNWrapper<T>, ToBTCLNSwap<T>>;
@@ -119,6 +133,7 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
             {
                 ...options,
                 paymentTimeoutSeconds: options?.paymentTimeoutSeconds ?? 5*24*60*60,
+                maxPaymentTimeoutSeconds: options?.maxPaymentTimeoutSeconds ?? 10*24*60*60,
                 lightningBaseFee: options?.lightningBaseFee ?? 10,
                 lightningFeePPM: options?.lightningFeePPM ?? 2000
             },
@@ -245,6 +260,42 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
     }
 
     /**
+     * Returns the expiry seconds to use to calculate expiration timeout for HTLC, considers the `expirySeconds` and
+     *  `maxExpirySeconds` params.
+     *
+     * @param parsedPr
+     * @param options
+     * @private
+     */
+    private getExpirySeconds(
+        parsedPr: PaymentRequestObject & {tagsObject: TagsObject},
+        options?: ToBTCLNOptions
+    ): {
+        expirySeconds?: number,
+        longExpiry: boolean
+    } {
+        let expirySeconds = options?.expirySeconds;
+        let longExpiry = false;
+        if(
+            parsedPr.tagsObject.min_final_cltv_expiry!=null &&
+            parsedPr.tagsObject.min_final_cltv_expiry > 144
+        ) {
+            expirySeconds ??= this._options.paymentTimeoutSeconds;
+            let maxExpirySeconds = options?.maxExpirySeconds;
+            if(maxExpirySeconds!=null) {
+                if(maxExpirySeconds < expirySeconds) throw new Error(`maxExpirySeconds must be strictly larger than the regular expiration seconds: ${expirySeconds}`);
+            }
+            maxExpirySeconds ??= this._options.maxPaymentTimeoutSeconds;
+            if(maxExpirySeconds > expirySeconds) {
+                expirySeconds = Math.min(maxExpirySeconds, ((parsedPr.tagsObject.min_final_cltv_expiry - 144) * 600 * 2) + expirySeconds);
+                longExpiry = true;
+            }
+        }
+
+        return {expirySeconds, longExpiry};
+    }
+
+    /**
      * Returns the quote/swap from a given intermediary
      *
      * @param signer Smartchain signer initiating the swap
@@ -268,7 +319,8 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
         parsedPr: PaymentRequestObject & {tagsObject: TagsObject},
         calculatedOptions: {
             maxFee: bigint | Promise<bigint>,
-            expiryTimestamp: bigint
+            expiryTimestamp: bigint,
+            longExpiry?: boolean
         },
         preFetches: {
             feeRatePromise: {[contractVersion: string]: Promise<string | undefined>},
@@ -347,7 +399,8 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
                 confidence: resp.confidence,
                 pr,
                 exactIn: false,
-                contractVersion: version
+                contractVersion: version,
+                longExpiry: calculatedOptions.longExpiry
             } as IToBTCSwapInit<T["Data"]>);
             return quote;
         } catch (e) {
@@ -393,7 +446,11 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
 
         const lpVersions = Intermediary.getContractVersionsForLps(this.chainIdentifier, lps);
 
-        const _options = this.toRequiredSwapOptions({...amountData, amount: amountOut}, options);
+        const {expirySeconds, longExpiry} = this.getExpirySeconds(parsedPr, options);
+        const _options = {
+            ...this.toRequiredSwapOptions({...amountData, amount: amountOut}, {...options, expirySeconds}),
+            longExpiry
+        };
 
         if(parsedPr.tagsObject.payment_hash==null) throw new Error("Provided lightning invoice doesn't contain payment hash field!");
         await this.checkPaymentHashWasPaid(parsedPr.tagsObject.payment_hash);
@@ -464,7 +521,8 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
         dummyPr: string,
         calculatedOptions: {
             maxFee: bigint | Promise<bigint>,
-            expiryTimestamp: bigint
+            expiryTimestamp: bigint,
+            longExpiry?: boolean
         },
         preFetches: {
             feeRatePromise: {[contractVersion: string]: Promise<string | undefined>},
@@ -560,7 +618,8 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
                 confidence: resp.confidence,
                 pr: invoice,
                 exactIn: true,
-                contractVersion: version
+                contractVersion: version,
+                longExpiry: calculatedOptions?.longExpiry
             } as IToBTCSwapInit<T["Data"]>);
             return quote;
         } catch (e) {
@@ -608,8 +667,6 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
                 undefined;
         });
 
-        const _options = this.toRequiredSwapOptions(amountData, options, pricePreFetchPromise, _abortController.signal);
-
         try {
             const invoiceCreateService = await invoiceCreateServicePromise;
 
@@ -618,6 +675,13 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
                     invoiceCreateService.minMsats==null ? 1 : Number(invoiceCreateService.minMsats/1000n),
                     _abortController.signal
                 );
+                const parsedDummyInvoice = bolt11Decode(dummyInvoice);
+
+                const {expirySeconds, longExpiry} = this.getExpirySeconds(parsedDummyInvoice, options);
+                const _options = {
+                    ...this.toRequiredSwapOptions(amountData, {...options, expirySeconds}, pricePreFetchPromise, _abortController.signal),
+                    longExpiry
+                };
 
                 return lps.map(lp => {
                     return {

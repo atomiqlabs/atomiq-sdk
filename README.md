@@ -159,9 +159,11 @@ const solanaSigner = new SolanaSigner(new SolanaKeypairWallet(Keypair.fromSecret
 ```
 
 ```typescript
+import {RpcProvider} from "starknet";
 import {StarknetSigner, StarknetKeypairWallet} from "@atomiqlabs/chain-starknet";
 //Creating Starknet signer from private key
-const starknetSigner = new StarknetSigner(new StarknetKeypairWallet(starknetRpc, starknetKey));
+const starknetProvider = new RpcProvider({nodeUrl: starknetRpc});
+const starknetSigner = new StarknetSigner(new StarknetKeypairWallet(starknetProvider, starknetKey));
 ```
 
 ```typescript

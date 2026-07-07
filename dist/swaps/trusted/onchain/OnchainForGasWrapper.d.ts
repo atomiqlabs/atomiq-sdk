@@ -10,6 +10,7 @@ import { UnifiedSwapEventListener } from "../../../events/UnifiedSwapEventListen
 import { UnifiedSwapStorage } from "../../../storage/UnifiedSwapStorage";
 import { ISwap } from "../../ISwap";
 import { BTC_NETWORK } from "@scure/btc-signer/utils";
+import { IntermediaryAPI } from "../../../intermediaries/apis/IntermediaryAPI";
 export type OnchainForGasWrapperOptions = ISwapWrapperOptions & {
     bitcoinNetwork: BTC_NETWORK;
 };
@@ -50,10 +51,11 @@ export declare class OnchainForGasWrapper<T extends ChainType> extends ISwapWrap
      * @param prices Pricing to use
      * @param tokens
      * @param btcRpc Bitcoin RPC which also supports getting transactions by txoHash
+     * @param lpApi
      * @param options
      * @param events Instance to use for emitting events
      */
-    constructor(chainIdentifier: string, unifiedStorage: UnifiedSwapStorage<T>, unifiedChainEvents: UnifiedSwapEventListener<T>, chain: T["ChainInterface"], prices: ISwapPrice, tokens: WrapperCtorTokens, btcRpc: BitcoinRpcWithAddressIndex<any>, options: OnchainForGasWrapperOptions, events?: EventEmitter<{
+    constructor(chainIdentifier: string, unifiedStorage: UnifiedSwapStorage<T>, unifiedChainEvents: UnifiedSwapEventListener<T>, chain: T["ChainInterface"], prices: ISwapPrice, tokens: WrapperCtorTokens, btcRpc: BitcoinRpcWithAddressIndex<any>, lpApi: IntermediaryAPI, options: OnchainForGasWrapperOptions, events?: EventEmitter<{
         swapState: [ISwap];
     }>);
     /**

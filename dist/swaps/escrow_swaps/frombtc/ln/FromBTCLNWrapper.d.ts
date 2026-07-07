@@ -6,6 +6,7 @@ import { ChainType, ClaimEvent, InitializeEvent, LightningNetworkApi, RefundEven
 import { Intermediary } from "../../../../intermediaries/Intermediary";
 import { Buffer } from "buffer";
 import { SwapType } from "../../../../enums/SwapType";
+import { IntermediaryAPI } from "../../../../intermediaries/apis/IntermediaryAPI";
 import { ISwapPrice } from "../../../../prices/abstract/ISwapPrice";
 import { EventEmitter } from "events";
 import { ISwapWrapperOptions, WrapperCtorTokens } from "../../../ISwapWrapper";
@@ -83,6 +84,7 @@ export declare class FromBTCLNWrapper<T extends ChainType> extends IFromBTCLNWra
      * @param tokens
      * @param versionedContracts
      * @param lnApi
+     * @param lpApi
      * @param options
      * @param events Instance to use for emitting events
      */
@@ -91,7 +93,7 @@ export declare class FromBTCLNWrapper<T extends ChainType> extends IFromBTCLNWra
             swapContract: T["Contract"];
             swapDataConstructor: new (data: any) => T["Data"];
         };
-    }, lnApi: LightningNetworkApi, options?: AllOptional<FromBTCLNWrapperOptions>, events?: EventEmitter<{
+    }, lnApi: LightningNetworkApi, lpApi: IntermediaryAPI, options?: AllOptional<FromBTCLNWrapperOptions>, events?: EventEmitter<{
         swapState: [ISwap];
     }>);
     /**

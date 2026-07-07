@@ -7,6 +7,7 @@ import { ISwapWrapperOptions, WrapperCtorTokens } from "../../../ISwapWrapper";
 import { ISwapPrice } from "../../../../prices/abstract/ISwapPrice";
 import { EventEmitter } from "events";
 import { SwapType } from "../../../../enums/SwapType";
+import { IntermediaryAPI } from "../../../../intermediaries/apis/IntermediaryAPI";
 import { UnifiedSwapEventListener } from "../../../../events/UnifiedSwapEventListener";
 import { UnifiedSwapStorage } from "../../../../storage/UnifiedSwapStorage";
 import { ISwap } from "../../../ISwap";
@@ -19,11 +20,24 @@ export type ToBTCLNOptions = {
      * HTLC expiration timeout in seconds to use when offering the HTLC to the LP. Larger expirations mean that more
      *  lightning network payment paths can be considered (every hop in the lightning network payment adds additional
      *  timeout requirement). On the other side, larger expiration also means that user's funds are locked for longer
-     *  in case of a non-cooperative LP.
+     *  in case of a non-cooperative LP. Might be extended up to `maxExpirySeconds` if the lightning invoice that is
+     *  being paid explictly requires longer timeouts due to `min_final_cltv_expiry` > 144. If the resulting expiration
+     *  is longer than the `expirySeconds` due to this, the swap will be flagged with
+     *  {@link ToBTCLNSwap.hasLongExpiration}.
      *
      * Uses 5 days as default.
      */
     expirySeconds?: number;
+    /**
+     * Allow the increase of the default `expirySeconds` parameter up to the number of seconds specified here if
+     *  necessary, this is only applied to invoices with `min_final_cltv_expiry` > 144, this is usually the case when
+     *  sending lightning payments to systems with long potential settlement times (like Arkade or Bark). If the
+     *  resulting expiration is longer than the `expirySeconds` due to this, the swap will be flagged with
+     *  {@link ToBTCLNSwap.hasLongExpiration}.
+     *
+     * Uses 10 days as default.
+     */
+    maxExpirySeconds?: number;
     /**
      * Maximum fee for routing the swap output payment through the lightning network. Higher fee percentages means that
      *  more payment routes can be considered (every hop in the lightning network payment adds additional fee
@@ -69,6 +83,7 @@ export type ToBTCLNWrapperOptions = ISwapWrapperOptions & {
     lightningBaseFee: number;
     lightningFeePPM: number;
     paymentTimeoutSeconds: number;
+    maxPaymentTimeoutSeconds: number;
 };
 export type ToBTCLNDefinition<T extends ChainType> = IToBTCDefinition<T, ToBTCLNWrapper<T>, ToBTCLNSwap<T>>;
 /**
@@ -87,7 +102,7 @@ export declare class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T
             swapContract: T["Contract"];
             swapDataConstructor: new (data: any) => T["Data"];
         };
-    }, options?: AllOptional<ToBTCLNWrapperOptions>, events?: EventEmitter<{
+    }, lpApi: IntermediaryAPI, options?: AllOptional<ToBTCLNWrapperOptions>, events?: EventEmitter<{
         swapState: [ISwap];
     }>);
     private toRequiredSwapOptions;
@@ -129,6 +144,15 @@ export declare class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T
      * @private
      */
     private verifyReturnedData;
+    /**
+     * Returns the expiry seconds to use to calculate expiration timeout for HTLC, considers the `expirySeconds` and
+     *  `maxExpirySeconds` params.
+     *
+     * @param parsedPr
+     * @param options
+     * @private
+     */
+    private getExpirySeconds;
     /**
      * Returns the quote/swap from a given intermediary
      *

@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OnchainForGasWrapper = void 0;
 const ISwapWrapper_1 = require("../../ISwapWrapper");
-const TrustedIntermediaryAPI_1 = require("../../../intermediaries/apis/TrustedIntermediaryAPI");
 const IntermediaryError_1 = require("../../../errors/IntermediaryError");
 const OnchainForGasSwap_1 = require("./OnchainForGasSwap");
 const SwapType_1 = require("../../../enums/SwapType");
@@ -21,11 +20,12 @@ class OnchainForGasWrapper extends ISwapWrapper_1.ISwapWrapper {
      * @param prices Pricing to use
      * @param tokens
      * @param btcRpc Bitcoin RPC which also supports getting transactions by txoHash
+     * @param lpApi
      * @param options
      * @param events Instance to use for emitting events
      */
-    constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, btcRpc, options, events) {
-        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, options, events);
+    constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, btcRpc, lpApi, options, events) {
+        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, lpApi, options, events);
         this.TYPE = SwapType_1.SwapType.TRUSTED_FROM_BTC;
         /**
          * @internal
@@ -59,7 +59,7 @@ class OnchainForGasWrapper extends ISwapWrapper_1.ISwapWrapper {
             throw new Error("Not initialized, call init() first!");
         const lpUrl = typeof (lpOrUrl) === "string" ? lpOrUrl : lpOrUrl.url;
         const token = this._chain.getNativeCurrencyAddress();
-        const resp = await TrustedIntermediaryAPI_1.TrustedIntermediaryAPI.initTrustedFromBTC(this.chainIdentifier, lpUrl, {
+        const resp = await this._lpApi.initTrustedFromBTC(this.chainIdentifier, lpUrl, {
             address: recipient,
             amount,
             refundAddress,

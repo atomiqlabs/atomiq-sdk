@@ -11,6 +11,7 @@ export type RequestBody = {
  * @param timeout Timeout in millseconds for the request to succeed & all its response properties to resolve
  * @param signal Abort signal
  * @param streamRequest Whether the request should be streamed or not
+ * @param _headers
  * @throws {RequestError} When the response code is not 200
  */
-export declare function streamingFetchPromise<T extends RequestSchema>(url: string, body: RequestBody, schema: T, timeout?: number, signal?: AbortSignal, streamRequest?: boolean): Promise<RequestSchemaResultPromise<T>>;
+export declare function streamingFetchPromise<T extends RequestSchema>(url: string, body: RequestBody, schema: T, timeout?: number, signal?: AbortSignal, streamRequest?: boolean, _headers?: Record<string, string>): Promise<RequestSchemaResultPromise<T>>;

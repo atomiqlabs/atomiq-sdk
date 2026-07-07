@@ -35,7 +35,9 @@ const LNURLPay_1 = require("../types/lnurl/LNURLPay");
 const RetryUtils_1 = require("../utils/RetryUtils");
 const IEscrowSwap_1 = require("../swaps/escrow_swaps/IEscrowSwap");
 const LightningInvoiceCreateService_1 = require("../types/wallets/LightningInvoiceCreateService");
+const IntermediaryAPI_1 = require("../intermediaries/apis/IntermediaryAPI");
 const BitcoinWalletUtils_1 = require("../utils/BitcoinWalletUtils");
+const SignedKeyBasedAuth_1 = require("../intermediaries/auth/SignedKeyBasedAuth");
 /**
  * Core orchestrator for all atomiq swap operations
  *
@@ -88,6 +90,10 @@ class Swapper extends events_1.EventEmitter {
             this._tokensByTicker[chainId] ??= {};
             this._tokens[chainId][tokenData.address] = this._tokensByTicker[chainId][tokenData.ticker] = tokenData;
         }
+        const lpApi = new IntermediaryAPI_1.IntermediaryAPI(this.options.signedKeyBasedAuth != null
+            ? (0, SignedKeyBasedAuth_1.getSignedKeyBasedAuthHandler)(this.options.signedKeyBasedAuth.certificate, this.options.signedKeyBasedAuth.privateKey)
+            : undefined);
+        this.lpApi = lpApi;
         this.swapStateListener = (swap) => {
             this.emit("swapState", swap);
         };
@@ -118,35 +124,35 @@ class Swapper extends events_1.EventEmitter {
             const unifiedSwapStorage = new UnifiedSwapStorage_1.UnifiedSwapStorage(storageHandler, this.options.noSwapCache);
             const unifiedChainEvents = new UnifiedSwapEventListener_1.UnifiedSwapEventListener(unifiedSwapStorage, chainEvents);
             const wrappers = {};
-            wrappers[SwapType_1.SwapType.TO_BTCLN] = new ToBTCLNWrapper_1.ToBTCLNWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, {
+            wrappers[SwapType_1.SwapType.TO_BTCLN] = new ToBTCLNWrapper_1.ToBTCLNWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, lpApi, {
                 getRequestTimeout: this.options.getRequestTimeout,
                 postRequestTimeout: this.options.postRequestTimeout,
                 saveUninitializedSwaps: this.options.saveUninitializedSwaps,
             });
-            wrappers[SwapType_1.SwapType.TO_BTC] = new ToBTCWrapper_1.ToBTCWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, this._bitcoinRpc, {
+            wrappers[SwapType_1.SwapType.TO_BTC] = new ToBTCWrapper_1.ToBTCWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, this._bitcoinRpc, lpApi, {
                 getRequestTimeout: this.options.getRequestTimeout,
                 postRequestTimeout: this.options.postRequestTimeout,
                 saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                 bitcoinNetwork: this._btcNetwork
             });
-            wrappers[SwapType_1.SwapType.FROM_BTCLN] = new FromBTCLNWrapper_1.FromBTCLNWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, lightningApi, {
+            wrappers[SwapType_1.SwapType.FROM_BTCLN] = new FromBTCLNWrapper_1.FromBTCLNWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, lightningApi, lpApi, {
                 getRequestTimeout: this.options.getRequestTimeout,
                 postRequestTimeout: this.options.postRequestTimeout,
                 saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                 unsafeSkipLnNodeCheck: this.bitcoinNetwork === base_1.BitcoinNetwork.TESTNET4 || this.bitcoinNetwork === base_1.BitcoinNetwork.REGTEST
             });
-            wrappers[SwapType_1.SwapType.FROM_BTC] = new FromBTCWrapper_1.FromBTCWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, versionedContracts, this._bitcoinRpc, {
+            wrappers[SwapType_1.SwapType.FROM_BTC] = new FromBTCWrapper_1.FromBTCWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, versionedContracts, this._bitcoinRpc, lpApi, {
                 getRequestTimeout: this.options.getRequestTimeout,
                 postRequestTimeout: this.options.postRequestTimeout,
                 saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                 bitcoinNetwork: this._btcNetwork
             });
-            wrappers[SwapType_1.SwapType.TRUSTED_FROM_BTCLN] = new LnForGasWrapper_1.LnForGasWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], {
+            wrappers[SwapType_1.SwapType.TRUSTED_FROM_BTCLN] = new LnForGasWrapper_1.LnForGasWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], lpApi, {
                 getRequestTimeout: this.options.getRequestTimeout,
                 postRequestTimeout: this.options.postRequestTimeout,
                 saveUninitializedSwaps: this.options.saveUninitializedSwaps,
             });
-            wrappers[SwapType_1.SwapType.TRUSTED_FROM_BTC] = new OnchainForGasWrapper_1.OnchainForGasWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], bitcoinRpc, {
+            wrappers[SwapType_1.SwapType.TRUSTED_FROM_BTC] = new OnchainForGasWrapper_1.OnchainForGasWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], bitcoinRpc, lpApi, {
                 getRequestTimeout: this.options.getRequestTimeout,
                 postRequestTimeout: this.options.postRequestTimeout,
                 saveUninitializedSwaps: this.options.saveUninitializedSwaps,
@@ -154,7 +160,7 @@ class Swapper extends events_1.EventEmitter {
             });
             // This is gated on the default version of the contracts
             if (spvVaultContract != null) {
-                wrappers[SwapType_1.SwapType.SPV_VAULT_FROM_BTC] = new SpvFromBTCWrapper_1.SpvFromBTCWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, versionedContracts, bitcoinRpc, {
+                wrappers[SwapType_1.SwapType.SPV_VAULT_FROM_BTC] = new SpvFromBTCWrapper_1.SpvFromBTCWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, versionedContracts, bitcoinRpc, lpApi, {
                     getRequestTimeout: this.options.getRequestTimeout,
                     postRequestTimeout: this.options.postRequestTimeout,
                     saveUninitializedSwaps: this.options.saveUninitializedSwaps,
@@ -163,7 +169,7 @@ class Swapper extends events_1.EventEmitter {
             }
             // This is gated on the default version of the contracts
             if (swapContract.supportsInitWithoutClaimer) {
-                wrappers[SwapType_1.SwapType.FROM_BTCLN_AUTO] = new FromBTCLNAutoWrapper_1.FromBTCLNAutoWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, lightningApi, this.messenger, {
+                wrappers[SwapType_1.SwapType.FROM_BTCLN_AUTO] = new FromBTCLNAutoWrapper_1.FromBTCLNAutoWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, lightningApi, this.messenger, lpApi, {
                     getRequestTimeout: this.options.getRequestTimeout,
                     postRequestTimeout: this.options.postRequestTimeout,
                     saveUninitializedSwaps: this.options.saveUninitializedSwaps,
@@ -190,10 +196,10 @@ class Swapper extends events_1.EventEmitter {
         });
         const contracts = (0, Utils_1.objectMap)(chainsData, (data) => data.versions ?? { [data.defaultVersion ?? "v1"]: { swapContract: data.swapContract, spvVaultContract: data.spvVaultContract } });
         if (options.intermediaryUrl != null) {
-            this.intermediaryDiscovery = new IntermediaryDiscovery_1.IntermediaryDiscovery(contracts, options.registryUrl, Array.isArray(options.intermediaryUrl) ? options.intermediaryUrl : [options.intermediaryUrl], options.getRequestTimeout);
+            this.intermediaryDiscovery = new IntermediaryDiscovery_1.IntermediaryDiscovery(contracts, lpApi, options.registryUrl, Array.isArray(options.intermediaryUrl) ? options.intermediaryUrl : [options.intermediaryUrl], options.getRequestTimeout);
         }
         else {
-            this.intermediaryDiscovery = new IntermediaryDiscovery_1.IntermediaryDiscovery(contracts, options.registryUrl, undefined, options.getRequestTimeout);
+            this.intermediaryDiscovery = new IntermediaryDiscovery_1.IntermediaryDiscovery(contracts, lpApi, options.registryUrl, undefined, options.getRequestTimeout);
         }
         this.intermediaryDiscovery.on("removed", (intermediaries) => {
             this.emit("lpsRemoved", intermediaries);
@@ -203,7 +209,7 @@ class Swapper extends events_1.EventEmitter {
         });
     }
     async _init() {
-        this.logger.debug("init(): Initializing swapper...");
+        this.logger.debug("init(): Initializing swapper");
         const abortController = new AbortController();
         const promises = [];
         let automaticClockDriftCorrectionPromise = undefined;
@@ -240,40 +246,48 @@ class Swapper extends events_1.EventEmitter {
         for (let chainIdentifier in this._chains) {
             chainPromises.push((async () => {
                 const { chainInterface, versionedContracts, unifiedChainEvents, unifiedSwapStorage, wrappers, reviver } = this._chains[chainIdentifier];
-                const _chainInterface = chainInterface;
-                if (_chainInterface.verifyNetwork != null) {
-                    await _chainInterface.verifyNetwork(this.bitcoinNetwork);
+                try {
+                    const _chainInterface = chainInterface;
+                    if (_chainInterface.verifyNetwork != null) {
+                        await _chainInterface.verifyNetwork(this.bitcoinNetwork);
+                    }
+                    for (let contractVersion in versionedContracts) {
+                        await versionedContracts[contractVersion].swapContract.start();
+                        this.logger.debug("init(): Intialized swap contract: " + chainIdentifier + ` version: ${contractVersion}`);
+                    }
+                    await unifiedSwapStorage.init();
+                    if (unifiedSwapStorage.storage instanceof IndexedDBUnifiedStorage_1.IndexedDBUnifiedStorage) {
+                        //Try to migrate the data here
+                        const storagePrefix = chainIdentifier === "SOLANA" ?
+                            "SOLv4-" + this.bitcoinNetwork + "-Swaps-" :
+                            "atomiqsdk-" + this.bitcoinNetwork + chainIdentifier + "-Swaps-";
+                        await unifiedSwapStorage.storage.tryMigrate([
+                            [storagePrefix + "FromBTC", SwapType_1.SwapType.FROM_BTC],
+                            [storagePrefix + "FromBTCLN", SwapType_1.SwapType.FROM_BTCLN],
+                            [storagePrefix + "ToBTC", SwapType_1.SwapType.TO_BTC],
+                            [storagePrefix + "ToBTCLN", SwapType_1.SwapType.TO_BTCLN]
+                        ], (obj) => {
+                            const swap = reviver(obj);
+                            if (swap._randomNonce == null) {
+                                const oldIdentifierHash = swap.getId();
+                                swap._randomNonce = (0, Utils_1.randomBytes)(16).toString("hex");
+                                const newIdentifierHash = swap.getId();
+                                this.logger.info("init(): Found older swap version without randomNonce, replacing, old hash: " + oldIdentifierHash +
+                                    " new hash: " + newIdentifierHash);
+                            }
+                            return swap;
+                        });
+                    }
+                    await unifiedChainEvents.start(this.options.noEvents);
+                    this.logger.debug("init(): Initialized events: " + chainIdentifier);
                 }
-                for (let contractVersion in versionedContracts) {
-                    await versionedContracts[contractVersion].swapContract.start();
-                    this.logger.debug("init(): Intialized swap contract: " + chainIdentifier + ` version: ${contractVersion}`);
+                catch (e) {
+                    if (!this.options.gracefullyHandleChainErrors)
+                        throw e;
+                    this.logger.error(`init(): Failed to initialize ${chainIdentifier} (skipped): `, e);
+                    delete this._chains[chainIdentifier];
+                    return;
                 }
-                await unifiedSwapStorage.init();
-                if (unifiedSwapStorage.storage instanceof IndexedDBUnifiedStorage_1.IndexedDBUnifiedStorage) {
-                    //Try to migrate the data here
-                    const storagePrefix = chainIdentifier === "SOLANA" ?
-                        "SOLv4-" + this.bitcoinNetwork + "-Swaps-" :
-                        "atomiqsdk-" + this.bitcoinNetwork + chainIdentifier + "-Swaps-";
-                    await unifiedSwapStorage.storage.tryMigrate([
-                        [storagePrefix + "FromBTC", SwapType_1.SwapType.FROM_BTC],
-                        [storagePrefix + "FromBTCLN", SwapType_1.SwapType.FROM_BTCLN],
-                        [storagePrefix + "ToBTC", SwapType_1.SwapType.TO_BTC],
-                        [storagePrefix + "ToBTCLN", SwapType_1.SwapType.TO_BTCLN]
-                    ], (obj) => {
-                        const swap = reviver(obj);
-                        if (swap._randomNonce == null) {
-                            const oldIdentifierHash = swap.getId();
-                            swap._randomNonce = (0, Utils_1.randomBytes)(16).toString("hex");
-                            const newIdentifierHash = swap.getId();
-                            this.logger.info("init(): Found older swap version without randomNonce, replacing, old hash: " + oldIdentifierHash +
-                                " new hash: " + newIdentifierHash);
-                        }
-                        return swap;
-                    });
-                }
-                if (!this.options.noEvents)
-                    await unifiedChainEvents.start();
-                this.logger.debug("init(): Intialized events: " + chainIdentifier);
                 for (let key in wrappers) {
                     // this.logger.debug("init(): Initializing "+SwapType[key]+": "+chainIdentifier);
                     await wrappers[key].init(this.options.noTimers, this.options.dontCheckPastSwaps);
@@ -306,6 +320,12 @@ class Swapper extends events_1.EventEmitter {
             delete this.initPromise;
             throw e;
         }
+    }
+    /**
+     * Whether the SDK is initialized (after {@link init} is called)
+     */
+    isInitialized() {
+        return this.initialized;
     }
     /**
      * Stops listening for onchain events and closes this Swapper instance
@@ -834,6 +854,10 @@ class Swapper extends events_1.EventEmitter {
      * @param options Options for the swap
      */
     swap(_srcToken, _dstToken, _amount, exactIn, src, dst, options) {
+        if (typeof (src) === "string")
+            src = this.Utils.stripAddress(src);
+        if (typeof (dst) === "string")
+            dst = this.Utils.stripAddress(dst);
         const srcToken = typeof (_srcToken) === "string" ? this.getToken(_srcToken) : _srcToken;
         const dstToken = typeof (_dstToken) === "string" ? this.getToken(_dstToken) : _dstToken;
         const amount = _amount == null ? null : (typeof (_amount) === "bigint" ? _amount : (0, Utils_1.fromDecimal)(_amount, exactIn ? srcToken.decimals : dstToken.decimals));
@@ -979,7 +1003,7 @@ class Swapper extends events_1.EventEmitter {
             return await unifiedSwapStorage.query([queryParams], reviver);
         }
     }
-    async getActionableSwaps(chainId, signer) {
+    async getPendingSwaps(chainId, signer) {
         if (chainId == null) {
             const res = await Promise.all(Object.keys(this._chains).map((chainId) => {
                 const { unifiedSwapStorage, reviver, wrappers } = this._chains[chainId];
@@ -994,7 +1018,7 @@ class Swapper extends events_1.EventEmitter {
                 }
                 return unifiedSwapStorage.query(queryParams, reviver);
             }));
-            return res.flat().filter(swap => swap.requiresAction());
+            return res.flat();
         }
         else {
             const { unifiedSwapStorage, reviver, wrappers } = this._chains[chainId];
@@ -1007,7 +1031,15 @@ class Swapper extends events_1.EventEmitter {
                 swapTypeQueryParams.push({ key: "state", value: wrapper._pendingSwapStates });
                 queryParams.push(swapTypeQueryParams);
             }
-            return (await unifiedSwapStorage.query(queryParams, reviver)).filter(swap => swap.requiresAction());
+            return await unifiedSwapStorage.query(queryParams, reviver);
+        }
+    }
+    async getActionableSwaps(chainId, signer) {
+        if (chainId == null) {
+            return (await this.getPendingSwaps()).filter(swap => swap.requiresAction());
+        }
+        else {
+            return (await this.getPendingSwaps(chainId, signer)).filter(swap => swap.requiresAction());
         }
     }
     async getRefundableSwaps(chainId, signer) {
@@ -1189,8 +1221,8 @@ class Swapper extends events_1.EventEmitter {
             removeSwaps.push(...result.removeSwaps);
         }
         this.logger.debug("_syncSwaps(): Done syncing " + swaps.length + " swaps, saving " + changedSwaps.length + " changed swaps, removing " + removeSwaps.length + " swaps!");
-        await unifiedSwapStorage.saveAll(changedSwaps);
-        await unifiedSwapStorage.removeAll(removeSwaps);
+        await unifiedSwapStorage.saveAll(changedSwaps, true);
+        await unifiedSwapStorage.removeAll(removeSwaps, true);
         changedSwaps.forEach(swap => swap._emitEvent());
         removeSwaps.forEach(swap => swap._emitEvent());
     }
@@ -1243,6 +1275,19 @@ class Swapper extends events_1.EventEmitter {
         else {
             await this.syncSwapsForChain(chainId, signer);
         }
+    }
+    /**
+     * When the swapper is initiated with the `noEvents` config this function allows you to manually poll for on-chain
+     *  events. It returns an events cursor which you should save and pass to the next call to the `poll()` function.
+     *
+     * @param chainId Chain for which to poll the chain events listener for
+     * @param lastEventCursorState Event cursor state returned from the last call to the `poll()` function
+     */
+    async _pollChainEvents(chainId, lastEventCursorState) {
+        const chain = this._chains[chainId];
+        if (chain == null)
+            throw new Error(`Invalid chain id ${chainId}!`);
+        return chain.unifiedChainEvents.poll(lastEventCursorState);
     }
     /**
      * Recovers swaps from on-chain historical data.

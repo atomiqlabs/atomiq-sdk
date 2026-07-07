@@ -39,6 +39,7 @@ import { LNURLPay } from "../types/lnurl/LNURLPay";
 import { NotNever } from "../utils/TypeUtils";
 import { LightningInvoiceCreateService } from "../types/wallets/LightningInvoiceCreateService";
 import { SwapSide } from "../enums/SwapSide";
+import { IntermediaryAPI } from "../intermediaries/apis/IntermediaryAPI";
 import { BitcoinWalletUtxo, IBitcoinWallet } from "../bitcoin/wallet/IBitcoinWallet";
 import { MinimalBitcoinWalletInterface } from "../types/wallets/MinimalBitcoinWalletInterface";
 /**
@@ -99,8 +100,9 @@ export type SwapperOptions = {
     noTimers?: boolean;
     /**
      * By setting this flag, the swapper doesn't subscribe to on-chain events. To make sure the swap states are
-     *  properly updated you should call the {@link Swapper._syncSwaps} function periodically. This flag should be
-     *  set when you run an environment that doesn't support long-running timers and websocket connections - e.g.
+     *  properly updated you should either call the {@link Swapper._syncSwaps} function periodically, or use the
+     *  {@link Swapper._pollChainEvents} function to manually poll for on-chain events. This flag should be set
+     *  when you run an environment that doesn't support long-running timers and websocket connections - e.g.
      *  serverless environments like Azure Function Apps or AWS Lambda
      */
     noEvents?: boolean;
@@ -130,7 +132,7 @@ export type SwapperOptions = {
      *  want to only create a swap, and then later on retrieve it with the `swapper.getSwapById()` function.
      *
      * Setting this to `false` means the SDK only saves and persists swaps that are considered initiated, i.e. when
-     *  `commit()`, `execute()` or `waitTillPayment` is called (or their respective txs... prefixed variations). This
+     *  `commit()`, `execute()` or `waitTillPayment()` is called (or their respective txs... prefixed variations). This
      *  might save calls to the persistent storage for swaps that are never initiated. This is useful in e.g.
      *  frontend implementations where the frontend holds the swap object reference until it is initiated anyway, not
      *  necessitating the saving of the swap data to the persistent storage until it is actually initiated.
@@ -141,6 +143,18 @@ export type SwapperOptions = {
      *  (as checked from multiple server sources) it adjusts the `Date.now()` function to return proper actual time.
      */
     automaticClockDriftCorrection?: boolean;
+    /**
+     * Used in centralized API deployments to allow higher rate limits from LPs
+     */
+    signedKeyBasedAuth?: {
+        certificate: string;
+        privateKey: string;
+    };
+    /**
+     * If you set the option to `true` the chains for which the RPC is unresponsive are skipped and not initialized
+     *  letting the swapper continue with only the available chains with responsive RPCs
+     */
+    gracefullyHandleChainErrors?: boolean;
 };
 /**
  * Type representing multiple blockchain configurations
@@ -249,6 +263,10 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
      */
     readonly prices: ISwapPrice<T>;
     /**
+     * API for contacting LPs
+     */
+    readonly lpApi: IntermediaryAPI;
+    /**
      * Intermediary discovery instance
      */
     readonly intermediaryDiscovery: IntermediaryDiscovery;
@@ -267,6 +285,10 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
      * Initializes the swap storage and loads existing swaps, needs to be called before any other action
      */
     init(): Promise<void>;
+    /**
+     * Whether the SDK is initialized (after {@link init} is called)
+     */
+    isInitialized(): boolean;
     /**
      * Stops listening for onchain events and closes this Swapper instance
      */
@@ -554,6 +576,14 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
      */
     getAllSwaps<C extends ChainIds<T>>(chainId: C, signer?: string): Promise<ISwap<T[C]>[]>;
     /**
+     * Returns all swaps which are pending (i.e. not in their final state yet)
+     */
+    getPendingSwaps(): Promise<ISwap[]>;
+    /**
+     * Returns swaps which are pending (i.e. not in their final state yet) for the specific chain, and optionally also for a specific signer's address
+     */
+    getPendingSwaps<C extends ChainIds<T>>(chainId: C, signer?: string): Promise<ISwap<T[C]>[]>;
+    /**
      * Returns all swaps where an action is required (either claim or refund)
      */
     getActionableSwaps(): Promise<ISwap[]>;
@@ -614,6 +644,14 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
      * @param signer Optional signer to only run swap sync for swaps initiated by this signer
      */
     _syncSwaps<C extends ChainIds<T>>(chainId?: C, signer?: string): Promise<void>;
+    /**
+     * When the swapper is initiated with the `noEvents` config this function allows you to manually poll for on-chain
+     *  events. It returns an events cursor which you should save and pass to the next call to the `poll()` function.
+     *
+     * @param chainId Chain for which to poll the chain events listener for
+     * @param lastEventCursorState Event cursor state returned from the last call to the `poll()` function
+     */
+    _pollChainEvents<C extends ChainIds<T>>(chainId: C, lastEventCursorState?: any): Promise<any>;
     /**
      * Recovers swaps from on-chain historical data.
      *

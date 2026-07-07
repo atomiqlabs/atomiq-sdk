@@ -153,6 +153,7 @@ export class FromBTCLNAutoWrapper<
      * @param versionedContracts
      * @param lnApi
      * @param messenger
+     * @param lpApi
      * @param options
      * @param events Instance to use for emitting events
      */
@@ -171,11 +172,12 @@ export class FromBTCLNAutoWrapper<
         },
         lnApi: LightningNetworkApi,
         messenger: Messenger,
+        lpApi: IntermediaryAPI,
         options?: AllOptional<FromBTCLNAutoWrapperOptions>,
         events?: EventEmitter<{swapState: [ISwap]}>
     ) {
         super(
-            chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, versionedContracts, lnApi,
+            chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, versionedContracts, lnApi, lpApi,
             {
                 ...options,
                 safetyFactor: options?.safetyFactor ?? 2,
@@ -433,7 +435,7 @@ export class FromBTCLNAutoWrapper<
                     const liquidityPromise: Promise<bigint | undefined> = this.preFetchIntermediaryLiquidity(amountData, lp, abortController, version);
 
                     const {lnCapacityPromise, resp} = await tryWithRetries(async(retryCount: number) => {
-                        const {lnPublicKey, response} = IntermediaryAPI.initFromBTCLNAuto(
+                        const {lnPublicKey, response} = this._lpApi.initFromBTCLNAuto(
                             this.chainIdentifier, lp.url,
                             {
                                 paymentHash,
@@ -446,7 +448,7 @@ export class FromBTCLNAutoWrapper<
                                 additionalParams,
                                 gasToken: this._chain.getNativeCurrencyAddress(),
                                 gasAmount: _options.gasAmount,
-                                claimerBounty: throwIfUndefined(_preFetches.claimerBountyPrefetch[version])
+                                claimerBounty: throwIfUndefined(_preFetches.claimerBountyPrefetch[version], "Watchtower fee pre-fetch failed!")
                             },
                             this._options.postRequestTimeout, abortController.signal, retryCount>0 ? false : undefined
                         );
@@ -483,7 +485,7 @@ export class FromBTCLNAutoWrapper<
                                 resp.totalGas + resp.claimerBounty,
                                 nativeTokenAddress, {swapFeeBtc: resp.gasSwapFeeBtc}, _preFetches.gasTokenPricePrefetchPromise, _preFetches.usdPricePrefetchPromise, abortController.signal
                             ),
-                            this.verifyIntermediaryLiquidity(resp.total, throwIfUndefined(liquidityPromise)),
+                            this.verifyIntermediaryLiquidity(resp.total, throwIfUndefined(liquidityPromise, "LP liquidity pre-fetch failed!")),
                             _options.unsafeSkipLnNodeCheck ? Promise.resolve() : this.verifyLnNodeCapacity(lp, decodedPr, lnCapacityPromise, abortController.signal)
                         ]);
 

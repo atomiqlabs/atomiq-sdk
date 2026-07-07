@@ -5,7 +5,7 @@ const SwapType_1 = require("../../../enums/SwapType");
 const Utils_1 = require("../../../utils/Utils");
 const BitcoinUtils_1 = require("../../../utils/BitcoinUtils");
 const ISwap_1 = require("../../ISwap");
-const TrustedIntermediaryAPI_1 = require("../../../intermediaries/apis/TrustedIntermediaryAPI");
+const IntermediaryAPI_1 = require("../../../intermediaries/apis/IntermediaryAPI");
 const IBitcoinWallet_1 = require("../../../bitcoin/wallet/IBitcoinWallet");
 const btc_signer_1 = require("@scure/btc-signer");
 const SingleAddressBitcoinWallet_1 = require("../../../bitcoin/wallet/SingleAddressBitcoinWallet");
@@ -435,50 +435,33 @@ class OnchainForGasSwap extends ISwap_1.ISwap {
      * @param options.bitcoinWallet Optional bitcoin wallet address specification to return a funded PSBT,
      *  if not provided an address is returned instead.
      */
-    async txsExecute(options) {
-        if (this._state === OnchainForGasSwapState.PR_CREATED) {
-            if (!await this._verifyQuoteValid())
-                throw new Error("Quote already expired or close to expiry!");
-            return [
-                {
-                    name: "Payment",
-                    description: "Send funds to the bitcoin swap address",
-                    chain: "BITCOIN",
-                    txs: [
-                        options?.bitcoinWallet == null ? {
-                            address: this.address,
-                            amount: Number(this.inputAmount),
-                            hyperlink: this.getHyperlink(),
-                            type: "ADDRESS"
-                        } : {
-                            ...await this.getFundedPsbt(options.bitcoinWallet),
-                            type: "FUNDED_PSBT"
-                        }
-                    ]
-                }
-            ];
-        }
-        throw new Error("Invalid swap state to obtain execution txns, required PR_CREATED or CLAIM_COMMITED");
-    }
-    /**
-     * @remark Not supported
-     */
-    async execute() {
+    async getExecutionAction(options) {
         throw new Error("Not supported");
     }
     /**
      * @inheritDoc
-     *
-     * @param options.bitcoinWallet Optional bitcoin wallet address specification to return a funded PSBT,
-     *  if not provided an address is returned instead.
      */
-    async getCurrentActions(options) {
-        try {
-            return await this.txsExecute(options);
-        }
-        catch (e) {
-            return [];
-        }
+    async getExecutionSteps() {
+        throw new Error("Not supported");
+    }
+    /**
+     * @inheritDoc
+     */
+    async getExecutionStatus() {
+        throw new Error("Not supported");
+    }
+    /**
+     * @internal
+     * @inheritDoc
+     */
+    _submitExecutionTransactions() {
+        throw new Error("Not supported");
+    }
+    /**
+     * @remarks Not supported
+     */
+    async execute() {
+        throw new Error("Not supported");
     }
     //////////////////////////////
     //// Payment
@@ -499,9 +482,9 @@ class OnchainForGasSwap extends ISwap_1.ISwap {
             return false;
         if (this.url == null)
             return false;
-        const response = await TrustedIntermediaryAPI_1.TrustedIntermediaryAPI.getAddressStatus(this.url, this.paymentHash, this.sequence, this.wrapper._options.getRequestTimeout);
+        const response = await this.wrapper._lpApi.getTrustedAddressStatus(this.url, this.paymentHash, this.sequence, this.wrapper._options.getRequestTimeout);
         switch (response.code) {
-            case TrustedIntermediaryAPI_1.AddressStatusResponseCodes.AWAIT_PAYMENT:
+            case IntermediaryAPI_1.TrustedAddressStatusResponseCodes.AWAIT_PAYMENT:
                 if (this.txId != null) {
                     this.txId = undefined;
                     if (save)
@@ -509,9 +492,9 @@ class OnchainForGasSwap extends ISwap_1.ISwap {
                     return true;
                 }
                 return false;
-            case TrustedIntermediaryAPI_1.AddressStatusResponseCodes.AWAIT_CONFIRMATION:
-            case TrustedIntermediaryAPI_1.AddressStatusResponseCodes.PENDING:
-            case TrustedIntermediaryAPI_1.AddressStatusResponseCodes.TX_SENT:
+            case IntermediaryAPI_1.TrustedAddressStatusResponseCodes.AWAIT_CONFIRMATION:
+            case IntermediaryAPI_1.TrustedAddressStatusResponseCodes.PENDING:
+            case IntermediaryAPI_1.TrustedAddressStatusResponseCodes.TX_SENT:
                 const inputAmount = BigInt(response.data.adjustedAmount);
                 const outputAmount = BigInt(response.data.adjustedTotal);
                 const adjustedFee = response.data.adjustedFee == null ? null : BigInt(response.data.adjustedFee);
@@ -532,7 +515,7 @@ class OnchainForGasSwap extends ISwap_1.ISwap {
                     return true;
                 }
                 return false;
-            case TrustedIntermediaryAPI_1.AddressStatusResponseCodes.PAID:
+            case IntermediaryAPI_1.TrustedAddressStatusResponseCodes.PAID:
                 const txStatus = await this.wrapper._chain.getTxIdStatus(response.data.txId);
                 if (txStatus === "success") {
                     this._state = OnchainForGasSwapState.FINISHED;
@@ -542,19 +525,19 @@ class OnchainForGasSwap extends ISwap_1.ISwap {
                     return true;
                 }
                 return false;
-            case TrustedIntermediaryAPI_1.AddressStatusResponseCodes.EXPIRED:
+            case IntermediaryAPI_1.TrustedAddressStatusResponseCodes.EXPIRED:
                 this._state = OnchainForGasSwapState.EXPIRED;
                 if (save)
                     await this._saveAndEmit();
                 return true;
-            case TrustedIntermediaryAPI_1.AddressStatusResponseCodes.REFUNDABLE:
+            case IntermediaryAPI_1.TrustedAddressStatusResponseCodes.REFUNDABLE:
                 if (this._state === OnchainForGasSwapState.REFUNDABLE)
                     return null;
                 this._state = OnchainForGasSwapState.REFUNDABLE;
                 if (save)
                     await this._saveAndEmit();
                 return true;
-            case TrustedIntermediaryAPI_1.AddressStatusResponseCodes.REFUNDED:
+            case IntermediaryAPI_1.TrustedAddressStatusResponseCodes.REFUNDED:
                 this._state = OnchainForGasSwapState.REFUNDED;
                 this.refundTxId = response.data.txId;
                 if (save)
@@ -581,7 +564,7 @@ class OnchainForGasSwap extends ISwap_1.ISwap {
         }
         if (this.url == null)
             throw new Error("LP URL not known, cannot set refund address!");
-        await TrustedIntermediaryAPI_1.TrustedIntermediaryAPI.setRefundAddress(this.url, this.paymentHash, this.sequence, refundAddress, this.wrapper._options.getRequestTimeout);
+        await this.wrapper._lpApi.setTrustedRefundAddress(this.url, this.paymentHash, this.sequence, refundAddress, this.wrapper._options.getRequestTimeout);
         this.refundAddress = refundAddress;
     }
     /**

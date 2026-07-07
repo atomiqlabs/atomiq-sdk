@@ -117,6 +117,7 @@ export class FromBTCLNWrapper<
      * @param tokens
      * @param versionedContracts
      * @param lnApi
+     * @param lpApi
      * @param options
      * @param events Instance to use for emitting events
      */
@@ -134,11 +135,12 @@ export class FromBTCLNWrapper<
             }
         },
         lnApi: LightningNetworkApi,
+        lpApi: IntermediaryAPI,
         options?: AllOptional<FromBTCLNWrapperOptions>,
         events?: EventEmitter<{swapState: [ISwap]}>
     ) {
         super(
-            chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, versionedContracts, lnApi,
+            chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, versionedContracts, lnApi, lpApi,
             {
                 ...options,
                 safetyFactor: options?.safetyFactor ?? 2,
@@ -310,7 +312,7 @@ export class FromBTCLNWrapper<
                     const liquidityPromise: Promise<bigint | undefined> = this.preFetchIntermediaryLiquidity(amountData, lp, abortController, version);
 
                     const {lnCapacityPromise, resp} = await tryWithRetries(async(retryCount: number) => {
-                        const {lnPublicKey, response} = IntermediaryAPI.initFromBTCLN(
+                        const {lnPublicKey, response} = this._lpApi.initFromBTCLN(
                             this.chainIdentifier, lp.url, nativeTokenAddress,
                             {
                                 paymentHash,
@@ -320,7 +322,7 @@ export class FromBTCLNWrapper<
                                 description: _options.description,
                                 descriptionHash: _options.descriptionHash,
                                 exactOut: !amountData.exactIn,
-                                feeRate: throwIfUndefined(_preFetches.feeRatePromise[version]),
+                                feeRate: throwIfUndefined(_preFetches.feeRatePromise[version], "Network fee rate pre-fetch failed!"),
                                 additionalParams
                             },
                             this._options.postRequestTimeout, abortController.signal, retryCount>0 ? false : undefined
@@ -351,7 +353,7 @@ export class FromBTCLNWrapper<
                                 lp.services[SwapType.FROM_BTCLN], false, amountIn, resp.total,
                                 amountData.token, {swapFeeBtc}, _preFetches.pricePrefetchPromise, _preFetches.usdPricePrefetchPromise, abortController.signal
                             ),
-                            this.verifyIntermediaryLiquidity(resp.total, throwIfUndefined(liquidityPromise)),
+                            this.verifyIntermediaryLiquidity(resp.total, throwIfUndefined(liquidityPromise, "LP liquidity pre-fetch failed!")),
                             lnCapacityPromise!=null ? this.verifyLnNodeCapacity(lp, decodedPr, lnCapacityPromise, abortController.signal) : Promise.resolve()
                         ]);
 

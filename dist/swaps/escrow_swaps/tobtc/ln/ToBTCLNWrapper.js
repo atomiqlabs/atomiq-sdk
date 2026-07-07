@@ -10,7 +10,6 @@ const Intermediary_1 = require("../../../../intermediaries/Intermediary");
 const IntermediaryError_1 = require("../../../../errors/IntermediaryError");
 const SwapType_1 = require("../../../../enums/SwapType");
 const Utils_1 = require("../../../../utils/Utils");
-const IntermediaryAPI_1 = require("../../../../intermediaries/apis/IntermediaryAPI");
 const RequestError_1 = require("../../../../errors/RequestError");
 const LNURL_1 = require("../../../../lnurl/LNURL");
 const IToBTCSwap_1 = require("../IToBTCSwap");
@@ -22,10 +21,11 @@ const RetryUtils_1 = require("../../../../utils/RetryUtils");
  * @category Swaps/Smart chain → Lightning
  */
 class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
-    constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, versionedContracts, options, events) {
-        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, {
+    constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, versionedContracts, lpApi, options, events) {
+        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, lpApi, {
             ...options,
             paymentTimeoutSeconds: options?.paymentTimeoutSeconds ?? 5 * 24 * 60 * 60,
+            maxPaymentTimeoutSeconds: options?.maxPaymentTimeoutSeconds ?? 10 * 24 * 60 * 60,
             lightningBaseFee: options?.lightningBaseFee ?? 10,
             lightningFeePPM: options?.lightningFeePPM ?? 2000
         }, versionedContracts, events);
@@ -131,6 +131,33 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
         }
     }
     /**
+     * Returns the expiry seconds to use to calculate expiration timeout for HTLC, considers the `expirySeconds` and
+     *  `maxExpirySeconds` params.
+     *
+     * @param parsedPr
+     * @param options
+     * @private
+     */
+    getExpirySeconds(parsedPr, options) {
+        let expirySeconds = options?.expirySeconds;
+        let longExpiry = false;
+        if (parsedPr.tagsObject.min_final_cltv_expiry != null &&
+            parsedPr.tagsObject.min_final_cltv_expiry > 144) {
+            expirySeconds ??= this._options.paymentTimeoutSeconds;
+            let maxExpirySeconds = options?.maxExpirySeconds;
+            if (maxExpirySeconds != null) {
+                if (maxExpirySeconds < expirySeconds)
+                    throw new Error(`maxExpirySeconds must be strictly larger than the regular expiration seconds: ${expirySeconds}`);
+            }
+            maxExpirySeconds ??= this._options.maxPaymentTimeoutSeconds;
+            if (maxExpirySeconds > expirySeconds) {
+                expirySeconds = Math.min(maxExpirySeconds, ((parsedPr.tagsObject.min_final_cltv_expiry - 144) * 600 * 2) + expirySeconds);
+                longExpiry = true;
+            }
+        }
+        return { expirySeconds, longExpiry };
+    }
+    /**
      * Returns the quote/swap from a given intermediary
      *
      * @param signer Smartchain signer initiating the swap
@@ -154,13 +181,13 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
         const reputationPromise = this.preFetchIntermediaryReputation(amountData, lp, abortController, version);
         try {
             const { signDataPromise, resp } = await (0, RetryUtils_1.tryWithRetries)(async (retryCount) => {
-                const { signDataPrefetch, response } = IntermediaryAPI_1.IntermediaryAPI.initToBTCLN(this.chainIdentifier, lp.url, {
+                const { signDataPrefetch, response } = this._lpApi.initToBTCLN(this.chainIdentifier, lp.url, {
                     offerer: signer,
                     pr,
                     maxFee: await calculatedOptions.maxFee,
                     expiryTimestamp: calculatedOptions.expiryTimestamp,
                     token: amountData.token,
-                    feeRate: (0, Utils_1.throwIfUndefined)(preFetches.feeRatePromise[version]),
+                    feeRate: (0, Utils_1.throwIfUndefined)(preFetches.feeRatePromise[version], "Network fee rate pre-fetch failed!"),
                     additionalParams
                 }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined);
                 let signDataPromise = preFetches.signDataPrefetchPromise?.[version];
@@ -204,7 +231,8 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                 confidence: resp.confidence,
                 pr,
                 exactIn: false,
-                contractVersion: version
+                contractVersion: version,
+                longExpiry: calculatedOptions.longExpiry
             });
             return quote;
         }
@@ -232,7 +260,11 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
             throw new UserError_1.UserError("Must be an invoice with amount");
         const amountOut = (BigInt(parsedPr.millisatoshis) + 999n) / 1000n;
         const lpVersions = Intermediary_1.Intermediary.getContractVersionsForLps(this.chainIdentifier, lps);
-        const _options = this.toRequiredSwapOptions({ ...amountData, amount: amountOut }, options);
+        const { expirySeconds, longExpiry } = this.getExpirySeconds(parsedPr, options);
+        const _options = {
+            ...this.toRequiredSwapOptions({ ...amountData, amount: amountOut }, { ...options, expirySeconds }),
+            longExpiry
+        };
         if (parsedPr.tagsObject.payment_hash == null)
             throw new Error("Provided lightning invoice doesn't contain payment hash field!");
         await this.checkPaymentHashWasPaid(parsedPr.tagsObject.payment_hash);
@@ -300,7 +332,7 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
         const reputationPromise = this.preFetchIntermediaryReputation(amountData, lp, abortController, version);
         try {
             const { signDataPromise, prepareResp } = await (0, RetryUtils_1.tryWithRetries)(async (retryCount) => {
-                const { signDataPrefetch, response } = IntermediaryAPI_1.IntermediaryAPI.prepareToBTCLNExactIn(this.chainIdentifier, lp.url, {
+                const { signDataPrefetch, response } = this._lpApi.prepareToBTCLNExactIn(this.chainIdentifier, lp.url, {
                     token: amountData.token,
                     offerer: signer,
                     pr: dummyPr,
@@ -326,10 +358,10 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
             }
             const invoice = await invoiceCreateService.getInvoice(Number(prepareResp.amount), abortController.signal);
             const parsedInvoice = (0, bolt11_1.decode)(invoice);
-            const resp = await (0, RetryUtils_1.tryWithRetries)((retryCount) => IntermediaryAPI_1.IntermediaryAPI.initToBTCLNExactIn(lp.url, {
+            const resp = await (0, RetryUtils_1.tryWithRetries)((retryCount) => this._lpApi.initToBTCLNExactIn(lp.url, {
                 pr: invoice,
                 reqId: prepareResp.reqId,
-                feeRate: (0, Utils_1.throwIfUndefined)(preFetches.feeRatePromise[version]),
+                feeRate: (0, Utils_1.throwIfUndefined)(preFetches.feeRatePromise[version], "Network fee rate pre-fetch failed!"),
                 additionalParams
             }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined), undefined, RequestError_1.RequestError, abortController.signal);
             if (parsedInvoice.millisatoshis == null)
@@ -362,7 +394,8 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                 confidence: resp.confidence,
                 pr: invoice,
                 exactIn: true,
-                contractVersion: version
+                contractVersion: version,
+                longExpiry: calculatedOptions?.longExpiry
             });
             return quote;
         }
@@ -397,11 +430,16 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                 this.preFetchSignData(Promise.resolve(true), contractVersion) :
                 undefined;
         });
-        const _options = this.toRequiredSwapOptions(amountData, options, pricePreFetchPromise, _abortController.signal);
         try {
             const invoiceCreateService = await invoiceCreateServicePromise;
             if (amountData.exactIn) {
                 const dummyInvoice = await invoiceCreateService.getInvoice(invoiceCreateService.minMsats == null ? 1 : Number(invoiceCreateService.minMsats / 1000n), _abortController.signal);
+                const parsedDummyInvoice = (0, bolt11_1.decode)(dummyInvoice);
+                const { expirySeconds, longExpiry } = this.getExpirySeconds(parsedDummyInvoice, options);
+                const _options = {
+                    ...this.toRequiredSwapOptions(amountData, { ...options, expirySeconds }, pricePreFetchPromise, _abortController.signal),
+                    longExpiry
+                };
                 return lps.map(lp => {
                     return {
                         quote: this.getIntermediaryQuoteExactIn(signer, amountData, invoiceCreateService, lp, dummyInvoice, _options, {

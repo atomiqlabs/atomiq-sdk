@@ -1,6 +1,5 @@
 import {LnForGasSwap, LnForGasSwapInit, LnForGasSwapState} from "./LnForGasSwap";
 import {ISwapWrapper, SwapTypeDefinition} from "../../ISwapWrapper";
-import {TrustedIntermediaryAPI} from "../../../intermediaries/apis/TrustedIntermediaryAPI";
 import {decode as bolt11Decode} from "@atomiqlabs/bolt11";
 import {IntermediaryError} from "../../../errors/IntermediaryError";
 import {ChainType} from "@atomiqlabs/base";
@@ -50,7 +49,7 @@ export class LnForGasWrapper<T extends ChainType> extends ISwapWrapper<T, LnForG
 
         const token = this._chain.getNativeCurrencyAddress();
 
-        const resp = await TrustedIntermediaryAPI.initTrustedFromBTCLN(this.chainIdentifier, lpUrl, {
+        const resp = await this._lpApi.initTrustedFromBTCLN(this.chainIdentifier, lpUrl, {
             address: recipient,
             amount,
             token

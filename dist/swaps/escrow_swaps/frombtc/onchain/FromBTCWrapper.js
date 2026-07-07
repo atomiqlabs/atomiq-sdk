@@ -10,7 +10,6 @@ const IntermediaryError_1 = require("../../../../errors/IntermediaryError");
 const SwapType_1 = require("../../../../enums/SwapType");
 const Utils_1 = require("../../../../utils/Utils");
 const BitcoinUtils_1 = require("../../../../utils/BitcoinUtils");
-const IntermediaryAPI_1 = require("../../../../intermediaries/apis/IntermediaryAPI");
 const RequestError_1 = require("../../../../errors/RequestError");
 const utils_1 = require("@scure/btc-signer/utils");
 const RetryUtils_1 = require("../../../../utils/RetryUtils");
@@ -31,11 +30,12 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
      * @param versionedContracts
      * @param versionedSynchronizer
      * @param btcRpc Bitcoin RPC which also supports getting transactions by txoHash
+     * @param lpApi
      * @param options
      * @param events Instance to use for emitting events
      */
-    constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, versionedContracts, versionedSynchronizer, btcRpc, options, events) {
-        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, {
+    constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, versionedContracts, versionedSynchronizer, btcRpc, lpApi, options, events) {
+        super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, lpApi, {
             ...options,
             bitcoinNetwork: options?.bitcoinNetwork ?? utils_1.TEST_NETWORK,
             safetyFactor: options?.safetyFactor ?? 2,
@@ -312,14 +312,14 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
                     const liquidityPromise = this.preFetchIntermediaryLiquidity(amountData, lp, abortController, version);
                     try {
                         const { signDataPromise, resp } = await (0, RetryUtils_1.tryWithRetries)(async (retryCount) => {
-                            const { signDataPrefetch, response } = IntermediaryAPI_1.IntermediaryAPI.initFromBTC(this.chainIdentifier, lp.url, nativeTokenAddress, {
+                            const { signDataPrefetch, response } = this._lpApi.initFromBTC(this.chainIdentifier, lp.url, nativeTokenAddress, {
                                 claimer: recipient,
                                 amount: amountData.amount,
                                 token: amountData.token.toString(),
                                 exactOut: !amountData.exactIn,
                                 sequence,
-                                claimerBounty: (0, Utils_1.throwIfUndefined)(claimerBountyPrefetchPromise[version]),
-                                feeRate: (0, Utils_1.throwIfUndefined)(feeRatePromise[version]),
+                                claimerBounty: (0, Utils_1.throwIfUndefined)(claimerBountyPrefetchPromise[version], "Watchtower fee pre-fetch failed!"),
+                                feeRate: (0, Utils_1.throwIfUndefined)(feeRatePromise[version], "Network fee rate pre-fetch failed!"),
                                 additionalParams
                             }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined);
                             let signDataPromise = _signDataPromise[version];
@@ -341,7 +341,7 @@ class FromBTCWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
                             //Get intermediary's liquidity
                             this.verifyReturnedPrice(lp.services[SwapType_1.SwapType.FROM_BTC], false, resp.amount, resp.total, amountData.token, { swapFeeBtc }, pricePrefetchPromise, usdPricePrefetchPromise, abortController.signal),
                             this.verifyReturnedSignature(recipient, data, resp, feeRatePromise[version], signDataPromise, version, abortController.signal),
-                            this.verifyIntermediaryLiquidity(data.getAmount(), (0, Utils_1.throwIfUndefined)(liquidityPromise)),
+                            this.verifyIntermediaryLiquidity(data.getAmount(), (0, Utils_1.throwIfUndefined)(liquidityPromise, "LP liquidity pre-fetch failed!")),
                         ]);
                         const quote = new FromBTCSwap_1.FromBTCSwap(this, {
                             pricingInfo,

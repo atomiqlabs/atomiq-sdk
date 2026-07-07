@@ -7,6 +7,7 @@ import { ISwapPrice } from "../../../../prices/abstract/ISwapPrice";
 import { EventEmitter } from "events";
 import { ISwapWrapperOptions, WrapperCtorTokens } from "../../../ISwapWrapper";
 import { SwapType } from "../../../../enums/SwapType";
+import { IntermediaryAPI } from "../../../../intermediaries/apis/IntermediaryAPI";
 import { BTC_NETWORK } from "@scure/btc-signer/utils";
 import { UnifiedSwapEventListener } from "../../../../events/UnifiedSwapEventListener";
 import { UnifiedSwapStorage } from "../../../../storage/UnifiedSwapStorage";
@@ -56,6 +57,7 @@ export declare class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, 
      * @param prices Swap pricing handler
      * @param tokens
      * @param btcRpc Bitcoin RPC api
+     * @param lpApi
      * @param options
      * @param events Instance to use for emitting events
      */
@@ -64,7 +66,7 @@ export declare class ToBTCWrapper<T extends ChainType> extends IToBTCWrapper<T, 
             swapContract: T["Contract"];
             swapDataConstructor: new (data: any) => T["Data"];
         };
-    }, btcRpc: BitcoinRpc<any>, options?: AllOptional<ToBTCWrapperOptions>, events?: EventEmitter<{
+    }, btcRpc: BitcoinRpc<any>, lpApi: IntermediaryAPI, options?: AllOptional<ToBTCWrapperOptions>, events?: EventEmitter<{
         swapState: [ISwap];
     }>);
     /**

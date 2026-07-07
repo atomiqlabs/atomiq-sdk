@@ -99,6 +99,7 @@ class ISwap {
             this.createdAt = swapInitOrObj.createdAt ?? swapInitOrObj.expiry;
             this._randomNonce = swapInitOrObj.randomNonce;
             this._contractVersion = swapInitOrObj.contractVersion;
+            this._meta = swapInitOrObj._meta;
         }
         if (this.version !== this.currentVersion) {
             this.upgradeVersion();
@@ -158,6 +159,18 @@ class ISwap {
                 this.pricingInfo.realPriceUsdPerBitcoin = priceUsdPerBtc;
             }
         }
+    }
+    /**
+     * Returns the specific state along with the human-readable description of that state
+     *
+     * @internal
+     */
+    _getStateInfo(state) {
+        return {
+            state: state,
+            name: this.swapStateName(state),
+            description: this.swapStateDescription[state]
+        };
     }
     /**
      * Re-fetches & revalidates the price data based on the current market prices
@@ -226,6 +239,18 @@ class ISwap {
             throw new Error("Invalid signer provided!");
     }
     /**
+     * Await and prepares a list of passed transactions
+     *
+     * @param txsPromise
+     * @internal
+     */
+    async prepareTransactions(txsPromise) {
+        const txs = await txsPromise;
+        if (this.wrapper._chain.prepareTxs == null)
+            return txs;
+        return await this.wrapper._chain.prepareTxs(txs);
+    }
+    /**
      * Sets this swap as initiated
      * @internal
      */
@@ -269,11 +294,7 @@ class ISwap {
      * Returns the current state of the swap along with the human-readable description of the state
      */
     getStateInfo() {
-        return {
-            state: this._state,
-            name: this.swapStateName(this._state),
-            description: this.swapStateDescription[this._state]
-        };
+        return this._getStateInfo(this._state);
     }
     //////////////////////////////
     //// Storage
@@ -331,7 +352,8 @@ class ISwap {
             exactIn: this.exactIn,
             createdAt: this.createdAt,
             randomNonce: this._randomNonce,
-            contractVersion: this._contractVersion
+            contractVersion: this._contractVersion,
+            _meta: this._meta
         };
     }
     //////////////////////////////

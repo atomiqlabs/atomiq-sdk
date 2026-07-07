@@ -142,11 +142,12 @@ const wallet = new SolanaSigner(anchorWallet);
 ```
 
 ```typescript
-import {WalletAccount} from "starknet";
+import {RpcProvider, WalletAccount} from "starknet";
 import {StarknetBrowserSigner} from "@atomiqlabs/chain-starknet";
 //Browser, using get-starknet
 const swo = await connect();
-const wallet = new StarknetBrowserSigner(new WalletAccount(starknetRpc, swo.wallet));
+const starknetProvider = new RpcProvider({nodeUrl: starknetRpc});
+const wallet = new StarknetBrowserSigner(await WalletAccount.connect(starknetProvider, swo.wallet));
 ```
 
 or

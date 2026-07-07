@@ -142,11 +142,12 @@ const wallet = new SolanaSigner(anchorWallet);
 ```
 
 ```typescript
-import {WalletAccount} from "starknet";
+import {RpcProvider, WalletAccount} from "starknet";
 import {StarknetBrowserSigner} from "@atomiqlabs/chain-starknet";
 //Browser, using get-starknet
 const swo = await connect();
-const wallet = new StarknetBrowserSigner(new WalletAccount(starknetRpc, swo.wallet));
+const starknetProvider = new RpcProvider({nodeUrl: starknetRpc});
+const wallet = new StarknetBrowserSigner(await WalletAccount.connect(starknetProvider, swo.wallet));
 ```
 
 or
@@ -159,9 +160,11 @@ const solanaSigner = new SolanaSigner(new SolanaKeypairWallet(Keypair.fromSecret
 ```
 
 ```typescript
+import {RpcProvider} from "starknet";
 import {StarknetSigner, StarknetKeypairWallet} from "@atomiqlabs/chain-starknet";
 //Creating Starknet signer from private key
-const starknetSigner = new StarknetSigner(new StarknetKeypairWallet(starknetRpc, starknetKey));
+const starknetProvider = new RpcProvider({nodeUrl: starknetRpc});
+const starknetSigner = new StarknetSigner(new StarknetKeypairWallet(starknetProvider, starknetKey));
 ```
 
 ```typescript

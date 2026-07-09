@@ -3,13 +3,12 @@ import {SwapType} from "../enums/SwapType.js";
 import {LnForGasSwap} from "../swaps/trusted/ln/LnForGasSwap.js";
 import {ISwap} from "../swaps/ISwap.js";
 import {IToBTCSwap} from "../swaps/escrow_swaps/tobtc/IToBTCSwap.js";
-import {ChainIds, MultiChain, SupportsSwapType} from "./Swapper.js";
+import {ChainIds, MultiChain, SpvFromBTCExternalDeposit, SupportsSwapType} from "./Swapper.js";
 import {FromBTCLNSwap} from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap.js";
 import {FromBTCSwap} from "../swaps/escrow_swaps/frombtc/onchain/FromBTCSwap.js";
 import {ToBTCLNSwap} from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNSwap.js";
 import {ToBTCSwap} from "../swaps/escrow_swaps/tobtc/onchain/ToBTCSwap.js";
 import {SwapPriceWithChain} from "../prices/SwapPriceWithChain.js";
-import {BTC_NETWORK} from "@scure/btc-signer/utils";
 import {ToBTCOptions} from "../swaps/escrow_swaps/tobtc/onchain/ToBTCWrapper.js";
 import {ToBTCLNOptions} from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNWrapper.js";
 import {FromBTCOptions} from "../swaps/escrow_swaps/frombtc/onchain/FromBTCWrapper.js";
@@ -25,13 +24,12 @@ import {TokenAmount} from "../types/TokenAmount.js";
 import {BtcToken, SCToken, Token} from "../types/Token.js";
 import {LNURLWithdraw} from "../types/lnurl/LNURLWithdraw.js";
 import {LNURLPay} from "../types/lnurl/LNURLPay.js";
-import {MempoolApi, MempoolBitcoinRpc} from "@atomiqlabs/btc-mempool";
-import {Messenger} from "@atomiqlabs/base";
 import {LightningInvoiceCreateService} from "../types/wallets/LightningInvoiceCreateService.js";
 import {Intermediary} from "../intermediaries/Intermediary.js";
 import {SpvFromBTCOptions} from "../swaps/spv_swaps/SpvFromBTCWrapper.js";
 import {SwapTypeMapping} from "../utils/SwapUtils.js";
 import {SwapSide} from "../enums/SwapSide.js";
+import {SwapAmountType} from "../enums/SwapAmountType.js";
 
 /**
  * Chain and signer-specific wrapper for automatic signer injection into swap methods
@@ -193,6 +191,33 @@ export class SwapperWithSigner<T extends MultiChain, ChainIdentifier extends Cha
     ): Promise<SwapWithSigner<SpvFromBTCSwap<T[ChainIdentifier]>>> {
         return this.swapper.createFromBTCSwapNew(this.signer.getAddress(), tokenAddress, amount, exactOut, additionalParams, options)
             .then(swap => wrapSwapWithSigner(swap, this.signer));
+    }
+
+    /**
+     * Creates an SPV BTC -> smart-chain quote for this signer using external intermediate-wallet deposits.
+     *
+     * @param externalDeposit Intermediate wallet/address plus optional UTXOs, fee rate and CPFP assumptions
+     * @param dstToken Destination token on this signer-scoped chain
+     * @param amount Destination amount for exact-output quotes, or total BTC budget for exact-input quotes
+     * @param exactIn Whether `amount` is exact input (`true`/`EXACT_IN`) or exact output (`false`/`EXACT_OUT`)
+     * @param options Additional SPV quote options
+     * @returns Signer-wrapped public SPV swap already configured in external deposit mode
+     */
+    createSpvFromBtcSwapWithExternalDeposit(
+        externalDeposit: SpvFromBTCExternalDeposit,
+        dstToken: SCToken<ChainIdentifier> | string,
+        amount: bigint | string,
+        exactIn: boolean | SwapAmountType,
+        options?: SpvFromBTCOptions
+    ): Promise<SwapWithSigner<SpvFromBTCSwap<T[ChainIdentifier]>>> {
+        return this.swapper.createSpvFromBtcSwapWithExternalDeposit(
+            externalDeposit,
+            dstToken,
+            amount,
+            exactIn,
+            this.signer.getAddress(),
+            options
+        ).then(swap => wrapSwapWithSigner(swap, this.signer));
     }
 
     /**

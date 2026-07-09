@@ -74,6 +74,7 @@ export {IndexedDBUnifiedStorage} from "./storage-browser/IndexedDBUnifiedStorage
 export * from "./storage-browser/LocalStorageManager.js";
 
 export {Swapper} from "./swapper/Swapper.js";
+export type {SpvFromBTCExternalDeposit} from "./swapper/Swapper.js";
 export * from "./swapper/SwapperFactory.js";
 export * from "./swapper/SwapperUtils.js";
 export * from "./swapper/SwapperWithChain.js";

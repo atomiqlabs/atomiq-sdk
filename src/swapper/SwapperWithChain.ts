@@ -3,7 +3,7 @@ import {SwapType} from "../enums/SwapType.js";
 import {LnForGasSwap} from "../swaps/trusted/ln/LnForGasSwap.js";
 import {ISwap} from "../swaps/ISwap.js";
 import {IToBTCSwap} from "../swaps/escrow_swaps/tobtc/IToBTCSwap.js";
-import {ChainIds, MultiChain, SupportsSwapType, Swapper} from "./Swapper.js";
+import {ChainIds, MultiChain, SpvFromBTCExternalDeposit, SupportsSwapType, Swapper} from "./Swapper.js";
 import {FromBTCLNSwap} from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap.js";
 import {FromBTCSwap} from "../swaps/escrow_swaps/frombtc/onchain/FromBTCSwap.js";
 import {ToBTCLNSwap} from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNSwap.js";
@@ -199,6 +199,37 @@ export class SwapperWithChain<T extends MultiChain, ChainIdentifier extends Chai
         options?: SpvFromBTCOptions
     ): Promise<SpvFromBTCSwap<T[ChainIdentifier]>> {
         return this.swapper.createFromBTCSwapNew(this.chainIdentifier, recipient, tokenAddress, amount, exactOut, additionalParams, options);
+    }
+
+    /**
+     * Creates an SPV BTC -> this smart-chain quote preconfigured for external intermediate-wallet deposits.
+     *
+     * @param externalDeposit Intermediate wallet/address plus optional UTXOs, fee rate and CPFP assumptions
+     * @param dstToken Destination token on this chain
+     * @param amount Destination amount for exact-output quotes, or total BTC budget for exact-input quotes
+     * @param exactIn Whether `amount` is exact input (`true`/`EXACT_IN`) or exact output (`false`/`EXACT_OUT`)
+     * @param dstSmartchainWallet Destination wallet on this chain
+     * @param options Additional SPV quote options
+     * @returns Public SPV swap already configured in external deposit mode
+     */
+    createSpvFromBtcSwapWithExternalDeposit(
+        externalDeposit: SpvFromBTCExternalDeposit,
+        dstToken: SCToken<ChainIdentifier> | string,
+        amount: bigint | string,
+        exactIn: boolean | SwapAmountType,
+        dstSmartchainWallet: string,
+        options?: SpvFromBTCOptions
+    ): Promise<SpvFromBTCSwap<T[ChainIdentifier]>> {
+        const resolvedDstToken = typeof(dstToken)==="string" ? this.getToken(dstToken) : dstToken;
+        if(!isSCToken<ChainIdentifier>(resolvedDstToken)) throw new Error("Destination token must be a smart chain token!");
+        return this.swapper.createSpvFromBtcSwapWithExternalDeposit(
+            externalDeposit,
+            resolvedDstToken,
+            amount,
+            exactIn,
+            dstSmartchainWallet,
+            options
+        );
     }
 
     /**

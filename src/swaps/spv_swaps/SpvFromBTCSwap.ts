@@ -76,7 +76,7 @@ export type SpvExternalSelectedUtxo = {
  * Cached external deposit mode data stored on a public {@link SpvFromBTCSwap}.
  *
  * @remarks
- * `requiredAdditionalUtxoAmount` and `totalNetworkFee` are decimal satoshi strings so restored quotes can show the
+ * `requiredAdditionalUtxoAmount` and `totalNetworkFee` are bigint satoshi amounts so restored quotes can show the
  * same external deposit requirement without re-estimating. `selectedExistingUtxos` may contain full wallet UTXOs in
  * memory, but {@link SpvFromBTCSwap.serialize} persists only {@link SpvExternalSelectedUtxo} fields.
  */
@@ -107,11 +107,11 @@ export type SpvFromBTCExternalSwapModeInfo = {
     /**
      * Satoshis still required as one future UTXO at `depositAddress`.
      */
-    requiredAdditionalUtxoAmount: string;
+    requiredAdditionalUtxoAmount: bigint;
     /**
      * Estimated input-side Bitcoin network fee in satoshis.
      */
-    totalNetworkFee: string;
+    totalNetworkFee: bigint;
 };
 
 /**
@@ -134,35 +134,8 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
         super(wrapper, initOrObject);
 
         if(!isSpvFromBTCSwapInit(initOrObject)) {
-            const mode: SpvFromBTCSwapMode = initOrObject.swapMode === "external" ? "external" : "psbt";
             const info = initOrObject.externalSwapModeInfo;
-            if(
-                mode === "external" &&
-                info != null &&
-                typeof(info.depositAddress) === "string" &&
-                typeof(info.depositAddressType) === "string" &&
-                typeof(info.feeRate) === "number" &&
-                info.cpfpAssumptions != null &&
-                typeof(info.cpfpAssumptions.txVsize) === "number" &&
-                typeof(info.cpfpAssumptions.txEffectiveFeeRate) === "number" &&
-                typeof(info.requiredAdditionalUtxoAmount) === "string" &&
-                typeof(info.totalNetworkFee) === "string" &&
-                Array.isArray(info.selectedExistingUtxos) &&
-                info.selectedExistingUtxos.every((utxo: any) =>
-                    utxo != null &&
-                    typeof(utxo.txId) === "string" &&
-                    typeof(utxo.vout) === "number" &&
-                    typeof(utxo.value) === "number" &&
-                    typeof(utxo.type) === "string" &&
-                    (
-                        utxo.cpfp == null ||
-                        (
-                            typeof(utxo.cpfp.txVsize) === "number" &&
-                            typeof(utxo.cpfp.txEffectiveFeeRate) === "number"
-                        )
-                    )
-                )
-            ) {
+            if(initOrObject.swapMode === "external" && info != null) {
                 this.swapMode = "external";
                 this.externalSwapModeInfo = {
                     depositAddress: info.depositAddress,
@@ -173,8 +146,8 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
                         txVsize: info.cpfpAssumptions.txVsize,
                         txEffectiveFeeRate: info.cpfpAssumptions.txEffectiveFeeRate
                     },
-                    requiredAdditionalUtxoAmount: info.requiredAdditionalUtxoAmount,
-                    totalNetworkFee: info.totalNetworkFee
+                    requiredAdditionalUtxoAmount: BigInt(info.requiredAdditionalUtxoAmount),
+                    totalNetworkFee: BigInt(info.totalNetworkFee)
                 };
             } else {
                 this.swapMode = "psbt";
@@ -206,7 +179,9 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
                         txVsize: utxo.cpfp.txVsize,
                         txEffectiveFeeRate: utxo.cpfp.txEffectiveFeeRate
                     }
-                }))
+                })),
+                requiredAdditionalUtxoAmount: this.externalSwapModeInfo.requiredAdditionalUtxoAmount.toString(10),
+                totalNetworkFee: this.externalSwapModeInfo.totalNetworkFee.toString(10)
             }
             : null;
 
@@ -303,8 +278,8 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
             selectedExistingUtxos,
             feeRate: resolvedFeeRate,
             cpfpAssumptions: resolvedCpfpAssumptions,
-            requiredAdditionalUtxoAmount: estimation.requiredAdditionalUtxoAmount.rawAmount.toString(10),
-            totalNetworkFee: estimation.totalNetworkFee.rawAmount.toString(10)
+            requiredAdditionalUtxoAmount: estimation.requiredAdditionalUtxoAmount.rawAmount,
+            totalNetworkFee: estimation.totalNetworkFee.rawAmount
         };
         this.swapMode = "external";
         this.externalSwapModeInfo = info;
@@ -354,7 +329,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
     getHyperlink(): string {
         const info = this.getExternalSwapModeInfoOrThrow("getHyperlink()");
         const amount = toTokenAmount(
-            BigInt(info.requiredAdditionalUtxoAmount),
+            info.requiredAdditionalUtxoAmount,
             BitcoinTokens.BTC,
             this.wrapper._prices,
             this.pricingInfo
@@ -374,7 +349,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
     getInput(): TokenAmount<BtcToken<false>, true> {
         if(this.swapMode !== "external" || this.externalSwapModeInfo == null) return super.getInput();
         return toTokenAmount(
-            super.getInput().rawAmount + BigInt(this.externalSwapModeInfo.totalNetworkFee),
+            super.getInput().rawAmount + this.externalSwapModeInfo.totalNetworkFee,
             BitcoinTokens.BTC,
             this.wrapper._prices,
             this.pricingInfo
@@ -393,7 +368,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
         if(this.pricingInfo==null) throw new Error("No pricing info known, cannot estimate fee!");
 
         const outputToken = this.getOutputToken();
-        const networkFee = BigInt(this.externalSwapModeInfo.totalNetworkFee);
+        const networkFee = this.externalSwapModeInfo.totalNetworkFee;
         const networkFeeInOutputToken = networkFee
             * (10n ** BigInt(outputToken.decimals))
             * 1_000_000n
@@ -428,7 +403,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
      */
     private async getMatchingExternalDepositUtxo(): Promise<BitcoinWalletUtxo | null> {
         const info = this.getExternalSwapModeInfoOrThrow("getMatchingExternalDepositUtxo()");
-        const requiredAdditionalUtxoAmount = BigInt(info.requiredAdditionalUtxoAmount);
+        const requiredAdditionalUtxoAmount = info.requiredAdditionalUtxoAmount;
         if(requiredAdditionalUtxoAmount === 0n) return null;
 
         const selectedKeys = new Set(info.selectedExistingUtxos.map(utxo => `${utxo.txId}:${utxo.vout}`));
@@ -478,7 +453,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
             };
         });
 
-        const requiredAdditionalUtxoAmount = BigInt(info.requiredAdditionalUtxoAmount);
+        const requiredAdditionalUtxoAmount = info.requiredAdditionalUtxoAmount;
         if(requiredAdditionalUtxoAmount === 0n) return executionUtxos;
 
         matchedNewUtxo ??= await this.getMatchingExternalDepositUtxo() ?? undefined;
@@ -521,7 +496,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
         abortSignal?: AbortSignal
     ): Promise<BitcoinWalletUtxo> {
         const info = this.getExternalSwapModeInfoOrThrow("waitForExternalDeposit()");
-        if(BigInt(info.requiredAdditionalUtxoAmount) === 0n) {
+        if(info.requiredAdditionalUtxoAmount === 0n) {
             throw new Error("No external deposit required for this SPV swap");
         }
 
@@ -568,7 +543,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
     ): Promise<string> {
         const info = this.getExternalSwapModeInfoOrThrow("processExternalDeposit()");
         const matchedNewUtxo = options?.matchedNewUtxo ?? (
-            BigInt(info.requiredAdditionalUtxoAmount) === 0n
+            info.requiredAdditionalUtxoAmount === 0n
                 ? undefined
                 : await this.waitForExternalDeposit(undefined, undefined, options?.abortSignal)
         );
@@ -604,7 +579,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
                 address: this.getAddress(),
                 hyperlink: this.getHyperlink(),
                 amount: toTokenAmount(
-                    BigInt(info.requiredAdditionalUtxoAmount),
+                    info.requiredAdditionalUtxoAmount,
                     BitcoinTokens.BTC,
                     this.wrapper._prices,
                     this.pricingInfo
@@ -687,10 +662,10 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
             return executionStatus;
         }
 
-        const matchedNewUtxo = BigInt(this.externalSwapModeInfo.requiredAdditionalUtxoAmount) === 0n
+        const matchedNewUtxo = this.externalSwapModeInfo.requiredAdditionalUtxoAmount === 0n
             ? undefined
             : await this.getMatchingExternalDepositUtxo();
-        const buildCurrentAction = BigInt(this.externalSwapModeInfo.requiredAdditionalUtxoAmount) !== 0n && matchedNewUtxo == null
+        const buildCurrentAction = this.externalSwapModeInfo.requiredAdditionalUtxoAmount !== 0n && matchedNewUtxo == null
             ? this._buildExternalDepositAddressAction.bind(this)
             : this._buildExternalDepositPsbtAction.bind(this, matchedNewUtxo ?? undefined);
 

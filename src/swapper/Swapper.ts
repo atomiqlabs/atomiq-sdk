@@ -1743,7 +1743,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         const feeRate = preliminaryInfo.feeRate;
         const cpfpAssumptions = preliminaryInfo.cpfpAssumptions;
 
-        let finalLpBtcAmount = parsedAmount - BigInt(preliminaryInfo.totalNetworkFee);
+        let finalLpBtcAmount = parsedAmount - preliminaryInfo.totalNetworkFee;
         if(finalLpBtcAmount <= 0n) {
             throw new UserError("Exact-input BTC budget is not enough to cover the external Bitcoin network fee");
         }
@@ -1756,8 +1756,8 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
             cpfpAssumptions
         );
 
-        if(BigInt(finalInfo.totalNetworkFee) !== BigInt(preliminaryInfo.totalNetworkFee)) {
-            finalLpBtcAmount = parsedAmount - BigInt(finalInfo.totalNetworkFee);
+        if(finalInfo.totalNetworkFee !== preliminaryInfo.totalNetworkFee) {
+            finalLpBtcAmount = parsedAmount - finalInfo.totalNetworkFee;
             if(finalLpBtcAmount <= 0n) {
                 throw new UserError("Exact-input BTC budget is not enough to cover the external Bitcoin network fee");
             }

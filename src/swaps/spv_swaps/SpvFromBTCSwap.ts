@@ -473,7 +473,6 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
             info.depositAddressType
         );
         const currentUtxosByKey = new Map(currentUtxos.map(utxo => [`${utxo.txId}:${utxo.vout}`, utxo]));
-        const selectedKeys = new Set(info.selectedExistingUtxos.map(utxo => `${utxo.txId}:${utxo.vout}`));
 
         const executionUtxos = info.selectedExistingUtxos.map(selectedUtxo => {
             const freshUtxo = currentUtxosByKey.get(`${selectedUtxo.txId}:${selectedUtxo.vout}`);
@@ -499,9 +498,6 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
             throw new Error("Required external deposit UTXO not found; wait for the deposit before processing");
         }
         const matchedKey = `${matchedNewUtxo.txId}:${matchedNewUtxo.vout}`;
-        if(selectedKeys.has(matchedKey)) {
-            throw new Error("Matched external deposit UTXO is already part of the selected existing funding set; please re-quote");
-        }
         const freshMatchedUtxo = currentUtxosByKey.get(matchedKey);
         if(freshMatchedUtxo == null) {
             throw new Error(`External deposit UTXO ${matchedKey} no longer exists; please re-check the deposit`);

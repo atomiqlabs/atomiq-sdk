@@ -104,7 +104,12 @@ export {IEscrowSelfInitSwap} from "./swaps/escrow_swaps/IEscrowSelfInitSwap.js";
 export {IEscrowSwap} from "./swaps/escrow_swaps/IEscrowSwap.js";
 export {IEscrowSwapWrapper} from "./swaps/escrow_swaps/IEscrowSwapWrapper.js";
 
-export {SpvFromBTCSwap} from "./swaps/spv_swaps/SpvFromBTCSwap.js";
+export {
+    SpvFromBTCSwap,
+    SpvFromBTCSwapMode,
+    SpvExternalSelectedUtxo,
+    SpvFromBTCExternalSwapModeInfo
+} from "./swaps/spv_swaps/SpvFromBTCSwap.js";
 export {SpvFromBTCSwapState} from "./swaps/spv_swaps/SpvFromBTCSwapState.js";
 export {SpvFromBTCWrapper} from "./swaps/spv_swaps/SpvFromBTCWrapper.js";
 

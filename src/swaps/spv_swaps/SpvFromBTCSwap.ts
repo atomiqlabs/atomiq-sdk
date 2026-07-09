@@ -217,10 +217,10 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
      * If the swap was already persisted, the mode change is saved asynchronously because this API is intentionally
      * synchronous.
      */
-    setSwapModePsbt(): void {
+    async setSwapModePsbt(): Promise<void> {
         this.swapMode = "psbt";
         this.externalSwapModeInfo = null;
-        if(this._persisted) this._save().catch(e => this.logger.error("setSwapModePsbt(): failed to save", e));
+        if(this._persisted) await this._save();
     }
 
     /**

@@ -895,14 +895,15 @@ Do not add a new `SpvFromBTCWrapper` helper. The root helper in `Swapper.ts` sho
 
 1. Resolve and validate the destination chain/token/address using the same logic as the BTC -> smart-chain branch of `swap(...)` and `createFromBTCSwapNew(...)`.
 2. Require `SwapType.SPV_VAULT_FROM_BTC`; do not silently fall back to legacy `FromBTCSwap`.
-3. Create a normal public `SpvFromBTCSwap` quote through the existing SPV quote path.
-4. Call `quote.setSwapModeExternal(externalDeposit.walletOrAddress, externalDeposit.existingUtxos, externalDeposit.feeRate, externalDeposit.cpfpAssumptions)` before returning the quote.
+3. For exact-output quotes, create a normal public `SpvFromBTCSwap` quote through the existing SPV quote path.
+4. For exact-input quotes, reuse the existing sweep-wallet wiring: call the normal SPV quote path with `amount: null` and `options.sourceWalletUtxos` containing the selected existing UTXOs plus one synthetic future UTXO.
+5. Call `quote.setSwapModeExternal(externalDeposit.walletOrAddress, resolvedExistingUtxos, normalizedFeeRate, cpfpAssumptions)` before returning the quote, where `resolvedExistingUtxos` is the same selected existing UTXO set used to build the synthetic future UTXO calculation.
 
-This keeps intermediary quote creation and wrapper validation in one existing path, and keeps external deposit orchestration at the public swapper API layer.
+This keeps intermediary quote creation and wrapper validation in one existing path, and keeps external deposit orchestration at the public swapper API layer. Do not split the exact-output or exact-input branches into standalone helper functions; keep the branch logic folded into `createSpvFromBtcSwapWithExternalDeposit(...)` itself so the flow is easy to audit in one place.
 
-- [ ] **Step 3: Implement exact-output helper flow**
+- [ ] **Step 3: Implement the exact-output branch inside `createSpvFromBtcSwapWithExternalDeposit(...)`**
 
-For exact-output quotes:
+Inside `createSpvFromBtcSwapWithExternalDeposit(...)`, handle exact-output quotes directly:
 
 1. From `Swapper.ts`, create the normal SPV quote with the requested destination token amount.
 2. Call `quote.setSwapModeExternal(walletOrAddress, existingUtxos, feeRate, cpfpAssumptions)`.
@@ -910,30 +911,63 @@ For exact-output quotes:
 
 The regular `amount` argument keeps its existing exact-output meaning.
 
-- [ ] **Step 4: Implement exact-input helper flow**
+- [ ] **Step 4: Implement the exact-input branch inside `createSpvFromBtcSwapWithExternalDeposit(...)`**
 
 The regular `amount` argument is the total BTC input budget the user wants to commit across selected existing UTXOs plus one future incoming UTXO. It is not the future UTXO amount by itself.
 
-Do not implement this as:
+Keep this logic directly in `createSpvFromBtcSwapWithExternalDeposit(...)`. Do not add standalone functions such as `createExactInputExternalDepositQuote(...)`, `buildSyntheticExternalDepositUtxo(...)`, or `resolveExternalDepositQuoteInputs(...)`. Small local variables inside the method are fine; the control flow should remain visible in the public helper implementation.
+
+Do not expose this low-level exact-input shape to public API consumers:
 
 ```typescript
 swap(..., amount: null, options: { sourceWalletUtxos })
 ```
 
-That special case must remain hidden from public API consumers.
+That special case must remain hidden behind `createSpvFromBtcSwapWithExternalDeposit(...)`. Inside the helper, do use the same internal `createFromBTCSwapNew(..., amount: null, exactOut: false, options: { sourceWalletUtxos, bitcoinFeeRate })` wiring that powers `sweepBitcoinWallet(...)`.
 
-Recommended robust flow:
+Do not create a preliminary SPV quote just to obtain a swap object or discover the external funding delta. For exact-input external-deposit quotes, the LP amount derivation should come from the synthetic future UTXO included in `sourceWalletUtxos`, using the existing `amountUtxos` request path.
 
-1. Resolve existing UTXOs and fee assumptions.
-2. From `Swapper.ts`, create a preliminary normal SPV exact-input quote using the total budget as the input amount only to learn the final transaction shape and LP fee rate.
-3. Call `setSwapModeExternal(...)` on the preliminary quote to compute `totalNetworkFee`.
-4. Compute `finalLpBtcAmount = totalInputBudget - totalNetworkFee`.
-5. From `Swapper.ts`, create the final normal SPV exact-input quote with `finalLpBtcAmount`.
-6. Call `setSwapModeExternal(...)` on the final quote.
-7. If the final quote's `totalNetworkFee` differs from the preliminary fee, repeat once with the adjusted `finalLpBtcAmount`.
-8. If `finalLpBtcAmount <= 0n`, throw a clear user error.
+Recommended flow:
 
-This keeps the user-visible input budget stable: `quote.getInput().rawAmount` should equal the requested total input budget except for explicit dust/rounding constraints.
+1. Resolve existing UTXOs and fee assumptions using the same rules as `setSwapModeExternal(...)`; if `externalDeposit.existingUtxos` is omitted, fetch them before constructing the fake UTXO.
+2. Infer the deposit address type with `toCoinselectAddressType(network, depositAddress)`.
+3. Compute `selectedExistingValue = sum(existingUtxos.value)`.
+4. Compute `syntheticFutureUtxoValue = totalInputBudget - selectedExistingValue`.
+5. If `syntheticFutureUtxoValue <= 0n`, do not create a fake UTXO. The selected existing UTXOs already cover or exceed the requested budget, and the sweep-style path would quote all selected UTXOs instead of the requested budget. Throw a clear user error telling the caller to use the connected-wallet flow or create a normal re-quote.
+6. Build `sourceWalletUtxos = [...existingUtxos, syntheticFutureUtxo]`, where the synthetic UTXO is a `BitcoinWalletUtxoBase`-compatible object:
+
+```typescript
+const syntheticFutureUtxo: BitcoinWalletUtxoBase = {
+    value: Number(syntheticFutureUtxoValue),
+    type: depositAddressType,
+    cpfp: cpfpAssumptions
+};
+```
+
+7. Create the quote through the existing SPV sweep wiring:
+
+```typescript
+const quote = await this.createFromBTCSwapNew(
+    chainIdentifier,
+    recipient,
+    dstToken.address,
+    null,
+    false,
+    undefined,
+    {
+        ...options,
+        sourceWalletUtxos,
+        bitcoinFeeRate: normalizedFeeRate
+    }
+);
+```
+
+8. Call `quote.setSwapModeExternal(walletOrAddress, existingUtxos, normalizedFeeRate, cpfpAssumptions)`, passing the resolved real existing UTXOs only. Do not include the synthetic future UTXO in `externalSwapModeInfo.selectedExistingUtxos`.
+9. Return the quote.
+
+This lets the LP produce the quote from the same `amountUtxos` data shape used by wallet sweeping. It avoids the previous preliminary/re-quote loop and keeps quote amount derivation consistent with `SpvFromBTCWrapper.amountPrefetch(...)` and `verifyReturnedData(...)`.
+
+Important caveat: this relies on the wrapper's dummy sweep PSBT and `getInputUtxoAmount(...)` using consistent transaction-size assumptions. Static analysis should verify that the returned quote's external mode reports a `requiredAdditionalUtxoAmount` equal to the synthetic future UTXO value, except for explicit dust/rounding behavior documented by the estimator.
 
 - [ ] **Step 5: Preserve partial funding semantics**
 
@@ -941,6 +975,7 @@ When computing external mode:
 
 - For v1, select all fetched/supplied existing UTXOs for the deposit address.
 - If existing UTXOs already cover the required BTC input budget, `requiredAdditionalUtxoAmount` should be `"0"`.
+- The exact-input public helper cannot represent `existingUtxoTotal >= requestedBudget` through the sweep-style fake-UTXO path while also selecting all existing UTXOs. In that case it should throw a clear error or route the caller toward the connected-wallet/normal re-quote flow; it must not silently quote all existing UTXOs as a larger input budget.
 - Do not quote exact-input requests against `amount + selectedExistingUtxoTotal`.
 - For example, if the user enters `0.01 BTC` and the intermediate wallet already has `0.002 BTC`, the external mode should report an additional requirement near `0.008 BTC` after network-fee/dust adjustment, not quote for `0.012 BTC`.
 
@@ -967,7 +1002,9 @@ Implementation notes:
 - Normalize `exactIn` through `SwapAmountType`.
 - Validate and normalize `dstSmartchainWallet` using the destination chain interface.
 - Require `SwapType.SPV_VAULT_FROM_BTC`; this helper should not silently fall back to legacy `FromBTCSwap`.
-- Create the quote through the existing `createFromBTCSwapNew(...)` / `createSwap(...)` path in `Swapper.ts`, then call `quote.setSwapModeExternal(...)` before returning.
+- For exact-output, create the quote through the existing `createFromBTCSwapNew(...)` / `createSwap(...)` path in `Swapper.ts`, then call `quote.setSwapModeExternal(...)` before returning.
+- For exact-input, create the quote through the existing `createFromBTCSwapNew(..., amount: null, exactOut: false, options: { sourceWalletUtxos, bitcoinFeeRate })` sweep-wallet path, where `sourceWalletUtxos` is selected existing UTXOs plus the synthetic future UTXO.
+- Keep both exact-output and exact-input branches inline in this method. Do not introduce standalone branch/helper functions for these flows.
 - Do not add or call a wrapper-level external-deposit helper.
 
 - [ ] **Step 7: Add chain-scoped helper**
@@ -1054,6 +1091,10 @@ Inspect the final code and confirm these behaviors from the implementation, with
 7. `getInputUtxoAmount(...)` exists on the public `SpvFromBTCSwap` class, not on `SpvFromBTCSwapBase`.
 8. `getInputUtxoAmount(...)` includes detrimental existing UTXOs in fee/input calculations instead of filtering them out.
 9. `getFeeBreakdown()` in external mode includes `FeeType.NETWORK_INPUT`.
+10. Exact-input `createSpvFromBtcSwapWithExternalDeposit(...)` does not create a preliminary quote/re-quote loop.
+11. Exact-input `createSpvFromBtcSwapWithExternalDeposit(...)` builds `sourceWalletUtxos` from selected real UTXOs plus exactly one synthetic future UTXO, then calls `createFromBTCSwapNew(..., null, false, ..., { sourceWalletUtxos, bitcoinFeeRate })`.
+12. The synthetic future UTXO is not persisted in `externalSwapModeInfo.selectedExistingUtxos`.
+13. The exact-output and exact-input quote flows are implemented inline inside `createSpvFromBtcSwapWithExternalDeposit(...)`, not split into standalone helper functions.
 
 - [ ] **Step 3: Review public type surface statically**
 
@@ -1090,6 +1131,7 @@ If static analysis required code fixes, commit those fixes with a focused messag
 - [ ] PSBT mode `getInput()`, `getFeeBreakdown()`, `getPsbt()`, `getFundedPsbt()`, `sendBitcoinTransaction()`, and `execute()` behavior is unchanged.
 - [ ] `isIAddressSwap()` returns true for external-mode SPV swaps and false for PSBT-mode SPV swaps.
 - [ ] The public quote helper does not expose `amount: null` or `sourceWalletUtxos` as a required app-level workaround.
+- [ ] Exact-input external-deposit quote creation reuses the sweep-wallet fake-UTXO path and does not use a preliminary quote/re-quote flow.
 
 ---
 

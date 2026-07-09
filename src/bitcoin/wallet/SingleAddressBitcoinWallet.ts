@@ -213,7 +213,7 @@ export class SingleAddressBitcoinWallet extends BitcoinWallet {
             ? network
             : BitcoinWallet.bitcoinNetworkToObject(network);
 
-        derivationPath = networkObject==null || networkObject.bech32===NETWORK.bech32
+        derivationPath ??= networkObject==null || networkObject.bech32===NETWORK.bech32
             ? "m/84'/0'/0'/0/0" //Mainnet
             : "m/84'/1'/0'/0/0"; //Testnet
         const seed = await mnemonicToSeed(mnemonic);
@@ -221,6 +221,36 @@ export class SingleAddressBitcoinWallet extends BitcoinWallet {
         const privateKey = hdKey.derive(derivationPath).privateKey;
         if(privateKey==null) throw new Error("Cannot derive private key from the mnemonic!");
         return WIF(networkObject).encode(privateKey);
+    }
+
+    /**
+     * Creates a single-address wallet from a mnemonic using the same async derivation as
+     * {@link SingleAddressBitcoinWallet.mnemonicToPrivateKey}.
+     *
+     * @param mempoolApi Bitcoin RPC/address-index backend used for wallet balance, UTXO and broadcast operations
+     * @param network Bitcoin network used for derivation defaults and address encoding
+     * @param mnemonic Mnemonic phrase to derive the wallet private key from
+     * @param derivationPath Optional BIP32 derivation path; defaults to native segwit account 0 for the network
+     * @param feeMultiplier Optional multiplier applied to backend fee estimates
+     * @param feeOverride Optional fixed fee rate in sats/vB returned by this wallet
+     * @returns Wallet derived from the mnemonic at `derivationPath`
+     * @throws {Error} if the mnemonic cannot derive a private key for the selected path
+     */
+    static async fromMnemonic(
+        mempoolApi: BitcoinRpcWithAddressIndex<any>,
+        network: BitcoinNetwork | BTC_NETWORK,
+        mnemonic: string,
+        derivationPath?: string,
+        feeMultiplier?: number,
+        feeOverride?: number
+    ): Promise<SingleAddressBitcoinWallet> {
+        return new SingleAddressBitcoinWallet(
+            mempoolApi,
+            network,
+            await SingleAddressBitcoinWallet.mnemonicToPrivateKey(mnemonic, network, derivationPath),
+            feeMultiplier,
+            feeOverride
+        );
     }
 
 }

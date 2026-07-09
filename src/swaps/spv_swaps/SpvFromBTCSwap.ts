@@ -710,61 +710,6 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
     }
 
     /**
-     * Returns the current user action, including external deposit actions when external mode is active.
-     *
-     * @param options Execution action context; external mode requires `bitcoinWallet` once the deposit is present
-     * @returns Current execution action, or `undefined` when no user action is required
-     */
-    async getExecutionAction(options?: {
-        bitcoinFeeRate?: number,
-        bitcoinWallet?: MinimalBitcoinWalletInterface,
-        manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"],
-        maxWaitTillAutomaticSettlementSeconds?: number
-    }): Promise<
-        SwapExecutionActionSendToAddress<false> |
-        SwapExecutionActionSignPSBT |
-        SwapExecutionActionWait<"BITCOIN_CONFS" | "SETTLEMENT"> |
-        SwapExecutionActionSignSmartChainTx<T> |
-        undefined
-    > {
-        const executionStatus = await this._getExecutionStatus(options);
-        return executionStatus.buildCurrentAction(options);
-    }
-
-    /**
-     * Returns execution steps and the current action, including external deposit actions when active.
-     *
-     * @param options Execution status context; `skipBuildingAction` avoids constructing PSBT/action payloads
-     * @returns Execution steps, current action and current state info
-     */
-    async getExecutionStatus(options?: {
-        skipBuildingAction?: boolean,
-        bitcoinFeeRate?: number,
-        bitcoinWallet?: MinimalBitcoinWalletInterface,
-        manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"],
-        maxWaitTillAutomaticSettlementSeconds?: number
-    }): Promise<{
-        steps: [
-            SwapExecutionStepPayment<"BITCOIN">,
-            SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
-        ],
-        currentAction:
-            SwapExecutionActionSendToAddress<false> |
-            SwapExecutionActionSignPSBT |
-            SwapExecutionActionWait<"BITCOIN_CONFS" | "SETTLEMENT"> |
-            SwapExecutionActionSignSmartChainTx<T> |
-            undefined,
-        stateInfo: SwapStateInfo<SpvFromBTCSwapState>
-    }> {
-        const executionStatus = await this._getExecutionStatus(options);
-        return {
-            steps: executionStatus.steps,
-            currentAction: options?.skipBuildingAction ? undefined : await executionStatus.buildCurrentAction(options),
-            stateInfo: this._getStateInfo(executionStatus.state)
-        };
-    }
-
-    /**
      * Estimates the additional future UTXO needed to spend the external deposit wallet's selected funding set.
      *
      * @remarks

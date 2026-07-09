@@ -141,7 +141,7 @@ export function isSpvFromBTCSwapInit(obj: any): obj is SpvFromBTCSwapInit {
  *
  * @category Swaps/Bitcoin → Smart chain
  */
-export class SpvFromBTCSwap<T extends ChainType>
+export class SpvFromBTCSwapBase<T extends ChainType>
     extends ISwap<T, SpvFromBTCTypeDefinition<T>>
     implements IBTCWalletSwap, ISwapWithGasDrop<T>, IClaimableSwap<T, SpvFromBTCTypeDefinition<T>, SpvFromBTCSwapState> {
 
@@ -2179,3 +2179,13 @@ export class SpvFromBTCSwap<T extends ChainType>
 
 }
 
+/**
+ * Public SPV vault BTC -> smart-chain swap class.
+ *
+ * @remarks
+ * PSBT mode preserves the existing wallet-funded SPV behavior. External deposit mode is added in the subclass so
+ * restored swaps continue to deserialize through this public class while base PSBT mechanics stay reusable.
+ *
+ * @category Swaps/Bitcoin â†’ Smart chain
+ */
+export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> {}

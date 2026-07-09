@@ -131,7 +131,7 @@ export function isSpvFromBTCSwapInit(obj: any): obj is SpvFromBTCSwapInit {
  *
  * @category Swaps/Bitcoin → Smart chain
  */
-export class SpvFromBTCSwapBase<T extends ChainType>
+export abstract class SpvFromBTCSwapBase<T extends ChainType>
     extends ISwap<T, SpvFromBTCTypeDefinition<T>>
     implements IBTCWalletSwap, ISwapWithGasDrop<T>, IClaimableSwap<T, SpvFromBTCTypeDefinition<T>, SpvFromBTCSwapState> {
 
@@ -614,30 +614,17 @@ export class SpvFromBTCSwapBase<T extends ChainType>
     /**
      * @inheritDoc
      */
-    getFee(): Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>> {
-        const swapFee = this.getSwapFee();
-        const watchtowerFee = this.getWatchtowerFee();
+    abstract getFee(): Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>;
 
-        const amountInSrcToken = toTokenAmount(
-            swapFee.amountInSrcToken.rawAmount + watchtowerFee.amountInSrcToken.rawAmount,
-            BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo
-        );
-        return {
-            amountInSrcToken,
-            amountInDstToken: toTokenAmount(
-                swapFee.amountInDstToken.rawAmount + watchtowerFee.amountInDstToken.rawAmount,
-                this.wrapper._tokens[this.outputSwapToken], this.wrapper._prices, this.pricingInfo
-            ),
-            currentUsdValue: amountInSrcToken.currentUsdValue,
-            usdValue: amountInSrcToken.usdValue,
-            pastUsdValue: amountInSrcToken.pastUsdValue
-        };
-    }
 
+    abstract getFeeBreakdown(): FeeBreakdown<T["ChainId"]>;
     /**
-     * @inheritDoc
+     * @internal
      */
-    getFeeBreakdown(): FeeBreakdown<T["ChainId"]> {
+    protected _getFeeBreakdown(): [
+        {type: FeeType.SWAP, fee: Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>},
+        {type: FeeType.NETWORK_OUTPUT, fee: Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>}
+    ] {
         return [
             {
                 type: FeeType.SWAP,

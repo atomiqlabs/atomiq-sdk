@@ -4,7 +4,6 @@ import {extendAbortController} from "../../utils/Utils.js";
 import {getWalletAddressUtxos, toCoinselectAddressType} from "../../utils/BitcoinUtils.js";
 import {Transaction} from "@scure/btc-signer";
 import {Buffer} from "buffer";
-import {FeeBreakdown} from "../../types/fees/FeeBreakdown.js";
 import {
     BitcoinWalletUtxo,
     BitcoinWalletUtxoBase,
@@ -18,7 +17,7 @@ import {
 } from "../../types/wallets/MinimalBitcoinWalletInterface.js";
 import {FeeType} from "../../enums/FeeType.js";
 import {TokenAmount, toTokenAmount} from "../../types/TokenAmount.js";
-import {BitcoinTokens, BtcToken} from "../../types/Token.js";
+import {BitcoinTokens, BtcToken, SCToken} from "../../types/Token.js";
 import {timeoutPromise} from "../../utils/TimeoutUtils.js";
 import {
     SwapExecutionActionSendToAddress,
@@ -30,6 +29,7 @@ import {SwapExecutionStepPayment, SwapExecutionStepSettlement} from "../../types
 import {SwapStateInfo} from "../../types/SwapStateInfo.js";
 import {CoinselectAddressTypes, utils} from "../../bitcoin/coinselect2/utils.js";
 import {isSpvFromBTCSwapInit, SpvFromBTCSwapBase, SpvFromBTCSwapInit, SpvFromBTCSwapState} from "./SpvFromBTCSwapBase.js";
+import {Fee} from "../../types/fees/Fee.js";
 
 /**
  * Runtime mode for an SPV BTC -> smart-chain swap.
@@ -357,14 +357,13 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
     }
 
     /**
-     * Returns the swap fee breakdown, appending input-side Bitcoin network fees in external mode.
+     * Returns the network fee to be paid on the input/source network
      *
-     * @returns Fee breakdown with `FeeType.NETWORK_INPUT` only when external deposit mode is active
-     * @throws {Error} if pricing data is unavailable in external mode
+     * @internal
      */
-    getFeeBreakdown(): FeeBreakdown<T["ChainId"]> {
-        const baseBreakdown = super.getFeeBreakdown();
-        if(this.swapMode !== "external" || this.externalSwapModeInfo == null) return baseBreakdown;
+    protected getNetworkInputFee(): Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>> | null {
+        if(this.swapMode !== "external" || this.externalSwapModeInfo == null) return null;
+
         if(this.pricingInfo==null) throw new Error("No pricing info known, cannot estimate fee!");
 
         const outputToken = this.getOutputToken();
@@ -375,23 +374,68 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
             / this.pricingInfo.swapPriceUSatPerToken;
         const amountInSrcToken = toTokenAmount(networkFee, BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo);
 
+        return {
+            amountInSrcToken,
+            amountInDstToken: toTokenAmount(
+                networkFeeInOutputToken,
+                outputToken,
+                this.wrapper._prices,
+                this.pricingInfo
+            ),
+            currentUsdValue: amountInSrcToken.currentUsdValue,
+            usdValue: amountInSrcToken.usdValue,
+            pastUsdValue: amountInSrcToken.pastUsdValue
+        };
+    }
+
+    /**
+     * @inheritDoc
+     */
+    getFee(): Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>> {
+        const swapFee = this.getSwapFee();
+        const watchtowerFee = this.getWatchtowerFee();
+        const networkInputFee = this.getNetworkInputFee();
+
+        const amountInSrcToken = toTokenAmount(
+            swapFee.amountInSrcToken.rawAmount + watchtowerFee.amountInSrcToken.rawAmount + (networkInputFee?.amountInSrcToken.rawAmount ?? 0n),
+            BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo
+        );
+        return {
+            amountInSrcToken,
+            amountInDstToken: toTokenAmount(
+                swapFee.amountInDstToken.rawAmount + watchtowerFee.amountInDstToken.rawAmount + (networkInputFee?.amountInDstToken.rawAmount ?? 0n),
+                this.getOutputToken(), this.wrapper._prices, this.pricingInfo
+            ),
+            currentUsdValue: amountInSrcToken.currentUsdValue,
+            usdValue: amountInSrcToken.usdValue,
+            pastUsdValue: amountInSrcToken.pastUsdValue
+        };
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @returns Fee breakdown with `FeeType.NETWORK_INPUT` only when external deposit mode is active
+     * @throws {Error} if pricing data is unavailable in external mode
+     */
+    getFeeBreakdown(): [
+        {type: FeeType.SWAP, fee: Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>},
+        {type: FeeType.NETWORK_OUTPUT, fee: Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>}
+    ] | [
+        {type: FeeType.NETWORK_INPUT, fee: Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>},
+        {type: FeeType.SWAP, fee: Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>},
+        {type: FeeType.NETWORK_OUTPUT, fee: Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>}
+    ] {
+        const baseBreakdown = super._getFeeBreakdown();
+        const networkInputFee = this.getNetworkInputFee();
+        if(networkInputFee == null) return baseBreakdown;
+
         return [
-            ...baseBreakdown,
             {
                 type: FeeType.NETWORK_INPUT,
-                fee: {
-                    amountInSrcToken,
-                    amountInDstToken: toTokenAmount(
-                        networkFeeInOutputToken,
-                        outputToken,
-                        this.wrapper._prices,
-                        this.pricingInfo
-                    ),
-                    currentUsdValue: amountInSrcToken.currentUsdValue,
-                    usdValue: amountInSrcToken.usdValue,
-                    pastUsdValue: amountInSrcToken.pastUsdValue
-                }
-            }
+                fee: networkInputFee
+            },
+            ...baseBreakdown
         ];
     }
 

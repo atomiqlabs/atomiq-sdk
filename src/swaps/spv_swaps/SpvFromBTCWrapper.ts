@@ -16,7 +16,7 @@ import {
     SpvWithdrawalFrontedState,
     SpvWithdrawalStateType
 } from "@atomiqlabs/base";
-import {SpvFromBTCSwap, SpvFromBTCSwapInit, SpvFromBTCSwapState} from "./SpvFromBTCSwap.js";
+import {SpvFromBTCSwap} from "./SpvFromBTCSwap.js";
 import {BTC_NETWORK, TEST_NETWORK} from "@scure/btc-signer/utils";
 import {SwapType} from "../../enums/SwapType.js";
 import {UnifiedSwapStorage} from "../../storage/UnifiedSwapStorage.js";
@@ -45,6 +45,7 @@ import {UserError} from "../../errors/UserError.js";
 import {BitcoinWalletUtxo, BitcoinWalletUtxoBase, IBitcoinWallet} from "../../bitcoin/wallet/IBitcoinWallet.js";
 import {utils} from "../../bitcoin/coinselect2/utils.js";
 import {BitcoinWallet} from "../../bitcoin/wallet/BitcoinWallet.js";
+import {SpvFromBTCSwapInit, SpvFromBTCSwapState} from "./SpvFromBTCSwapBase.js";
 
 export type SpvFromBTCOptions = {
     /**

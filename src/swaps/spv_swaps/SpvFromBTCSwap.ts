@@ -127,6 +127,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
 
     private swapMode: SpvFromBTCSwapMode = "psbt";
     private externalSwapModeInfo: SpvFromBTCExternalSwapModeInfo | null = null;
+    private externalDepositTxId?: string;
 
     constructor(wrapper: SpvFromBTCWrapper<T>, init: SpvFromBTCSwapInit);
     constructor(wrapper: SpvFromBTCWrapper<T>, obj: any);
@@ -149,9 +150,11 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
                     requiredAdditionalUtxoAmount: BigInt(info.requiredAdditionalUtxoAmount),
                     totalNetworkFee: BigInt(info.totalNetworkFee)
                 };
+                this.externalDepositTxId = initOrObject.externalDepositTxId;
             } else {
                 this.swapMode = "psbt";
                 this.externalSwapModeInfo = null;
+                this.externalDepositTxId = undefined;
             }
         }
     }
@@ -188,7 +191,8 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
         return {
             ...super.serialize(),
             swapMode: this.swapMode,
-            externalSwapModeInfo
+            externalSwapModeInfo,
+            externalDepositTxId: this.swapMode === "external" ? this.externalDepositTxId : undefined
         };
     }
 
@@ -220,6 +224,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
     async setSwapModePsbt(): Promise<void> {
         this.swapMode = "psbt";
         this.externalSwapModeInfo = null;
+        this.externalDepositTxId = undefined;
         if(this._persisted) await this._save();
     }
 
@@ -283,8 +288,15 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
         };
         this.swapMode = "external";
         this.externalSwapModeInfo = info;
+        this.externalDepositTxId = undefined;
         if(this._persisted) await this._save();
         return info;
+    }
+
+    private async setExternalDepositTxId(txId?: string): Promise<void> {
+        if(txId == null || this.externalDepositTxId === txId) return;
+        this.externalDepositTxId = txId;
+        if(this._persisted) await this._save();
     }
 
     /**
@@ -543,6 +555,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
             while(true) {
                 const matchedUtxo = await this.getMatchingExternalDepositUtxo();
                 if(matchedUtxo != null) {
+                    await this.setExternalDepositTxId(matchedUtxo.txId);
                     abortController.abort();
                     return matchedUtxo;
                 }
@@ -582,6 +595,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
                 : await this.waitForExternalDeposit(undefined, undefined, options?.abortSignal)
         );
         const utxos = await this.rehydrateExternalFundingUtxos(matchedNewUtxo);
+        await this.setExternalDepositTxId(matchedNewUtxo?.txId);
         const {psbt, psbtBase64, psbtHex, signInputs} = await this.getFundedPsbt(
             wallet,
             info.feeRate,
@@ -663,6 +677,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
                 type: "FUNDED_PSBT"
             }],
             submitPsbt: async (signedPsbt: string | Transaction | (string | Transaction)[], idempotent?: boolean) => {
+                await this.setExternalDepositTxId(matchedNewUtxo?.txId);
                 return this._submitExecutionTransactions(
                     Array.isArray(signedPsbt) ? signedPsbt : [signedPsbt],
                     undefined,
@@ -689,22 +704,43 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
         const executionStatus = await super._getExecutionStatus(options);
         if(
             this.swapMode !== "external" ||
-            this.externalSwapModeInfo == null ||
-            executionStatus.state !== SpvFromBTCSwapState.CREATED ||
-            !await this._verifyQuoteValid()
+            this.externalSwapModeInfo == null
         ) {
             return executionStatus;
         }
 
-        const matchedNewUtxo = this.externalSwapModeInfo.requiredAdditionalUtxoAmount === 0n
-            ? undefined
-            : await this.getMatchingExternalDepositUtxo();
-        const buildCurrentAction = this.externalSwapModeInfo.requiredAdditionalUtxoAmount !== 0n && matchedNewUtxo == null
-            ? this._buildExternalDepositAddressAction.bind(this)
-            : this._buildExternalDepositPsbtAction.bind(this, matchedNewUtxo ?? undefined);
+        let buildCurrentAction = executionStatus.buildCurrentAction;
+        let matchedNewUtxo: BitcoinWalletUtxo | undefined;
+        if(
+            executionStatus.state === SpvFromBTCSwapState.CREATED &&
+            await this._verifyQuoteValid()
+        ) {
+            matchedNewUtxo = this.externalSwapModeInfo.requiredAdditionalUtxoAmount === 0n
+                ? undefined
+                : await this.getMatchingExternalDepositUtxo() ?? undefined;
+            await this.setExternalDepositTxId(matchedNewUtxo?.txId);
+            buildCurrentAction = this.externalSwapModeInfo.requiredAdditionalUtxoAmount !== 0n && matchedNewUtxo == null
+                ? this._buildExternalDepositAddressAction.bind(this)
+                : this._buildExternalDepositPsbtAction.bind(this, matchedNewUtxo ?? undefined);
+        }
+
+        const steps = executionStatus.steps;
+        const externalPaymentStep: SwapExecutionStepPayment<"BITCOIN"> = {
+            ...steps[0],
+            description: "Fund the intermediate Bitcoin swap wallet, then sign and submit the swap transaction PSBT and wait for it to confirm",
+            initTxId: this.externalDepositTxId ?? matchedNewUtxo?.txId,
+            settleTxId: this.getInputTxId() ?? undefined
+        };
 
         return {
             ...executionStatus,
+            steps: [
+                externalPaymentStep,
+                steps[1]
+            ] as [
+                SwapExecutionStepPayment<"BITCOIN">,
+                SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
+            ],
             buildCurrentAction
         };
     }

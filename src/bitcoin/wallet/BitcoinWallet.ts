@@ -1,10 +1,9 @@
 import {coinSelect, maxSendable, CoinselectAddressTypes, CoinselectTxInput} from "../coinselect2/index.js";
 import {BTC_NETWORK, NETWORK, TEST_NETWORK} from "@scure/btc-signer/utils"
-import {p2wpkh, OutScript, Transaction, p2tr, Address} from "@scure/btc-signer";
+import {p2wpkh, Transaction, p2tr, Address} from "@scure/btc-signer";
 import {BitcoinWalletUtxo, BitcoinWalletUtxoBase, IBitcoinWallet} from "./IBitcoinWallet.js";
 import {Buffer} from "buffer";
-import {randomBytes} from "../../utils/Utils.js";
-import {getDummyOutputScript, toCoinselectAddressType, toOutputScript} from "../../utils/BitcoinUtils.js";
+import {getDummyOutputScript, getWalletAddressUtxos, toCoinselectAddressType, toOutputScript} from "../../utils/BitcoinUtils.js";
 import {TransactionInputUpdate} from "@scure/btc-signer/psbt";
 import {getLogger} from "../../utils/Logger.js";
 import {BitcoinNetwork, BitcoinRpcWithAddressIndex} from "@atomiqlabs/base";
@@ -111,37 +110,9 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
         sendingAddress: string,
         sendingAddressType: CoinselectAddressTypes
     ): Promise<BitcoinWalletUtxo[]> {
-        const utxos = await this.rpc.getAddressUTXOs(sendingAddress);
-
-        let totalSpendable = 0;
-
-        const outputScript = toOutputScript(this.network, sendingAddress);
-
-        const utxoPool: BitcoinWalletUtxo[] = [];
-
-        for(let utxo of utxos) {
-            const value = Number(utxo.value);
-            totalSpendable += value;
-            utxoPool.push({
-                vout: utxo.vout,
-                txId: utxo.txid,
-                value: value,
-                type: sendingAddressType,
-                outputScript: outputScript,
-                address: sendingAddress,
-                cpfp: !utxo.confirmed ? await this.rpc.getCPFPData(utxo.txid).then((result) => {
-                    if(result==null) return;
-                    return {
-                        txVsize: result.adjustedVsize,
-                        txEffectiveFeeRate: result.effectiveFeePerVsize
-                    }
-                }) : undefined,
-                confirmed: utxo.confirmed
-            })
-        }
-
+        const utxoPool = await getWalletAddressUtxos(this.rpc, this.network, sendingAddress, sendingAddressType);
+        const totalSpendable = utxoPool.reduce((total, utxo) => total + utxo.value, 0);
         logger.debug("_getUtxoPool(): Total spendable value: "+totalSpendable+" num utxos: "+utxoPool.length);
-
         return utxoPool;
     }
 

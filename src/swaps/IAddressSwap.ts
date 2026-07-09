@@ -4,9 +4,10 @@
  * @category Swaps/Types
  */
 export function isIAddressSwap(obj: any): obj is IAddressSwap {
-    return obj!=null &&
+    return obj != null &&
         typeof(obj.getAddress) === "function" &&
-        typeof(obj.getHyperlink) === "function";
+        typeof(obj.getHyperlink) === "function" &&
+        (typeof(obj.isAddressSwapMode) !== "function" || obj.isAddressSwapMode());
 }
 
 /**
@@ -26,5 +27,12 @@ export interface IAddressSwap {
      *  This is suitable to be displayed in a form of QR code.
      */
     getHyperlink(): string;
+
+    /**
+     * Optional predicate for swaps that expose address APIs only in specific runtime modes.
+     *
+     * @returns `true` when the swap currently behaves as an address swap
+     */
+    isAddressSwapMode?(): boolean;
 
 }

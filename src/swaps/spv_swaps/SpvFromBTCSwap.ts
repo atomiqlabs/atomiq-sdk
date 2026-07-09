@@ -12,14 +12,21 @@ import {
     SpvWithdrawalStateType
 } from "@atomiqlabs/base";
 import {SwapType} from "../../enums/SwapType.js";
-import {SpvFromBTCTypeDefinition, SpvFromBTCWrapper} from "./SpvFromBTCWrapper.js";
+import {
+    REQUIRED_SPV_SWAP_LP_ADDRESS_TYPE,
+    REQUIRED_SPV_SWAP_VAULT_ADDRESS_TYPE, SpvFromBTCTypeDefinition, SpvFromBTCWrapper
+} from "./SpvFromBTCWrapper.js";
 import {extendAbortController} from "../../utils/Utils.js";
 import {parsePsbtTransaction, toCoinselectAddressType, toOutputScript} from "../../utils/BitcoinUtils.js";
 import {getInputType, Transaction} from "@scure/btc-signer";
 import {Buffer} from "buffer";
 import {Fee} from "../../types/fees/Fee.js";
-import {BitcoinWalletUtxo, IBitcoinWallet, isIBitcoinWallet} from "../../bitcoin/wallet/IBitcoinWallet.js";
-import {IntermediaryAPI} from "../../intermediaries/apis/IntermediaryAPI.js";
+import {
+    BitcoinWalletUtxo,
+    BitcoinWalletUtxoBase,
+    IBitcoinWallet,
+    isIBitcoinWallet
+} from "../../bitcoin/wallet/IBitcoinWallet.js";
 import {IBTCWalletSwap} from "../IBTCWalletSwap.js";
 import {ISwapWithGasDrop} from "../ISwapWithGasDrop.js";
 import {
@@ -50,6 +57,7 @@ import {
     SwapExecutionStepSettlement
 } from "../../types/SwapExecutionStep.js";
 import {SwapStateInfo} from "../../types/SwapStateInfo.js";
+import {CoinselectAddressTypes, utils} from "../../bitcoin/coinselect2/utils.js";
 
 export {SpvFromBTCSwapState};
 
@@ -712,7 +720,7 @@ export class SpvFromBTCSwap<T extends ChainType>
      * Returns raw transaction details that can be used to manually create a swap PSBT. It is better to use
      *  the {@link getPsbt} or {@link getFundedPsbt} function retrieve an already prepared PSBT.
      */
-    async getTransactionDetails(): Promise<{
+    getTransactionDetails(): {
         in0txid: string,
         in0vout: number,
         in0sequence: number,
@@ -723,7 +731,7 @@ export class SpvFromBTCSwap<T extends ChainType>
         out2amount: bigint,
         out2script: Uint8Array,
         locktime: number
-    }> {
+    } {
         const [txId, voutStr] = this.vaultUtxo.split(":");
 
         const vaultScript = toOutputScript(this.wrapper._options.bitcoinNetwork, this.vaultBtcAddress);
@@ -769,14 +777,14 @@ export class SpvFromBTCSwap<T extends ChainType>
      *  it back to the swap with {@link submitPsbt} function. The transaction should use at least the returned `feeRate`
      *  sats/vB as the transaction fee.
      */
-    async getPsbt(): Promise<{
+    getPsbt(): {
         psbt: Transaction,
         psbtHex: string,
         psbtBase64: string,
         in1sequence: number,
         feeRate: number
-    }> {
-        const res = await this.getTransactionDetails();
+    } {
+        const res = this.getTransactionDetails();
         const psbt = new Transaction({
             allowUnknownOutputs: true,
             allowLegacyWitnessUtxo: true,
@@ -967,11 +975,101 @@ export class SpvFromBTCSwap<T extends ChainType>
     }
 
     /**
+     * Estimates the size of the UTXO required to fully fund this swap on the input (Bitcoin) side, considering the
+     *  network fees and also existing UTXOs in the wallet.
+     *
+     * @param existingUtxos Existing UTXOs already held by the wallet (can also be unconfirmed)
+     * @param addressType Address type of the wallet about to receive the UTXO
+     * @param feeRate Fee rate to use for the estimation
+     * @param cpfpAssumptions CPFP assumptions to use about the future incoming UTXO
+     */
+    getInputUtxoAmount(
+        existingUtxos: BitcoinWalletUtxoBase[],
+        addressType: CoinselectAddressTypes,
+        feeRate: number,
+        cpfpAssumptions?: {
+            txVsize: number,
+            txEffectiveFeeRate: number
+        }
+    ): {
+        totalRequiredInputAmount: TokenAmount<BtcToken<false>, true>,
+        existingBalance: TokenAmount<BtcToken<false>, true>,
+        totalNetworkFee: TokenAmount<BtcToken<false>, true>,
+        requiredAdditionalUtxoAmount: TokenAmount<BtcToken<false>, true>,
+        excessExistingBalance: TokenAmount<BtcToken<false>, true>
+    } {
+        const nonDetrimentalUtxos = existingUtxos.filter(utxo => !utils.isDetrimentalInput(feeRate, utxo));
+        let cpfpFeeSum = nonDetrimentalUtxos.reduce((prev, current) => prev + utils.inputCpfpAdditionalFee(current, feeRate), 0);
+        const existingUtxoBalance = BigInt(nonDetrimentalUtxos.reduce((prev, current) => prev + current.value, 0));
+
+        const txDetails = this.getTransactionDetails();
+        const requiredSendAmount = this.btcAmount;
+
+        //Try first only with existing UTXOs
+        let txSize = utils.transactionBytes(
+            [
+                {type: REQUIRED_SPV_SWAP_VAULT_ADDRESS_TYPE},
+                ...nonDetrimentalUtxos
+            ],
+            [
+                {script: Buffer.from(txDetails.vaultScript)},
+                {script: Buffer.from(txDetails.out1script)},
+                {script: Buffer.from(txDetails.out2script)},
+            ]
+        );
+
+        let requiredFee = BigInt(Math.ceil((txSize * feeRate) + cpfpFeeSum));
+        let totalRequiredInputAmount = requiredSendAmount + requiredFee;
+        let additionalUtxoAmount = totalRequiredInputAmount - existingUtxoBalance;
+        let excessExistingBalance = 0n;
+        if(additionalUtxoAmount <= 0n) {
+            excessExistingBalance = -additionalUtxoAmount;
+            additionalUtxoAmount = 0n;
+        } else {
+            const expectedUtxo = {
+                type: addressType,
+                cpfp: cpfpAssumptions
+            };
+            txSize = utils.transactionBytes(
+                [
+                    {type: REQUIRED_SPV_SWAP_VAULT_ADDRESS_TYPE},
+                    ...nonDetrimentalUtxos,
+                    expectedUtxo
+                ],
+                [
+                    {script: Buffer.from(txDetails.vaultScript)},
+                    {script: Buffer.from(txDetails.out1script)},
+                    {script: Buffer.from(txDetails.out2script)},
+                ]
+            );
+            cpfpFeeSum += utils.inputCpfpAdditionalFee(expectedUtxo, feeRate);
+            requiredFee = BigInt(Math.ceil((txSize * feeRate) + cpfpFeeSum));
+            totalRequiredInputAmount = requiredSendAmount + requiredFee;
+            additionalUtxoAmount = totalRequiredInputAmount - existingUtxoBalance;
+            const dustThreshold = BigInt(utils.dustThreshold(expectedUtxo));
+            if(additionalUtxoAmount < dustThreshold) {
+                //If below dust let the additional dust amount be consumed as fees
+                requiredFee += dustThreshold - additionalUtxoAmount;
+                totalRequiredInputAmount = requiredSendAmount + requiredFee;
+                additionalUtxoAmount = dustThreshold;
+            }
+        }
+
+        return {
+            totalRequiredInputAmount: toTokenAmount(totalRequiredInputAmount, BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo),
+            existingBalance: toTokenAmount(existingUtxoBalance, BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo),
+            totalNetworkFee: toTokenAmount(requiredFee, BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo),
+            requiredAdditionalUtxoAmount: toTokenAmount(additionalUtxoAmount, BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo),
+            excessExistingBalance: toTokenAmount(excessExistingBalance, BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo)
+        };
+    }
+
+    /**
      * @inheritDoc
      */
     async estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<BtcToken<false>, true> | null> {
         const bitcoinWallet: IBitcoinWallet = toBitcoinWallet(_bitcoinWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
-        const txFee = await bitcoinWallet.getFundedPsbtFee((await this.getPsbt()).psbt, feeRate);
+        const txFee = await bitcoinWallet.getFundedPsbtFee(this.getPsbt().psbt, feeRate);
         if(txFee==null) return null;
         return toTokenAmount(BigInt(txFee), BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo);
     }

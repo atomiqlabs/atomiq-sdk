@@ -209,14 +209,29 @@ function finalize<T extends Omit<CoinselectTxInput, "txId" | "address" | "vout" 
   }
 }
 
+function inputCpfpAdditionalFee(
+    utxo: {
+        script?: Buffer,
+        type?: CoinselectAddressTypes,
+        cpfp?: {
+            txVsize: number,
+            txEffectiveFeeRate: number
+        }
+    },
+    feeRate: number
+) {
+    let cpfpFee = 0;
+    if(utxo.cpfp!=null && utxo.cpfp.txEffectiveFeeRate<feeRate) cpfpFee = Math.ceil(utxo.cpfp.txVsize*(feeRate - utxo.cpfp.txEffectiveFeeRate));
+    return cpfpFee;
+}
+
 function isDetrimentalInput(
     feeRate: number,
     utxo: Omit<CoinselectTxInput, "txId" | "address" | "vout" | "outputScript">
 ) {
     const utxoBytes = utils.inputBytes(utxo);
     const utxoFee = feeRate * utxoBytes;
-    let cpfpFee = 0;
-    if(utxo.cpfp!=null && utxo.cpfp.txEffectiveFeeRate<feeRate) cpfpFee = Math.ceil(utxo.cpfp.txVsize*(feeRate - utxo.cpfp.txEffectiveFeeRate));
+    const cpfpFee = inputCpfpAdditionalFee(utxo, feeRate);
 
     // skip detrimental input
     return utxoFee + cpfpFee > utxo.value;
@@ -232,5 +247,6 @@ export const utils = {
   transactionBytes: transactionBytes,
   uintOrNaN: uintOrNaN,
   numberOrNaN: numberOrNaN,
-  isDetrimentalInput
+  isDetrimentalInput,
+  inputCpfpAdditionalFee
 };

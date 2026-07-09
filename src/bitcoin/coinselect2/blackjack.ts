@@ -26,8 +26,7 @@ export function blackjack (
     for (let i = 0; i < utxos.length; ++i) {
         const input = utxos[i];
         const inputBytes = utils.inputBytes(input);
-        let cpfpFee = 0;
-        if(input.cpfp!=null && input.cpfp.txEffectiveFeeRate<feeRate) cpfpFee = Math.ceil(input.cpfp.txVsize * (feeRate - input.cpfp.txEffectiveFeeRate));
+        const cpfpFee = utils.inputCpfpAdditionalFee(input, feeRate);
 
         const fee = Math.ceil((feeRate * (bytesAccum + inputBytes)) + cpfpAddFee + cpfpFee);
         const inputValue = utils.uintOrNaN(input.value);

@@ -35,8 +35,7 @@ export function accumulative (
         const utxoFee = feeRate * utxoBytes;
         const utxoValue = utils.uintOrNaN(utxo.value);
 
-        let cpfpFee = 0;
-        if(utxo.cpfp!=null && utxo.cpfp.txEffectiveFeeRate<feeRate) cpfpFee = Math.ceil(utxo.cpfp.txVsize * (feeRate - utxo.cpfp.txEffectiveFeeRate));
+        const cpfpFee = utils.inputCpfpAdditionalFee(utxo, feeRate);
 
         // skip detrimental input
         if (utxoFee + cpfpFee > utxo.value) {

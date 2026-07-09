@@ -563,20 +563,20 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
      * change output.
      *
      * @param wallet Intermediate Bitcoin wallet able to sign the funded PSBT
+     * @param matchedNewUtxo Optional already-detected future deposit UTXO
      * @param options.abortSignal Optional abort signal used while waiting for the future deposit when omitted
-     * @param options.matchedNewUtxo Optional already-detected future deposit UTXO
      * @returns Bitcoin transaction id returned by {@link submitPsbt}
      * @throws {Error} if the swap is not in external mode, the required deposit is missing, or the quote expired
      */
     async processExternalDeposit(
         wallet: IBitcoinWallet | MinimalBitcoinWalletInterfaceWithSigner,
+        matchedNewUtxo?: BitcoinWalletUtxo,
         options?: {
-            abortSignal?: AbortSignal,
-            matchedNewUtxo?: BitcoinWalletUtxo
+            abortSignal?: AbortSignal
         }
     ): Promise<string> {
         const info = this.getExternalSwapModeInfoOrThrow("processExternalDeposit()");
-        const matchedNewUtxo = options?.matchedNewUtxo ?? (
+        matchedNewUtxo ??= (
             info.requiredAdditionalUtxoAmount === 0n
                 ? undefined
                 : await this.waitForExternalDeposit(undefined, undefined, options?.abortSignal)

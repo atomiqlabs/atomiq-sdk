@@ -56,7 +56,6 @@ import {isSwapType, SwapProtocolInfo, SwapTypeMapping} from "../utils/SwapUtils.
 import {IndexedDBUnifiedStorage} from "../storage-browser/IndexedDBUnifiedStorage.js";
 import {TokenAmount, toTokenAmount} from "../types/TokenAmount.js";
 import {BitcoinTokens, BtcToken, isBtcToken, isSCToken, SCToken, Token} from "../types/Token.js";
-import {AmountData} from "../types/AmountData.js";
 import {getLogger} from "../utils/Logger.js";
 import {isLNURLWithdraw, LNURLWithdraw} from "../types/lnurl/LNURLWithdraw.js";
 import {isLNURLPay, LNURLPay} from "../types/lnurl/LNURLPay.js";
@@ -1662,115 +1661,6 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
             }
         }
         throw new Error("Unsupported swap type");
-    }
-
-    /**
-     * Creates an SPV BTC -> smart-chain quote preconfigured for external intermediate-wallet deposits.
-     *
-     * @remarks
-     * This helper always requires {@link SwapType.SPV_VAULT_FROM_BTC}; it will not fall back to the legacy
-     * Bitcoin -> smart-chain protocol. For exact-output quotes, `amount` keeps the normal destination-token meaning.
-     * For exact-input quotes, `amount` is the total BTC budget the user wants to commit, inclusive of the input-side
-     * Bitcoin network fee. The helper first creates a normal SPV quote, applies external mode to learn the network
-     * fee, then re-quotes the LP BTC amount so `quote.getInput().rawAmount` tracks the requested total budget.
-     *
-     * @param externalDeposit Intermediate-wallet deposit configuration and optional UTXO/fee assumptions
-     * @param _dstToken Destination smart-chain token or token identifier
-     * @param amount Destination amount for exact-output quotes, or total BTC budget for exact-input quotes
-     * @param exactIn Whether `amount` is exact input (`true`/`EXACT_IN`) or exact output (`false`/`EXACT_OUT`)
-     * @param dstSmartchainWallet Destination wallet on the smart chain
-     * @param options Additional SPV quote options passed to the normal quote path
-     * @returns Public SPV swap already configured in external deposit mode
-     * @throws {Error} if the destination token is not smart-chain, the chain lacks SPV support, or the address is invalid
-     * @throws {UserError} if the exact-input budget cannot cover the external Bitcoin network fee
-     */
-    async createSpvFromBtcSwapWithExternalDeposit<C extends ChainIds<T>>(
-        externalDeposit: SpvFromBTCExternalDeposit,
-        _dstToken: SCToken<C> | string,
-        amount: bigint | string,
-        exactIn: boolean | SwapAmountType,
-        dstSmartchainWallet: string,
-        options?: SpvFromBTCOptions
-    ): Promise<SpvFromBTCSwap<T[C]>> {
-        const dstToken = typeof(_dstToken)==="string" ? this.getToken(_dstToken) as Token<C> : _dstToken;
-        if(!isSCToken<C>(dstToken)) throw new Error("Destination token must be a smart chain token!");
-
-        const chainIdentifier = dstToken.chainId as C;
-        if(this._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
-        if(!this.supportsSwapType(chainIdentifier, SwapType.SPV_VAULT_FROM_BTC)) {
-            throw new Error("Chain "+chainIdentifier+" doesn't support new BTC swap protocol (spv vault swaps)!");
-        }
-        if(!this._chains[chainIdentifier].chainInterface.isValidAddress(dstSmartchainWallet, true)) {
-            throw new Error("Invalid "+chainIdentifier+" address");
-        }
-        const recipient = this._chains[chainIdentifier].chainInterface.normalizeAddress(dstSmartchainWallet);
-
-        const exactInput = exactIn === true || exactIn === SwapAmountType.EXACT_IN;
-        const parsedAmount = typeof(amount)==="bigint"
-            ? amount
-            : fromDecimal(amount, exactInput ? BitcoinTokens.BTC.decimals : dstToken.decimals);
-
-        const createQuote = (btcOrTokenAmount: bigint, isExactIn: boolean) =>
-            this.createFromBTCSwapNew(
-                chainIdentifier,
-                recipient,
-                dstToken.address,
-                btcOrTokenAmount,
-                !isExactIn,
-                undefined,
-                options
-            );
-
-        if(!exactInput) {
-            const quote = await createQuote(parsedAmount, false);
-            await quote.setSwapModeExternal(
-                externalDeposit.walletOrAddress,
-                externalDeposit.existingUtxos,
-                externalDeposit.feeRate,
-                externalDeposit.cpfpAssumptions
-            );
-            return quote;
-        }
-
-        const preliminaryQuote = await createQuote(parsedAmount, true);
-        const preliminaryInfo = await preliminaryQuote.setSwapModeExternal(
-            externalDeposit.walletOrAddress,
-            externalDeposit.existingUtxos,
-            externalDeposit.feeRate,
-            externalDeposit.cpfpAssumptions
-        );
-        const selectedExistingUtxos = (externalDeposit.existingUtxos ?? preliminaryInfo.selectedExistingUtxos) as BitcoinWalletUtxo[];
-        const feeRate = preliminaryInfo.feeRate;
-        const cpfpAssumptions = preliminaryInfo.cpfpAssumptions;
-
-        let finalLpBtcAmount = parsedAmount - preliminaryInfo.totalNetworkFee;
-        if(finalLpBtcAmount <= 0n) {
-            throw new UserError("Exact-input BTC budget is not enough to cover the external Bitcoin network fee");
-        }
-
-        let finalQuote = await createQuote(finalLpBtcAmount, true);
-        let finalInfo = await finalQuote.setSwapModeExternal(
-            externalDeposit.walletOrAddress,
-            selectedExistingUtxos,
-            feeRate,
-            cpfpAssumptions
-        );
-
-        if(finalInfo.totalNetworkFee !== preliminaryInfo.totalNetworkFee) {
-            finalLpBtcAmount = parsedAmount - finalInfo.totalNetworkFee;
-            if(finalLpBtcAmount <= 0n) {
-                throw new UserError("Exact-input BTC budget is not enough to cover the external Bitcoin network fee");
-            }
-            finalQuote = await createQuote(finalLpBtcAmount, true);
-            finalInfo = await finalQuote.setSwapModeExternal(
-                externalDeposit.walletOrAddress,
-                selectedExistingUtxos,
-                feeRate,
-                cpfpAssumptions
-            );
-        }
-
-        return finalQuote;
     }
 
     /**

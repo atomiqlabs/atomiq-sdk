@@ -202,37 +202,6 @@ export class SwapperWithChain<T extends MultiChain, ChainIdentifier extends Chai
     }
 
     /**
-     * Creates an SPV BTC -> this smart-chain quote preconfigured for external intermediate-wallet deposits.
-     *
-     * @param externalDeposit Intermediate wallet/address plus optional UTXOs, fee rate and CPFP assumptions
-     * @param dstToken Destination token on this chain
-     * @param amount Destination amount for exact-output quotes, or total BTC budget for exact-input quotes
-     * @param exactIn Whether `amount` is exact input (`true`/`EXACT_IN`) or exact output (`false`/`EXACT_OUT`)
-     * @param dstSmartchainWallet Destination wallet on this chain
-     * @param options Additional SPV quote options
-     * @returns Public SPV swap already configured in external deposit mode
-     */
-    createSpvFromBtcSwapWithExternalDeposit(
-        externalDeposit: SpvFromBTCExternalDeposit,
-        dstToken: SCToken<ChainIdentifier> | string,
-        amount: bigint | string,
-        exactIn: boolean | SwapAmountType,
-        dstSmartchainWallet: string,
-        options?: SpvFromBTCOptions
-    ): Promise<SpvFromBTCSwap<T[ChainIdentifier]>> {
-        const resolvedDstToken = typeof(dstToken)==="string" ? this.getToken(dstToken) : dstToken;
-        if(!isSCToken<ChainIdentifier>(resolvedDstToken)) throw new Error("Destination token must be a smart chain token!");
-        return this.swapper.createSpvFromBtcSwapWithExternalDeposit(
-            externalDeposit,
-            resolvedDstToken,
-            amount,
-            exactIn,
-            dstSmartchainWallet,
-            options
-        );
-    }
-
-    /**
      * Creates LEGACY Bitcoin -> Smart chain ({@link SwapType.FROM_BTC}) swap
      *
      * @param recipient Recipient address on the destination chain

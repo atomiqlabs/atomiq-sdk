@@ -328,13 +328,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
      */
     getHyperlink(): string {
         const info = this.getExternalSwapModeInfoOrThrow("getHyperlink()");
-        const amount = toTokenAmount(
-            info.requiredAdditionalUtxoAmount,
-            BitcoinTokens.BTC,
-            this.wrapper._prices,
-            this.pricingInfo
-        ).amount;
-        return "bitcoin:" + info.depositAddress + "?amount=" + encodeURIComponent(amount);
+        return "bitcoin:" + info.depositAddress + "?amount=" + encodeURIComponent((Number(info.requiredAdditionalUtxoAmount) / 100000000).toString(10));
     }
 
     /**

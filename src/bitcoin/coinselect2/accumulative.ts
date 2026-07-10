@@ -22,7 +22,7 @@ export function accumulative (
 
     const inputs = requiredInputs==null ? [] : [...requiredInputs];
     let bytesAccum = utils.transactionBytes(inputs, outputs, type);
-    let fee = feeRate * bytesAccum;
+    let fee = Math.ceil(feeRate * bytesAccum);
     let cpfpAddFee = 0;
     let inAccum = utils.sumOrNaN(inputs);
     const outAccum = utils.sumOrNaN(outputs);
@@ -40,7 +40,9 @@ export function accumulative (
         // skip detrimental input
         if (utxoFee + cpfpFee > utxo.value) {
             logger.debug("accumulative("+i+"): Skipping detrimental output, cpfpFee: "+cpfpFee+" utxoFee: "+utxoFee+" value: "+utxo.value);
-            if (i === utxos.length - 1) return { fee: (feeRate * (bytesAccum + utxoBytes)) + cpfpAddFee + cpfpFee };
+            if (i === utxos.length - 1) return {
+                fee: Math.ceil((feeRate * (bytesAccum + utxoBytes)) + cpfpAddFee + cpfpFee)
+            };
             continue
         }
 

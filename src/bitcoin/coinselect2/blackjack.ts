@@ -45,5 +45,5 @@ export function blackjack (
         return utils.finalize(inputs, outputs, feeRate, type, cpfpAddFee);
     }
 
-    return { fee: (feeRate * bytesAccum) + cpfpAddFee };
+    return { fee: Math.ceil((feeRate * bytesAccum) + cpfpAddFee) };
 }

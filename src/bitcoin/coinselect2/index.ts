@@ -44,10 +44,13 @@ export function maxSendable (
     feeRate: number,
     requiredInputs?: Omit<CoinselectTxInput, "txId" | "address" | "vout" | "outputScript">[],
     additionalOutputs?: {script: Buffer, value: number}[],
+    skipDetrimental?: boolean
 ): {
+    selectedUtxos: Omit<CoinselectTxInput, "txId" | "address" | "vout" | "outputScript">[],
     value: number,
     fee: number
 } {
+    skipDetrimental ??= true;
     if (!isFinite(utils.numberOrNaN(feeRate))) throw new Error("Invalid feeRate passed!");
 
     const outputs = additionalOutputs ?? [];
@@ -66,7 +69,7 @@ export function maxSendable (
         const utxoValue = utils.uintOrNaN(utxo.value);
 
         // skip detrimental input
-        if (utxoFee + cpfpFee > utxo.value) {
+        if (skipDetrimental && utxoFee + cpfpFee > utxo.value) {
             continue;
         }
 
@@ -76,17 +79,19 @@ export function maxSendable (
         inputs.push(utxo);
     }
 
-    const fee = (feeRate * bytesAccum) + cpfpAddFee;
+    const fee = Math.ceil((feeRate * bytesAccum) + cpfpAddFee);
     const outputValue = inAccum - fee - outAccum;
 
     const dustThreshold = DUST_THRESHOLDS[output.type];
 
     if(outputValue<dustThreshold) return {
+        selectedUtxos: inputs,
         fee,
         value: 0
     };
 
     return {
+        selectedUtxos: inputs,
         fee,
         value: outputValue
     };

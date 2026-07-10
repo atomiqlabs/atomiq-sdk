@@ -129,7 +129,7 @@ function transactionBytes (
     for(let output of outputs) {
         size += outputBytes(output);
     }
-    return Math.ceil(size);
+    return size;
 }
 
 function numberOrNaN(v: number): number {
@@ -171,7 +171,7 @@ function finalize<T extends Omit<CoinselectTxInput, "txId" | "address" | "vout" 
   logger.debug("finalize(): Transaction bytes: ", bytesAccum);
 
   if(changeType!=null) {
-      const feeAfterExtraOutput = (feeRate * (bytesAccum + outputBytes({type: changeType}))) + cpfpAddFee;
+      const feeAfterExtraOutput = Math.ceil((feeRate * (bytesAccum + outputBytes({type: changeType}))) + cpfpAddFee);
       logger.debug("finalize(): TX fee after adding change output: ", feeAfterExtraOutput);
       const remainderAfterExtraOutput = Math.floor(sumOrNaN(inputs) - (sumOrNaN(outputs) + feeAfterExtraOutput));
       logger.debug("finalize(): Leaves change (changeType="+changeType+") value: ", remainderAfterExtraOutput);
@@ -184,9 +184,9 @@ function finalize<T extends Omit<CoinselectTxInput, "txId" | "address" | "vout" 
 
   const fee = sumOrNaN(inputs) - sumOrNaN(outputs);
   logger.debug("finalize(): Re-calculated total fee: ", fee);
-  if (!isFinite(fee) || fee<0) return { fee: (feeRate * bytesAccum) + cpfpAddFee }
+  if (!isFinite(fee) || fee<0) return { fee: Math.ceil((feeRate * bytesAccum) + cpfpAddFee) }
 
-  let txVSize = utils.transactionBytes(inputs, outputs);
+  let txVSize = transactionBytes(inputs, outputs);
   let txFee = fee;
   const cpfpSortedInputs = [...inputs].sort(
       (a, b) => (b.cpfp?.txEffectiveFeeRate ?? 0) - (a.cpfp?.txEffectiveFeeRate ?? 0)

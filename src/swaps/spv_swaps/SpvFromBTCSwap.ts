@@ -99,7 +99,9 @@ export type SpvExternalSelectedUtxo = {
  * @remarks
  * `requiredAdditionalUtxoAmount` and `totalNetworkFee` are bigint satoshi amounts so restored quotes can show the
  * same external deposit requirement without re-estimating. `selectedExistingUtxos` may contain full wallet UTXOs in
- * memory, but {@link SpvFromBTCSwap.serialize} persists only {@link SpvExternalSelectedUtxo} fields.
+ * memory, but {@link SpvFromBTCSwap.serialize} persists only {@link SpvExternalSelectedUtxo} fields. `spendFully`
+ * controls whether those selected UTXOs are consumed without change (`true`) or fund the PSBT with wallet change
+ * allowed (`false`).
  */
 export type SpvFromBTCExternalSwapModeInfo = {
     /**
@@ -111,11 +113,17 @@ export type SpvFromBTCExternalSwapModeInfo = {
      */
     depositAddressType: CoinselectAddressTypes;
     /**
-     * Existing UTXOs selected for the external quote. V1 selects every current UTXO for `depositAddress`.
+     * Existing UTXOs selected for the external quote. Full-spend mode uses the full selected set; change-aware mode
+     * treats this as the wallet funding pool for the quote.
      */
     selectedExistingUtxos: SpvExternalSelectedUtxo[];
     /**
-     * Bitcoin fee rate in sats/vB used for the final fully-spent funding transaction.
+     * Whether the selected external funding UTXOs must be spent fully without change. Defaults to `true` for restored
+     * swaps serialized before this field existed.
+     */
+    spendFully: boolean;
+    /**
+     * Bitcoin fee rate in sats/vB used for the final funding transaction.
      */
     feeRate: number;
     /**
@@ -163,6 +171,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
                     depositAddress: info.depositAddress,
                     depositAddressType: info.depositAddressType,
                     selectedExistingUtxos: info.selectedExistingUtxos,
+                    spendFully: info.spendFully !== false,
                     feeRate: info.feeRate,
                     cpfpAssumptions: {
                         txVsize: info.cpfpAssumptions.txVsize,
@@ -258,8 +267,11 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
      * memory as-is and only narrowed during serialization.
      * @param feeRate Optional Bitcoin fee rate in sats/vB; normalized to at least this quote's minimum LP fee rate.
      * @param cpfpAssumptions CPFP metadata for the future incoming UTXO; defaults to a conservative small package.
+     * @param spendFully Whether selected UTXOs must be consumed without change. Defaults to `true`. Set to `false`
+     * only when `existingUtxos` is already a selected funding set that can fund the quote with wallet change.
      * @returns Cached external mode metadata containing the deposit address, selected UTXOs and required deposit amount
-     * @throws {Error} if a wallet cannot expose UTXOs and `existingUtxos` is omitted
+     * @throws {Error} if a wallet cannot expose UTXOs and `existingUtxos` is omitted, or if `spendFully=false` and
+     * the selected UTXOs cannot fund the quote without an additional deposit
      */
     async setSwapModeExternal(
         walletOrAddress: IBitcoinWallet | string,
@@ -268,7 +280,8 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
         cpfpAssumptions?: {
             txVsize: number,
             txEffectiveFeeRate: number
-        }
+        },
+        spendFully: boolean = true
     ): Promise<SpvFromBTCExternalSwapModeInfo> {
         const depositAddress = typeof walletOrAddress === "string"
             ? walletOrAddress
@@ -295,13 +308,18 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
             selectedExistingUtxos,
             depositAddressType,
             resolvedFeeRate,
-            resolvedCpfpAssumptions
+            resolvedCpfpAssumptions,
+            spendFully
         );
+        if(!spendFully && estimation.requiredAdditionalUtxoAmount.rawAmount !== 0n) {
+            throw new Error("External SPV deposit mode with spendFully=false requires selected UTXOs that already fund the quote; use spendFully=true when an additional deposit is required");
+        }
 
         const info: SpvFromBTCExternalSwapModeInfo = {
             depositAddress,
             depositAddressType,
             selectedExistingUtxos,
+            spendFully,
             feeRate: resolvedFeeRate,
             cpfpAssumptions: resolvedCpfpAssumptions,
             requiredAdditionalUtxoAmount: estimation.requiredAdditionalUtxoAmount.rawAmount,
@@ -469,6 +487,10 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
     private getFundingFeeRate(candidateUtxo?: BitcoinWalletUtxo): number {
         const info = this.getExternalSwapModeInfoOrThrow("getExternalDepositFeeRate()");
         const txDetails = this.getTransactionDetails();
+        const cpfpAddFee = info.selectedExistingUtxos.reduce(
+            (sum, utxo) => sum + utils.inputCpfpAdditionalFee(utxo, info.feeRate),
+            candidateUtxo == null ? 0 : utils.inputCpfpAdditionalFee(candidateUtxo, info.feeRate)
+        );
         const coinselectResult = utils.finalize(
             [
                 {
@@ -495,7 +517,8 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
                 }
             ],
             info.feeRate,
-            null
+            info.spendFully ? null : info.depositAddressType,
+            cpfpAddFee
         );
         return coinselectResult.effectiveFeeRate ?? 0;
     }
@@ -575,7 +598,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
      * Rehydrates quote-selected external funding UTXOs with fresh signing data while preserving quote-time fee data.
      *
      * @param matchedNewUtxo Optional already-detected future deposit UTXO
-     * @returns Exact UTXO set to pass to wallet funding with `spendFully: true`
+     * @returns Exact UTXO set to pass to wallet funding with the configured `spendFully` mode
      * @throws {Error} if a selected UTXO disappeared, changed value/type, or the required new deposit is missing
      */
     private async rehydrateExternalFundingUtxos(matchedNewUtxo?: BitcoinWalletUtxo): Promise<BitcoinWalletUtxo[]> {
@@ -633,7 +656,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
      * @param matchedNewUtxo
      * @private
      */
-    private async getAndCheckDepositUtxos(matchedNewUtxo?: BitcoinWalletUtxo): Promise<{utxos: BitcoinWalletUtxo[], fundingFeeRate: number}> {
+    private async getAndCheckDepositUtxos(matchedNewUtxo?: BitcoinWalletUtxo): Promise<{utxos: BitcoinWalletUtxo[], fundingFeeRate: number, spendFully: boolean}> {
         const info = this.getExternalSwapModeInfoOrThrow("getAndCheckDepositUtxos()");
 
         let utxos: BitcoinWalletUtxo[];
@@ -653,7 +676,8 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
 
         return {
             utxos,
-            fundingFeeRate: this.getFundingFeeRate(matchedNewUtxo)
+            fundingFeeRate: this.getFundingFeeRate(matchedNewUtxo),
+            spendFully: info.spendFully
         };
     }
 
@@ -674,7 +698,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
         abortSignal?: AbortSignal
     ): Promise<BitcoinWalletUtxo> {
         const info = this.getExternalSwapModeInfoOrThrow("waitForExternalDeposit()");
-        if(info.requiredAdditionalUtxoAmount === 0n) {
+        if(!info.spendFully || info.requiredAdditionalUtxoAmount === 0n) {
             throw new Error("No external deposit required for this SPV swap");
         }
 
@@ -715,8 +739,8 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
      *
      * @remarks
      * This processes only the Bitcoin deposit transaction. It does not wait for Bitcoin confirmations or destination
-     * settlement; use the normal swap lifecycle actions after this returns. The funding set is spent fully without a
-     * change output.
+     * settlement; use the normal swap lifecycle actions after this returns. Full-spend external mode consumes the
+     * funding set without change, while change-aware mode allows wallet change from the selected UTXOs.
      *
      * @param wallet Intermediate Bitcoin wallet able to sign the funded PSBT
      * @param matchedNewUtxo Optional already-detected future deposit UTXO
@@ -728,13 +752,13 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
         matchedNewUtxo?: BitcoinWalletUtxo
     ): Promise<string> {
         if(!await this._verifyQuoteValid()) throw new Error("Swap quote expired!");
-        const {utxos, fundingFeeRate} = await this.getAndCheckDepositUtxos(matchedNewUtxo);
+        const {utxos, fundingFeeRate, spendFully} = await this.getAndCheckDepositUtxos(matchedNewUtxo);
         const {psbt, psbtBase64, psbtHex, signInputs} = await this.getFundedPsbt(
             wallet,
             fundingFeeRate,
             undefined,
             utxos,
-            true
+            spendFully
         );
         const signedPsbt = isIBitcoinWallet(wallet)
             ? await wallet.signPsbt(psbt, signInputs)
@@ -799,7 +823,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
             throw new Error("External SPV deposit mode requires options.bitcoinWallet to build the funded PSBT");
         }
 
-        const {utxos, fundingFeeRate} = await this.getAndCheckDepositUtxos(matchedNewUtxo);
+        const {utxos, fundingFeeRate, spendFully} = await this.getAndCheckDepositUtxos(matchedNewUtxo);
         return {
             type: "SignPSBT",
             name: "Deposit on Bitcoin",
@@ -811,7 +835,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
                     fundingFeeRate,
                     undefined,
                     utxos,
-                    true
+                    spendFully
                 ),
                 type: "FUNDED_PSBT"
             }],
@@ -885,17 +909,20 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
     }
 
     /**
-     * Estimates the additional future UTXO needed to spend the external deposit wallet's selected funding set.
+     * Estimates the additional future UTXO needed for the external deposit wallet's selected funding set.
      *
      * @remarks
-     * External mode spends every UTXO supplied in `existingUtxos`, including inputs that increase the effective
-     * network fee. The returned `requiredAdditionalUtxoAmount` is the value a caller should deposit as one future
-     * UTXO; when existing UTXOs already cover the quote and Bitcoin network fee it is zero.
+     * With `spendFully=true`, external mode spends every UTXO supplied in `existingUtxos`, including inputs that
+     * increase the effective network fee. With `spendFully=false`, the selected UTXOs fund the quote with wallet
+     * change allowed and this method only reports whether the selected set can already fund the quote. The returned
+     * `requiredAdditionalUtxoAmount` is the value a caller should deposit as one future UTXO in full-spend mode; when
+     * selected UTXOs already cover the quote and Bitcoin network fee it is zero.
      *
      * @param existingUtxos Existing deposit-address UTXOs selected for the quote, including unconfirmed CPFP data
-     * @param addressType Address type for the future incoming UTXO
+     * @param addressType Address type for the future incoming UTXO or wallet change output
      * @param feeRate Bitcoin fee rate in sats/vB used for the final funding transaction
      * @param cpfpAssumptions Optional CPFP package-fee model for the future incoming UTXO
+     * @param spendFully Whether to estimate the selected UTXOs as fully spent without change; defaults to `true`
      * @returns Required total BTC input, current selected balance, network fee, required future UTXO, and excess balance
      */
     getInputUtxoAmount(
@@ -905,7 +932,8 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
         cpfpAssumptions?: {
             txVsize: number,
             txEffectiveFeeRate: number
-        }
+        },
+        spendFully: boolean = true
     ): {
         totalRequiredInputAmount: TokenAmount<BtcToken<false>, true>,
         existingBalance: TokenAmount<BtcToken<false>, true>,
@@ -918,18 +946,49 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
 
         const txDetails = this.getTransactionDetails();
         const requiredSendAmount = super.getInput().rawAmount;
+        const requiredInputs = [
+            {
+                type: REQUIRED_SPV_SWAP_VAULT_ADDRESS_TYPE,
+                value: Number(txDetails.vaultAmount)
+            },
+            ...existingUtxos
+        ];
+        const outputs = [
+            {
+                value: Number(txDetails.vaultAmount),
+                script: Buffer.from(txDetails.vaultScript)
+            },
+            {
+                value: 0,
+                script: Buffer.from(txDetails.out1script)
+            },
+            {
+                value: Number(txDetails.out2amount),
+                script: Buffer.from(txDetails.out2script)
+            }
+        ];
 
-        let txSize = utils.transactionBytes(
-            [
-                {type: REQUIRED_SPV_SWAP_VAULT_ADDRESS_TYPE},
-                ...existingUtxos
-            ],
-            [
-                {script: Buffer.from(txDetails.vaultScript)},
-                {script: Buffer.from(txDetails.out1script)},
-                {script: Buffer.from(txDetails.out2script)},
-            ]
-        );
+        if(!spendFully) {
+            const coinselectResult = utils.finalize(requiredInputs, outputs, feeRate, addressType, cpfpFeeSum);
+            const requiredFee = BigInt(Math.ceil(coinselectResult.fee));
+            const totalRequiredInputAmount = requiredSendAmount + requiredFee;
+            let additionalUtxoAmount = totalRequiredInputAmount - existingUtxoBalance;
+            let excessExistingBalance = 0n;
+            if(additionalUtxoAmount <= 0n) {
+                excessExistingBalance = -additionalUtxoAmount;
+                additionalUtxoAmount = 0n;
+            }
+
+            return {
+                totalRequiredInputAmount: toTokenAmount(totalRequiredInputAmount, BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo),
+                existingBalance: toTokenAmount(existingUtxoBalance, BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo),
+                totalNetworkFee: toTokenAmount(requiredFee, BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo),
+                requiredAdditionalUtxoAmount: toTokenAmount(additionalUtxoAmount, BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo),
+                excessExistingBalance: toTokenAmount(excessExistingBalance, BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo)
+            };
+        }
+
+        let txSize = utils.transactionBytes(requiredInputs, outputs);
 
         let requiredFee = BigInt(Math.ceil((txSize * feeRate) + cpfpFeeSum));
         let totalRequiredInputAmount = requiredSendAmount + requiredFee;
@@ -943,18 +1002,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
                 type: addressType,
                 cpfp: cpfpAssumptions
             };
-            txSize = utils.transactionBytes(
-                [
-                    {type: REQUIRED_SPV_SWAP_VAULT_ADDRESS_TYPE},
-                    ...existingUtxos,
-                    expectedUtxo
-                ],
-                [
-                    {script: Buffer.from(txDetails.vaultScript)},
-                    {script: Buffer.from(txDetails.out1script)},
-                    {script: Buffer.from(txDetails.out2script)},
-                ]
-            );
+            txSize = utils.transactionBytes([...requiredInputs, expectedUtxo], outputs);
             cpfpFeeSum += utils.inputCpfpAdditionalFee(expectedUtxo, feeRate);
             requiredFee = BigInt(Math.ceil((txSize * feeRate) + cpfpFeeSum));
             totalRequiredInputAmount = requiredSendAmount + requiredFee;

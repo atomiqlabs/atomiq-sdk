@@ -361,11 +361,15 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
         utxoPool: BitcoinWalletUtxoBase[],
         feeRate: number,
         psbt?: Transaction,
-        outputAddressType?: CoinselectAddressTypes
+        outputAddressType?: CoinselectAddressTypes,
+        skipDetrimental: boolean = true
     ): {
+        selectedUtxos: BitcoinWalletUtxoBase[],
         balance: bigint,
         totalFee: number
     } {
+        skipDetrimental ??= true;
+
         const requiredInputs: CoinselectTxInput[] = [];
         if(psbt!=null) for(let i=0;i<psbt.inputsLength;i++) {
             const input = psbt.getInput(i);
@@ -398,11 +402,12 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
         }
 
         const target: Uint8Array = getDummyOutputScript(outputAddressType ?? "p2wsh");
-        let coinselectResult = maxSendable(utxoPool, {script: Buffer.from(target), type: outputAddressType ?? "p2wsh"}, feeRate, requiredInputs, additionalOutputs);
+        let coinselectResult = maxSendable(utxoPool, {script: Buffer.from(target), type: outputAddressType ?? "p2wsh"}, feeRate, requiredInputs, additionalOutputs, skipDetrimental);
 
         logger.debug("_getSpendableBalance(): Max spendable result: ", coinselectResult);
 
         return {
+            selectedUtxos: utxoPool.filter(utxo => coinselectResult.selectedUtxos.includes(utxo)),
             balance: BigInt(Math.floor(coinselectResult.value)),
             totalFee: coinselectResult.fee
         }

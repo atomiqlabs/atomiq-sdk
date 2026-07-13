@@ -41,6 +41,7 @@ export type CoinselectTxInput = {
     value: number,
     outputScript?: Buffer,
     address?: string,
+    publicKey?: string,
     cpfp?: {
         txVsize: number,
         txEffectiveFeeRate: number

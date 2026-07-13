@@ -103,14 +103,16 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
      * Internal helper function for fetching the UTXO set of a given wallet address
      *
      * @param sendingAddress
+     * @param sendingPublicKey
      * @param sendingAddressType
      * @protected
      */
     protected async _getUtxoPool(
         sendingAddress: string,
+        sendingPublicKey: string,
         sendingAddressType: CoinselectAddressTypes
     ): Promise<BitcoinWalletUtxo[]> {
-        const utxoPool = await getWalletAddressUtxos(this.rpc, this.network, sendingAddress, sendingAddressType);
+        const utxoPool = await getWalletAddressUtxos(this.rpc, this.network, sendingAddress, sendingPublicKey, sendingAddressType);
         const totalSpendable = utxoPool.reduce((total, utxo) => total + utxo.value, 0);
         logger.debug("_getUtxoPool(): Total spendable value: "+totalSpendable+" num utxos: "+utxoPool.length);
         return utxoPool;
@@ -162,14 +164,11 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
         inputAddressIndexes?: {[address: string]: number[]}
     }> {
         const feeRate = _feeRate ?? await this.getFeeRate();
-        const utxoPool: BitcoinWalletUtxo[] = utxos ?? (await Promise.all(sendingAccounts.map(acc => this._getUtxoPool(acc.address, acc.addressType)))).flat();
+        const utxoPool: BitcoinWalletUtxo[] = utxos ?? (await Promise.all(sendingAccounts.map(acc => this._getUtxoPool(acc.address, acc.pubkey, acc.addressType)))).flat();
 
         if(spendFully && utxoPool==null) throw new Error("Cannot fully spend when no utxos are passed!");
 
         logger.debug("_fundPsbt(): fee rate: "+feeRate+" utxo pool: ", utxoPool);
-
-        const accountPubkeys: Record<string, string> = {};
-        sendingAccounts.forEach(acc => accountPubkeys[acc.address] = acc.pubkey);
 
         const requiredInputs: CoinselectTxInput[] = [];
         for(let i=0;i<psbt.inputsLength;i++) {
@@ -309,6 +308,7 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
 
     protected async _getSpendableBalance(
         sendingAccounts: {
+            pubkey: string,
             address: string,
             addressType: CoinselectAddressTypes,
         }[],
@@ -322,11 +322,11 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
         totalFee: number
     }> {
         feeRate ??= await this.getFeeRate();
-        utxoPool ??= (await Promise.all(sendingAccounts.map(acc => this._getUtxoPool(acc.address, acc.addressType)))).flat();
+        utxoPool ??= (await Promise.all(sendingAccounts.map(acc => this._getUtxoPool(acc.address, acc.pubkey, acc.addressType)))).flat();
 
         return {
             ...BitcoinWallet.getSpendableBalance(
-                utxoPool ?? (await Promise.all(sendingAccounts.map(acc => this._getUtxoPool(acc.address, acc.addressType)))).flat(),
+                utxoPool ?? (await Promise.all(sendingAccounts.map(acc => this._getUtxoPool(acc.address, acc.pubkey, acc.addressType)))).flat(),
                 feeRate ?? await this.getFeeRate(),
                 psbt,
                 outputAddressType

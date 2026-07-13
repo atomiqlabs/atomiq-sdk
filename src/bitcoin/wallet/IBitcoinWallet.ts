@@ -14,6 +14,7 @@ export type BitcoinWalletUtxo = {
     type: CoinselectAddressTypes,
     outputScript: Buffer,
     address: string,
+    publicKey: string,
     cpfp?: {
         txVsize: number,
         txEffectiveFeeRate: number
@@ -27,7 +28,7 @@ export type BitcoinWalletUtxo = {
  *
  * @category Bitcoin
  */
-export type BitcoinWalletUtxoBase = Omit<BitcoinWalletUtxo, "txId" | "vout" | "outputScript" | "address" | "confirmed">;
+export type BitcoinWalletUtxoBase = Omit<BitcoinWalletUtxo, "txId" | "vout" | "outputScript" | "address" | "confirmed" | "publicKey">;
 
 /**
  * Type guard to check if an object implements {@link IBitcoinWallet}

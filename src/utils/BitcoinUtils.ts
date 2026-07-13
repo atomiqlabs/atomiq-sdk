@@ -92,6 +92,7 @@ export function toCoinselectAddressType(
  * @param bitcoinRpc Bitcoin RPC/address-index backend used for UTXO and CPFP lookups
  * @param network Bitcoin network used to decode the address and output script
  * @param address Bitcoin address whose current UTXOs should be returned
+ * @param publicKey
  * @param addressType Optional precomputed address type; inferred from `address` when omitted
  * @returns Full wallet UTXOs suitable for wallet funding and SPV external deposit execution
  */
@@ -99,6 +100,7 @@ export async function getWalletAddressUtxos(
     bitcoinRpc: BitcoinRpcWithAddressIndex<any>,
     network: BTC_NETWORK,
     address: string,
+    publicKey: string,
     addressType?: CoinselectAddressTypes
 ): Promise<BitcoinWalletUtxo[]> {
     const resolvedAddressType = addressType ?? toCoinselectAddressType(network, address);
@@ -113,6 +115,7 @@ export async function getWalletAddressUtxos(
         type: resolvedAddressType,
         outputScript,
         address,
+        publicKey,
         cpfp: !utxo.confirmed ? await bitcoinRpc.getCPFPData(utxo.txid).then(result => {
             if(result == null) return undefined;
             return {

@@ -20,7 +20,7 @@ const logger = getLogger("SingleAddressBitcoinWallet: ");
 export class SingleAddressBitcoinWallet extends BitcoinWallet {
 
     protected readonly privKey?: Uint8Array;
-    protected readonly pubkey: Uint8Array;
+    protected readonly pubkey: Buffer;
     protected readonly address: string;
     protected readonly addressType: CoinselectAddressTypes;
 
@@ -41,7 +41,7 @@ export class SingleAddressBitcoinWallet extends BitcoinWallet {
             } catch(e) {
                 this.privKey = WIF().decode(addressDataOrWIF);
             }
-            this.pubkey = pubECDSA(this.privKey);
+            this.pubkey = Buffer.from(pubECDSA(this.privKey));
             const address = getAddress("wpkh", this.privKey, network);
             if(address==null) throw new Error("Failed to generate p2wpkh address from the provided private key!");
             this.address = address;
@@ -69,7 +69,7 @@ export class SingleAddressBitcoinWallet extends BitcoinWallet {
      */
     protected toBitcoinWalletAccounts(): [{pubkey: string, address: string, addressType: CoinselectAddressTypes}] {
         return [{
-            pubkey: Buffer.from(this.pubkey).toString("hex"), address: this.address, addressType: this.addressType
+            pubkey: this.pubkey.toString("hex"), address: this.address, addressType: this.addressType
         }];
     }
 
@@ -135,7 +135,7 @@ export class SingleAddressBitcoinWallet extends BitcoinWallet {
      * Returns the public key of the wallet
      */
     getPublicKey(): string {
-        return Buffer.from(this.pubkey).toString("hex");
+        return this.pubkey.toString("hex");
     }
 
     /**
@@ -156,14 +156,14 @@ export class SingleAddressBitcoinWallet extends BitcoinWallet {
         feeRate: number,
         totalFee: number
     }> {
-        return this._getSpendableBalance([{address: this.address, addressType: this.addressType}], psbt, feeRate, outputAddressType, utxos);
+        return this._getSpendableBalance([{address: this.address, pubkey: this.getPublicKey(), addressType: this.addressType}], psbt, feeRate, outputAddressType, utxos);
     }
 
     /**
      * @inheritDoc
      */
     async getUtxoPool(): Promise<BitcoinWalletUtxo[]> {
-        return this._getUtxoPool(this.address, this.addressType);
+        return this._getUtxoPool(this.address, this.getPublicKey(), this.addressType);
     }
 
     /**

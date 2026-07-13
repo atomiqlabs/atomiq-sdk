@@ -160,8 +160,7 @@ function finalize<T extends Omit<CoinselectTxInput, "txId" | "address" | "vout" 
     inputs: T[],
     outputs: CoinselectTxOutput[],
     feeRate: number,
-    changeType: CoinselectAddressTypes | null,
-    cpfpAddFee: number = 0
+    changeType: CoinselectAddressTypes | null
 ): {
     inputs?: T[],
     outputs?: CoinselectTxOutput[],
@@ -170,6 +169,11 @@ function finalize<T extends Omit<CoinselectTxInput, "txId" | "address" | "vout" 
 } {
   const bytesAccum = transactionBytes(inputs, outputs, changeType ?? undefined);
   logger.debug("finalize(): Transaction bytes: ", bytesAccum);
+
+  const cpfpAddFee = inputs.reduce(
+      (sum, input) => sum + inputCpfpAdditionalFee(input, feeRate),
+      0
+  );
 
   if(changeType!=null) {
       const feeAfterExtraOutput = Math.ceil((feeRate * (bytesAccum + outputBytes({type: changeType}))) + cpfpAddFee);

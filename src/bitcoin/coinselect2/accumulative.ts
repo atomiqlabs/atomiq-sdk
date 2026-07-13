@@ -63,7 +63,7 @@ export function accumulative (
         logger.debug("accumulative("+i+"): Finalizing transaction, inputs: ", inputs);
         logger.debug("accumulative("+i+"): Finalizing transaction, outputs: ", outputs);
         logger.debug("accumulative("+i+"): Finalizing transaction, feeRate: ", feeRate);
-        return utils.finalize(inputs, outputs, feeRate, type, cpfpAddFee);
+        return utils.finalize(inputs, outputs, feeRate, type);
     }
 
     return { fee };

@@ -42,7 +42,7 @@ export function blackjack (
         // go again?
         if (inAccum < outAccum + fee) continue;
 
-        return utils.finalize(inputs, outputs, feeRate, type, cpfpAddFee);
+        return utils.finalize(inputs, outputs, feeRate, type);
     }
 
     return { fee: Math.ceil((feeRate * bytesAccum) + cpfpAddFee) };

@@ -315,7 +315,10 @@ export type SpvFromBTCPrepare = SwapInit & {
     frontingFeeRate: bigint,
     stickyAddress?: boolean,
     amountUtxos?: Promise<{ value: number, vSize: number, cpfp?: { effectiveVSize: number, effectiveFeeRate: number }}[] | undefined>,
-    amountFeeRate?: Promise<number | undefined>
+    amountFeeRate?: Promise<number | undefined>,
+    amountSkipDetrimental?: boolean,
+    amountChangeValue?: Promise<bigint | undefined>,
+    amountChangeVSize?: Promise<number | undefined>
 }
 
 const SpvFromBTCInitResponseSchema = {
@@ -1021,6 +1024,8 @@ export class IntermediaryAPI {
         const amountPromise = (async () => {
             if(init.amountUtxos!=null) await init.amountUtxos;
             if(init.amountFeeRate!=null) await init.amountFeeRate;
+            if(init.amountChangeValue!=null) await init.amountChangeValue;
+            if(init.amountChangeVSize!=null) await init.amountChangeVSize;
             const amount = await init.amount;
             return amount.toString(10);
         })();
@@ -1036,7 +1041,10 @@ export class IntermediaryAPI {
             callerFeeRate: init.callerFeeRate.then(val => val.toString(10)),
             stickyAddress: init.stickyAddress,
             amountUtxos: init.amountUtxos,
-            amountFeeRate: init.amountFeeRate
+            amountFeeRate: init.amountFeeRate,
+            amountSkipDetrimental: init.amountSkipDetrimental,
+            amountChangeValue: init.amountChangeValue?.then(val => val?.toString(10)),
+            amountChangeVSize: init.amountChangeVSize
         }, {
             code: FieldTypeEnum.Number,
             msg: FieldTypeEnum.String,

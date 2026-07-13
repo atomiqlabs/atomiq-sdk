@@ -112,6 +112,18 @@ export interface IBitcoinWallet {
     getReceiveAddress(): string;
 
     /**
+     * Returns the bitcoin address suitable for receiving change from existing txs
+     */
+    getChangeAddress?(): string;
+
+    /**
+     * Returns information (address and public key) about the current wallet address (either change or receiving)
+     *
+     * @param change Whether to get the address for receiving funds or for receiving change
+     */
+    getAddressInfo?(change: boolean): {address: string, publicKey: string};
+
+    /**
      * Returns confirmed and unconfirmed balance in satoshis of the wallet
      */
     getBalance(): Promise<{

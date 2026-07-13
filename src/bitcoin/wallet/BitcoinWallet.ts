@@ -293,6 +293,12 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
     abstract getFundedPsbtFee(psbt: Transaction, feeRate?: number): Promise<number>;
 
     abstract getReceiveAddress(): string;
+    getChangeAddress(): string {
+        return this.getReceiveAddress();
+    }
+
+    abstract getAddressInfo(change: boolean): { address: string; publicKey: string };
+
     abstract getBalance(): Promise<{
         confirmedBalance: bigint,
         unconfirmedBalance: bigint

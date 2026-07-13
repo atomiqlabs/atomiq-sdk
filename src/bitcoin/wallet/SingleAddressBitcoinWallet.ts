@@ -132,6 +132,16 @@ export class SingleAddressBitcoinWallet extends BitcoinWallet {
     }
 
     /**
+     * @inheritDoc
+     */
+    getAddressInfo(change: boolean): { address: string; publicKey: string; } {
+        return {
+            address: this.address,
+            publicKey: this.getPublicKey()
+        }
+    }
+
+    /**
      * Returns the public key of the wallet
      */
     getPublicKey(): string {

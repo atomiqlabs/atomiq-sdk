@@ -232,57 +232,7 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
             inputAddressIndexes[input.address!].push(index);
         });
 
-        const formattedInputs: TransactionInputUpdate[] = await Promise.all<TransactionInputUpdate>(coinselectResult.inputs.map(async (input) => {
-            switch(input.type) {
-                case "p2tr":
-                    const parsed = p2tr(Buffer.from(accountPubkeys[input.address!], "hex"));
-                    return {
-                        txid: input.txId,
-                        index: input.vout,
-                        witnessUtxo: {
-                            script: input.outputScript!,
-                            amount: BigInt(input.value)
-                        },
-                        tapInternalKey: parsed.tapInternalKey,
-                        tapMerkleRoot: parsed.tapMerkleRoot,
-                        tapLeafScript: parsed.tapLeafScript
-                    };
-                case "p2wpkh":
-                    return {
-                        txid: input.txId,
-                        index: input.vout,
-                        witnessUtxo: {
-                            script: input.outputScript!,
-                            amount: BigInt(input.value)
-                        },
-                        sighashType: 0x01
-                    };
-                case "p2sh-p2wpkh":
-                    return {
-                        txid: input.txId,
-                        index: input.vout,
-                        witnessUtxo: {
-                            script: input.outputScript!,
-                            amount: BigInt(input.value)
-                        },
-                        redeemScript: p2wpkh(Buffer.from(accountPubkeys[input.address!], "hex"), this.network).script,
-                        sighashType: 0x01
-                    };
-                case "p2pkh":
-                    const tx = await this.rpc.getTransaction(input.txId);
-                    if(tx==null) throw new Error("Cannot fetch existing tx "+input.txId);
-                    return {
-                        txid: input.txId,
-                        index: input.vout,
-                        nonWitnessUtxo: tx.raw,
-                        sighashType: 0x01
-                    };
-                default:
-                    throw new Error("Invalid input type: "+input.type);
-            }
-        }));
-
-        formattedInputs.forEach(input => psbt.addInput(input));
+        await addPsbtInputs(psbt, coinselectResult.inputs, this.rpc, this.network);
 
         coinselectResult.outputs.forEach(output => {
             if(output.script==null && output.address==null) {

@@ -73,12 +73,11 @@ export * from "./storage/UnifiedSwapStorage.js";
 export {IndexedDBUnifiedStorage} from "./storage-browser/IndexedDBUnifiedStorage.js";
 export * from "./storage-browser/LocalStorageManager.js";
 
-export {Swapper} from "./swapper/Swapper.js";
-export type {SpvFromBTCExternalDeposit} from "./swapper/Swapper.js";
-export * from "./swapper/SwapperFactory.js";
-export * from "./swapper/SwapperUtils.js";
-export * from "./swapper/SwapperWithChain.js";
-export * from "./swapper/SwapperWithSigner.js";
+export {Swapper} from "./swapper/Swapper";
+export * from "./swapper/SwapperFactory";
+export * from "./swapper/SwapperUtils";
+export * from "./swapper/SwapperWithChain";
+export * from "./swapper/SwapperWithSigner";
 
 export {FromBTCLNSwap} from "./swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap.js";
 export {FromBTCLNSwapState} from "./swaps/escrow_swaps/frombtc/ln/FromBTCLNSwapState.js";

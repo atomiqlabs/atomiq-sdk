@@ -378,14 +378,11 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
      * Configures this SPV quote for an external intermediate-wallet deposit flow.
      *
      * @param intermediateWallet Intermediate Bitcoin wallet or deposit address. Wallets provide the receive address via
-     * `getReceiveAddress()` and, when `existingUtxos` is omitted, must support `getUtxoPool()`.
+     *  `getReceiveAddress()` and, when `existingUtxos` is omitted, must support `getUtxoPool()`.
      * @param existingUtxos Optional quote-time UTXO set for `walletOrAddress`; when passed, the objects are kept in
-     * memory as-is and only narrowed during serialization.
+     *  memory as-is and only narrowed during serialization.
      * @param feeRate Optional Bitcoin fee rate in sats/vB; normalized to at least this quote's minimum LP fee rate.
      * @param cpfpAssumptions CPFP metadata for the future incoming UTXO; defaults to a conservative small package.
-     * @param spendFully Whether selected UTXOs must be consumed without change. Defaults to `true`. Set to `false`
-     * only when `existingUtxos` is already a selected funding set that can fund the quote with wallet change.
-     * @returns Cached external mode metadata containing the deposit address, selected UTXOs and required deposit amount
      * @throws {Error} if a wallet cannot expose UTXOs and `existingUtxos` is omitted, or if `spendFully=false` and
      * the selected UTXOs cannot fund the quote without an additional deposit
      */
@@ -396,56 +393,18 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
         cpfpAssumptions?: {
             txVsize: number,
             txEffectiveFeeRate: number
-        },
-        spendFully: boolean = true
+        }
     ): Promise<SpvFromBTCIntermediateWalletSwapModeInfo> {
         if(this._state !== SpvFromBTCSwapState.CREATED) throw new Error("Cannot change swap mode outside of CREATED state!");
 
         const wallet = toBitcoinWallet(intermediateWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
-        const walletAddress = wallet.getReceiveAddress();
 
-        const depositAddressType = toCoinselectAddressType(this.wrapper._options.bitcoinNetwork, walletAddress);
+        //Get wallet UTXOs or use provided existingUtxos
 
-        //TODO: Change the logic here to properly populate the intermediate wallet info
+        //Use coinselect.finalize() to determine whether a change output should be added, and whether an additional external
+        // deposit is required, always use skipDetrimental=false and always spend all the available UTXOs
 
-        let selectedExistingUtxos: BitcoinWalletUtxo[];
-        if(existingUtxos!=null) {
-            selectedExistingUtxos = existingUtxos;
-        } else {
-            if(typeof(wallet.getUtxoPool) !== "function") {
-                throw new Error("External SPV deposit mode requires a Bitcoin wallet with getUtxoPool() support or explicit existingUtxos");
-            }
-            selectedExistingUtxos = await wallet.getUtxoPool();
-        }
-
-        const resolvedFeeRate = Math.max(feeRate ?? this.minimumBtcFeeRate, this.minimumBtcFeeRate);
-        const resolvedCpfpAssumptions = cpfpAssumptions ?? DEFAULT_CPFP_ASSUMPTION;
-        const estimation = this.getInputUtxoAmount(
-            selectedExistingUtxos,
-            depositAddressType,
-            resolvedFeeRate,
-            resolvedCpfpAssumptions,
-            spendFully
-        );
-        if(!spendFully && estimation.requiredAdditionalUtxoAmount.rawAmount !== 0n) {
-            throw new Error("External SPV deposit mode with spendFully=false requires selected UTXOs that already fund the quote; use spendFully=true when an additional deposit is required");
-        }
-
-        const info: SpvFromBTCIntermediateWalletSwapModeInfo = {
-            depositAddress,
-            walletAddressType: depositAddressType,
-            selectedExistingUtxos,
-            spendFully,
-            feeRate: resolvedFeeRate,
-            cpfpAssumptions: resolvedCpfpAssumptions,
-            requiredAdditionalUtxoAmount: estimation.requiredAdditionalUtxoAmount.rawAmount,
-            totalNetworkFee: estimation.totalNetworkFee.rawAmount
-        };
-        this.swapMode = "intermediate_wallet";
-        this.externalSwapModeInfo = info;
-        this.externalDepositTxId = undefined;
-        if(this._persisted) await this._save();
-        return info;
+        //Save the created funding plan this.externalSwapModeInfo and set the swap mode
     }
 
     /**
@@ -890,7 +849,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
      */
     protected async _getExecutionStatus(options?: {
         bitcoinFeeRate?: number,
-        bitcoinWallet?: MinimalBitcoinWalletInterface,
+        bitcoinWallet?: MinimalBitcoinWalletInterface | IBitcoinWallet,
         manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"],
         maxWaitTillAutomaticSettlementSeconds?: number
     }) {
@@ -904,7 +863,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
             await this._verifyQuoteValid()
         ) {
             if(options?.bitcoinWallet == null) {
-                throw new Error("Intermediate wallet swap mode requires options.bitcoinWallet to build the funded PSBT");
+                throw new Error("Requires options.bitcoinWallet to resolve the current execution action!");
             }
 
             const bitcoinWallet = toBitcoinWallet(options.bitcoinWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
@@ -944,6 +903,19 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
             ],
             buildCurrentAction
         };
+    }
+
+    /**
+     * @inheritDoc
+     */
+    async getExecutionSteps(options?: {
+        maxWaitTillAutomaticSettlementSeconds?: number,
+        bitcoinWallet?: MinimalBitcoinWalletInterface | IBitcoinWallet
+    }): Promise<[
+        SwapExecutionStepPayment<"BITCOIN">,
+        SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
+    ]> {
+        return (await this._getExecutionStatus(options)).steps;
     }
 
     /**

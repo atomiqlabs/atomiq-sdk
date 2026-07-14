@@ -1046,7 +1046,7 @@ export abstract class SpvFromBTCSwapBase<T extends ChainType>
      */
     protected async _getExecutionStatus(options?: {
         bitcoinFeeRate?: number,
-        bitcoinWallet?: MinimalBitcoinWalletInterface,
+        bitcoinWallet?: MinimalBitcoinWalletInterface | IBitcoinWallet,
         manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"],
         maxWaitTillAutomaticSettlementSeconds?: number
     }) {
@@ -1063,7 +1063,7 @@ export abstract class SpvFromBTCSwapBase<T extends ChainType>
         let destinationSettlementStatus: SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">["status"] = "inactive";
         let buildCurrentAction: (actionOptions?: {
             bitcoinFeeRate?: number,
-            bitcoinWallet?: MinimalBitcoinWalletInterface,
+            bitcoinWallet?: MinimalBitcoinWalletInterface | IBitcoinWallet,
             manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"],
             maxWaitTillAutomaticSettlementSeconds?: number
         }) => Promise<
@@ -1279,7 +1279,7 @@ export abstract class SpvFromBTCSwapBase<T extends ChainType>
      */
     private async _buildDepositPsbtAction(actionOptions?: {
         bitcoinFeeRate?: number,
-        bitcoinWallet?: MinimalBitcoinWalletInterface
+        bitcoinWallet?: MinimalBitcoinWalletInterface | IBitcoinWallet
     }): Promise<SwapExecutionActionSignPSBT> {
         return {
             type: "SignPSBT",
@@ -1386,7 +1386,7 @@ export abstract class SpvFromBTCSwapBase<T extends ChainType>
      */
     async getExecutionAction(options?: {
         bitcoinFeeRate?: number,
-        bitcoinWallet?: MinimalBitcoinWalletInterface,
+        bitcoinWallet?: MinimalBitcoinWalletInterface | IBitcoinWallet,
         manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"],
         maxWaitTillAutomaticSettlementSeconds?: number
     }): Promise<
@@ -1406,7 +1406,7 @@ export abstract class SpvFromBTCSwapBase<T extends ChainType>
     async getExecutionStatus(options?: {
         skipBuildingAction?: boolean,
         bitcoinFeeRate?: number,
-        bitcoinWallet?: MinimalBitcoinWalletInterface,
+        bitcoinWallet?: MinimalBitcoinWalletInterface | IBitcoinWallet,
         manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"],
         maxWaitTillAutomaticSettlementSeconds?: number
     }): Promise<{

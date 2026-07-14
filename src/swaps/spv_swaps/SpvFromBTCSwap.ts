@@ -1,7 +1,13 @@
 import {ChainType} from "@atomiqlabs/base";
-import {REQUIRED_SPV_SWAP_VAULT_ADDRESS_TYPE, SpvFromBTCWrapper} from "./SpvFromBTCWrapper.js";
+import {DEFAULT_CPFP_ASSUMPTION, REQUIRED_SPV_SWAP_VAULT_ADDRESS_TYPE, SpvFromBTCWrapper} from "./SpvFromBTCWrapper.js";
 import {extendAbortController} from "../../utils/Utils.js";
-import {getWalletAddressUtxos, toCoinselectAddressType} from "../../utils/BitcoinUtils.js";
+import {
+    getUtxoKey,
+    getWalletAddressUtxos,
+    toCoinselectAddressType, toOutputScript,
+    toUtxoMap,
+    toUtxoSet
+} from "../../utils/BitcoinUtils.js";
 import {Transaction} from "@scure/btc-signer";
 import {Buffer} from "buffer";
 import {
@@ -27,9 +33,11 @@ import {
 } from "../../types/SwapExecutionAction.js";
 import {SwapExecutionStepPayment, SwapExecutionStepSettlement} from "../../types/SwapExecutionStep.js";
 import {SwapStateInfo} from "../../types/SwapStateInfo.js";
-import {CoinselectAddressTypes, utils} from "../../bitcoin/coinselect2/utils.js";
+import {CoinselectAddressTypes, CoinselectTxInput, CoinselectTxOutput, utils} from "../../bitcoin/coinselect2/utils.js";
 import {isSpvFromBTCSwapInit, SpvFromBTCSwapBase, SpvFromBTCSwapInit, SpvFromBTCSwapState} from "./SpvFromBTCSwapBase.js";
 import {Fee} from "../../types/fees/Fee.js";
+import {addPsbtInputs, toBitcoinWallet} from "../../utils/BitcoinWalletUtils";
+import {identifyAddressType} from "../../bitcoin/wallet/BitcoinWallet";
 
 type ExternalDepositInvalidReason = "amount_too_small" | "amount_too_large" | "deposit_fee_too_low";
 
@@ -48,17 +56,13 @@ type ExternalDepositMatchResult = {
     invalidUtxos: ExternalDepositInvalidUtxo[]
 };
 
-function getExternalDepositUtxoKey(utxo: {txId: string, vout: number}): string {
-    return `${utxo.txId}:${utxo.vout}`;
-}
-
 /**
  * Runtime mode for an SPV BTC -> smart-chain swap.
  *
- * `"psbt"` preserves the normal wallet-funded PSBT flow. `"external"` represents an intermediate-wallet flow where
+ * `"psbt"` preserves the normal wallet-funded PSBT flow. `"intermediate_wallet"` represents an intermediate-wallet flow where
  * callers deposit one future UTXO to a configured Bitcoin address before signing the fully funded SPV PSBT.
  */
-export type SpvFromBTCSwapMode = "psbt" | "external";
+export type SpvFromBTCSwapMode = "psbt" | "intermediate_wallet";
 
 /**
  * Minimal persisted UTXO snapshot used by SPV external deposit mode.
@@ -85,6 +89,14 @@ export type SpvExternalSelectedUtxo = {
      */
     type: CoinselectAddressTypes;
     /**
+     * Output script of the UTXO
+     */
+    outputScript: Buffer,
+    /**
+     * Public key associated with the UTXO
+     */
+    publicKey: string,
+    /**
      * Optional quote-time CPFP metadata for unconfirmed inputs.
      */
     cpfp?: {
@@ -103,40 +115,42 @@ export type SpvExternalSelectedUtxo = {
  * controls whether those selected UTXOs are consumed without change (`true`) or fund the PSBT with wallet change
  * allowed (`false`).
  */
-export type SpvFromBTCExternalSwapModeInfo = {
-    /**
-     * Bitcoin address controlled by the intermediate wallet.
-     */
-    depositAddress: string;
+export type SpvFromBTCIntermediateWalletSwapModeInfo = {
     /**
      * Coin selection address type inferred from `depositAddress`.
      */
-    depositAddressType: CoinselectAddressTypes;
+    walletAddressType: CoinselectAddressTypes;
     /**
      * Existing UTXOs selected for the external quote. Full-spend mode uses the full selected set; change-aware mode
      * treats this as the wallet funding pool for the quote.
      */
     selectedExistingUtxos: SpvExternalSelectedUtxo[];
     /**
-     * Whether the selected external funding UTXOs must be spent fully without change. Defaults to `true` for restored
-     * swaps serialized before this field existed.
+     * Bitcoin address controlled by the intermediate wallet.
      */
-    spendFully: boolean;
+    requiredDeposit?: {
+        address: string;
+        publicKey: string;
+        /**
+         * Satoshis still required as one future UTXO at `depositAddress`.
+         */
+        amount: bigint;
+        /**
+         * CPFP package-fee assumptions for the future incoming deposit UTXO.
+         */
+        cpfpAssumptions: {
+            txVsize: number;
+            txEffectiveFeeRate: number;
+        };
+    },
+    /**
+     * Amount to send back to the original wallet as change
+     */
+    changeAmount?: bigint;
     /**
      * Bitcoin fee rate in sats/vB used for the final funding transaction.
      */
     feeRate: number;
-    /**
-     * CPFP package-fee assumptions for the future incoming deposit UTXO.
-     */
-    cpfpAssumptions: {
-        txVsize: number;
-        txEffectiveFeeRate: number;
-    };
-    /**
-     * Satoshis still required as one future UTXO at `depositAddress`.
-     */
-    requiredAdditionalUtxoAmount: bigint;
     /**
      * Estimated input-side Bitcoin network fee in satoshis.
      */
@@ -155,7 +169,7 @@ export type SpvFromBTCExternalSwapModeInfo = {
 export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> implements IAddressSwap {
 
     private swapMode: SpvFromBTCSwapMode = "psbt";
-    private externalSwapModeInfo: SpvFromBTCExternalSwapModeInfo | null = null;
+    private externalSwapModeInfo: SpvFromBTCIntermediateWalletSwapModeInfo | null = null;
     private externalDepositTxId?: string;
 
     constructor(wrapper: SpvFromBTCWrapper<T>, init: SpvFromBTCSwapInit);
@@ -165,19 +179,19 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
 
         if(!isSpvFromBTCSwapInit(initOrObject)) {
             const info = initOrObject.externalSwapModeInfo;
-            if(initOrObject.swapMode === "external" && info != null) {
-                this.swapMode = "external";
+            if(initOrObject.swapMode === "intermediate_wallet" && info != null) {
+                this.swapMode = "intermediate_wallet";
                 this.externalSwapModeInfo = {
-                    depositAddress: info.depositAddress,
-                    depositAddressType: info.depositAddressType,
-                    selectedExistingUtxos: info.selectedExistingUtxos,
-                    spendFully: info.spendFully !== false,
-                    feeRate: info.feeRate,
-                    cpfpAssumptions: {
-                        txVsize: info.cpfpAssumptions.txVsize,
-                        txEffectiveFeeRate: info.cpfpAssumptions.txEffectiveFeeRate
+                    ...info,
+                    selectedExistingUtxos: info.selectedExistingUtxos.map((utxo: any) => ({
+                        ...utxo,
+                        outputScript: Buffer.from(utxo.outputScript, "hex"),
+                    })),
+                    requiredDeposit: info.requiredDeposit==null ? undefined : {
+                        ...info.requiredDeposit,
+                        amount: BigInt(info.requiredDeposit.amount)
                     },
-                    requiredAdditionalUtxoAmount: BigInt(info.requiredAdditionalUtxoAmount),
+                    changeAmount: info.changeAmount==null ? undefined : BigInt(info.changeAmount),
                     totalNetworkFee: BigInt(info.totalNetworkFee)
                 };
                 this.externalDepositTxId = initOrObject.externalDepositTxId;
@@ -187,149 +201,6 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
                 this.externalDepositTxId = undefined;
             }
         }
-    }
-
-    /**
-     * Serializes this swap, including external mode metadata when active.
-     *
-     * @remarks
-     * In-memory `selectedExistingUtxos` may be full {@link BitcoinWalletUtxo} objects, but persistence narrows each
-     * UTXO to JSON-safe primitive fields and quote-time CPFP metadata. PSBT mode serializes `externalSwapModeInfo`
-     * as `null`.
-     *
-     * @returns JSON stringifiable swap data suitable for SDK storage
-     */
-    serialize(): any {
-        const externalSwapModeInfo = this.swapMode === "external" && this.externalSwapModeInfo != null
-            ? {
-                ...this.externalSwapModeInfo,
-                selectedExistingUtxos: this.externalSwapModeInfo.selectedExistingUtxos.map(utxo => ({
-                    txId: utxo.txId,
-                    vout: utxo.vout,
-                    value: utxo.value,
-                    type: utxo.type,
-                    cpfp: utxo.cpfp == null ? undefined : {
-                        txVsize: utxo.cpfp.txVsize,
-                        txEffectiveFeeRate: utxo.cpfp.txEffectiveFeeRate
-                    }
-                })),
-                requiredAdditionalUtxoAmount: this.externalSwapModeInfo.requiredAdditionalUtxoAmount.toString(10),
-                totalNetworkFee: this.externalSwapModeInfo.totalNetworkFee.toString(10)
-            }
-            : null;
-
-        return {
-            ...super.serialize(),
-            swapMode: this.swapMode,
-            externalSwapModeInfo,
-            externalDepositTxId: this.swapMode === "external" ? this.externalDepositTxId : undefined
-        };
-    }
-
-    /**
-     * Returns the active SPV funding mode.
-     *
-     * @returns `"psbt"` for the normal wallet-funded PSBT flow or `"external"` for intermediate-wallet deposit mode
-     */
-    getSwapMode(): SpvFromBTCSwapMode {
-        return this.swapMode;
-    }
-
-    /**
-     * Returns cached external deposit mode metadata when the swap is in external mode.
-     *
-     * @returns External deposit metadata, or `null` in PSBT mode
-     */
-    getExternalSwapModeInfo(): SpvFromBTCExternalSwapModeInfo | null {
-        return this.externalSwapModeInfo;
-    }
-
-    /**
-     * Switches this swap back to normal PSBT mode and clears cached external deposit metadata.
-     *
-     * @remarks
-     * If the swap was already persisted, the mode change is saved asynchronously because this API is intentionally
-     * synchronous.
-     */
-    async setSwapModePsbt(): Promise<void> {
-        this.swapMode = "psbt";
-        this.externalSwapModeInfo = null;
-        this.externalDepositTxId = undefined;
-        if(this._persisted) await this._save();
-    }
-
-    /**
-     * Configures this SPV quote for an external intermediate-wallet deposit flow.
-     *
-     * @param walletOrAddress Intermediate Bitcoin wallet or deposit address. Wallets provide the receive address via
-     * `getReceiveAddress()` and, when `existingUtxos` is omitted, must support `getUtxoPool()`.
-     * @param existingUtxos Optional quote-time UTXO set for `walletOrAddress`; when passed, the objects are kept in
-     * memory as-is and only narrowed during serialization.
-     * @param feeRate Optional Bitcoin fee rate in sats/vB; normalized to at least this quote's minimum LP fee rate.
-     * @param cpfpAssumptions CPFP metadata for the future incoming UTXO; defaults to a conservative small package.
-     * @param spendFully Whether selected UTXOs must be consumed without change. Defaults to `true`. Set to `false`
-     * only when `existingUtxos` is already a selected funding set that can fund the quote with wallet change.
-     * @returns Cached external mode metadata containing the deposit address, selected UTXOs and required deposit amount
-     * @throws {Error} if a wallet cannot expose UTXOs and `existingUtxos` is omitted, or if `spendFully=false` and
-     * the selected UTXOs cannot fund the quote without an additional deposit
-     */
-    async setSwapModeExternal(
-        walletOrAddress: IBitcoinWallet | string,
-        existingUtxos?: BitcoinWalletUtxo[],
-        feeRate?: number,
-        cpfpAssumptions?: {
-            txVsize: number,
-            txEffectiveFeeRate: number
-        },
-        spendFully: boolean = true
-    ): Promise<SpvFromBTCExternalSwapModeInfo> {
-        const depositAddress = typeof walletOrAddress === "string"
-            ? walletOrAddress
-            : walletOrAddress.getReceiveAddress();
-
-        const depositAddressType = toCoinselectAddressType(this.wrapper._options.bitcoinNetwork, depositAddress);
-
-        const selectedExistingUtxos = existingUtxos ?? (
-            typeof walletOrAddress === "string"
-                ? await getWalletAddressUtxos(this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork, depositAddress, depositAddressType)
-                : await (async () => {
-                    if(typeof(walletOrAddress.getUtxoPool) !== "function") {
-                        throw new Error("External SPV deposit mode requires a Bitcoin wallet with getUtxoPool() support or explicit existingUtxos");
-                    }
-                    return walletOrAddress.getUtxoPool();
-                })()
-        );
-        const resolvedFeeRate = Math.max(feeRate ?? this.minimumBtcFeeRate, this.minimumBtcFeeRate);
-        const resolvedCpfpAssumptions = cpfpAssumptions ?? {
-            txEffectiveFeeRate: 1,
-            txVsize: 200
-        };
-        const estimation = this.getInputUtxoAmount(
-            selectedExistingUtxos,
-            depositAddressType,
-            resolvedFeeRate,
-            resolvedCpfpAssumptions,
-            spendFully
-        );
-        if(!spendFully && estimation.requiredAdditionalUtxoAmount.rawAmount !== 0n) {
-            throw new Error("External SPV deposit mode with spendFully=false requires selected UTXOs that already fund the quote; use spendFully=true when an additional deposit is required");
-        }
-
-        const info: SpvFromBTCExternalSwapModeInfo = {
-            depositAddress,
-            depositAddressType,
-            selectedExistingUtxos,
-            spendFully,
-            feeRate: resolvedFeeRate,
-            cpfpAssumptions: resolvedCpfpAssumptions,
-            requiredAdditionalUtxoAmount: estimation.requiredAdditionalUtxoAmount.rawAmount,
-            totalNetworkFee: estimation.totalNetworkFee.rawAmount
-        };
-        this.swapMode = "external";
-        this.externalSwapModeInfo = info;
-        this.externalDepositTxId = undefined;
-        if(this._persisted) await this._save();
-        return info;
     }
 
     private async setExternalDepositTxId(txId?: string): Promise<void> {
@@ -345,60 +216,11 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
      * @returns Active external mode metadata
      * @throws {Error} if the swap is not currently configured for external deposit mode
      */
-    private getExternalSwapModeInfoOrThrow(operation: string): SpvFromBTCExternalSwapModeInfo {
-        if(this.swapMode !== "external" || this.externalSwapModeInfo == null) {
+    private getIntermediateWalletSwapModeInfoOrThrow(operation: string): SpvFromBTCIntermediateWalletSwapModeInfo {
+        if(this.swapMode !== "intermediate_wallet" || this.externalSwapModeInfo == null) {
             throw new Error(`${operation} requires SPV external deposit mode`);
         }
         return this.externalSwapModeInfo;
-    }
-
-    /**
-     * Checks whether this swap currently exposes address-swap behavior.
-     *
-     * @returns `true` only in external deposit mode
-     */
-    isAddressSwapMode(): boolean {
-        return this.swapMode === "external";
-    }
-
-    /**
-     * Returns the intermediate Bitcoin deposit address for external mode.
-     *
-     * @returns Bitcoin address that should receive the additional future UTXO
-     * @throws {Error} if the swap is in PSBT mode
-     */
-    getAddress(): string {
-        return this.getExternalSwapModeInfoOrThrow("getAddress()").depositAddress;
-    }
-
-    /**
-     * Returns a BIP-21 Bitcoin URI for the external deposit address and required additional UTXO amount.
-     *
-     * @returns Bitcoin payment URI for QR-code display
-     * @throws {Error} if the swap is in PSBT mode
-     */
-    getHyperlink(): string {
-        const info = this.getExternalSwapModeInfoOrThrow("getHyperlink()");
-        return "bitcoin:" + info.depositAddress + "?amount=" + encodeURIComponent((Number(info.requiredAdditionalUtxoAmount) / 100000000).toString(10));
-    }
-
-    /**
-     * Returns the user-facing BTC input amount.
-     *
-     * @remarks
-     * PSBT mode returns the base SPV quote input. External mode includes the input-side Bitcoin network fee cached
-     * during {@link setSwapModeExternal}.
-     *
-     * @returns Input BTC amount in satoshis wrapped as a token amount
-     */
-    getInput(): TokenAmount<BtcToken<false>, true> {
-        if(this.swapMode !== "external" || this.externalSwapModeInfo == null) return super.getInput();
-        return toTokenAmount(
-            super.getInput().rawAmount + this.externalSwapModeInfo.totalNetworkFee,
-            BitcoinTokens.BTC,
-            this.wrapper._prices,
-            this.pricingInfo
-        );
     }
 
     /**
@@ -407,7 +229,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
      * @internal
      */
     protected getNetworkInputFee(): Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>> | null {
-        if(this.swapMode !== "external" || this.externalSwapModeInfo == null) return null;
+        if(this.swapMode !== "intermediate_wallet" || this.externalSwapModeInfo == null) return null;
 
         if(this.pricingInfo==null) throw new Error("No pricing info known, cannot estimate fee!");
 
@@ -431,6 +253,251 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
             usdValue: amountInSrcToken.usdValue,
             pastUsdValue: amountInSrcToken.pastUsdValue
         };
+    }
+
+    private getFinalizedCoinselect(
+        inputs: CoinselectTxInput[],
+        outputs: CoinselectTxOutput[]
+    ) {
+        const txDetails = this.getTransactionDetails();
+        return utils.finalize(
+            [
+                {
+                    txId: txDetails.in0txid,
+                    vout: txDetails.in0vout,
+                    value: Number(txDetails.vaultAmount),
+                    type: REQUIRED_SPV_SWAP_VAULT_ADDRESS_TYPE
+                },
+                ...inputs
+            ],
+            [
+                {
+                    value: Number(txDetails.vaultAmount),
+                    script: Buffer.from(txDetails.vaultScript)
+                },
+                {
+                    value: 0,
+                    script: Buffer.from(txDetails.out1script)
+                },
+                {
+                    value: Number(txDetails.out2amount),
+                    script: Buffer.from(txDetails.out2script)
+                },
+                ...outputs
+            ],
+            this.minimumBtcFeeRate,
+            null
+        );
+    }
+
+    private getFundingFeeRate(utxos: SpvExternalSelectedUtxo[]): number {
+        const info = this.getIntermediateWalletSwapModeInfoOrThrow("getExternalDepositFeeRate()");
+        return this.getFinalizedCoinselect(
+            utxos,
+            info.changeAmount==null ? [] : [{value: Number(info.changeAmount), type: info.walletAddressType}]
+        ).effectiveFeeRate ?? 0;
+    }
+
+    /**
+     * Serializes this swap, including external mode metadata when active.
+     *
+     * @remarks
+     * In-memory `selectedExistingUtxos` may be full {@link BitcoinWalletUtxo} objects, but persistence narrows each
+     * UTXO to JSON-safe primitive fields and quote-time CPFP metadata. PSBT mode serializes `externalSwapModeInfo`
+     * as `null`.
+     *
+     * @returns JSON stringifiable swap data suitable for SDK storage
+     */
+    serialize(): any {
+        const externalSwapModeInfo = this.swapMode === "intermediate_wallet" && this.externalSwapModeInfo != null
+            ? {
+                ...this.externalSwapModeInfo,
+                selectedExistingUtxos: this.externalSwapModeInfo.selectedExistingUtxos.map(utxo => ({
+                    txId: utxo.txId,
+                    vout: utxo.vout,
+                    value: utxo.value,
+                    type: utxo.type,
+                    outputScript: utxo.outputScript.toString("hex"),
+                    publicKey: utxo.publicKey,
+                    cpfp: utxo.cpfp == null ? undefined : {
+                        txVsize: utxo.cpfp.txVsize,
+                        txEffectiveFeeRate: utxo.cpfp.txEffectiveFeeRate
+                    }
+                })),
+                requiredDeposit: this.externalSwapModeInfo.requiredDeposit==null ? undefined : {
+                    ...this.externalSwapModeInfo.requiredDeposit,
+                    amount: this.externalSwapModeInfo.requiredDeposit?.amount.toString(10)
+                },
+                changeAmount: this.externalSwapModeInfo.changeAmount?.toString(10),
+                totalNetworkFee: this.externalSwapModeInfo.totalNetworkFee.toString(10)
+            }
+            : null;
+
+        return {
+            ...super.serialize(),
+            swapMode: this.swapMode,
+            externalSwapModeInfo,
+            externalDepositTxId: this.swapMode === "intermediate_wallet" ? this.externalDepositTxId : undefined
+        };
+    }
+
+    /**
+     * Returns the active SPV funding mode.
+     *
+     * @returns `"psbt"` for the normal wallet-funded PSBT flow or `"intermediate_wallet"` for intermediate-wallet deposit mode
+     */
+    getSwapMode(): SpvFromBTCSwapMode {
+        return this.swapMode;
+    }
+
+    /**
+     * Returns cached external deposit mode metadata when the swap is in external mode.
+     *
+     * @returns External deposit metadata, or `null` in PSBT mode
+     */
+    getIntermediateWalletSwapModeInfo(): SpvFromBTCIntermediateWalletSwapModeInfo | null {
+        return this.externalSwapModeInfo;
+    }
+
+    /**
+     * Switches this swap back to normal PSBT mode and clears cached external deposit metadata.
+     *
+     * @remarks
+     * If the swap was already persisted, the mode change is saved asynchronously because this API is intentionally
+     * synchronous.
+     */
+    async setSwapModePsbt(): Promise<void> {
+        if(this._state !== SpvFromBTCSwapState.CREATED) throw new Error("Cannot change swap mode outside of CREATED state!");
+        this.swapMode = "psbt";
+        this.externalSwapModeInfo = null;
+        this.externalDepositTxId = undefined;
+        if(this._persisted) await this._save();
+    }
+
+    /**
+     * Configures this SPV quote for an external intermediate-wallet deposit flow.
+     *
+     * @param intermediateWallet Intermediate Bitcoin wallet or deposit address. Wallets provide the receive address via
+     * `getReceiveAddress()` and, when `existingUtxos` is omitted, must support `getUtxoPool()`.
+     * @param existingUtxos Optional quote-time UTXO set for `walletOrAddress`; when passed, the objects are kept in
+     * memory as-is and only narrowed during serialization.
+     * @param feeRate Optional Bitcoin fee rate in sats/vB; normalized to at least this quote's minimum LP fee rate.
+     * @param cpfpAssumptions CPFP metadata for the future incoming UTXO; defaults to a conservative small package.
+     * @param spendFully Whether selected UTXOs must be consumed without change. Defaults to `true`. Set to `false`
+     * only when `existingUtxos` is already a selected funding set that can fund the quote with wallet change.
+     * @returns Cached external mode metadata containing the deposit address, selected UTXOs and required deposit amount
+     * @throws {Error} if a wallet cannot expose UTXOs and `existingUtxos` is omitted, or if `spendFully=false` and
+     * the selected UTXOs cannot fund the quote without an additional deposit
+     */
+    async setSwapModeIntermediateWallet(
+        intermediateWallet: IBitcoinWallet | MinimalBitcoinWalletInterface,
+        existingUtxos?: BitcoinWalletUtxo[],
+        feeRate?: number,
+        cpfpAssumptions?: {
+            txVsize: number,
+            txEffectiveFeeRate: number
+        },
+        spendFully: boolean = true
+    ): Promise<SpvFromBTCIntermediateWalletSwapModeInfo> {
+        if(this._state !== SpvFromBTCSwapState.CREATED) throw new Error("Cannot change swap mode outside of CREATED state!");
+
+        const wallet = toBitcoinWallet(intermediateWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
+        const walletAddress = wallet.getReceiveAddress();
+
+        const depositAddressType = toCoinselectAddressType(this.wrapper._options.bitcoinNetwork, walletAddress);
+
+        //TODO: Change the logic here to properly populate the intermediate wallet info
+
+        let selectedExistingUtxos: BitcoinWalletUtxo[];
+        if(existingUtxos!=null) {
+            selectedExistingUtxos = existingUtxos;
+        } else {
+            if(typeof(wallet.getUtxoPool) !== "function") {
+                throw new Error("External SPV deposit mode requires a Bitcoin wallet with getUtxoPool() support or explicit existingUtxos");
+            }
+            selectedExistingUtxos = await wallet.getUtxoPool();
+        }
+
+        const resolvedFeeRate = Math.max(feeRate ?? this.minimumBtcFeeRate, this.minimumBtcFeeRate);
+        const resolvedCpfpAssumptions = cpfpAssumptions ?? DEFAULT_CPFP_ASSUMPTION;
+        const estimation = this.getInputUtxoAmount(
+            selectedExistingUtxos,
+            depositAddressType,
+            resolvedFeeRate,
+            resolvedCpfpAssumptions,
+            spendFully
+        );
+        if(!spendFully && estimation.requiredAdditionalUtxoAmount.rawAmount !== 0n) {
+            throw new Error("External SPV deposit mode with spendFully=false requires selected UTXOs that already fund the quote; use spendFully=true when an additional deposit is required");
+        }
+
+        const info: SpvFromBTCIntermediateWalletSwapModeInfo = {
+            depositAddress,
+            walletAddressType: depositAddressType,
+            selectedExistingUtxos,
+            spendFully,
+            feeRate: resolvedFeeRate,
+            cpfpAssumptions: resolvedCpfpAssumptions,
+            requiredAdditionalUtxoAmount: estimation.requiredAdditionalUtxoAmount.rawAmount,
+            totalNetworkFee: estimation.totalNetworkFee.rawAmount
+        };
+        this.swapMode = "intermediate_wallet";
+        this.externalSwapModeInfo = info;
+        this.externalDepositTxId = undefined;
+        if(this._persisted) await this._save();
+        return info;
+    }
+
+    /**
+     * Checks whether this swap currently exposes address-swap behavior.
+     *
+     * @returns `true` only in external deposit mode
+     */
+    isAddressSwapMode(): boolean {
+        return this.swapMode === "intermediate_wallet" && this.externalSwapModeInfo?.requiredDeposit!=null;
+    }
+
+    /**
+     * Returns the intermediate Bitcoin deposit address for external mode.
+     *
+     * @returns Bitcoin address that should receive the additional future UTXO
+     * @throws {Error} if the swap is in PSBT mode
+     */
+    getAddress(): string {
+        const info = this.getIntermediateWalletSwapModeInfoOrThrow("getAddress()");
+        if(info.requiredDeposit==null) throw new Error("Needs to specify a required deposit amount!");
+        return info.requiredDeposit.address;
+    }
+
+    /**
+     * Returns a BIP-21 Bitcoin URI for the external deposit address and required additional UTXO amount.
+     *
+     * @returns Bitcoin payment URI for QR-code display
+     * @throws {Error} if the swap is in PSBT mode
+     */
+    getHyperlink(): string {
+        const info = this.getIntermediateWalletSwapModeInfoOrThrow("getHyperlink()");
+        if(info.requiredDeposit==null) throw new Error("Needs to specify a required deposit amount!");
+        return "bitcoin:" + info.requiredDeposit.address + "?amount=" + encodeURIComponent((Number(info.requiredDeposit.amount) / 100000000).toString(10));
+    }
+
+    /**
+     * Returns the user-facing BTC input amount.
+     *
+     * @remarks
+     * PSBT mode returns the base SPV quote input. External mode includes the input-side Bitcoin network fee cached
+     * during {@link setSwapModeIntermediateWallet}.
+     *
+     * @returns Input BTC amount in satoshis wrapped as a token amount
+     */
+    getInput(): TokenAmount<BtcToken<false>, true> {
+        if(this.swapMode !== "intermediate_wallet" || this.externalSwapModeInfo == null) return super.getInput();
+        return toTokenAmount(
+            super.getInput().rawAmount + this.externalSwapModeInfo.totalNetworkFee,
+            BitcoinTokens.BTC,
+            this.wrapper._prices,
+            this.pricingInfo
+        );
     }
 
     /**
@@ -484,95 +551,56 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
         ];
     }
 
-    private getFundingFeeRate(candidateUtxo?: BitcoinWalletUtxo): number {
-        const info = this.getExternalSwapModeInfoOrThrow("getExternalDepositFeeRate()");
-        const txDetails = this.getTransactionDetails();
-        const cpfpAddFee = info.selectedExistingUtxos.reduce(
-            (sum, utxo) => sum + utils.inputCpfpAdditionalFee(utxo, info.feeRate),
-            candidateUtxo == null ? 0 : utils.inputCpfpAdditionalFee(candidateUtxo, info.feeRate)
-        );
-        const coinselectResult = utils.finalize(
-            [
-                {
-                    txId: txDetails.in0txid,
-                    vout: txDetails.in0vout,
-                    value: Number(txDetails.vaultAmount),
-                    type: REQUIRED_SPV_SWAP_VAULT_ADDRESS_TYPE
-                },
-                ...info.selectedExistingUtxos,
-                ...(candidateUtxo==null ? []: [candidateUtxo])
-            ],
-            [
-                {
-                    value: Number(txDetails.vaultAmount),
-                    script: Buffer.from(txDetails.vaultScript)
-                },
-                {
-                    value: 0,
-                    script: Buffer.from(txDetails.out1script)
-                },
-                {
-                    value: Number(txDetails.out2amount),
-                    script: Buffer.from(txDetails.out2script)
-                }
-            ],
-            info.feeRate,
-            info.spendFully ? null : info.depositAddressType,
-            cpfpAddFee
-        );
-        return coinselectResult.effectiveFeeRate ?? 0;
-    }
-
     /**
      * Looks for the future external deposit UTXO matching the cached required additional amount.
      *
+     * @param rehydratedWalletUtxos
      * @param ignoredUtxoKeys Invalid UTXO keys already handled by the waiting callback
      * @returns Matching fresh wallet UTXO or all newly detected invalid UTXOs
      * @throws {Error} if the swap is not in external mode
      */
-    private async getMatchingExternalDepositUtxo(ignoredUtxoKeys?: Set<string>): Promise<ExternalDepositMatchResult> {
-        const info = this.getExternalSwapModeInfoOrThrow("getMatchingExternalDepositUtxo()");
-        const requiredAdditionalUtxoAmount = info.requiredAdditionalUtxoAmount;
-        if(requiredAdditionalUtxoAmount === 0n) return {
+    private getMatchingExternalDepositUtxo(rehydratedWalletUtxos: BitcoinWalletUtxo[], ignoredUtxoKeys?: Set<string>): ExternalDepositMatchResult {
+        const info = this.getIntermediateWalletSwapModeInfoOrThrow("getMatchingExternalDepositUtxo()");
+        if(info.requiredDeposit == null) return {
             matchedUtxo: null,
             invalidUtxos: []
         };
+        const requiredDepositInfo = info.requiredDeposit;
 
-        const selectedKeys = new Set(info.selectedExistingUtxos.map(utxo => getExternalDepositUtxoKey(utxo)));
-        const currentUtxos = await getWalletAddressUtxos(
-            this.wrapper._btcRpc,
-            this.wrapper._options.bitcoinNetwork,
-            info.depositAddress,
-            info.depositAddressType
+        const rehydratedWalletUtxosMap = toUtxoMap(rehydratedWalletUtxos);
+        const rehydratedSelectedUtxos: SpvExternalSelectedUtxo[] = info.selectedExistingUtxos.map(
+            utxo => rehydratedWalletUtxosMap.get(getUtxoKey(utxo)) ?? utxo
         );
+        const selectedUtxosKeys = toUtxoSet(info.selectedExistingUtxos);
+
         const invalidUtxos: ExternalDepositInvalidUtxo[] = [];
-        for(const utxo of currentUtxos) {
-            const key = getExternalDepositUtxoKey(utxo);
-            if(selectedKeys.has(key) || ignoredUtxoKeys?.has(key)) continue;
+        for(const utxo of rehydratedWalletUtxos) {
+            const key = getUtxoKey(utxo);
+            if(selectedUtxosKeys.has(key) || ignoredUtxoKeys?.has(key)) continue;
 
             const actualAmount = BigInt(utxo.value);
-            if(actualAmount < requiredAdditionalUtxoAmount) {
+            if(actualAmount < requiredDepositInfo.amount) {
                 invalidUtxos.push({
                     key,
                     utxo,
                     reason: "amount_too_small",
-                    requiredAmount: requiredAdditionalUtxoAmount,
+                    requiredAmount: requiredDepositInfo.amount,
                     actualAmount
                 });
                 continue;
             }
-            if(actualAmount > requiredAdditionalUtxoAmount) {
+            if(actualAmount > requiredDepositInfo.amount) {
                 invalidUtxos.push({
                     key,
                     utxo,
                     reason: "amount_too_large",
-                    requiredAmount: requiredAdditionalUtxoAmount,
+                    requiredAmount: requiredDepositInfo.amount,
                     actualAmount
                 });
                 continue;
             }
 
-            const effectiveFeeRate = this.getFundingFeeRate(utxo);
+            const effectiveFeeRate = this.getFundingFeeRate(rehydratedSelectedUtxos.concat([utxo]));
             if(effectiveFeeRate >= this.minimumBtcFeeRate) return {
                 matchedUtxo: utxo,
                 invalidUtxos: []
@@ -582,7 +610,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
                 key,
                 utxo,
                 reason: "deposit_fee_too_low",
-                requiredAmount: requiredAdditionalUtxoAmount,
+                requiredAmount: requiredDepositInfo.amount,
                 actualAmount,
                 effectiveFeeRate,
                 minimumFeeRate: this.minimumBtcFeeRate
@@ -597,110 +625,127 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
     /**
      * Rehydrates quote-selected external funding UTXOs with fresh signing data while preserving quote-time fee data.
      *
-     * @param matchedNewUtxo Optional already-detected future deposit UTXO
-     * @returns Exact UTXO set to pass to wallet funding with the configured `spendFully` mode
+     * @param rehydratedWalletUtxos
+     * @returns Rehydrated selected wallet utxos
      * @throws {Error} if a selected UTXO disappeared, changed value/type, or the required new deposit is missing
      */
-    private async rehydrateExternalFundingUtxos(matchedNewUtxo?: BitcoinWalletUtxo): Promise<BitcoinWalletUtxo[]> {
-        const info = this.getExternalSwapModeInfoOrThrow("rehydrateExternalFundingUtxos()");
-        const currentUtxos = await getWalletAddressUtxos(
-            this.wrapper._btcRpc,
-            this.wrapper._options.bitcoinNetwork,
-            info.depositAddress,
-            info.depositAddressType
-        );
-        const currentUtxosByKey = new Map(currentUtxos.map(utxo => [`${utxo.txId}:${utxo.vout}`, utxo]));
+    private getRehydratedSelectedExistingUtxos(rehydratedWalletUtxos: BitcoinWalletUtxo[]): BitcoinWalletUtxo[] {
+        const info = this.getIntermediateWalletSwapModeInfoOrThrow("getRehydratedSelectedExistingUtxos()");
+        const rehydratedWalletUtxosMap = toUtxoMap(rehydratedWalletUtxos);
 
-        const executionUtxos: BitcoinWalletUtxo[] = info.selectedExistingUtxos.map(selectedUtxo => {
-            const freshUtxo = currentUtxosByKey.get(`${selectedUtxo.txId}:${selectedUtxo.vout}`);
+        return info.selectedExistingUtxos.map(selectedUtxo => {
+            const freshUtxo = rehydratedWalletUtxosMap.get(`${selectedUtxo.txId}:${selectedUtxo.vout}`);
             if(freshUtxo == null) {
                 throw new Error(`Selected external funding UTXO ${selectedUtxo.txId}:${selectedUtxo.vout} no longer exists; please re-quote`);
             }
             if(freshUtxo.value !== selectedUtxo.value || freshUtxo.type !== selectedUtxo.type) {
                 throw new Error(`Selected external funding UTXO ${selectedUtxo.txId}:${selectedUtxo.vout} changed; please re-quote`);
             }
-            return {
-                ...freshUtxo,
-                value: selectedUtxo.value,
-                type: selectedUtxo.type,
-                cpfp: selectedUtxo.cpfp
-            };
+            return freshUtxo;
         });
-
-        const requiredAdditionalUtxoAmount = info.requiredAdditionalUtxoAmount;
-        if(matchedNewUtxo == null) return executionUtxos;
-
-        const matchedKey = `${matchedNewUtxo.txId}:${matchedNewUtxo.vout}`;
-        const freshMatchedUtxo = currentUtxosByKey.get(matchedKey);
-        if(freshMatchedUtxo == null) {
-            throw new Error(`External deposit UTXO ${matchedKey} no longer exists; please re-check the deposit`);
-        }
-        if(BigInt(freshMatchedUtxo.value) !== requiredAdditionalUtxoAmount) {
-            throw new Error(`External deposit UTXO ${matchedKey} does not match the quoted required amount`);
-        }
-        const effectiveFeeRate = this.getFundingFeeRate(freshMatchedUtxo);
-        if(effectiveFeeRate < this.minimumBtcFeeRate) {
-            throw new Error(`External deposit UTXO ${matchedKey} results in fee rate ${effectiveFeeRate} sats/vB, below required minimum ${this.minimumBtcFeeRate} sats/vB`);
-        }
-        executionUtxos.push(freshMatchedUtxo);
-        return executionUtxos;
     }
 
-    /**
-     * Rehydrates the UTXOs and returns the actual effective feeRate of the funding transaction
-     *
-     * If the required additional UTXO amount is non-zero it either takes in the additional UTXO from the function
-     *  parameter or attempts to fetch it anew from {@link getMatchingExternalDepositUtxo}, erroring out if the
-     *  UTXO is not matched. For zero additional UTXO amount it doesn't do any new UTXO checking.
-     *
-     * @param matchedNewUtxo
-     * @private
-     */
-    private async getAndCheckDepositUtxos(matchedNewUtxo?: BitcoinWalletUtxo): Promise<{utxos: BitcoinWalletUtxo[], fundingFeeRate: number, spendFully: boolean}> {
-        const info = this.getExternalSwapModeInfoOrThrow("getAndCheckDepositUtxos()");
+    async getFundedPsbt(
+        _bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface,
+        feeRate?: number,
+        additionalOutputs?: ({
+            amount: bigint;
+            outputScript: Uint8Array
+        } | { amount: bigint; address: string })[],
+        utxos?: BitcoinWalletUtxo[],
+        spendFully?: boolean
+    ): Promise<{
+        psbt: Transaction;
+        psbtHex: string;
+        psbtBase64: string;
+        signInputs: number[];
+        feeRate: number
+    }> {
+        if(this.swapMode==="psbt") return await super.getFundedPsbt(_bitcoinWallet, feeRate, additionalOutputs, utxos, spendFully);
+        if(feeRate!=null) throw new Error("Manual fee rate is not supported in the intermediate wallet mode!");
+        if(additionalOutputs!=null) throw new Error("Additional outputs are not supported in the intermediate wallet mode!");
+        if(spendFully!=null) throw new Error("Spend fully flag is not supported in the intermediate wallet mode!");
 
-        let utxos: BitcoinWalletUtxo[];
-        if(info.requiredAdditionalUtxoAmount !== 0n) {
-            if(matchedNewUtxo == null) {
-                const waitStatus = await this.getMatchingExternalDepositUtxo();
-                if(waitStatus.matchedUtxo == null) throw new Error("Required external deposit UTXO not found; wait for the deposit before processing");
-                matchedNewUtxo = waitStatus.matchedUtxo;
-            }
-            utxos = await this.rehydrateExternalFundingUtxos(matchedNewUtxo);
-            matchedNewUtxo = utxos[utxos.length - 1];
-            await this.setExternalDepositTxId(matchedNewUtxo.txId);
-        } else {
-            matchedNewUtxo = undefined;
-            utxos = await this.rehydrateExternalFundingUtxos();
+        const bitcoinWallet = toBitcoinWallet(_bitcoinWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
+        if(bitcoinWallet.getUtxoPool==null) throw new Error("Intermediate bitcoin wallet has to support getUtxoPool() fn!");
+        const rehydratedWalletUtxos = utxos ?? await bitcoinWallet.getUtxoPool();
+        const selectedRehydratedUtxos = this.getRehydratedSelectedExistingUtxos(rehydratedWalletUtxos);
+
+        //Add external funding if required
+        if(this.externalSwapModeInfo?.requiredDeposit!=null) {
+            const result = this.getMatchingExternalDepositUtxo(rehydratedWalletUtxos);
+            if(result.matchedUtxo==null)
+                throw new Error(`Expected external funding of ${this.externalSwapModeInfo.requiredDeposit.amount.toString(10)} sats, not found in the wallet!`);
+            await this.setExternalDepositTxId(result.matchedUtxo.txId);
+            selectedRehydratedUtxos.push(result.matchedUtxo);
         }
 
+        const {psbt, in1sequence} = this.getPsbt();
+        await addPsbtInputs(psbt, selectedRehydratedUtxos, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
+        psbt.updateInput(1, {sequence: in1sequence});
+
+        //Add change output if required
+        if(this.externalSwapModeInfo?.changeAmount!=null) {
+            if(bitcoinWallet.getChangeAddress==null) throw new Error("Intermediate bitcoin wallet has to support getChangeAddress() fn!");
+            const changeAddress = bitcoinWallet.getChangeAddress();
+            if(this.externalSwapModeInfo.walletAddressType!==identifyAddressType(changeAddress, this.wrapper._options.bitcoinNetwork))
+                throw new Error(`Wallet returned an invalid change address type, expected: ${this.externalSwapModeInfo.walletAddressType}`);
+            psbt.addOutput({
+                amount: this.externalSwapModeInfo.changeAmount,
+                script: toOutputScript(this.wrapper._options.bitcoinNetwork, changeAddress)
+            });
+        }
+
+        const {effectiveFeeRate} = this.getFinalizedCoinselect(
+            selectedRehydratedUtxos,
+            this.externalSwapModeInfo?.changeAmount==null
+                ? []
+                : [{value: Number(this.externalSwapModeInfo.changeAmount), type: this.externalSwapModeInfo.walletAddressType}]
+        );
+        if(effectiveFeeRate==null) throw new Error("Not enough balance to create the swap PSBT!");
+        if(effectiveFeeRate<this.minimumBtcFeeRate) throw new Error("PSBT effective fee rate is below minimum required by the LP!");
+
+        //Sign every input except the first one
+        const signInputs: number[] = [];
+        for (let i = 1; i < psbt.inputsLength; i++) {
+            signInputs.push(i);
+        }
+        const serializedPsbt = Buffer.from(psbt.toPSBT());
+
         return {
-            utxos,
-            fundingFeeRate: this.getFundingFeeRate(matchedNewUtxo),
-            spendFully: info.spendFully
+            psbt,
+            psbtHex: serializedPsbt.toString("hex"),
+            psbtBase64: serializedPsbt.toString("base64"),
+            signInputs,
+            feeRate: effectiveFeeRate
         };
     }
 
     /**
      * Waits until the external deposit address receives the exact future UTXO required by this quote.
      *
+     * @param _intermediateWallet
      * @param maxWaitTimeSeconds Optional maximum wait time before aborting
      * @param pollIntervalSeconds Optional polling interval; defaults to five seconds
-     * @param onInvalidDeposit Optional callback invoked with all newly detected invalid UTXOs; return truthy to stop waiting
+     * @param onInvalidDeposit Optional callback invoked with all newly detected invalid UTXOs; return falsish to stop waiting
      * @param abortSignal Optional external abort signal
      * @returns External deposit wait status
      * @throws {Error} if the swap is not in external mode or no additional deposit is required
      */
     async waitForExternalDeposit(
+        _intermediateWallet: IBitcoinWallet | MinimalBitcoinWalletInterface,
         maxWaitTimeSeconds?: number,
         pollIntervalSeconds?: number,
         onInvalidDeposit?: (invalidUtxos: ExternalDepositInvalidUtxo[]) => boolean | void | Promise<boolean | void>,
         abortSignal?: AbortSignal
     ): Promise<BitcoinWalletUtxo> {
-        const info = this.getExternalSwapModeInfoOrThrow("waitForExternalDeposit()");
-        if(!info.spendFully || info.requiredAdditionalUtxoAmount === 0n) {
+        const info = this.getIntermediateWalletSwapModeInfoOrThrow("waitForExternalDeposit()");
+        if(info.requiredDeposit == null) {
             throw new Error("No external deposit required for this SPV swap");
         }
+
+        const intermediateWallet = toBitcoinWallet(_intermediateWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
+        if(intermediateWallet.getUtxoPool==null) throw new Error("Bitcoin wallet has to implement getUtxoPool() fn!");
 
         const abortController = extendAbortController(
             abortSignal,
@@ -710,15 +755,20 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
         const ignoredUtxoKeys = new Set<string>();
         try {
             while(this._state !== SpvFromBTCSwapState.QUOTE_EXPIRED && await this._verifyQuoteValid()) {
-                const matchResult = await this.getMatchingExternalDepositUtxo(ignoredUtxoKeys);
+                const walletUtxos = await intermediateWallet.getUtxoPool();
+
+                this.getRehydratedSelectedExistingUtxos(walletUtxos);
+                const matchResult = this.getMatchingExternalDepositUtxo(walletUtxos, ignoredUtxoKeys);
                 if(matchResult.matchedUtxo != null) {
                     await this.setExternalDepositTxId(matchResult.matchedUtxo.txId);
                     return matchResult.matchedUtxo;
                 }
                 if(matchResult.invalidUtxos.length > 0) {
-                    if(onInvalidDeposit == null || await onInvalidDeposit(matchResult.invalidUtxos))
+                    if(onInvalidDeposit == null || !await onInvalidDeposit(matchResult.invalidUtxos))
                         throw new Error("Invalid Bitcoin amount deposited, please re-quote!");
-                    matchResult.invalidUtxos.forEach(invalidUtxo => ignoredUtxoKeys.add(invalidUtxo.key));
+                    matchResult.invalidUtxos.forEach(invalidUtxo => {
+                        if(invalidUtxo.reason!=="deposit_fee_too_low") ignoredUtxoKeys.add(invalidUtxo.key);
+                    });
                 }
 
                 const sleepTime = Math.min((pollIntervalSeconds ?? 5) * 1000, this.expiry - Date.now());
@@ -743,23 +793,15 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
      * funding set without change, while change-aware mode allows wallet change from the selected UTXOs.
      *
      * @param wallet Intermediate Bitcoin wallet able to sign the funded PSBT
-     * @param matchedNewUtxo Optional already-detected future deposit UTXO
      * @returns Bitcoin transaction id returned by {@link submitPsbt}
      * @throws {Error} if the swap is not in external mode, the required deposit is missing, or the quote expired
      */
-    async processExternalDeposit(
-        wallet: IBitcoinWallet | MinimalBitcoinWalletInterfaceWithSigner,
-        matchedNewUtxo?: BitcoinWalletUtxo
+    async processViaIntermediateWallet(
+        wallet: IBitcoinWallet | MinimalBitcoinWalletInterfaceWithSigner
     ): Promise<string> {
         if(!await this._verifyQuoteValid()) throw new Error("Swap quote expired!");
-        const {utxos, fundingFeeRate, spendFully} = await this.getAndCheckDepositUtxos(matchedNewUtxo);
-        const {psbt, psbtBase64, psbtHex, signInputs} = await this.getFundedPsbt(
-            wallet,
-            fundingFeeRate,
-            undefined,
-            utxos,
-            spendFully
-        );
+        if(this.swapMode!=="intermediate_wallet") throw new Error("Only available in intermediate wallet swap mode!");
+        const {psbt, psbtBase64, psbtHex, signInputs} = await this.getFundedPsbt(wallet);
         const signedPsbt = isIBitcoinWallet(wallet)
             ? await wallet.signPsbt(psbt, signInputs)
             : await wallet.signPsbt({psbt, psbtHex, psbtBase64}, signInputs);
@@ -772,8 +814,10 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
      * @returns Send-to-address action that waits only for the matching UTXO to appear
      * @throws {Error} if the swap is not in external mode
      */
-    private async _buildExternalDepositAddressAction(): Promise<SwapExecutionActionSendToAddress<false>> {
-        const info = this.getExternalSwapModeInfoOrThrow("_buildExternalDepositAddressAction()");
+    private async _buildExternalDepositAddressAction(
+        bitcoinWallet: IBitcoinWallet,
+    ): Promise<SwapExecutionActionSendToAddress<false>> {
+        const info = this.getIntermediateWalletSwapModeInfoOrThrow("_buildExternalDepositAddressAction()");
         return {
             type: "SendToAddress",
             name: "Deposit on Bitcoin",
@@ -784,7 +828,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
                 address: this.getAddress(),
                 hyperlink: this.getHyperlink(),
                 amount: toTokenAmount(
-                    info.requiredAdditionalUtxoAmount,
+                    info.requiredDeposit!.amount,
                     BitcoinTokens.BTC,
                     this.wrapper._prices,
                     this.pricingInfo
@@ -794,9 +838,10 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
                 maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, abortSignal?: AbortSignal
             ) => {
                 const waitStatus = await this.waitForExternalDeposit(
+                    bitcoinWallet,
                     maxWaitTimeSeconds,
                     pollIntervalSeconds,
-                    () => false,
+                    () => true,
                     abortSignal
                 );
                 return waitStatus.txId;
@@ -807,40 +852,25 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
     /**
      * Builds a funded PSBT action for signing with the external intermediate deposit wallet.
      *
-     * @param matchedNewUtxo Optional already-detected future deposit UTXO
-     * @param actionOptions Action options containing the intermediate Bitcoin wallet public data
+     * @param bitcoinWallet
+     * @param rehydratedWalletUtxos
      * @returns Funded PSBT action using the quote-stable external funding set
      * @throws {Error} if `bitcoinWallet` is missing while external mode is ready for PSBT signing
      */
     private async _buildExternalDepositPsbtAction(
-        matchedNewUtxo?: BitcoinWalletUtxo,
-        actionOptions?: {
-            bitcoinFeeRate?: number,
-            bitcoinWallet?: MinimalBitcoinWalletInterface
-        }
+        bitcoinWallet: IBitcoinWallet,
+        rehydratedWalletUtxos: BitcoinWalletUtxo[]
     ): Promise<SwapExecutionActionSignPSBT<"FUNDED_PSBT">> {
-        if(actionOptions?.bitcoinWallet == null) {
-            throw new Error("External SPV deposit mode requires options.bitcoinWallet to build the funded PSBT");
-        }
-
-        const {utxos, fundingFeeRate, spendFully} = await this.getAndCheckDepositUtxos(matchedNewUtxo);
         return {
             type: "SignPSBT",
             name: "Deposit on Bitcoin",
             description: "Sign and submit the Bitcoin swap transaction from the intermediate deposit wallet",
             chain: "BITCOIN",
             txs: [{
-                ...await this.getFundedPsbt(
-                    actionOptions.bitcoinWallet,
-                    fundingFeeRate,
-                    undefined,
-                    utxos,
-                    spendFully
-                ),
+                ...await this.getFundedPsbt(bitcoinWallet, undefined, undefined, rehydratedWalletUtxos),
                 type: "FUNDED_PSBT"
             }],
             submitPsbt: async (signedPsbt: string | Transaction | (string | Transaction)[], idempotent?: boolean) => {
-                await this.setExternalDepositTxId(matchedNewUtxo?.txId);
                 return this._submitExecutionTransactions(
                     Array.isArray(signedPsbt) ? signedPsbt : [signedPsbt],
                     undefined,
@@ -865,12 +895,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
         maxWaitTillAutomaticSettlementSeconds?: number
     }) {
         const executionStatus = await super._getExecutionStatus(options);
-        if(
-            this.swapMode !== "external" ||
-            this.externalSwapModeInfo == null
-        ) {
-            return executionStatus;
-        }
+        if(this.swapMode !== "intermediate_wallet") return executionStatus;
 
         let buildCurrentAction = executionStatus.buildCurrentAction;
         let matchedNewUtxo: BitcoinWalletUtxo | undefined;
@@ -878,13 +903,26 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
             executionStatus.state === SpvFromBTCSwapState.CREATED &&
             await this._verifyQuoteValid()
         ) {
-            matchedNewUtxo = this.externalSwapModeInfo.requiredAdditionalUtxoAmount === 0n
-                ? undefined
-                : (await this.getMatchingExternalDepositUtxo()).matchedUtxo ?? undefined;
-            await this.setExternalDepositTxId(matchedNewUtxo?.txId);
-            buildCurrentAction = this.externalSwapModeInfo.requiredAdditionalUtxoAmount !== 0n && matchedNewUtxo == null
-                ? this._buildExternalDepositAddressAction.bind(this)
-                : this._buildExternalDepositPsbtAction.bind(this, matchedNewUtxo ?? undefined);
+            if(options?.bitcoinWallet == null) {
+                throw new Error("Intermediate wallet swap mode requires options.bitcoinWallet to build the funded PSBT");
+            }
+
+            const bitcoinWallet = toBitcoinWallet(options.bitcoinWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
+            if(bitcoinWallet.getUtxoPool==null) throw new Error("Intermediate bitcoin wallet has to support getUtxoPool() fn!");
+            const rehydratedWalletUtxos = await bitcoinWallet.getUtxoPool();
+            this.getRehydratedSelectedExistingUtxos(rehydratedWalletUtxos);
+
+            if(this.externalSwapModeInfo?.requiredDeposit!=null) {
+                matchedNewUtxo = this.getMatchingExternalDepositUtxo(rehydratedWalletUtxos).matchedUtxo ?? undefined;
+                if(matchedNewUtxo!=null) {
+                    await this.setExternalDepositTxId(matchedNewUtxo?.txId);
+                    buildCurrentAction = this._buildExternalDepositPsbtAction.bind(this, bitcoinWallet, rehydratedWalletUtxos);
+                } else {
+                    buildCurrentAction = this._buildExternalDepositAddressAction.bind(this, bitcoinWallet)
+                }
+            } else {
+                buildCurrentAction = this._buildExternalDepositPsbtAction.bind(this, bitcoinWallet, rehydratedWalletUtxos);
+            }
         }
 
         const steps = executionStatus.steps;

@@ -46,6 +46,7 @@ import {BitcoinWalletUtxo, BitcoinWalletUtxoBase, IBitcoinWallet} from "../../bi
 import {utils} from "../../bitcoin/coinselect2/utils.js";
 import {BitcoinWallet} from "../../bitcoin/wallet/BitcoinWallet.js";
 import {SpvFromBTCSwapInit, SpvFromBTCSwapState} from "./SpvFromBTCSwapBase.js";
+import {MinimalBitcoinWalletInterface} from "../../types/wallets/MinimalBitcoinWalletInterface";
 
 export type SpvFromBTCOptions = {
     /**
@@ -118,11 +119,16 @@ export type SelectedUtxosInfo = {
     selectedUtxos: BitcoinWalletUtxoBase[],
     skipDetrimental: boolean,
     lpOutputAmount: bigint,
+    totalNetworkFee: bigint,
     changeOutputAmount?: bigint,
     additionalInputAmount?: bigint
 };
 
 export type UtxosInputSpecification = {
+    /**
+     * Receive address and public key of the source wallet, used when the funding plan requires an additional input.
+     */
+    sourceWallet: IBitcoinWallet,
     /**
      * A bitcoin wallet UTXOs to fully use as an input for this swap, use this option along with passing `amount` as
      *  `undefined` when you want to swap the full BTC balance of the wallet in a single swap
@@ -134,14 +140,16 @@ export type UtxosInputSpecification = {
      */
     sourceWalletSkipDetrimentalUtxos?: boolean,
     /**
-     * An address type is required when source wallet UTXOs and amount are both passed, this allows the estimation of
-     *  a change output fee
-     */
-    sourceWalletAddressType?: CoinselectAddressTypes,
-    /**
      * A CPFP assumption that should be made about a potential additional UTXO that the wallet needs to receive to
      *  make the swap, defaults to `{txVsize: 200, txEffectiveFeeRate: 1}`
      */
+    sourceWalletCpfpAssumption?: {txVsize: number, txEffectiveFeeRate: number}
+};
+
+type UtxosInputSpecificationResolved = {
+    sourceWalletUtxos: BitcoinWalletUtxo[] | Promise<BitcoinWalletUtxo[]>,
+    sourceWalletSkipDetrimentalUtxos?: boolean,
+    sourceWalletAddressType?: CoinselectAddressTypes,
     sourceWalletCpfpAssumption?: {txVsize: number, txEffectiveFeeRate: number}
 }
 
@@ -791,6 +799,7 @@ export class SpvFromBTCWrapper<
             selectedUtxos: spendableBalance.selectedUtxos,
             skipDetrimental,
             lpOutputAmount: spendableBalance.balance,
+            totalNetworkFee: BigInt(spendableBalance.totalFee),
             changeOutputAmount,
             additionalInputAmount
         };
@@ -921,7 +930,7 @@ export class SpvFromBTCWrapper<
         recipient: string,
         amountData: { amount?: bigint, token: string, exactIn: boolean },
         lps: Intermediary[],
-        utxoSpec?: UtxosInputSpecification,
+        utxoSpec?: UtxosInputSpecificationResolved,
         options?: SpvFromBTCOptions,
         additionalParams?: Record<string, any>,
         abortSignal?: AbortSignal
@@ -1149,13 +1158,6 @@ export class SpvFromBTCWrapper<
         });
     }
 
-    /*
-    TODO:
-     3. Wire the createWithUtxosExactIn() to pass the returned SelectedUtxoInfo to the created quote
-     4. Make SpvFromBTCSwap accept the pre-determined selected utxo, change output and additional funding requirements
-        (possibly revert existing changes there)
-     5. Wire this all in the Swapper
-     */
     public createWithUtxosExactIn(
         recipient: string,
         amountData: { amount?: bigint, token: string, exactIn: true },
@@ -1168,11 +1170,40 @@ export class SpvFromBTCWrapper<
         quote: Promise<SpvFromBTCSwap<T>>,
         intermediary: Intermediary
     }[] {
-        const createResult = this._create(recipient, amountData, lps, utxoSpec, options, additionalParams, abortSignal);
+        let utxos = utxoSpec.sourceWalletUtxos;
+        if(utxos==null) {
+            if(utxoSpec.sourceWallet.getUtxoPool==null) throw new Error("Wallet must implement getUtxoPool function!");
+            utxos = utxoSpec.sourceWallet.getUtxoPool();
+        }
+
+        if(utxoSpec.sourceWallet.getAddressInfo==null) throw new Error("Wallet must implement getAddressInfo function!");
+        const receiveWalletAddressInfo = utxoSpec.sourceWallet.getAddressInfo(false);
+        const sourceWalletAddressType = toCoinselectAddressType(this._options.bitcoinNetwork, receiveWalletAddressInfo.address);
+
+        const resolvedCpfpAssumption = utxoSpec.sourceWalletCpfpAssumption ?? DEFAULT_CPFP_ASSUMPTION;
+
+        const createResult = this._create(recipient, amountData, lps, {
+            sourceWalletUtxos: utxos,
+            sourceWalletAddressType,
+            sourceWalletCpfpAssumption: resolvedCpfpAssumption,
+            sourceWalletSkipDetrimentalUtxos: utxoSpec.sourceWalletSkipDetrimentalUtxos
+        }, options, additionalParams, abortSignal);
+
         return createResult.map(createResult => ({
             intermediary: createResult.intermediary,
             quote: createResult.result.then(async({quote, utxoSelection}) => {
-                //TODO: Apply the UTXO selection here
+                await quote._setSwapModeIntermediateWallet({
+                    walletAddressType: sourceWalletAddressType,
+                    selectedExistingUtxos: utxoSelection!.selectedUtxos as BitcoinWalletUtxo[],
+                    requiredDeposit: utxoSelection!.additionalInputAmount==null ? undefined : {
+                        ...receiveWalletAddressInfo,
+                        amount: utxoSelection!.additionalInputAmount,
+                        cpfpAssumptions: utxoSpec.sourceWalletCpfpAssumption ?? DEFAULT_CPFP_ASSUMPTION
+                    },
+                    changeAmount: utxoSelection!.changeOutputAmount,
+                    feeRate: quote.minimumBtcFeeRate,
+                    totalNetworkFee: utxoSelection!.totalNetworkFee
+                });
                 return quote;
             })
         }))

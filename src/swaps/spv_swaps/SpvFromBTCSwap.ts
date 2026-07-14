@@ -12,7 +12,6 @@ import {Transaction} from "@scure/btc-signer";
 import {Buffer} from "buffer";
 import {
     BitcoinWalletUtxo,
-    BitcoinWalletUtxoBase,
     IBitcoinWallet,
     isIBitcoinWallet
 } from "../../bitcoin/wallet/IBitcoinWallet.js";
@@ -256,15 +255,15 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
     }
 
     private getFinalizedCoinselect(
-        inputs: CoinselectTxInput[],
-        outputs: CoinselectTxOutput[]
+        inputs: Omit<CoinselectTxInput, "txId" | "address" | "vout" | "outputScript">[],
+        outputs: CoinselectTxOutput[],
+        feeRate: number = this.minimumBtcFeeRate,
+        changeType: CoinselectAddressTypes | null = null
     ) {
         const txDetails = this.getTransactionDetails();
         return utils.finalize(
             [
                 {
-                    txId: txDetails.in0txid,
-                    vout: txDetails.in0vout,
                     value: Number(txDetails.vaultAmount),
                     type: REQUIRED_SPV_SWAP_VAULT_ADDRESS_TYPE
                 },
@@ -285,8 +284,8 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
                 },
                 ...outputs
             ],
-            this.minimumBtcFeeRate,
-            null
+            feeRate,
+            changeType
         );
     }
 
@@ -379,12 +378,11 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
      *
      * @param intermediateWallet Intermediate Bitcoin wallet or deposit address. Wallets provide the receive address via
      *  `getReceiveAddress()` and, when `existingUtxos` is omitted, must support `getUtxoPool()`.
-     * @param existingUtxos Optional quote-time UTXO set for `walletOrAddress`; when passed, the objects are kept in
+     * @param existingUtxos Optional quote-time UTXO set for `intermediateWallet`; when passed, the objects are kept in
      *  memory as-is and only narrowed during serialization.
      * @param feeRate Optional Bitcoin fee rate in sats/vB; normalized to at least this quote's minimum LP fee rate.
      * @param cpfpAssumptions CPFP metadata for the future incoming UTXO; defaults to a conservative small package.
-     * @throws {Error} if a wallet cannot expose UTXOs and `existingUtxos` is omitted, or if `spendFully=false` and
-     * the selected UTXOs cannot fund the quote without an additional deposit
+     * @throws {Error} if the wallet cannot expose the information required for its funding plan or the fee rate is invalid
      */
     async setSwapModeIntermediateWallet(
         intermediateWallet: IBitcoinWallet | MinimalBitcoinWalletInterface,
@@ -399,12 +397,90 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
 
         const wallet = toBitcoinWallet(intermediateWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
 
-        //Get wallet UTXOs or use provided existingUtxos
+        if(existingUtxos==null) {
+            if(wallet.getUtxoPool==null) throw new Error("Intermediate bitcoin wallet has to support getUtxoPool() fn!");
+            existingUtxos = await wallet.getUtxoPool();
+        }
 
-        //Use coinselect.finalize() to determine whether a change output should be added, and whether an additional external
-        // deposit is required, always use skipDetrimental=false and always spend all the available UTXOs
+        if(wallet.getAddressInfo==null) throw new Error("Wallet must implement getAddressInfo function!");
+        const walletAddressInfo = wallet.getAddressInfo(false);
+        const walletAddressType = toCoinselectAddressType(this.wrapper._options.bitcoinNetwork, walletAddressInfo.address);
 
-        //Save the created funding plan this.externalSwapModeInfo and set the swap mode
+        let resolvedFeeRate = Math.max(feeRate ?? this.minimumBtcFeeRate, this.minimumBtcFeeRate);
+        if(!Number.isFinite(resolvedFeeRate) || resolvedFeeRate<=0) throw new Error("Bitcoin fee rate must be a positive number!");
+        const resolvedCpfpAssumptions = cpfpAssumptions ?? DEFAULT_CPFP_ASSUMPTION;
+
+        let totalNetworkFee: bigint;
+        let requiredDepositAmount: bigint | undefined;
+        let changeAmount: bigint | undefined;
+
+        const {fee, effectiveFeeRate, expectedFee, changeOutputAdded} = this.getFinalizedCoinselect(existingUtxos, [], resolvedFeeRate, walletAddressType);
+        if(effectiveFeeRate!=null && fee>=expectedFee) {
+            //Wallet has enough funds
+            if(changeOutputAdded) {
+                //Also change output should be added
+                changeAmount = BigInt(changeOutputAdded.value);
+            }
+            totalNetworkFee = BigInt(fee);
+            resolvedFeeRate = effectiveFeeRate;
+        } else {
+            //Requires additional fake UTXO to fund
+            //Calculate tx size with 1 additional UTXO
+            const expectedUtxo: Omit<CoinselectTxInput, "txId" | "address" | "vout" | "outputScript"> = {
+                value: 0,
+                type: walletAddressType,
+                cpfp: resolvedCpfpAssumptions
+            };
+            const {expectedFee} = this.getFinalizedCoinselect([expectedUtxo].concat(existingUtxos), [], resolvedFeeRate);
+            const existingUtxoBalance = existingUtxos.reduce((total, utxo) => total + BigInt(utxo.value), 0n);
+
+            //Calculate additional external funding required
+            requiredDepositAmount = super.getInput().rawAmount + BigInt(expectedFee) - existingUtxoBalance;
+
+            //Check sub-dust
+            const dustThreshold = BigInt(utils.dustThreshold({type: walletAddressType}));
+            if(requiredDepositAmount<dustThreshold) {
+                requiredDepositAmount = dustThreshold;
+            }
+
+            //Re-calculate the final coinselection result
+            expectedUtxo.value = Number(requiredDepositAmount);
+            const finalResult = this.getFinalizedCoinselect([expectedUtxo].concat(existingUtxos), [], resolvedFeeRate);
+            totalNetworkFee = BigInt(finalResult.fee);
+            resolvedFeeRate = finalResult.effectiveFeeRate!;
+        }
+
+        return await this._setSwapModeIntermediateWallet({
+            walletAddressType,
+            selectedExistingUtxos: existingUtxos,
+            requiredDeposit: requiredDepositAmount==null ? undefined : {
+                ...walletAddressInfo,
+                amount: requiredDepositAmount,
+                cpfpAssumptions: resolvedCpfpAssumptions
+            },
+            changeAmount,
+            feeRate: resolvedFeeRate,
+            totalNetworkFee
+        });
+    }
+
+    /**
+     * Applies a precomputed intermediate-wallet funding plan to this swap.
+     *
+     * @param fundingPlan Verified funding plan produced while creating the quote
+     * @returns The applied intermediate-wallet mode information
+     * @internal
+     */
+    async _setSwapModeIntermediateWallet(
+        fundingPlan: SpvFromBTCIntermediateWalletSwapModeInfo
+    ): Promise<SpvFromBTCIntermediateWalletSwapModeInfo> {
+        if(this._state !== SpvFromBTCSwapState.CREATED) throw new Error("Cannot change swap mode outside of CREATED state!");
+
+        this.swapMode = "intermediate_wallet";
+        this.externalSwapModeInfo = fundingPlan;
+        this.externalDepositTxId = undefined;
+        if(this._persisted) await this._save();
+        return fundingPlan;
     }
 
     /**
@@ -916,123 +992,6 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
         SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
     ]> {
         return (await this._getExecutionStatus(options)).steps;
-    }
-
-    /**
-     * Estimates the additional future UTXO needed for the external deposit wallet's selected funding set.
-     *
-     * @remarks
-     * With `spendFully=true`, external mode spends every UTXO supplied in `existingUtxos`, including inputs that
-     * increase the effective network fee. With `spendFully=false`, the selected UTXOs fund the quote with wallet
-     * change allowed and this method only reports whether the selected set can already fund the quote. The returned
-     * `requiredAdditionalUtxoAmount` is the value a caller should deposit as one future UTXO in full-spend mode; when
-     * selected UTXOs already cover the quote and Bitcoin network fee it is zero.
-     *
-     * @param existingUtxos Existing deposit-address UTXOs selected for the quote, including unconfirmed CPFP data
-     * @param addressType Address type for the future incoming UTXO or wallet change output
-     * @param feeRate Bitcoin fee rate in sats/vB used for the final funding transaction
-     * @param cpfpAssumptions Optional CPFP package-fee model for the future incoming UTXO
-     * @param spendFully Whether to estimate the selected UTXOs as fully spent without change; defaults to `true`
-     * @returns Required total BTC input, current selected balance, network fee, required future UTXO, and excess balance
-     */
-    getInputUtxoAmount(
-        existingUtxos: BitcoinWalletUtxoBase[],
-        addressType: CoinselectAddressTypes,
-        feeRate: number,
-        cpfpAssumptions?: {
-            txVsize: number,
-            txEffectiveFeeRate: number
-        },
-        spendFully: boolean = true
-    ): {
-        totalRequiredInputAmount: TokenAmount<BtcToken<false>, true>,
-        existingBalance: TokenAmount<BtcToken<false>, true>,
-        totalNetworkFee: TokenAmount<BtcToken<false>, true>,
-        requiredAdditionalUtxoAmount: TokenAmount<BtcToken<false>, true>,
-        excessExistingBalance: TokenAmount<BtcToken<false>, true>
-    } {
-        let cpfpFeeSum = existingUtxos.reduce((prev, current) => prev + utils.inputCpfpAdditionalFee(current, feeRate), 0);
-        const existingUtxoBalance = BigInt(existingUtxos.reduce((prev, current) => prev + current.value, 0));
-
-        const txDetails = this.getTransactionDetails();
-        const requiredSendAmount = super.getInput().rawAmount;
-        const requiredInputs = [
-            {
-                type: REQUIRED_SPV_SWAP_VAULT_ADDRESS_TYPE,
-                value: Number(txDetails.vaultAmount)
-            },
-            ...existingUtxos
-        ];
-        const outputs = [
-            {
-                value: Number(txDetails.vaultAmount),
-                script: Buffer.from(txDetails.vaultScript)
-            },
-            {
-                value: 0,
-                script: Buffer.from(txDetails.out1script)
-            },
-            {
-                value: Number(txDetails.out2amount),
-                script: Buffer.from(txDetails.out2script)
-            }
-        ];
-
-        if(!spendFully) {
-            const coinselectResult = utils.finalize(requiredInputs, outputs, feeRate, addressType, cpfpFeeSum);
-            const requiredFee = BigInt(Math.ceil(coinselectResult.fee));
-            const totalRequiredInputAmount = requiredSendAmount + requiredFee;
-            let additionalUtxoAmount = totalRequiredInputAmount - existingUtxoBalance;
-            let excessExistingBalance = 0n;
-            if(additionalUtxoAmount <= 0n) {
-                excessExistingBalance = -additionalUtxoAmount;
-                additionalUtxoAmount = 0n;
-            }
-
-            return {
-                totalRequiredInputAmount: toTokenAmount(totalRequiredInputAmount, BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo),
-                existingBalance: toTokenAmount(existingUtxoBalance, BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo),
-                totalNetworkFee: toTokenAmount(requiredFee, BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo),
-                requiredAdditionalUtxoAmount: toTokenAmount(additionalUtxoAmount, BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo),
-                excessExistingBalance: toTokenAmount(excessExistingBalance, BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo)
-            };
-        }
-
-        let txSize = utils.transactionBytes(requiredInputs, outputs);
-
-        let requiredFee = BigInt(Math.ceil((txSize * feeRate) + cpfpFeeSum));
-        let totalRequiredInputAmount = requiredSendAmount + requiredFee;
-        let additionalUtxoAmount = totalRequiredInputAmount - existingUtxoBalance;
-        let excessExistingBalance = 0n;
-        if(additionalUtxoAmount <= 0n) {
-            excessExistingBalance = -additionalUtxoAmount;
-            additionalUtxoAmount = 0n;
-        } else {
-            const expectedUtxo = {
-                type: addressType,
-                cpfp: cpfpAssumptions
-            };
-            txSize = utils.transactionBytes([...requiredInputs, expectedUtxo], outputs);
-            cpfpFeeSum += utils.inputCpfpAdditionalFee(expectedUtxo, feeRate);
-            requiredFee = BigInt(Math.ceil((txSize * feeRate) + cpfpFeeSum));
-            totalRequiredInputAmount = requiredSendAmount + requiredFee;
-            additionalUtxoAmount = totalRequiredInputAmount - existingUtxoBalance;
-            const dustThreshold = BigInt(utils.dustThreshold(expectedUtxo));
-            if(additionalUtxoAmount < dustThreshold) {
-                // If below dust, let the additional dust amount be consumed as fees.
-                requiredFee += dustThreshold - additionalUtxoAmount;
-                totalRequiredInputAmount = requiredSendAmount + requiredFee;
-                additionalUtxoAmount = dustThreshold;
-            }
-        }
-
-        return {
-            totalRequiredInputAmount: toTokenAmount(totalRequiredInputAmount, BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo),
-            existingBalance: toTokenAmount(existingUtxoBalance, BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo),
-            totalNetworkFee: toTokenAmount(requiredFee, BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo),
-            requiredAdditionalUtxoAmount: toTokenAmount(additionalUtxoAmount, BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo),
-            excessExistingBalance: toTokenAmount(excessExistingBalance, BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo)
-        };
     }
 
 }

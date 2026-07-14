@@ -165,9 +165,13 @@ function finalize<T extends Omit<CoinselectTxInput, "txId" | "address" | "vout" 
     inputs?: T[],
     outputs?: CoinselectTxOutput[],
     effectiveFeeRate?: number,
-    fee: number
+    changeOutputAdded?: CoinselectTxOutput,
+    fee: number,
+    expectedFee: number
 } {
-  const bytesAccum = transactionBytes(inputs, outputs, changeType ?? undefined);
+  let changeOutputAdded: CoinselectTxOutput | undefined = undefined;
+
+  let bytesAccum = transactionBytes(inputs, outputs, changeType ?? undefined);
   logger.debug("finalize(): Transaction bytes: ", bytesAccum);
 
   const cpfpAddFee = inputs.reduce(
@@ -176,20 +180,27 @@ function finalize<T extends Omit<CoinselectTxInput, "txId" | "address" | "vout" 
   );
 
   if(changeType!=null) {
-      const feeAfterExtraOutput = Math.ceil((feeRate * (bytesAccum + outputBytes({type: changeType}))) + cpfpAddFee);
+      const bytesWithChangeOutput = transactionBytes(inputs, [...outputs, {type: changeType}], changeType);
+      const feeAfterExtraOutput = Math.ceil((feeRate * bytesWithChangeOutput) + cpfpAddFee);
+
       logger.debug("finalize(): TX fee after adding change output: ", feeAfterExtraOutput);
       const remainderAfterExtraOutput = Math.floor(sumOrNaN(inputs) - (sumOrNaN(outputs) + feeAfterExtraOutput));
       logger.debug("finalize(): Leaves change (changeType="+changeType+") value: ", remainderAfterExtraOutput);
 
       // is it worth a change output?
       if (remainderAfterExtraOutput >= dustThreshold({type: changeType})) {
-          outputs = outputs.concat({ value: remainderAfterExtraOutput, type: changeType })
+          changeOutputAdded = { value: remainderAfterExtraOutput, type: changeType };
+          outputs = outputs.concat(changeOutputAdded);
+          bytesAccum = bytesWithChangeOutput;
       }
   }
 
   const fee = sumOrNaN(inputs) - sumOrNaN(outputs);
   logger.debug("finalize(): Re-calculated total fee: ", fee);
-  if (!isFinite(fee) || fee<0) return { fee: Math.ceil((feeRate * bytesAccum) + cpfpAddFee) }
+  if (!isFinite(fee) || fee<0) {
+      const expectedFee = Math.ceil((feeRate * bytesAccum) + cpfpAddFee);
+      return { expectedFee, fee: expectedFee };
+  }
 
   let txVSize = transactionBytes(inputs, outputs);
   let txFee = fee;
@@ -207,10 +218,12 @@ function finalize<T extends Omit<CoinselectTxInput, "txId" | "address" | "vout" 
   );
 
   return {
+    expectedFee: Math.ceil((feeRate * bytesAccum) + cpfpAddFee),
     inputs: inputs,
     outputs: outputs,
     effectiveFeeRate: txFee / txVSize,
-    fee: fee
+    fee,
+    changeOutputAdded
   }
 }
 

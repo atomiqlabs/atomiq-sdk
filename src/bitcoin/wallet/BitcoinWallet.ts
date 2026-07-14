@@ -232,7 +232,10 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
             inputAddressIndexes[input.address!].push(index);
         });
 
-        await addPsbtInputs(psbt, coinselectResult.inputs, this.rpc, this.network);
+        await addPsbtInputs(psbt, coinselectResult.inputs.map(
+            input => ({...input, type: input.type!, outputScript: input.outputScript!, publicKey: input.publicKey!})),
+            this.rpc, this.network
+        );
 
         coinselectResult.outputs.forEach(output => {
             if(output.script==null && output.address==null) {

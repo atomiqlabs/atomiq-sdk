@@ -5,7 +5,7 @@ import {BitcoinNetwork, BitcoinRpc, BitcoinRpcWithAddressIndex} from "@atomiqlab
 import {TransactionInputUpdate} from "@scure/btc-signer/psbt";
 import {p2tr, p2wpkh, Transaction} from "@scure/btc-signer";
 import {Buffer} from "buffer";
-import {CoinselectTxInput} from "../bitcoin/coinselect2";
+import {CoinselectAddressTypes, CoinselectTxInput} from "../bitcoin/coinselect2";
 
 export function toBitcoinWallet(
     _bitcoinWallet: IBitcoinWallet | { address: string, publicKey: string },
@@ -21,7 +21,14 @@ export function toBitcoinWallet(
 
 export async function addPsbtInputs(
     psbt: Transaction,
-    inputs: CoinselectTxInput[],
+    inputs: {
+        txId: string,
+        vout: number,
+        type: CoinselectAddressTypes,
+        outputScript: Uint8Array,
+        publicKey: string,
+        value: number
+    }[],
     rpc: BitcoinRpc<any>,
     network: BTC_NETWORK
 ): Promise<void> {

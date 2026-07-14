@@ -225,3 +225,15 @@ export function getSenderAddress(psbt: Transaction, network: BTC_NETWORK, inputI
         return Buffer.from(script).toString("hex");
     }
 }
+
+export function getUtxoKey(utxo: {txId: string, vout: number}): string {
+    return `${utxo.txId}:${utxo.vout}`;
+}
+
+export function toUtxoMap<T extends {txId: string, vout: number}>(utxos: T[]): Map<string, T> {
+    return new Map<string, T>(utxos.map(utxo => ([getUtxoKey(utxo), utxo])));
+}
+
+export function toUtxoSet(utxos: {txId: string, vout: number}[]): Set<string> {
+    return new Set<string>(utxos.map(utxo => getUtxoKey(utxo)));
+}

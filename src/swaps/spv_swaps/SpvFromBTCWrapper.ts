@@ -94,6 +94,44 @@ export type SpvFromBTCOptions = {
     bitcoinFeeRate?: Promise<number> | number,
 
     /**
+     * Source-wallet UTXOs from which to derive an exact-input quote. This option is only valid for exact-input swaps.
+     *
+     * When `amount` is `undefined`, the quote sweeps the spendable value of these UTXOs after Bitcoin network fees.
+     * When `amount` is provided, it is the total BTC input budget including Bitcoin network fees; this also requires
+     * {@link sourceWalletAddressType} and `sourceWalletSkipDetrimentalUtxos: false`. If the supplied UTXOs do not cover
+     * that budget, the funding calculation models one additional UTXO using {@link sourceWalletCpfpAssumption}.
+     *
+     * This is a low-level funding override used by wallet-sweep and intermediate-wallet quote flows. Prefer the
+     * dedicated swapper helpers for those flows where available.
+     */
+    sourceWalletUtxos?: BitcoinWalletUtxo[] | Promise<BitcoinWalletUtxo[]>,
+    /**
+     * Whether to exclude detrimental UTXOs whose value is lower than the fee required to spend them, including any
+     * CPFP fee. Defaults to `false`.
+     *
+     * Must not be set to `true` when {@link sourceWalletUtxos} is used with a provided exact-input `amount`, because
+     * that mode calculates the quote from the complete supplied funding set.
+     */
+    sourceWalletSkipDetrimentalUtxos?: boolean,
+    /**
+     * CPFP assumptions for the transaction that creates a potential additional source-wallet UTXO when the supplied
+     * UTXOs do not cover a provided exact-input `amount`. `txVsize` is the parent transaction size in vbytes and
+     * `txEffectiveFeeRate` is its effective fee rate in sats/vB. These values affect the quote-time funding and fee
+     * calculation only for that modeled future UTXO.
+     *
+     * Defaults to `{txVsize: 200, txEffectiveFeeRate: 1}`.
+     */
+    sourceWalletCpfpAssumption?: {txVsize: number, txEffectiveFeeRate: number},
+    /**
+     * Bitcoin address type of the source wallet's change/receive address. It is used to estimate the size and dust
+     * threshold of a change output or an additional funding UTXO.
+     *
+     * Required when {@link sourceWalletUtxos} is combined with a provided exact-input `amount`; ignored for a full
+     * sweep where `amount` is `undefined`. Wallet-based helpers infer this value from the wallet's receive address.
+     */
+    sourceWalletAddressType?: CoinselectAddressTypes
+
+    /**
      * @deprecated Use `maxAllowedBitcoinFeeRate` instead!
      */
     maxAllowedNetworkFeeRate?: number,
@@ -123,35 +161,6 @@ export type SelectedUtxosInfo = {
     changeOutputAmount?: bigint,
     additionalInputAmount?: bigint
 };
-
-export type UtxosInputSpecification = {
-    /**
-     * Receive address and public key of the source wallet, used when the funding plan requires an additional input.
-     */
-    sourceWallet: IBitcoinWallet,
-    /**
-     * A bitcoin wallet UTXOs to fully use as an input for this swap, use this option along with passing `amount` as
-     *  `undefined` when you want to swap the full BTC balance of the wallet in a single swap
-     */
-    sourceWalletUtxos: BitcoinWalletUtxo[] | Promise<BitcoinWalletUtxo[]>,
-    /**
-     * Whether non-economical detrimental UTXOs should be skipped when selecting the source-wallet UTXOs, defaults
-     *  to `true`.
-     */
-    sourceWalletSkipDetrimentalUtxos?: boolean,
-    /**
-     * A CPFP assumption that should be made about a potential additional UTXO that the wallet needs to receive to
-     *  make the swap, defaults to `{txVsize: 200, txEffectiveFeeRate: 1}`
-     */
-    sourceWalletCpfpAssumption?: {txVsize: number, txEffectiveFeeRate: number}
-};
-
-type UtxosInputSpecificationResolved = {
-    sourceWalletUtxos: BitcoinWalletUtxo[] | Promise<BitcoinWalletUtxo[]>,
-    sourceWalletSkipDetrimentalUtxos?: boolean,
-    sourceWalletAddressType?: CoinselectAddressTypes,
-    sourceWalletCpfpAssumption?: {txVsize: number, txEffectiveFeeRate: number}
-}
 
 /**
  * New spv vault (UTXO-controlled vault) based swaps for Bitcoin -> Smart chain swaps not requiring
@@ -913,15 +922,14 @@ export class SpvFromBTCWrapper<
      *   (without network fees) for the swap
      *  - Exact input with UTXOs - amount is optional:
      *      - Without amount - spends the whole balance of UTXOs that are passed (optionally skipping uneconomical
-     *       utxos, controlled with the `utxoSpec.sourceWalletSkipDetrimentalUtxos` option
+     *       utxos, controlled with the `options.sourceWalletSkipDetrimentalUtxos` option
      *      - With amount - specifies the input amount in BTC WITH the network fees already included, in this case
      *       all inputs are used without checking whether they are economical to spend
-     *       (`utxoSpec.sourceWalletSkipDetrimentalUtxos` has to be explicitly set to `false`)
+     *       (`options.sourceWalletSkipDetrimentalUtxos` has to be explicitly set to `false`)
      *
      * @param recipient Recipient address on the destination smart chain
      * @param amountData Amount, token and exact input/output data for to swap
      * @param lps An array of intermediaries (LPs) to get the quotes from
-     * @param utxoSpec Specification for UTXOs to be used in exact input mode
      * @param options Optional additional quote options
      * @param additionalParams Optional additional parameters sent to the LP when creating the swap
      * @param abortSignal Abort signal
@@ -930,7 +938,6 @@ export class SpvFromBTCWrapper<
         recipient: string,
         amountData: { amount?: bigint, token: string, exactIn: boolean },
         lps: Intermediary[],
-        utxoSpec?: UtxosInputSpecificationResolved,
         options?: SpvFromBTCOptions,
         additionalParams?: Record<string, any>,
         abortSignal?: AbortSignal
@@ -946,15 +953,15 @@ export class SpvFromBTCWrapper<
             unsafeZeroWatchtowerFee: options?.unsafeZeroWatchtowerFee ?? false,
             feeSafetyFactor: options?.feeSafetyFactor ?? 1.25,
             maxAllowedBitcoinFeeRate: options?.maxAllowedBitcoinFeeRate ?? options?.maxAllowedNetworkFeeRate ?? Infinity,
-            sourceWalletUtxos: utxoSpec?.sourceWalletUtxos==undefined
+            sourceWalletUtxos: options?.sourceWalletUtxos==undefined
                 ? undefined
-                : utxoSpec?.sourceWalletUtxos instanceof Promise ? utxoSpec.sourceWalletUtxos : Promise.resolve(utxoSpec.sourceWalletUtxos),
+                : options?.sourceWalletUtxos instanceof Promise ? options.sourceWalletUtxos : Promise.resolve(options.sourceWalletUtxos),
             bitcoinFeeRate: options?.bitcoinFeeRate==undefined
                 ? undefined
                 : options?.bitcoinFeeRate instanceof Promise ? options.bitcoinFeeRate : Promise.resolve(options.bitcoinFeeRate),
-            sourceWalletSkipDetrimentalUtxos: utxoSpec?.sourceWalletSkipDetrimentalUtxos ?? true,
-            sourceWalletAddressType: utxoSpec?.sourceWalletAddressType,
-            sourceWalletCpfpAssumption: utxoSpec?.sourceWalletCpfpAssumption ?? DEFAULT_CPFP_ASSUMPTION
+            sourceWalletSkipDetrimentalUtxos: options?.sourceWalletSkipDetrimentalUtxos ?? false,
+            sourceWalletAddressType: options?.sourceWalletAddressType,
+            sourceWalletCpfpAssumption: options?.sourceWalletCpfpAssumption ?? DEFAULT_CPFP_ASSUMPTION
         };
 
         if(
@@ -1162,7 +1169,7 @@ export class SpvFromBTCWrapper<
         recipient: string,
         amountData: { amount?: bigint, token: string, exactIn: true },
         lps: Intermediary[],
-        utxoSpec: UtxosInputSpecification,
+        bitcoinWallet: IBitcoinWallet,
         options?: SpvFromBTCOptions,
         additionalParams?: Record<string, any>,
         abortSignal?: AbortSignal
@@ -1170,24 +1177,24 @@ export class SpvFromBTCWrapper<
         quote: Promise<SpvFromBTCSwap<T>>,
         intermediary: Intermediary
     }[] {
-        let utxos = utxoSpec.sourceWalletUtxos;
+        let utxos = options?.sourceWalletUtxos;
         if(utxos==null) {
-            if(utxoSpec.sourceWallet.getUtxoPool==null) throw new Error("Wallet must implement getUtxoPool function!");
-            utxos = utxoSpec.sourceWallet.getUtxoPool();
+            if(bitcoinWallet.getUtxoPool==null) throw new Error("Wallet must implement getUtxoPool function!");
+            utxos = bitcoinWallet.getUtxoPool();
         }
 
-        if(utxoSpec.sourceWallet.getAddressInfo==null) throw new Error("Wallet must implement getAddressInfo function!");
-        const receiveWalletAddressInfo = utxoSpec.sourceWallet.getAddressInfo(false);
+        if(bitcoinWallet.getAddressInfo==null) throw new Error("Wallet must implement getAddressInfo function!");
+        const receiveWalletAddressInfo = bitcoinWallet.getAddressInfo(false);
         const sourceWalletAddressType = toCoinselectAddressType(this._options.bitcoinNetwork, receiveWalletAddressInfo.address);
 
-        const resolvedCpfpAssumption = utxoSpec.sourceWalletCpfpAssumption ?? DEFAULT_CPFP_ASSUMPTION;
+        const resolvedCpfpAssumption = options?.sourceWalletCpfpAssumption ?? DEFAULT_CPFP_ASSUMPTION;
 
         const createResult = this._create(recipient, amountData, lps, {
+            ...options,
             sourceWalletUtxos: utxos,
-            sourceWalletAddressType,
             sourceWalletCpfpAssumption: resolvedCpfpAssumption,
-            sourceWalletSkipDetrimentalUtxos: utxoSpec.sourceWalletSkipDetrimentalUtxos
-        }, options, additionalParams, abortSignal);
+            sourceWalletAddressType
+        }, additionalParams, abortSignal);
 
         return createResult.map(createResult => ({
             intermediary: createResult.intermediary,
@@ -1198,7 +1205,7 @@ export class SpvFromBTCWrapper<
                     requiredDeposit: utxoSelection!.additionalInputAmount==null ? undefined : {
                         ...receiveWalletAddressInfo,
                         amount: utxoSelection!.additionalInputAmount,
-                        cpfpAssumptions: utxoSpec.sourceWalletCpfpAssumption ?? DEFAULT_CPFP_ASSUMPTION
+                        cpfpAssumptions: resolvedCpfpAssumption
                     },
                     changeAmount: utxoSelection!.changeOutputAmount,
                     feeRate: quote.minimumBtcFeeRate,
@@ -1232,7 +1239,7 @@ export class SpvFromBTCWrapper<
         quote: Promise<SpvFromBTCSwap<T>>,
         intermediary: Intermediary
     }[] {
-        return this._create(recipient, amountData, lps, undefined, options, additionalParams, abortSignal).map(response => ({
+        return this._create(recipient, amountData, lps, options, additionalParams, abortSignal).map(response => ({
             intermediary: response.intermediary,
             quote: response.result.then(result => result.quote),
         }));

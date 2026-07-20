@@ -1150,6 +1150,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
      * @param exactOut Whether to use a exact out instead of exact in
      * @param additionalParams Additional parameters sent to the LP when creating the swap
      * @param options Additional options for the swap
+     * @param postQuoteCreateCallback
      */
     async createFromBTCSwapNew<ChainIdentifier extends ChainIds<T>>(
         chainIdentifier: ChainIdentifier,
@@ -1158,7 +1159,8 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
         amount: bigint | null,
         exactOut: boolean = false,
         additionalParams: Record<string, any> | undefined = this.options.defaultAdditionalParameters,
-        options?: SpvFromBTCOptions
+        options?: SpvFromBTCOptions,
+        postQuoteCreateCallback: (quote: SpvFromBTCSwap<T[ChainIdentifier]>) => Promise<SpvFromBTCSwap<T[ChainIdentifier]>> = (quote) => Promise.resolve(quote),
     ): Promise<SpvFromBTCSwap<T[ChainIdentifier]>> {
         if(this._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);
         if(this._chains[chainIdentifier].wrappers[SwapType.SPV_VAULT_FROM_BTC]==null) throw new Error("Chain "+chainIdentifier+" doesn't support new BTC swap protocol (spv vault swaps)!");
@@ -1169,7 +1171,10 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
             token: tokenAddress,
             exactIn: !exactOut
         };
-        return this.createSwap(
+        return this.createSwap<
+            ChainIdentifier,
+            SpvFromBTCSwap<T[ChainIdentifier]>
+        >(
             chainIdentifier as ChainIdentifier,
             (candidates: Intermediary[], abortSignal: AbortSignal, chain) => Promise.resolve(chain.wrappers[SwapType.SPV_VAULT_FROM_BTC].create(
                 recipient,
@@ -1178,7 +1183,7 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                 options,
                 additionalParams,
                 abortSignal
-            )),
+            ).map(({quote, intermediary}) => ({quote: quote.then(postQuoteCreateCallback), intermediary}))),
             amountData,
             SwapType.SPV_VAULT_FROM_BTC
         );
@@ -1648,16 +1653,17 @@ export class Swapper<T extends MultiChain> extends EventEmitter<{
                             const spvOptions = options as SpvFromBTCOptions | undefined;
                             return this.createFromBTCSwapNew(
                                 dstToken.chainId, dst, dstToken.address, amount, true, undefined,
-                                {...spvOptions, sourceWalletUtxos: undefined}
-                            ).then(async swap => {
-                                await swap.setSwapModeIntermediateWallet(
-                                    src as IBitcoinWallet | MinimalBitcoinWalletInterface,
-                                    await spvOptions?.sourceWalletUtxos,
-                                    await spvOptions?.bitcoinFeeRate,
-                                    spvOptions?.sourceWalletCpfpAssumption
-                                );
-                                return swap;
-                            });
+                                {...spvOptions, sourceWalletUtxos: undefined},
+                                async swap => {
+                                    await swap.setSwapModeIntermediateWallet(
+                                        src as IBitcoinWallet | MinimalBitcoinWalletInterface,
+                                        await spvOptions?.sourceWalletUtxos,
+                                        await spvOptions?.bitcoinFeeRate,
+                                        spvOptions?.sourceWalletCpfpAssumption
+                                    );
+                                    return swap;
+                                }
+                            );
                         }
                         if(amount==null) throw new Error("Amount cannot be null for from btc swaps!");
                         return this.createFromBTCSwapNew(dstToken.chainId, dst, dstToken.address, amount, !exactIn, undefined, options as any);

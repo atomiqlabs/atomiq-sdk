@@ -153,6 +153,16 @@ export const REQUIRED_SPV_SWAP_VAULT_ADDRESS_TYPE: CoinselectAddressTypes = "p2t
 export const REQUIRED_SPV_SWAP_LP_ADDRESS_TYPE: CoinselectAddressTypes = "p2wpkh";
 export const DEFAULT_CPFP_ASSUMPTION = {txVsize: 200, txEffectiveFeeRate: 1};
 
+export function assertSupportedSpvFundingType(
+    type: CoinselectAddressTypes
+): asserts type is "p2wpkh" | "p2sh-p2wpkh" | "p2tr" {
+    if(type!=="p2wpkh" && type!=="p2sh-p2wpkh" && type!=="p2tr") {
+        throw new UserError(
+            `Unsupported SPV funding address type: ${type}. Supported types: p2wpkh, p2sh-p2wpkh, p2tr`
+        );
+    }
+}
+
 export type SelectedUtxosInfo = {
     selectedUtxos: BitcoinWalletUtxoBase[],
     skipDetrimental: boolean,
@@ -1177,21 +1187,26 @@ export class SpvFromBTCWrapper<
         quote: Promise<SpvFromBTCSwap<T>>,
         intermediary: Intermediary
     }[] {
+        if(bitcoinWallet.getAddressInfo==null) throw new Error("Wallet must implement getAddressInfo function!");
+        const receiveWalletAddressInfo = bitcoinWallet.getAddressInfo(false);
+        const sourceWalletAddressType = toCoinselectAddressType(this._options.bitcoinNetwork, receiveWalletAddressInfo.address);
+        assertSupportedSpvFundingType(sourceWalletAddressType);
+
         let utxos = options?.sourceWalletUtxos;
         if(utxos==null) {
             if(bitcoinWallet.getUtxoPool==null) throw new Error("Wallet must implement getUtxoPool function!");
             utxos = bitcoinWallet.getUtxoPool();
         }
-
-        if(bitcoinWallet.getAddressInfo==null) throw new Error("Wallet must implement getAddressInfo function!");
-        const receiveWalletAddressInfo = bitcoinWallet.getAddressInfo(false);
-        const sourceWalletAddressType = toCoinselectAddressType(this._options.bitcoinNetwork, receiveWalletAddressInfo.address);
+        const validatedUtxos = Promise.resolve(utxos).then(resolvedUtxos => {
+            resolvedUtxos.forEach(utxo => assertSupportedSpvFundingType(utxo.type));
+            return resolvedUtxos;
+        });
 
         const resolvedCpfpAssumption = options?.sourceWalletCpfpAssumption ?? DEFAULT_CPFP_ASSUMPTION;
 
         const createResult = this._create(recipient, amountData, lps, {
             ...options,
-            sourceWalletUtxos: utxos,
+            sourceWalletUtxos: validatedUtxos,
             sourceWalletCpfpAssumption: resolvedCpfpAssumption,
             sourceWalletAddressType
         }, additionalParams, abortSignal);

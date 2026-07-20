@@ -1,5 +1,10 @@
 import {ChainType} from "@atomiqlabs/base";
-import {DEFAULT_CPFP_ASSUMPTION, REQUIRED_SPV_SWAP_VAULT_ADDRESS_TYPE, SpvFromBTCWrapper} from "./SpvFromBTCWrapper.js";
+import {
+    assertSupportedSpvFundingType,
+    DEFAULT_CPFP_ASSUMPTION,
+    REQUIRED_SPV_SWAP_VAULT_ADDRESS_TYPE,
+    SpvFromBTCWrapper
+} from "./SpvFromBTCWrapper.js";
 import {extendAbortController} from "../../utils/Utils.js";
 import {
     fromOutputScript,
@@ -398,14 +403,16 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
 
         const wallet = toBitcoinWallet(intermediateWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
 
+        if(wallet.getAddressInfo==null) throw new Error("Wallet must implement getAddressInfo function!");
+        const walletAddressInfo = wallet.getAddressInfo(false);
+        const walletAddressType = toCoinselectAddressType(this.wrapper._options.bitcoinNetwork, walletAddressInfo.address);
+        assertSupportedSpvFundingType(walletAddressType);
+
         if(existingUtxos==null) {
             if(wallet.getUtxoPool==null) throw new Error("Intermediate bitcoin wallet has to support getUtxoPool() fn!");
             existingUtxos = await wallet.getUtxoPool();
         }
-
-        if(wallet.getAddressInfo==null) throw new Error("Wallet must implement getAddressInfo function!");
-        const walletAddressInfo = wallet.getAddressInfo(false);
-        const walletAddressType = toCoinselectAddressType(this.wrapper._options.bitcoinNetwork, walletAddressInfo.address);
+        existingUtxos.forEach(utxo => assertSupportedSpvFundingType(utxo.type));
 
         let resolvedFeeRate = Math.max(feeRate ?? this.minimumBtcFeeRate, this.minimumBtcFeeRate);
         if(!Number.isFinite(resolvedFeeRate) || resolvedFeeRate<=0) throw new Error("Bitcoin fee rate must be a positive number!");
@@ -476,6 +483,8 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
         fundingPlan: SpvFromBTCIntermediateWalletSwapModeInfo
     ): Promise<SpvFromBTCIntermediateWalletSwapModeInfo> {
         if(this._state !== SpvFromBTCSwapState.CREATED) throw new Error("Cannot change swap mode outside of CREATED state!");
+        assertSupportedSpvFundingType(fundingPlan.walletAddressType);
+        fundingPlan.selectedExistingUtxos.forEach(utxo => assertSupportedSpvFundingType(utxo.type));
 
         this.swapMode = "intermediate_wallet";
         this.externalSwapModeInfo = fundingPlan;

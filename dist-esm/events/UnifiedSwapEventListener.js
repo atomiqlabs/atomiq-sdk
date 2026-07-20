@@ -1,0 +1,134 @@
+import { ChainSwapType, InitializeEvent, SpvVaultClaimEvent, SpvVaultCloseEvent, SpvVaultFrontEvent, SwapEvent } from "@atomiqlabs/base";
+import { getLogger } from "../utils/Logger";
+function chainEventToEscrowHash(event) {
+    if (event instanceof SwapEvent)
+        return event.escrowHash;
+    if (event instanceof SpvVaultFrontEvent ||
+        event instanceof SpvVaultClaimEvent ||
+        event instanceof SpvVaultCloseEvent)
+        return event.btcTxId;
+}
+const logger = getLogger("UnifiedSwapEventListener: ");
+export class UnifiedSwapEventListener {
+    constructor(unifiedStorage, events) {
+        this.listeners = {};
+        this.storage = unifiedStorage;
+        this.events = events;
+    }
+    async processEvents(events) {
+        const escrowHashesDeduped = new Set();
+        events.forEach(event => {
+            const escrowHash = chainEventToEscrowHash(event);
+            if (escrowHash != null)
+                escrowHashesDeduped.add(escrowHash);
+        });
+        const escrowHashes = Array.from(escrowHashesDeduped);
+        logger.debug("processEvents(): Processing events with escrow hashes: ", escrowHashes);
+        const swaps = await this.storage.query([
+            [{ key: "escrowHash", value: escrowHashes }]
+        ], (val) => {
+            const obj = this.listeners?.[val.type];
+            if (obj == null)
+                return null;
+            return new obj.reviver(val);
+        });
+        const swapsByEscrowHash = {};
+        swaps.forEach(swap => {
+            const escrowHash = swap._getEscrowHash();
+            if (escrowHash != null)
+                swapsByEscrowHash[escrowHash] = swap;
+        });
+        //We need to do this because FromBTCLNAutoSwaps might not yet know its escrowHash
+        // hence we try to get the claimHash and try to query based on that, FromBTCLNAutoSwaps
+        // will use their claimHash as escrowHash before they know the real escrowHash
+        const htlcCheckInitializeEvents = {};
+        for (let event of events) {
+            const escrowHash = chainEventToEscrowHash(event);
+            const eventVersion = event.contractVersion ?? "v1";
+            if (escrowHash != null) {
+                const swap = swapsByEscrowHash[escrowHash];
+                if (swap != null && (swap._contractVersion ?? "v1") === eventVersion) {
+                    const obj = this.listeners[swap.getType()];
+                    if (obj == null)
+                        continue;
+                    await obj.listener(event, swap);
+                    continue;
+                }
+            }
+            if (event instanceof InitializeEvent) {
+                if (event.swapType === ChainSwapType.HTLC) {
+                    const swapData = await event.swapData();
+                    htlcCheckInitializeEvents[swapData.getClaimHash()] = event;
+                }
+            }
+        }
+        logger.debug("processEvents(): Additionally checking HTLC claim hashes: ", Object.keys(htlcCheckInitializeEvents));
+        if (Object.keys(htlcCheckInitializeEvents).length === 0)
+            return;
+        //Try to query based on claimData
+        const claimDataSwaps = await this.storage.query([
+            [{ key: "escrowHash", value: Object.keys(htlcCheckInitializeEvents) }]
+        ], (val) => {
+            const obj = this.listeners?.[val.type];
+            if (obj == null)
+                return null;
+            return new obj.reviver(val);
+        });
+        const swapsByClaimDataHash = {};
+        claimDataSwaps.forEach(swap => {
+            const escrowHash = swap._getEscrowHash();
+            if (escrowHash != null)
+                swapsByClaimDataHash[escrowHash] = swap;
+        });
+        logger.debug("processEvents(): Additional HTLC swaps founds: ", swapsByClaimDataHash);
+        for (let claimData in htlcCheckInitializeEvents) {
+            const event = htlcCheckInitializeEvents[claimData];
+            const eventVersion = event.contractVersion ?? "v1";
+            const swap = swapsByClaimDataHash[claimData];
+            if (swap != null && (swap._contractVersion ?? "v1") === eventVersion) {
+                const obj = this.listeners[swap.getType()];
+                if (obj == null)
+                    continue;
+                await obj.listener(event, swap);
+            }
+        }
+    }
+    async start(noAutomaticPoll) {
+        if (this.listener != null)
+            return;
+        logger.info("start(): Starting unified swap event listener");
+        await this.storage.init();
+        logger.debug("start(): Storage initialized");
+        await this.events.init(noAutomaticPoll);
+        this.noAutomaticPoll = noAutomaticPoll;
+        logger.debug("start(): Events initialized");
+        this.events.registerListener(this.listener = async (events) => {
+            await this.processEvents(events);
+            return true;
+        });
+        logger.info("start(): Successfully initiated the unified swap event listener!");
+    }
+    poll(previousState) {
+        if (!this.noAutomaticPoll)
+            throw new Error("Only supported when no automatic events polling is configured!");
+        return this.events.poll(previousState);
+    }
+    stop() {
+        logger.info("stop(): Stopping unified swap event listener");
+        if (this.listener != null)
+            this.events.unregisterListener(this.listener);
+        return this.events.stop();
+    }
+    registerListener(type, listener, reviver) {
+        this.listeners[type] = {
+            listener,
+            reviver
+        };
+    }
+    unregisterListener(type) {
+        if (this.listeners[type])
+            return false;
+        delete this.listeners[type];
+        return true;
+    }
+}

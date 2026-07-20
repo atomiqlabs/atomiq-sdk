@@ -1,0 +1,32 @@
+import { Buffer } from "buffer";
+export class ParamEncoder {
+    constructor(write, end) {
+        this.writeFN = write;
+        this.endFN = end;
+    }
+    /**
+     * Write a set of parameters to the underlying sink
+     *
+     * @param data
+     */
+    writeParams(data) {
+        const serialized = Buffer.from(JSON.stringify(data));
+        const frameLengthBuffer = Buffer.alloc(4);
+        if (frameLengthBuffer.writeUint32LE != null) {
+            frameLengthBuffer.writeUint32LE(serialized.length);
+        }
+        else {
+            frameLengthBuffer.writeUInt32LE(serialized.length);
+        }
+        return this.writeFN(Buffer.concat([
+            frameLengthBuffer,
+            serialized
+        ]));
+    }
+    /**
+     * Cancels the underlying sink and encoder
+     */
+    end() {
+        return this.endFN();
+    }
+}

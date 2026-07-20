@@ -37,10 +37,10 @@
   "author": "adambor",
   "license": "ISC",
   "dependencies": {
-    "@atomiqlabs/base": "^13.5.2",
+    "@atomiqlabs/base": "github:atomiqlabs/atomiq-base#perf/esm-treeshake",
     "@atomiqlabs/bolt11": "1.6.1",
-    "@atomiqlabs/btc-mempool": "^1.0.4",
-    "@atomiqlabs/messenger-nostr": "^2.0.0",
+    "@atomiqlabs/btc-mempool": "github:atomiqlabs/atomiq-btc-mempool#perf/esm-treeshake",
+    "@atomiqlabs/messenger-nostr": "github:atomiqlabs/atomiq-messenger-nostr#perf/esm-treeshake",
     "@noble/ciphers": "^1.2.1",
     "@noble/curves": "^1.9.7",
     "@noble/hashes": "^1.7.1",

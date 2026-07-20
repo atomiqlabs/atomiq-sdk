@@ -1,0 +1,192 @@
+import { NETWORK, pubECDSA, randomPrivateKeyBytes } from "@scure/btc-signer/utils";
+import { getAddress, WIF } from "@scure/btc-signer";
+import { Buffer } from "buffer";
+import { identifyAddressType, BitcoinWallet } from "./BitcoinWallet";
+import { getLogger } from "@atomiqlabs/base";
+import { HDKey } from "@scure/bip32";
+import { entropyToMnemonic, generateMnemonic, mnemonicToSeed } from "@scure/bip39";
+import { wordlist } from "@scure/bip39/wordlists/english.js";
+import { sha256 } from "@noble/hashes/sha2";
+const logger = getLogger("SingleAddressBitcoinWallet: ");
+/**
+ * Bitcoin wallet implementation deriving a single address from a WIF encoded private key
+ *
+ * @category Bitcoin
+ */
+export class SingleAddressBitcoinWallet extends BitcoinWallet {
+    constructor(mempoolApi, _network, addressDataOrWIF, feeMultiplier = 1.25, feeOverride) {
+        const network = typeof (_network) === "object"
+            ? _network
+            : BitcoinWallet.bitcoinNetworkToObject(_network);
+        super(mempoolApi, network, feeMultiplier, feeOverride);
+        if (typeof (addressDataOrWIF) === "string") {
+            try {
+                this.privKey = WIF(network).decode(addressDataOrWIF);
+            }
+            catch (e) {
+                this.privKey = WIF().decode(addressDataOrWIF);
+            }
+            this.pubkey = pubECDSA(this.privKey);
+            const address = getAddress("wpkh", this.privKey, network);
+            if (address == null)
+                throw new Error("Failed to generate p2wpkh address from the provided private key!");
+            this.address = address;
+            this.addressType = identifyAddressType(this.address, network);
+        }
+        else {
+            this.address = addressDataOrWIF.address;
+            this.addressType = identifyAddressType(this.address, network);
+            this.pubkey = Buffer.from(addressDataOrWIF.publicKey, "hex");
+            // Some wallets seem to be returning a full 33-byte compressed pubkey instead of a taproot
+            //  32-byte long X-only key. Handle these cases here
+            if (this.addressType === "p2tr") {
+                if (this.pubkey.length !== 33)
+                    return;
+                const leadingByte = this.pubkey[0];
+                if (leadingByte !== 0x03 && leadingByte !== 0x02)
+                    throw new Error("Invalid public key passed for taproot bitcoin wallet, expected an X-only 32-byte public key, or a compressed 33-byte public key");
+                logger.debug(`constructor(): Converting compressed public key ${addressDataOrWIF.publicKey} to taproot X-only 32-byte public key`);
+                this.pubkey = this.pubkey.slice(1);
+            }
+        }
+    }
+    /**
+     * Returns all the wallet addresses controlled by the wallet
+     *
+     * @protected
+     */
+    toBitcoinWalletAccounts() {
+        return [{
+                pubkey: Buffer.from(this.pubkey).toString("hex"), address: this.address, addressType: this.addressType
+            }];
+    }
+    /**
+     * @inheritDoc
+     */
+    async sendTransaction(address, amount, feeRate) {
+        if (!this.privKey)
+            throw new Error("Not supported.");
+        const { psbt, fee } = await super._getPsbt(this.toBitcoinWalletAccounts(), address, Number(amount), feeRate);
+        if (psbt == null)
+            throw new Error(`Not enough funds, required for fee: ${fee} sats!`);
+        psbt.sign(this.privKey);
+        psbt.finalize();
+        const txHex = Buffer.from(psbt.extract()).toString("hex");
+        return await super._sendTransaction(txHex);
+    }
+    /**
+     * @inheritDoc
+     */
+    async fundPsbt(inputPsbt, feeRate, utxos, spendFully) {
+        const { psbt } = await super._fundPsbt(this.toBitcoinWalletAccounts(), inputPsbt, feeRate, utxos, spendFully);
+        if (psbt == null) {
+            throw new Error("Not enough balance!");
+        }
+        return psbt;
+    }
+    /**
+     * @inheritDoc
+     */
+    async signPsbt(psbt, signInputs) {
+        if (!this.privKey)
+            throw new Error("Not supported.");
+        for (let signInput of signInputs) {
+            psbt.signIdx(this.privKey, signInput);
+        }
+        return psbt;
+    }
+    /**
+     * @inheritDoc
+     */
+    async getTransactionFee(address, amount, feeRate) {
+        const { fee } = await super._getPsbt(this.toBitcoinWalletAccounts(), address, Number(amount), feeRate);
+        return fee;
+    }
+    /**
+     * @inheritDoc
+     */
+    async getFundedPsbtFee(basePsbt, feeRate) {
+        const { fee } = await super._fundPsbt(this.toBitcoinWalletAccounts(), basePsbt, feeRate);
+        return fee;
+    }
+    /**
+     * @inheritDoc
+     */
+    getReceiveAddress() {
+        return this.address;
+    }
+    /**
+     * Returns the public key of the wallet
+     */
+    getPublicKey() {
+        return Buffer.from(this.pubkey).toString("hex");
+    }
+    /**
+     * @inheritDoc
+     */
+    getBalance() {
+        return this._getBalance(this.address);
+    }
+    /**
+     * @inheritDoc
+     */
+    getSpendableBalance(psbt, feeRate, outputAddressType, utxos) {
+        return this._getSpendableBalance([{ address: this.address, addressType: this.addressType }], psbt, feeRate, outputAddressType, utxos);
+    }
+    /**
+     * @inheritDoc
+     */
+    async getUtxoPool() {
+        return this._getUtxoPool(this.address, this.addressType);
+    }
+    /**
+     * Generates a new random private key WIF that can be used to instantiate the bitcoin wallet instance
+     *
+     * @returns A WIF encoded bitcoin private key
+     */
+    static generateRandomPrivateKey(network) {
+        const networkObject = network == null || typeof (network) === "object"
+            ? network
+            : BitcoinWallet.bitcoinNetworkToObject(network);
+        return WIF(networkObject).encode(randomPrivateKeyBytes());
+    }
+    /**
+     * Generates a 12-word long mnemonic from any entropy source with 128-bits or more, the entropy is first hashed
+     *  using sha256, and the first 16 bytes of the hash are used to generate the mnemonic
+     *
+     * @param entropy Entropy to use for generating the mnemonic
+     */
+    static mnemonicFromEntropy(entropy) {
+        if (entropy.length < 16)
+            throw new Error("Requires at least 128-bit entropy (16 bytes)");
+        const entropyHash = Buffer.from(sha256(entropy)).subarray(0, 16);
+        return entropyToMnemonic(entropyHash, wordlist);
+    }
+    /**
+     * Generates a random 12-word long mnemonic
+     */
+    static generateRandomMnemonic() {
+        return generateMnemonic(wordlist, 128);
+    }
+    /**
+     * Generates a WIF private key from mnemonic phrase
+     *
+     * @param mnemonic Mnemonic to generate the WIF key from
+     * @param network Optional bitcoin network to generate the WIF for
+     * @param derivationPath Optional custom derivation path to use for deriving the wallet
+     */
+    static async mnemonicToPrivateKey(mnemonic, network, derivationPath) {
+        const networkObject = network == null || typeof (network) === "object"
+            ? network
+            : BitcoinWallet.bitcoinNetworkToObject(network);
+        derivationPath = networkObject == null || networkObject.bech32 === NETWORK.bech32
+            ? "m/84'/0'/0'/0/0" //Mainnet
+            : "m/84'/1'/0'/0/0"; //Testnet
+        const seed = await mnemonicToSeed(mnemonic);
+        const hdKey = HDKey.fromMasterSeed(seed);
+        const privateKey = hdKey.derive(derivationPath).privateKey;
+        if (privateKey == null)
+            throw new Error("Cannot derive private key from the mnemonic!");
+        return WIF(networkObject).encode(privateKey);
+    }
+}

@@ -1,0 +1,41 @@
+import { ExchangePriceProvider } from "./abstract/ExchangePriceProvider";
+import { httpGet } from "../../http/HttpUtils";
+/**
+ * Price provider using Kraken exchange API
+ * @category Pricing
+ */
+export class KrakenPriceProvider extends ExchangePriceProvider {
+    constructor(coinsMap, url = "https://api.kraken.com/0", httpRequestTimeout) {
+        super(coinsMap, url, httpRequestTimeout);
+    }
+    /**
+     * @inheritDoc
+     */
+    async fetchPair(pair, abortSignal) {
+        const response = await httpGet(this.url + "/public/Ticker?pair=" + pair, this.httpRequestTimeout, abortSignal);
+        return parseFloat(response.result[pair].c[0]);
+    }
+    /**
+     * @inheritDoc
+     */
+    async fetchUsdPrice(abortSignal) {
+        const response = await httpGet(this.url + "/public/Ticker?pair=XBTUSDC", this.httpRequestTimeout, abortSignal);
+        return parseFloat(response.result["XBTUSDC"].c[0]) / 100000000;
+    }
+    /**
+     * @inheritDoc
+     */
+    async fetchPrice(token, abortSignal) {
+        const pairs = token.coinId.split(";");
+        const response = await httpGet(this.url + "/public/Ticker?pair=" + pairs.map(val => val.startsWith("!") ? val.substring(1) : val).join(","), this.httpRequestTimeout, abortSignal);
+        const prices = pairs.map(pair => {
+            let invert = pair.startsWith("!");
+            if (invert)
+                pair = pair.substring(1);
+            const value = parseFloat(response.result[pair].c[0]);
+            return invert ? 1 / value : value;
+        });
+        const price = prices.reduce((previousValue, currentValue) => previousValue * currentValue, 1);
+        return BigInt(Math.floor(price * 100000000000000));
+    }
+}

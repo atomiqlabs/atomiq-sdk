@@ -4,14 +4,26 @@
   "description": "atomiq labs SDK for cross-chain swaps between smart chains and bitcoin",
   "main": "./dist/index.js",
   "types:": "./dist/index.d.ts",
+  "module": "./dist-esm/index.js",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist-esm/index.js",
+      "require": "./dist/index.js"
+    },
+    "./package.json": "./package.json",
+    "./dist/*": "./dist/*"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "npx -y -p typescript@4.9 tsc",
+    "build": "npx -y -p typescript@4.9 tsc && npx -y -p typescript@4.9 tsc -p tsconfig.esm.json && node -e \"require('fs').writeFileSync('dist-esm/package.json', JSON.stringify({type:'module',sideEffects:false}))\"",
     "build:ts4": "npx -y -p typescript@4.9 tsc --noEmit",
     "build:ts5": "npx -y -p typescript@5.9 tsc --noEmit"
   },
   "files": [
     "/dist",
+    "/dist-esm",
     "/src",
     "/api"
   ],

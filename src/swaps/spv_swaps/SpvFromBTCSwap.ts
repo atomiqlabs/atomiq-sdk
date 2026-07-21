@@ -33,14 +33,11 @@ import {timeoutPromise} from "../../utils/TimeoutUtils.js";
 import {
     SwapExecutionActionSendToAddress,
     SwapExecutionActionSignPSBT,
-    SwapExecutionActionSignSmartChainTx,
-    SwapExecutionActionWait
-} from "../../types/SwapExecutionAction.js";
-import {SwapExecutionStepPayment, SwapExecutionStepSettlement} from "../../types/SwapExecutionStep.js";
-import {SwapStateInfo} from "../../types/SwapStateInfo.js";
-import {CoinselectAddressTypes, CoinselectTxInput, CoinselectTxOutput, utils} from "../../bitcoin/coinselect2/utils.js";
-import {isSpvFromBTCSwapInit, SpvFromBTCSwapBase, SpvFromBTCSwapInit, SpvFromBTCSwapState} from "./SpvFromBTCSwapBase.js";
-import {Fee} from "../../types/fees/Fee.js";
+} from "../../types/SwapExecutionAction";
+import {SwapExecutionStepPayment, SwapExecutionStepSettlement} from "../../types/SwapExecutionStep";
+import {CoinselectAddressTypes, CoinselectTxInput, CoinselectTxOutput, utils} from "../../bitcoin/coinselect2/utils";
+import {isSpvFromBTCSwapInit, SpvFromBTCSwapBase, SpvFromBTCSwapInit, SpvFromBTCSwapState} from "./SpvFromBTCSwapBase";
+import {Fee} from "../../types/fees/Fee";
 import {addPsbtInputs, toBitcoinWallet} from "../../utils/BitcoinWalletUtils";
 import {identifyAddressType} from "../../bitcoin/wallet/BitcoinWallet";
 
@@ -356,20 +353,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
     }
 
     /**
-     * Returns cached external deposit mode metadata when the swap is in external mode.
-     *
-     * @returns External deposit metadata, or `null` in PSBT mode
-     */
-    getIntermediateWalletSwapModeInfo(): SpvFromBTCIntermediateWalletSwapModeInfo | null {
-        return this.externalSwapModeInfo;
-    }
-
-    /**
      * Switches this swap back to normal PSBT mode and clears cached external deposit metadata.
-     *
-     * @remarks
-     * If the swap was already persisted, the mode change is saved asynchronously because this API is intentionally
-     * synchronous.
      */
     async setSwapModePsbt(): Promise<void> {
         if(this._state !== SpvFromBTCSwapState.CREATED) throw new Error("Cannot change swap mode outside of CREATED state!");

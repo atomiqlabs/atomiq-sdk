@@ -1,8 +1,8 @@
 import { SignatureVerificationError, } from "@atomiqlabs/base";
-import { IEscrowSelfInitSwap } from "../IEscrowSelfInitSwap";
-import { FeeType } from "../../../enums/FeeType";
-import { ppmToPercentage } from "../../../types/fees/PercentagePPM";
-import { toTokenAmount } from "../../../types/TokenAmount";
+import { IEscrowSelfInitSwap } from "../IEscrowSelfInitSwap.js";
+import { FeeType } from "../../../enums/FeeType.js";
+import { ppmToPercentage } from "../../../types/fees/PercentagePPM.js";
+import { toTokenAmount } from "../../../types/TokenAmount.js";
 /**
  * Base class for legacy escrow-based Bitcoin (on-chain & lightning) -> Smart chain swaps,
  *  which require the user to manually initiate the escrow on the destination smart chain

@@ -1,6 +1,6 @@
-import { BitcoinTokens } from "../types/Token";
-import { toTokenAmount } from "../types/TokenAmount";
-import { parseApiInput } from "./ApiParser";
+import { BitcoinTokens } from "../types/Token.js";
+import { toTokenAmount } from "../types/TokenAmount.js";
+import { parseApiInput } from "./ApiParser.js";
 /**
  * Converts a TokenAmount to the serializable ApiAmount format
  *

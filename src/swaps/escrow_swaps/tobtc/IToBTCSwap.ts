@@ -1,4 +1,4 @@
-import {IToBTCDefinition, IToBTCWrapper} from "./IToBTCWrapper";
+import {IToBTCDefinition, IToBTCWrapper} from "./IToBTCWrapper.js";
 import {
     ChainType,
     isAbstractSigner,
@@ -12,25 +12,25 @@ import {
     IntermediaryAPI,
     RefundAuthorizationResponse,
     RefundAuthorizationResponseCodes
-} from "../../../intermediaries/apis/IntermediaryAPI";
-import {IntermediaryError} from "../../../errors/IntermediaryError";
-import {extendAbortController, toBigInt} from "../../../utils/Utils";
-import {Fee} from "../../../types/fees/Fee";
-import {IEscrowSelfInitSwap, IEscrowSelfInitSwapInit, isIEscrowSelfInitSwapInit} from "../IEscrowSelfInitSwap";
-import {IRefundableSwap} from "../../IRefundableSwap";
-import {FeeType} from "../../../enums/FeeType";
-import {ppmToPercentage} from "../../../types/fees/PercentagePPM";
-import {TokenAmount, toTokenAmount} from "../../../types/TokenAmount";
-import {BtcToken, SCToken} from "../../../types/Token";
-import {timeoutPromise} from "../../../utils/TimeoutUtils";
-import {SwapExecutionActionSignSmartChainTx, SwapExecutionActionWait} from "../../../types/SwapExecutionAction";
+} from "../../../intermediaries/apis/IntermediaryAPI.js";
+import {IntermediaryError} from "../../../errors/IntermediaryError.js";
+import {extendAbortController, toBigInt} from "../../../utils/Utils.js";
+import {Fee} from "../../../types/fees/Fee.js";
+import {IEscrowSelfInitSwap, IEscrowSelfInitSwapInit, isIEscrowSelfInitSwapInit} from "../IEscrowSelfInitSwap.js";
+import {IRefundableSwap} from "../../IRefundableSwap.js";
+import {FeeType} from "../../../enums/FeeType.js";
+import {ppmToPercentage} from "../../../types/fees/PercentagePPM.js";
+import {TokenAmount, toTokenAmount} from "../../../types/TokenAmount.js";
+import {BtcToken, SCToken} from "../../../types/Token.js";
+import {timeoutPromise} from "../../../utils/TimeoutUtils.js";
+import {SwapExecutionActionSignSmartChainTx, SwapExecutionActionWait} from "../../../types/SwapExecutionAction.js";
 import {
     SwapExecutionStep,
     SwapExecutionStepPayment,
     SwapExecutionStepRefund,
     SwapExecutionStepSettlement
-} from "../../../types/SwapExecutionStep";
-import {SwapStateInfo} from "../../../types/SwapStateInfo";
+} from "../../../types/SwapExecutionStep.js";
+import {SwapStateInfo} from "../../../types/SwapStateInfo.js";
 
 export type IToBTCSwapInit<T extends SwapData> = IEscrowSelfInitSwapInit<T> & {
     signatureData?: SignatureData,

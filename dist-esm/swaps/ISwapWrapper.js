@@ -1,9 +1,9 @@
 import { isAbstractSigner } from "@atomiqlabs/base";
 import { EventEmitter } from "events";
-import { IntermediaryError } from "../errors/IntermediaryError";
-import { getLogger } from "../utils/Logger";
-import { fromHumanReadableString } from "../utils/TokenUtils";
-import { UserError } from "../errors/UserError";
+import { IntermediaryError } from "../errors/IntermediaryError.js";
+import { getLogger } from "../utils/Logger.js";
+import { fromHumanReadableString } from "../utils/TokenUtils.js";
+import { UserError } from "../errors/UserError.js";
 export const DEFAULT_MAX_PARALLEL_SWAP_TICKS = 50;
 export const DEFAULT_MAX_PARALLEL_SWAP_SYNCS = 50;
 /**

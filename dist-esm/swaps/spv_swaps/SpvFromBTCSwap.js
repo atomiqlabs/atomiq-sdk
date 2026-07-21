@@ -1,19 +1,19 @@
-import { isISwapInit, ISwap } from "../ISwap";
+import { isISwapInit, ISwap } from "../ISwap.js";
 import { isAbstractSigner, SpvWithdrawalStateType } from "@atomiqlabs/base";
-import { SwapType } from "../../enums/SwapType";
-import { extendAbortController } from "../../utils/Utils";
-import { parsePsbtTransaction, toCoinselectAddressType, toOutputScript } from "../../utils/BitcoinUtils";
+import { SwapType } from "../../enums/SwapType.js";
+import { extendAbortController } from "../../utils/Utils.js";
+import { parsePsbtTransaction, toCoinselectAddressType, toOutputScript } from "../../utils/BitcoinUtils.js";
 import { getInputType, Transaction } from "@scure/btc-signer";
 import { Buffer } from "buffer";
-import { isIBitcoinWallet } from "../../bitcoin/wallet/IBitcoinWallet";
-import { FeeType } from "../../enums/FeeType";
-import { ppmToPercentage } from "../../types/fees/PercentagePPM";
-import { toTokenAmount } from "../../types/TokenAmount";
-import { BitcoinTokens } from "../../types/Token";
-import { getLogger } from "../../utils/Logger";
-import { timeoutPromise } from "../../utils/TimeoutUtils";
-import { deserializePriceInfoType, isPriceInfoType, serializePriceInfoType } from "../../types/PriceInfoType";
-import { toBitcoinWallet } from "../../utils/BitcoinWalletUtils";
+import { isIBitcoinWallet } from "../../bitcoin/wallet/IBitcoinWallet.js";
+import { FeeType } from "../../enums/FeeType.js";
+import { ppmToPercentage } from "../../types/fees/PercentagePPM.js";
+import { toTokenAmount } from "../../types/TokenAmount.js";
+import { BitcoinTokens } from "../../types/Token.js";
+import { getLogger } from "../../utils/Logger.js";
+import { timeoutPromise } from "../../utils/TimeoutUtils.js";
+import { deserializePriceInfoType, isPriceInfoType, serializePriceInfoType } from "../../types/PriceInfoType.js";
+import { toBitcoinWallet } from "../../utils/BitcoinWalletUtils.js";
 /**
  * State enum for SPV vault (UTXO-controlled vault) based swaps
  * @category Swaps/Bitcoin → Smart chain

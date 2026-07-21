@@ -1,12 +1,12 @@
 import { BitcoinNetwork } from "@atomiqlabs/base";
-import { SmartChainAssets } from "../SmartChainAssets";
+import { SmartChainAssets } from "../SmartChainAssets.js";
 import { NostrMessenger } from "@atomiqlabs/messenger-nostr";
-import { Swapper } from "./Swapper";
-import { CustomPriceProvider } from "../prices/providers/CustomPriceProvider";
-import { BitcoinTokens } from "../types/Token";
-import { RedundantSwapPrice } from "../prices/RedundantSwapPrice";
-import { LocalStorageManager } from "../storage-browser/LocalStorageManager";
-import { SingleSwapPrice } from "../prices/SingleSwapPrice";
+import { Swapper } from "./Swapper.js";
+import { CustomPriceProvider } from "../prices/providers/CustomPriceProvider.js";
+import { BitcoinTokens } from "../types/Token.js";
+import { RedundantSwapPrice } from "../prices/RedundantSwapPrice.js";
+import { LocalStorageManager } from "../storage-browser/LocalStorageManager.js";
+import { SingleSwapPrice } from "../prices/SingleSwapPrice.js";
 import { MempoolBitcoinRpc, MempoolBtcRelaySynchronizer } from "@atomiqlabs/btc-mempool";
 const registries = {
     [BitcoinNetwork.MAINNET]: "https://api.github.com/repos/adambor/SolLightning-registry/contents/registry-mainnet.json?ref=main",

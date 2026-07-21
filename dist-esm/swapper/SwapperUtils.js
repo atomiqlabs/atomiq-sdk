@@ -1,15 +1,15 @@
 import { decode as bolt11Decode } from "@atomiqlabs/bolt11";
 import { Address } from "@scure/btc-signer";
-import { LNURL } from "../lnurl/LNURL";
-import { SwapType } from "../enums/SwapType";
-import { SingleAddressBitcoinWallet } from "../bitcoin/wallet/SingleAddressBitcoinWallet";
+import { LNURL } from "../lnurl/LNURL.js";
+import { SwapType } from "../enums/SwapType.js";
+import { SingleAddressBitcoinWallet } from "../bitcoin/wallet/SingleAddressBitcoinWallet.js";
 import { BigIntBufferUtils, ChainSwapType, isAbstractSigner } from "@atomiqlabs/base";
-import { bigIntMax, fromDecimal, randomBytes } from "../utils/Utils";
-import { toTokenAmount } from "../types/TokenAmount";
-import { BitcoinTokens } from "../types/Token";
-import { isLNURLWithdraw } from "../types/lnurl/LNURLWithdraw";
-import { isLNURLPay } from "../types/lnurl/LNURLPay";
-import { toBitcoinWallet } from "../utils/BitcoinWalletUtils";
+import { bigIntMax, fromDecimal, randomBytes } from "../utils/Utils.js";
+import { toTokenAmount } from "../types/TokenAmount.js";
+import { BitcoinTokens } from "../types/Token.js";
+import { isLNURLWithdraw } from "../types/lnurl/LNURLWithdraw.js";
+import { isLNURLPay } from "../types/lnurl/LNURLPay.js";
+import { toBitcoinWallet } from "../utils/BitcoinWalletUtils.js";
 /**
  * Utility class providing helper methods for address parsing, token balances, serialization
  *  and other miscellaneous things.

@@ -1,4 +1,4 @@
-import {ISwapPrice} from "../prices/abstract/ISwapPrice";
+import {ISwapPrice} from "../prices/abstract/ISwapPrice.js";
 import {
     BitcoinNetwork, BitcoinRpc, BitcoinRpcWithAddressIndex, BtcBlock,
     BtcRelay,
@@ -11,65 +11,65 @@ import {
 import {
     ToBTCLNOptions,
     ToBTCLNWrapper
-} from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNWrapper";
-import {ToBTCOptions, ToBTCWrapper} from "../swaps/escrow_swaps/tobtc/onchain/ToBTCWrapper";
-import {FromBTCLNOptions, FromBTCLNWrapper} from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNWrapper";
-import {FromBTCOptions, FromBTCWrapper} from "../swaps/escrow_swaps/frombtc/onchain/FromBTCWrapper";
-import {IntermediaryDiscovery, MultichainSwapBounds, SwapBounds} from "../intermediaries/IntermediaryDiscovery";
+} from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNWrapper.js";
+import {ToBTCOptions, ToBTCWrapper} from "../swaps/escrow_swaps/tobtc/onchain/ToBTCWrapper.js";
+import {FromBTCLNOptions, FromBTCLNWrapper} from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNWrapper.js";
+import {FromBTCOptions, FromBTCWrapper} from "../swaps/escrow_swaps/frombtc/onchain/FromBTCWrapper.js";
+import {IntermediaryDiscovery, MultichainSwapBounds, SwapBounds} from "../intermediaries/IntermediaryDiscovery.js";
 import {decode as bolt11Decode} from "@atomiqlabs/bolt11";
-import {ISwap} from "../swaps/ISwap";
-import {IntermediaryError} from "../errors/IntermediaryError";
-import {SwapType} from "../enums/SwapType";
-import {FromBTCLNSwap} from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap";
-import {FromBTCSwap} from "../swaps/escrow_swaps/frombtc/onchain/FromBTCSwap";
-import {ToBTCLNSwap} from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNSwap";
-import {ToBTCSwap} from "../swaps/escrow_swaps/tobtc/onchain/ToBTCSwap";
-import {LnForGasWrapper} from "../swaps/trusted/ln/LnForGasWrapper";
-import {LnForGasSwap} from "../swaps/trusted/ln/LnForGasSwap";
+import {ISwap} from "../swaps/ISwap.js";
+import {IntermediaryError} from "../errors/IntermediaryError.js";
+import {SwapType} from "../enums/SwapType.js";
+import {FromBTCLNSwap} from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap.js";
+import {FromBTCSwap} from "../swaps/escrow_swaps/frombtc/onchain/FromBTCSwap.js";
+import {ToBTCLNSwap} from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNSwap.js";
+import {ToBTCSwap} from "../swaps/escrow_swaps/tobtc/onchain/ToBTCSwap.js";
+import {LnForGasWrapper} from "../swaps/trusted/ln/LnForGasWrapper.js";
+import {LnForGasSwap} from "../swaps/trusted/ln/LnForGasSwap.js";
 import {EventEmitter} from "events";
-import {Intermediary} from "../intermediaries/Intermediary";
-import {ISwapWrapper, WrapperCtorTokens} from "../swaps/ISwapWrapper";
-import {bigIntCompare, bigIntMax, bigIntMin, fromDecimal, objectMap, randomBytes} from "../utils/Utils";
-import {OutOfBoundsError} from "../errors/RequestError";
-import {SwapperWithChain} from "./SwapperWithChain";
-import {OnchainForGasSwap} from "../swaps/trusted/onchain/OnchainForGasSwap";
-import {OnchainForGasWrapper} from "../swaps/trusted/onchain/OnchainForGasWrapper";
+import {Intermediary} from "../intermediaries/Intermediary.js";
+import {ISwapWrapper, WrapperCtorTokens} from "../swaps/ISwapWrapper.js";
+import {bigIntCompare, bigIntMax, bigIntMin, fromDecimal, objectMap, randomBytes} from "../utils/Utils.js";
+import {OutOfBoundsError} from "../errors/RequestError.js";
+import {SwapperWithChain} from "./SwapperWithChain.js";
+import {OnchainForGasSwap} from "../swaps/trusted/onchain/OnchainForGasSwap.js";
+import {OnchainForGasWrapper} from "../swaps/trusted/onchain/OnchainForGasWrapper.js";
 import {BTC_NETWORK, NETWORK, TEST_NETWORK} from "@scure/btc-signer/utils";
-import {IUnifiedStorage, QueryParams} from "../storage/IUnifiedStorage";
+import {IUnifiedStorage, QueryParams} from "../storage/IUnifiedStorage.js";
 import {
     UnifiedSwapStorage,
     UnifiedSwapStorageCompositeIndexes,
     UnifiedSwapStorageIndexes
-} from "../storage/UnifiedSwapStorage";
-import {UnifiedSwapEventListener} from "../events/UnifiedSwapEventListener";
-import {IToBTCSwap} from "../swaps/escrow_swaps/tobtc/IToBTCSwap";
-import {SpvFromBTCOptions, SpvFromBTCWrapper} from "../swaps/spv_swaps/SpvFromBTCWrapper";
-import {SpvFromBTCSwap} from "../swaps/spv_swaps/SpvFromBTCSwap";
-import {SwapperUtils} from "./SwapperUtils";
-import {FromBTCLNAutoOptions, FromBTCLNAutoWrapper} from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoWrapper";
-import {FromBTCLNAutoSwap} from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap";
-import {UserError} from "../errors/UserError";
-import {SwapAmountType} from "../enums/SwapAmountType";
-import {IClaimableSwap} from "../swaps/IClaimableSwap";
-import {correctClock} from "../utils/AutomaticClockDriftCorrection";
-import {isSwapType, SwapProtocolInfo, SwapTypeMapping} from "../utils/SwapUtils";
-import {IndexedDBUnifiedStorage} from "../storage-browser/IndexedDBUnifiedStorage";
-import {TokenAmount, toTokenAmount} from "../types/TokenAmount";
-import {BitcoinTokens, BtcToken, isBtcToken, isSCToken, SCToken, Token} from "../types/Token";
-import {AmountData} from "../types/AmountData";
-import {getLogger} from "../utils/Logger";
-import {isLNURLWithdraw, LNURLWithdraw} from "../types/lnurl/LNURLWithdraw";
-import {isLNURLPay, LNURLPay} from "../types/lnurl/LNURLPay";
-import {tryWithRetries} from "../utils/RetryUtils";
-import {NotNever} from "../utils/TypeUtils";
-import {IEscrowSwap} from "../swaps/escrow_swaps/IEscrowSwap";
-import {LightningInvoiceCreateService, isLightningInvoiceCreateService} from "../types/wallets/LightningInvoiceCreateService";
-import {SwapSide} from "../enums/SwapSide";
-import {IntermediaryAPI} from "../intermediaries/apis/IntermediaryAPI";
-import {BitcoinWalletUtxo, BitcoinWalletUtxoBase, IBitcoinWallet} from "../bitcoin/wallet/IBitcoinWallet";
-import {MinimalBitcoinWalletInterface} from "../types/wallets/MinimalBitcoinWalletInterface";
-import {toBitcoinWallet} from "../utils/BitcoinWalletUtils";
-import {getSignedKeyBasedAuthHandler} from "../intermediaries/auth/SignedKeyBasedAuth";
+} from "../storage/UnifiedSwapStorage.js";
+import {UnifiedSwapEventListener} from "../events/UnifiedSwapEventListener.js";
+import {IToBTCSwap} from "../swaps/escrow_swaps/tobtc/IToBTCSwap.js";
+import {SpvFromBTCOptions, SpvFromBTCWrapper} from "../swaps/spv_swaps/SpvFromBTCWrapper.js";
+import {SpvFromBTCSwap} from "../swaps/spv_swaps/SpvFromBTCSwap.js";
+import {SwapperUtils} from "./SwapperUtils.js";
+import {FromBTCLNAutoOptions, FromBTCLNAutoWrapper} from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoWrapper.js";
+import {FromBTCLNAutoSwap} from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap.js";
+import {UserError} from "../errors/UserError.js";
+import {SwapAmountType} from "../enums/SwapAmountType.js";
+import {IClaimableSwap} from "../swaps/IClaimableSwap.js";
+import {correctClock} from "../utils/AutomaticClockDriftCorrection.js";
+import {isSwapType, SwapProtocolInfo, SwapTypeMapping} from "../utils/SwapUtils.js";
+import {IndexedDBUnifiedStorage} from "../storage-browser/IndexedDBUnifiedStorage.js";
+import {TokenAmount, toTokenAmount} from "../types/TokenAmount.js";
+import {BitcoinTokens, BtcToken, isBtcToken, isSCToken, SCToken, Token} from "../types/Token.js";
+import {AmountData} from "../types/AmountData.js";
+import {getLogger} from "../utils/Logger.js";
+import {isLNURLWithdraw, LNURLWithdraw} from "../types/lnurl/LNURLWithdraw.js";
+import {isLNURLPay, LNURLPay} from "../types/lnurl/LNURLPay.js";
+import {tryWithRetries} from "../utils/RetryUtils.js";
+import {NotNever} from "../utils/TypeUtils.js";
+import {IEscrowSwap} from "../swaps/escrow_swaps/IEscrowSwap.js";
+import {LightningInvoiceCreateService, isLightningInvoiceCreateService} from "../types/wallets/LightningInvoiceCreateService.js";
+import {SwapSide} from "../enums/SwapSide.js";
+import {IntermediaryAPI} from "../intermediaries/apis/IntermediaryAPI.js";
+import {BitcoinWalletUtxo, BitcoinWalletUtxoBase, IBitcoinWallet} from "../bitcoin/wallet/IBitcoinWallet.js";
+import {MinimalBitcoinWalletInterface} from "../types/wallets/MinimalBitcoinWalletInterface.js";
+import {toBitcoinWallet} from "../utils/BitcoinWalletUtils.js";
+import {getSignedKeyBasedAuthHandler} from "../intermediaries/auth/SignedKeyBasedAuth.js";
 
 /**
  * Configuration options for the Swapper

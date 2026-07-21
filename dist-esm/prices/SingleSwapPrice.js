@@ -1,4 +1,4 @@
-import { ICachedSwapPrice } from "./abstract/ICachedSwapPrice";
+import { ICachedSwapPrice } from "./abstract/ICachedSwapPrice.js";
 /**
  * Swap price API using a single price source
  *

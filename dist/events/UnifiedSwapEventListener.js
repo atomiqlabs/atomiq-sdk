@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UnifiedSwapEventListener = void 0;
 const base_1 = require("@atomiqlabs/base");
-const Logger_1 = require("../utils/Logger");
+const Logger_js_1 = require("../utils/Logger.js");
 function chainEventToEscrowHash(event) {
     if (event instanceof base_1.SwapEvent)
         return event.escrowHash;
@@ -11,7 +11,7 @@ function chainEventToEscrowHash(event) {
         event instanceof base_1.SpvVaultCloseEvent)
         return event.btcTxId;
 }
-const logger = (0, Logger_1.getLogger)("UnifiedSwapEventListener: ");
+const logger = (0, Logger_js_1.getLogger)("UnifiedSwapEventListener: ");
 class UnifiedSwapEventListener {
     constructor(unifiedStorage, events) {
         this.listeners = {};

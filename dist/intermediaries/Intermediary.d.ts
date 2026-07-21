@@ -1,5 +1,5 @@
-import { SwapType } from "../enums/SwapType";
-import { SwapHandlerInfoType } from "./IntermediaryDiscovery";
+import { SwapType } from "../enums/SwapType.js";
+import { SwapHandlerInfoType } from "./IntermediaryDiscovery.js";
 import { ChainSwapType, LNNodeLiquidity, SwapContract } from "@atomiqlabs/base";
 /**
  * Services offered by an intermediary

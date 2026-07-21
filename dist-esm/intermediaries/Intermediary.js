@@ -1,5 +1,5 @@
-import { SwapType } from "../enums/SwapType";
-import { tryWithRetries } from "../utils/RetryUtils";
+import { SwapType } from "../enums/SwapType.js";
+import { tryWithRetries } from "../utils/RetryUtils.js";
 /**
  * Represents an intermediary (liquidity provider)
  *

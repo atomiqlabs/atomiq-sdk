@@ -1,6 +1,6 @@
-import { CoinType, CtorCoinTypes, IPriceProvider } from "../abstract/IPriceProvider";
-import { MultiChain } from "../../swapper/Swapper";
-import { CustomPriceFunction } from "../../types/CustomPriceFunction";
+import { CoinType, CtorCoinTypes, IPriceProvider } from "../abstract/IPriceProvider.js";
+import { MultiChain } from "../../swapper/Swapper.js";
+import { CustomPriceFunction } from "../../types/CustomPriceFunction.js";
 /**
  * Price provider using custom pricing function
  *

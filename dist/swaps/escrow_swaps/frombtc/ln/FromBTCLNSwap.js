@@ -2,21 +2,21 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FromBTCLNSwap = exports.isFromBTCLNSwapInit = exports.FromBTCLNSwapState = void 0;
 const bolt11_1 = require("@atomiqlabs/bolt11");
-const IFromBTCSelfInitSwap_1 = require("../IFromBTCSelfInitSwap");
-const SwapType_1 = require("../../../../enums/SwapType");
+const IFromBTCSelfInitSwap_js_1 = require("../IFromBTCSelfInitSwap.js");
+const SwapType_js_1 = require("../../../../enums/SwapType.js");
 const base_1 = require("@atomiqlabs/base");
 const buffer_1 = require("buffer");
-const LNURL_1 = require("../../../../lnurl/LNURL");
-const UserError_1 = require("../../../../errors/UserError");
-const IntermediaryAPI_1 = require("../../../../intermediaries/apis/IntermediaryAPI");
-const IntermediaryError_1 = require("../../../../errors/IntermediaryError");
-const Utils_1 = require("../../../../utils/Utils");
-const IEscrowSelfInitSwap_1 = require("../../IEscrowSelfInitSwap");
-const TokenAmount_1 = require("../../../../types/TokenAmount");
-const Token_1 = require("../../../../types/Token");
-const Logger_1 = require("../../../../utils/Logger");
-const TimeoutUtils_1 = require("../../../../utils/TimeoutUtils");
-const LNURLWithdraw_1 = require("../../../../types/lnurl/LNURLWithdraw");
+const LNURL_js_1 = require("../../../../lnurl/LNURL.js");
+const UserError_js_1 = require("../../../../errors/UserError.js");
+const IntermediaryAPI_js_1 = require("../../../../intermediaries/apis/IntermediaryAPI.js");
+const IntermediaryError_js_1 = require("../../../../errors/IntermediaryError.js");
+const Utils_js_1 = require("../../../../utils/Utils.js");
+const IEscrowSelfInitSwap_js_1 = require("../../IEscrowSelfInitSwap.js");
+const TokenAmount_js_1 = require("../../../../types/TokenAmount.js");
+const Token_js_1 = require("../../../../types/Token.js");
+const Logger_js_1 = require("../../../../utils/Logger.js");
+const TimeoutUtils_js_1 = require("../../../../utils/TimeoutUtils.js");
+const LNURLWithdraw_js_1 = require("../../../../types/lnurl/LNURLWithdraw.js");
 const sha2_1 = require("@noble/hashes/sha2");
 /**
  * State enum for legacy Lightning -> Smart chain swaps
@@ -82,7 +82,7 @@ function isFromBTCLNSwapInit(obj) {
         (obj.lnurl == null || typeof (obj.lnurl) === "string") &&
         (obj.lnurlK1 == null || typeof (obj.lnurlK1) === "string") &&
         (obj.lnurlCallback == null || typeof (obj.lnurlCallback) === "string") &&
-        (0, IEscrowSelfInitSwap_1.isIEscrowSelfInitSwapInit)(obj);
+        (0, IEscrowSelfInitSwap_js_1.isIEscrowSelfInitSwapInit)(obj);
 }
 exports.isFromBTCLNSwapInit = isFromBTCLNSwapInit;
 /**
@@ -91,7 +91,7 @@ exports.isFromBTCLNSwapInit = isFromBTCLNSwapInit;
  *
  * @category Swaps/Legacy/Lightning → Smart chain
  */
-class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
+class FromBTCLNSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
     /**
      * Sets the LNURL data for the swap
      *
@@ -106,7 +106,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
         if (isFromBTCLNSwapInit(initOrObject) && initOrObject.url != null)
             initOrObject.url += "/frombtcln";
         super(wrapper, initOrObject);
-        this.TYPE = SwapType_1.SwapType.FROM_BTCLN;
+        this.TYPE = SwapType_js_1.SwapType.FROM_BTCLN;
         /**
          * @internal
          */
@@ -118,7 +118,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
         /**
          * @internal
          */
-        this.inputToken = Token_1.BitcoinTokens.BTCLN;
+        this.inputToken = Token_js_1.BitcoinTokens.BTCLN;
         this.lnurlFailSignal = new AbortController();
         this.prPosted = false;
         if (isFromBTCLNSwapInit(initOrObject)) {
@@ -151,7 +151,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             this.usesClaimHashAsId = initOrObject.usesClaimHashAsId ?? false;
         }
         this.tryRecomputeSwapPrice();
-        this.logger = (0, Logger_1.getLogger)("FromBTCLN(" + this.getIdentifierHashString() + "): ");
+        this.logger = (0, Logger_js_1.getLogger)("FromBTCLN(" + this.getIdentifierHashString() + "): ");
     }
     /**
      * @inheritDoc
@@ -369,19 +369,19 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
      * @inheritDoc
      */
     getInputToken() {
-        return Token_1.BitcoinTokens.BTCLN;
+        return Token_js_1.BitcoinTokens.BTCLN;
     }
     /**
      * @inheritDoc
      */
     getInput() {
         if (this.pr == null || !this.pr.toLowerCase().startsWith("ln"))
-            return (0, TokenAmount_1.toTokenAmount)(null, this.inputToken, this.wrapper._prices, this.pricingInfo);
+            return (0, TokenAmount_js_1.toTokenAmount)(null, this.inputToken, this.wrapper._prices, this.pricingInfo);
         const parsed = (0, bolt11_1.decode)(this.pr);
         if (parsed.millisatoshis == null)
             throw new Error("Swap invoice doesn't contain msat amount field!");
         const amount = (BigInt(parsed.millisatoshis) + 999n) / 1000n;
-        return (0, TokenAmount_1.toTokenAmount)(amount, this.inputToken, this.wrapper._prices, this.pricingInfo);
+        return (0, TokenAmount_js_1.toTokenAmount)(amount, this.inputToken, this.wrapper._prices, this.pricingInfo);
     }
     /**
      * @inheritDoc
@@ -402,8 +402,8 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
         const totalFee = commitFee + claimFee + this.getSwapData().getTotalDeposit();
         return {
             enoughBalance: balance >= totalFee,
-            balance: (0, TokenAmount_1.toTokenAmount)(balance, this.wrapper._getNativeToken(), this.wrapper._prices, this.pricingInfo),
-            required: (0, TokenAmount_1.toTokenAmount)(totalFee, this.wrapper._getNativeToken(), this.wrapper._prices, this.pricingInfo)
+            balance: (0, TokenAmount_js_1.toTokenAmount)(balance, this.wrapper._getNativeToken(), this.wrapper._prices, this.pricingInfo),
+            required: (0, TokenAmount_js_1.toTokenAmount)(totalFee, this.wrapper._getNativeToken(), this.wrapper._prices, this.pricingInfo)
         };
     }
     isValidSecretPreimage(secret) {
@@ -458,7 +458,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             if (walletOrLnurlWithdraw != null && this.lnurl == null) {
                 if (this.pr == null || !this.pr.toLowerCase().startsWith("ln"))
                     throw new Error("Input lightning network invoice not available, the swap was probably recovered!");
-                if (typeof (walletOrLnurlWithdraw) === "string" || (0, LNURLWithdraw_1.isLNURLWithdraw)(walletOrLnurlWithdraw)) {
+                if (typeof (walletOrLnurlWithdraw) === "string" || (0, LNURLWithdraw_js_1.isLNURLWithdraw)(walletOrLnurlWithdraw)) {
                     await this.settleWithLNURLWithdraw(walletOrLnurlWithdraw);
                 }
                 else {
@@ -482,7 +482,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
                 if (this._state === FromBTCLNSwapState.PR_PAID) {
                     await this.commit(dstSigner, options?.abortSignal, undefined, callbacks?.onDestinationCommitSent);
                     if (options?.delayBetweenCommitAndClaimSeconds != null)
-                        await (0, TimeoutUtils_1.timeoutPromise)(options.delayBetweenCommitAndClaimSeconds * 1000, options?.abortSignal);
+                        await (0, TimeoutUtils_js_1.timeoutPromise)(options.delayBetweenCommitAndClaimSeconds * 1000, options?.abortSignal);
                 }
                 if (this._state === FromBTCLNSwapState.CLAIM_COMMITED) {
                     await this.claim(dstSigner, options?.abortSignal, callbacks?.onDestinationClaimSent, options?.secret);
@@ -595,7 +595,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
                     amount: this.getInput()
                 }],
             waitForTransactions: async (maxWaitTimeSeconds, pollIntervalSeconds, abortSignal) => {
-                const abortController = (0, Utils_1.extendAbortController)(abortSignal, maxWaitTimeSeconds, "Timed out waiting for lightning payment");
+                const abortController = (0, Utils_js_1.extendAbortController)(abortSignal, maxWaitTimeSeconds, "Timed out waiting for lightning payment");
                 const success = await this.waitForPayment(undefined, pollIntervalSeconds, abortController.signal);
                 if (!success)
                     throw new Error("Quote expired while waiting for Lightning payment");
@@ -715,7 +715,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             throw new Error("Failed to check LP payment received, payment hash not known (probably recovered swap?)");
         const resp = await this.wrapper._lpApi.getPaymentAuthorization(this.url, paymentHash.toString("hex"));
         switch (resp.code) {
-            case IntermediaryAPI_1.PaymentAuthorizationResponseCodes.AUTH_DATA:
+            case IntermediaryAPI_js_1.PaymentAuthorizationResponseCodes.AUTH_DATA:
                 const data = new (this.wrapper._swapDataDeserializer(this._contractVersion))(resp.data.data);
                 try {
                     await this.checkIntermediaryReturnedAuthData(this._getInitiator(), data, resp.data);
@@ -734,7 +734,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
                 }
                 catch (e) { }
                 return null;
-            case IntermediaryAPI_1.PaymentAuthorizationResponseCodes.EXPIRED:
+            case IntermediaryAPI_js_1.PaymentAuthorizationResponseCodes.EXPIRED:
                 this._state = FromBTCLNSwapState.QUOTE_EXPIRED;
                 this.initiated = true;
                 if (save)
@@ -760,25 +760,25 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
     async checkIntermediaryReturnedAuthData(signer, data, signature) {
         data.setClaimer(signer);
         if (data.getType() !== base_1.ChainSwapType.HTLC)
-            throw new IntermediaryError_1.IntermediaryError("Invalid swap type");
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid swap type");
         if (!data.isOfferer(this.getSwapData().getOfferer()))
-            throw new IntermediaryError_1.IntermediaryError("Invalid offerer used");
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid offerer used");
         if (!data.isClaimer(this._getInitiator()))
-            throw new IntermediaryError_1.IntermediaryError("Invalid claimer used");
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid claimer used");
         if (!data.isToken(this.getSwapData().getToken()))
-            throw new IntermediaryError_1.IntermediaryError("Invalid token used");
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid token used");
         if (data.getSecurityDeposit() > this.getSwapData().getSecurityDeposit())
-            throw new IntermediaryError_1.IntermediaryError("Invalid security deposit!");
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid security deposit!");
         if (data.getClaimerBounty() !== 0n)
-            throw new IntermediaryError_1.IntermediaryError("Invalid claimer bounty!");
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid claimer bounty!");
         if (data.getAmount() < this.getSwapData().getAmount())
-            throw new IntermediaryError_1.IntermediaryError("Invalid amount received!");
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid amount received!");
         if (data.getClaimHash() !== this.getSwapData().getClaimHash())
-            throw new IntermediaryError_1.IntermediaryError("Invalid payment hash used!");
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid payment hash used!");
         if (!data.isDepositToken(this.getSwapData().getDepositToken()))
-            throw new IntermediaryError_1.IntermediaryError("Invalid deposit token used!");
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid deposit token used!");
         if (data.hasSuccessAction())
-            throw new IntermediaryError_1.IntermediaryError("Invalid has success action");
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid has success action");
         await Promise.all([
             this._contract.isValidInitAuthorization(this._getInitiator(), data, signature, this.feeRate),
             this._contract.getCommitStatus(data.getClaimer(), data)
@@ -816,7 +816,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
         if (this.lnurl != null && this.lnurlK1 != null && this.lnurlCallback != null && !this.prPosted) {
             if (this.pr == null || !this.pr.toLowerCase().startsWith("ln"))
                 throw new Error("Input lightning network invoice not available, the swap was probably recovered!");
-            LNURL_1.LNURL.postInvoiceToLNURLWithdraw({ k1: this.lnurlK1, callback: this.lnurlCallback }, this.pr).catch(e => {
+            LNURL_js_1.LNURL.postInvoiceToLNURLWithdraw({ k1: this.lnurlK1, callback: this.lnurlCallback }, this.pr).catch(e => {
                 this.lnurlFailSignal.abort(e);
             });
             this.prPosted = true;
@@ -834,15 +834,15 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
         const paymentHash = this.getPaymentHash();
         if (paymentHash == null)
             throw new Error("Swap payment hash not available, the swap was probably recovered!");
-        let resp = { code: IntermediaryAPI_1.PaymentAuthorizationResponseCodes.PENDING, msg: "" };
-        while (!abortController.signal.aborted && resp.code === IntermediaryAPI_1.PaymentAuthorizationResponseCodes.PENDING) {
+        let resp = { code: IntermediaryAPI_js_1.PaymentAuthorizationResponseCodes.PENDING, msg: "" };
+        while (!abortController.signal.aborted && resp.code === IntermediaryAPI_js_1.PaymentAuthorizationResponseCodes.PENDING) {
             resp = await this.wrapper._lpApi.getPaymentAuthorization(this.url, paymentHash.toString("hex"));
-            if (resp.code === IntermediaryAPI_1.PaymentAuthorizationResponseCodes.PENDING)
-                await (0, TimeoutUtils_1.timeoutPromise)(checkIntervalSeconds * 1000, abortController.signal);
+            if (resp.code === IntermediaryAPI_js_1.PaymentAuthorizationResponseCodes.PENDING)
+                await (0, TimeoutUtils_js_1.timeoutPromise)(checkIntervalSeconds * 1000, abortController.signal);
         }
         this.lnurlFailSignal.signal.removeEventListener("abort", lnurlFailListener);
         abortController.signal.throwIfAborted();
-        if (resp.code === IntermediaryAPI_1.PaymentAuthorizationResponseCodes.AUTH_DATA) {
+        if (resp.code === IntermediaryAPI_js_1.PaymentAuthorizationResponseCodes.AUTH_DATA) {
             const sigData = resp.data;
             const swapData = new (this.wrapper._swapDataDeserializer(this._contractVersion))(resp.data.data);
             await this.checkIntermediaryReturnedAuthData(this._getInitiator(), swapData, sigData);
@@ -861,12 +861,12 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             return true;
         }
         if (this._state === FromBTCLNSwapState.PR_CREATED || this._state === FromBTCLNSwapState.QUOTE_SOFT_EXPIRED) {
-            if (resp.code === IntermediaryAPI_1.PaymentAuthorizationResponseCodes.EXPIRED) {
+            if (resp.code === IntermediaryAPI_js_1.PaymentAuthorizationResponseCodes.EXPIRED) {
                 await this._saveAndEmit(FromBTCLNSwapState.QUOTE_EXPIRED);
             }
             return false;
         }
-        throw new IntermediaryError_1.IntermediaryError("Invalid response from the LP");
+        throw new IntermediaryError_js_1.IntermediaryError("Invalid response from the LP");
     }
     //////////////////////////////
     //// Commit
@@ -900,7 +900,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             return Promise.resolve();
         if (this._state !== FromBTCLNSwapState.PR_PAID && (this._state !== FromBTCLNSwapState.QUOTE_SOFT_EXPIRED && this.signatureData != null))
             throw new Error("Invalid state");
-        const abortController = (0, Utils_1.extendAbortController)(abortSignal);
+        const abortController = (0, Utils_js_1.extendAbortController)(abortSignal);
         const result = await Promise.race([
             this.watchdogWaitTillCommited(undefined, abortController.signal),
             this.waitTillState(FromBTCLNSwapState.CLAIM_COMMITED, "gte", abortController.signal).then(() => 0)
@@ -1076,7 +1076,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
         const claimFee = await (swapContract.getRawClaimFee != null ?
             swapContract.getRawClaimFee(this._getInitiator(), this.getSwapData(), feeRate) :
             swapContract.getClaimFee(this._getInitiator(), this.getSwapData(), feeRate));
-        return (0, TokenAmount_1.toTokenAmount)(commitFee + claimFee, this.wrapper._getNativeToken(), this.wrapper._prices);
+        return (0, TokenAmount_js_1.toTokenAmount)(commitFee + claimFee, this.wrapper._getNativeToken(), this.wrapper._prices);
     }
     /**
      * Returns whether the underlying chain supports calling commit and claim in a single call,
@@ -1189,9 +1189,9 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
             throw new Error("Cannot settle LNURL-withdraw swap with different LNURL");
         let lnurlParams;
         if (typeof (lnurl) === "string") {
-            const parsedLNURL = await LNURL_1.LNURL.getLNURL(lnurl);
+            const parsedLNURL = await LNURL_js_1.LNURL.getLNURL(lnurl);
             if (parsedLNURL == null || parsedLNURL.tag !== "withdrawRequest")
-                throw new UserError_1.UserError("Invalid LNURL-withdraw to settle the swap");
+                throw new UserError_js_1.UserError("Invalid LNURL-withdraw to settle the swap");
             lnurlParams = parsedLNURL;
         }
         else {
@@ -1199,7 +1199,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_1.IFromBTCSelfInitSwap {
         }
         if (this.pr == null || !this.pr.toLowerCase().startsWith("ln"))
             throw new Error("Input lightning network invoice not available, the swap was probably recovered!");
-        LNURL_1.LNURL.useLNURLWithdraw(lnurlParams, this.pr).catch(e => this.lnurlFailSignal.abort(e));
+        LNURL_js_1.LNURL.useLNURLWithdraw(lnurlParams, this.pr).catch(e => this.lnurlFailSignal.abort(e));
         this.lnurl = lnurlParams.url;
         this.lnurlCallback = lnurlParams.callback;
         this.lnurlK1 = lnurlParams.k1;

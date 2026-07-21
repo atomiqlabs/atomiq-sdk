@@ -1,9 +1,9 @@
-import { RequestError } from "../../errors/RequestError";
-import { FieldTypeEnum, verifySchema } from "../../http/paramcoders/SchemaVerifier";
-import { streamingFetchPromise } from "../../http/paramcoders/client/StreamingFetchPromise";
-import { extendAbortController, randomBytes } from "../../utils/Utils";
-import { httpGet, httpPost } from "../../http/HttpUtils";
-import { tryWithRetries } from "../../utils/RetryUtils";
+import { RequestError } from "../../errors/RequestError.js";
+import { FieldTypeEnum, verifySchema } from "../../http/paramcoders/SchemaVerifier.js";
+import { streamingFetchPromise } from "../../http/paramcoders/client/StreamingFetchPromise.js";
+import { extendAbortController, randomBytes } from "../../utils/Utils.js";
+import { httpGet, httpPost } from "../../http/HttpUtils.js";
+import { tryWithRetries } from "../../utils/RetryUtils.js";
 export var RefundAuthorizationResponseCodes;
 (function (RefundAuthorizationResponseCodes) {
     RefundAuthorizationResponseCodes[RefundAuthorizationResponseCodes["EXPIRED"] = 20010] = "EXPIRED";

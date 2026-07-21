@@ -1,6 +1,6 @@
-import { CoinType, CtorCoinTypes } from "../abstract/IPriceProvider";
-import { HttpPriceProvider } from "./abstract/HttpPriceProvider";
-import { MultiChain } from "../../swapper/Swapper";
+import { CoinType, CtorCoinTypes } from "../abstract/IPriceProvider.js";
+import { HttpPriceProvider } from "./abstract/HttpPriceProvider.js";
+import { MultiChain } from "../../swapper/Swapper.js";
 export type CoinGeckoResponse<Currency extends string> = {
     [coinId: string]: {
         [c in Currency]: number;

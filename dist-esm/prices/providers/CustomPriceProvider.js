@@ -1,4 +1,4 @@
-import { IPriceProvider } from "../abstract/IPriceProvider";
+import { IPriceProvider } from "../abstract/IPriceProvider.js";
 /**
  * Price provider using custom pricing function
  *

@@ -1,13 +1,13 @@
-import {IFromBTCWrapper} from "./IFromBTCWrapper";
+import {IFromBTCWrapper} from "./IFromBTCWrapper.js";
 import {ChainType, SignatureVerificationError,} from "@atomiqlabs/base";
-import {Fee} from "../../../types/fees/Fee";
-import {IAddressSwap} from "../../IAddressSwap";
-import {IEscrowSelfInitSwap, IEscrowSelfInitSwapDefinition, IEscrowSelfInitSwapInit} from "../IEscrowSelfInitSwap";
-import {FeeType} from "../../../enums/FeeType";
-import {ppmToPercentage} from "../../../types/fees/PercentagePPM";
-import {TokenAmount, toTokenAmount} from "../../../types/TokenAmount";
-import {BtcToken, SCToken} from "../../../types/Token";
-import {IClaimableSwap} from "../../IClaimableSwap";
+import {Fee} from "../../../types/fees/Fee.js";
+import {IAddressSwap} from "../../IAddressSwap.js";
+import {IEscrowSelfInitSwap, IEscrowSelfInitSwapDefinition, IEscrowSelfInitSwapInit} from "../IEscrowSelfInitSwap.js";
+import {FeeType} from "../../../enums/FeeType.js";
+import {ppmToPercentage} from "../../../types/fees/PercentagePPM.js";
+import {TokenAmount, toTokenAmount} from "../../../types/TokenAmount.js";
+import {BtcToken, SCToken} from "../../../types/Token.js";
+import {IClaimableSwap} from "../../IClaimableSwap.js";
 
 export type IFromBTCSelfInitDefinition<T extends ChainType, W extends IFromBTCWrapper<T, any>, S extends IFromBTCSelfInitSwap<T>> = IEscrowSelfInitSwapDefinition<T, W, S>;
 

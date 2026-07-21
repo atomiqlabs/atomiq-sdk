@@ -1,8 +1,8 @@
-import { IToBTCSwap } from "../swaps/escrow_swaps/tobtc/IToBTCSwap";
-import { IFromBTCSelfInitSwap } from "../swaps/escrow_swaps/frombtc/IFromBTCSelfInitSwap";
-import { FromBTCLNSwap } from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap";
-import { FromBTCLNAutoSwap } from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap";
-import { SpvFromBTCSwap } from "../swaps/spv_swaps/SpvFromBTCSwap";
+import { IToBTCSwap } from "../swaps/escrow_swaps/tobtc/IToBTCSwap.js";
+import { IFromBTCSelfInitSwap } from "../swaps/escrow_swaps/frombtc/IFromBTCSelfInitSwap.js";
+import { FromBTCLNSwap } from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap.js";
+import { FromBTCLNAutoSwap } from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap.js";
+import { SpvFromBTCSwap } from "../swaps/spv_swaps/SpvFromBTCSwap.js";
 /**
  * Wraps a swap with automatic signer injection for methods like commit, refund, and claim
  *

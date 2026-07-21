@@ -1,9 +1,9 @@
 import { ChainType, StorageObject, IStorageManager, Messenger, ChainInitializer } from "@atomiqlabs/base";
-import { Swapper, SwapperOptions } from "./Swapper";
-import { BtcToken, SCToken } from "../types/Token";
-import { SwapType } from "../enums/SwapType";
-import { SwapTypeMapping } from "../utils/SwapUtils";
-import { CustomPriceFunction } from "../types/CustomPriceFunction";
+import { Swapper, SwapperOptions } from "./Swapper.js";
+import { BtcToken, SCToken } from "../types/Token.js";
+import { SwapType } from "../enums/SwapType.js";
+import { SwapTypeMapping } from "../utils/SwapUtils.js";
+import { CustomPriceFunction } from "../types/CustomPriceFunction.js";
 import { MempoolApi, MempoolBitcoinRpc } from "@atomiqlabs/btc-mempool";
 /**
  * Token definitions for a specific chain

@@ -1,14 +1,14 @@
-import { RequestError } from "../errors/RequestError";
+import { RequestError } from "../errors/RequestError.js";
 import { decode as bolt11Decode } from "@atomiqlabs/bolt11";
-import { UserError } from "../errors/UserError";
+import { UserError } from "../errors/UserError.js";
 import { bech32 } from "@scure/base";
 import { cbc } from "@noble/ciphers/aes";
 import { Buffer } from "buffer";
 import { sha256 } from "@noble/hashes/sha2";
-import { httpGet } from "../http/HttpUtils";
-import { isLNURLWithdrawParams } from "../types/lnurl/LNURLWithdraw";
-import { isLNURLPayParams } from "../types/lnurl/LNURLPay";
-import { tryWithRetries } from "../utils/RetryUtils";
+import { httpGet } from "../http/HttpUtils.js";
+import { isLNURLWithdrawParams } from "../types/lnurl/LNURLWithdraw.js";
+import { isLNURLPayParams } from "../types/lnurl/LNURLPay.js";
+import { tryWithRetries } from "../utils/RetryUtils.js";
 function isLNURLError(obj) {
     return obj.status === "ERROR" &&
         (obj.reason == null || typeof obj.reason === "string");

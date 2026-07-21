@@ -1,7 +1,7 @@
 import { isBytes, PubT, validatePubkey } from "@scure/btc-signer/utils";
 import { Buffer } from "buffer";
 import { Address, OutScript, Transaction } from "@scure/btc-signer";
-import { randomBytes } from "./Utils";
+import { randomBytes } from "./Utils.js";
 export function fromOutputScript(network, outputScriptHex) {
     return Address(network).encode(OutScript.decode(Buffer.from(outputScriptHex, "hex")));
 }

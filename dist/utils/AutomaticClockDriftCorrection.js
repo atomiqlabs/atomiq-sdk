@@ -1,11 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.correctClock = void 0;
-const TimeoutUtils_1 = require("./TimeoutUtils");
+const TimeoutUtils_js_1 = require("./TimeoutUtils.js");
 const headerUrls = ["https://api.atomiq.exchange/"];
 async function getHeaderTimestamp(url) {
     const timeStart = performance.now();
-    const resp = await fetch(url, { method: "HEAD", signal: (0, TimeoutUtils_1.timeoutSignal)(3000) });
+    const resp = await fetch(url, { method: "HEAD", signal: (0, TimeoutUtils_js_1.timeoutSignal)(3000) });
     const timeDelta = performance.now() - timeStart;
     const dateHeaderValue = resp.headers.get("Date");
     if (dateHeaderValue == null)
@@ -14,7 +14,7 @@ async function getHeaderTimestamp(url) {
 }
 async function getBinanceTimestamp() {
     const timeStart = performance.now();
-    const resp = await fetch("https://api.binance.com/api/v3/time", { signal: (0, TimeoutUtils_1.timeoutSignal)(3000) });
+    const resp = await fetch("https://api.binance.com/api/v3/time", { signal: (0, TimeoutUtils_js_1.timeoutSignal)(3000) });
     const timeDelta = performance.now() - timeStart;
     const obj = await resp.json();
     if (obj == null || obj.serverTime == null)
@@ -23,7 +23,7 @@ async function getBinanceTimestamp() {
 }
 async function getOKXTimestamp() {
     const timeStart = performance.now();
-    const resp = await fetch("https://www.okx.com/api/v5/public/time", { signal: (0, TimeoutUtils_1.timeoutSignal)(3000) });
+    const resp = await fetch("https://www.okx.com/api/v5/public/time", { signal: (0, TimeoutUtils_js_1.timeoutSignal)(3000) });
     const timeDelta = performance.now() - timeStart;
     const obj = await resp.json();
     if (obj == null || obj.data == null || obj.data[0] == null || obj.data[0].ts == null)
@@ -32,7 +32,7 @@ async function getOKXTimestamp() {
 }
 async function getAisenseApiTimestamp() {
     const timeStart = performance.now();
-    const resp = await fetch("https://aisenseapi.com/services/v1/timestamp", { signal: (0, TimeoutUtils_1.timeoutSignal)(3000) });
+    const resp = await fetch("https://aisenseapi.com/services/v1/timestamp", { signal: (0, TimeoutUtils_js_1.timeoutSignal)(3000) });
     const timeDelta = performance.now() - timeStart;
     const obj = await resp.json();
     if (obj == null || obj.timestamp == null)

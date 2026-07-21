@@ -1,5 +1,5 @@
 import { ChainSwapType, InitializeEvent, SpvVaultClaimEvent, SpvVaultCloseEvent, SpvVaultFrontEvent, SwapEvent } from "@atomiqlabs/base";
-import { getLogger } from "../utils/Logger";
+import { getLogger } from "../utils/Logger.js";
 function chainEventToEscrowHash(event) {
     if (event instanceof SwapEvent)
         return event.escrowHash;

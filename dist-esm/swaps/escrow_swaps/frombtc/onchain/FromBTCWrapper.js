@@ -1,15 +1,15 @@
-import { IFromBTCWrapper } from "../IFromBTCWrapper";
-import { FromBTCSwap, FromBTCSwapState } from "./FromBTCSwap";
+import { IFromBTCWrapper } from "../IFromBTCWrapper.js";
+import { FromBTCSwap, FromBTCSwapState } from "./FromBTCSwap.js";
 import { ChainSwapType } from "@atomiqlabs/base";
-import { Intermediary } from "../../../../intermediaries/Intermediary";
+import { Intermediary } from "../../../../intermediaries/Intermediary.js";
 import { Buffer } from "buffer";
-import { IntermediaryError } from "../../../../errors/IntermediaryError";
-import { SwapType } from "../../../../enums/SwapType";
-import { extendAbortController, mapArrayToObject, randomBytes, throwIfUndefined } from "../../../../utils/Utils";
-import { toOutputScript } from "../../../../utils/BitcoinUtils";
-import { RequestError } from "../../../../errors/RequestError";
+import { IntermediaryError } from "../../../../errors/IntermediaryError.js";
+import { SwapType } from "../../../../enums/SwapType.js";
+import { extendAbortController, mapArrayToObject, randomBytes, throwIfUndefined } from "../../../../utils/Utils.js";
+import { toOutputScript } from "../../../../utils/BitcoinUtils.js";
+import { RequestError } from "../../../../errors/RequestError.js";
 import { TEST_NETWORK } from "@scure/btc-signer/utils";
-import { tryWithRetries } from "../../../../utils/RetryUtils";
+import { tryWithRetries } from "../../../../utils/RetryUtils.js";
 /**
  * Legacy escrow (PrTLC) based swap for Bitcoin -> Smart chains, requires manual initiation
  *  of the swap escrow on the destination chain.

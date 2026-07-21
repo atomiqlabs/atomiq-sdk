@@ -1,4 +1,4 @@
-import { timeoutSignal } from "./TimeoutUtils";
+import { timeoutSignal } from "./TimeoutUtils.js";
 const headerUrls = ["https://api.atomiq.exchange/"];
 async function getHeaderTimestamp(url) {
     const timeStart = performance.now();

@@ -1,6 +1,6 @@
-import { MultiChain, Swapper } from "../swapper/Swapper";
-import { ApiEndpoint } from "./ApiTypes";
-import { CreateSwapInput, CreateSwapOutput, GetSpendableBalanceInput, GetSpendableBalanceOutput, GetSupportedTokensInput, GetSupportedTokensOutput, GetSwapCounterTokensInput, GetSwapCounterTokensOutput, GetSwapLimitsInput, GetSwapLimitsOutput, GetSwapStatusInput, GetSwapStatusOutput, ListPendingSwapsInput, ListPendingSwapsOutput, ListSwapsInput, ListSwapsOutput, ParseAddressInput, ParseAddressOutput, SettleWithLnurlInput, SettleWithLnurlOutput, SubmitTransactionInput, SubmitTransactionOutput } from "./ApiEndpoints";
+import { MultiChain, Swapper } from "../swapper/Swapper.js";
+import { ApiEndpoint } from "./ApiTypes.js";
+import { CreateSwapInput, CreateSwapOutput, GetSpendableBalanceInput, GetSpendableBalanceOutput, GetSupportedTokensInput, GetSupportedTokensOutput, GetSwapCounterTokensInput, GetSwapCounterTokensOutput, GetSwapLimitsInput, GetSwapLimitsOutput, GetSwapStatusInput, GetSwapStatusOutput, ListPendingSwapsInput, ListPendingSwapsOutput, ListSwapsInput, ListSwapsOutput, ParseAddressInput, ParseAddressOutput, SettleWithLnurlInput, SettleWithLnurlOutput, SubmitTransactionInput, SubmitTransactionOutput } from "./ApiEndpoints.js";
 export type SwapperApiConfig = {
     syncOnGetStatus?: boolean;
     idempotentTxSubmission?: boolean;

@@ -1,4 +1,4 @@
-import {ISwapWrapper, ISwapWrapperOptions, SwapTypeDefinition, WrapperCtorTokens} from "../ISwapWrapper";
+import {ISwapWrapper, ISwapWrapperOptions, SwapTypeDefinition, WrapperCtorTokens} from "../ISwapWrapper.js";
 import {
     BitcoinRpcWithAddressIndex, BtcBlock,
     BtcRelay,
@@ -13,35 +13,35 @@ import {
     SpvWithdrawalFrontedState,
     SpvWithdrawalStateType
 } from "@atomiqlabs/base";
-import {SpvFromBTCSwap, SpvFromBTCSwapInit, SpvFromBTCSwapState} from "./SpvFromBTCSwap";
+import {SpvFromBTCSwap, SpvFromBTCSwapInit, SpvFromBTCSwapState} from "./SpvFromBTCSwap.js";
 import {BTC_NETWORK, TEST_NETWORK} from "@scure/btc-signer/utils";
-import {SwapType} from "../../enums/SwapType";
-import {UnifiedSwapStorage} from "../../storage/UnifiedSwapStorage";
-import {UnifiedSwapEventListener} from "../../events/UnifiedSwapEventListener";
-import {ISwapPrice} from "../../prices/abstract/ISwapPrice";
+import {SwapType} from "../../enums/SwapType.js";
+import {UnifiedSwapStorage} from "../../storage/UnifiedSwapStorage.js";
+import {UnifiedSwapEventListener} from "../../events/UnifiedSwapEventListener.js";
+import {ISwapPrice} from "../../prices/abstract/ISwapPrice.js";
 import {EventEmitter} from "events";
-import {Intermediary} from "../../intermediaries/Intermediary";
-import {extendAbortController, mapArrayToObject, randomBytes, throwIfUndefined} from "../../utils/Utils";
+import {Intermediary} from "../../intermediaries/Intermediary.js";
+import {extendAbortController, mapArrayToObject, randomBytes, throwIfUndefined} from "../../utils/Utils.js";
 import {
     fromOutputScript,
     getDummyOutputScript,
     toCoinselectAddressType,
     toOutputScript
-} from "../../utils/BitcoinUtils";
-import {IntermediaryAPI, SpvFromBTCPrepareResponseType} from "../../intermediaries/apis/IntermediaryAPI";
-import {OutOfBoundsError, RequestError} from "../../errors/RequestError";
-import {IntermediaryError} from "../../errors/IntermediaryError";
-import {CoinselectAddressTypes} from "../../bitcoin/coinselect2";
+} from "../../utils/BitcoinUtils.js";
+import {IntermediaryAPI, SpvFromBTCPrepareResponseType} from "../../intermediaries/apis/IntermediaryAPI.js";
+import {OutOfBoundsError, RequestError} from "../../errors/RequestError.js";
+import {IntermediaryError} from "../../errors/IntermediaryError.js";
+import {CoinselectAddressTypes} from "../../bitcoin/coinselect2/index.js";
 import {OutScript, Transaction} from "@scure/btc-signer";
-import {ISwap} from "../ISwap";
-import {IClaimableSwapWrapper} from "../IClaimableSwapWrapper";
-import {AmountData} from "../../types/AmountData";
-import {tryWithRetries} from "../../utils/RetryUtils";
-import {AllOptional} from "../../utils/TypeUtils";
-import {UserError} from "../../errors/UserError";
-import {BitcoinWalletUtxo, BitcoinWalletUtxoBase, IBitcoinWallet} from "../../bitcoin/wallet/IBitcoinWallet";
-import {utils} from "../../bitcoin/coinselect2/utils";
-import {BitcoinWallet} from "../../bitcoin/wallet/BitcoinWallet";
+import {ISwap} from "../ISwap.js";
+import {IClaimableSwapWrapper} from "../IClaimableSwapWrapper.js";
+import {AmountData} from "../../types/AmountData.js";
+import {tryWithRetries} from "../../utils/RetryUtils.js";
+import {AllOptional} from "../../utils/TypeUtils.js";
+import {UserError} from "../../errors/UserError.js";
+import {BitcoinWalletUtxo, BitcoinWalletUtxoBase, IBitcoinWallet} from "../../bitcoin/wallet/IBitcoinWallet.js";
+import {utils} from "../../bitcoin/coinselect2/utils.js";
+import {BitcoinWallet} from "../../bitcoin/wallet/BitcoinWallet.js";
 
 export type SpvFromBTCOptions = {
     /**

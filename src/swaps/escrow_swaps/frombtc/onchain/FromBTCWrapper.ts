@@ -1,5 +1,5 @@
-import {IFromBTCWrapper} from "../IFromBTCWrapper";
-import {FromBTCSwap, FromBTCSwapInit, FromBTCSwapState} from "./FromBTCSwap";
+import {IFromBTCWrapper} from "../IFromBTCWrapper.js";
+import {FromBTCSwap, FromBTCSwapInit, FromBTCSwapState} from "./FromBTCSwap.js";
 import {
     ChainSwapType,
     ChainType,
@@ -11,30 +11,30 @@ import {
     BtcRelay, BitcoinRpcWithAddressIndex, SwapCommitState
 } from "@atomiqlabs/base";
 import {EventEmitter} from "events";
-import {Intermediary} from "../../../../intermediaries/Intermediary";
-import {ISwapPrice} from "../../../../prices/abstract/ISwapPrice";
-import {ISwapWrapperOptions, WrapperCtorTokens} from "../../../ISwapWrapper";
+import {Intermediary} from "../../../../intermediaries/Intermediary.js";
+import {ISwapPrice} from "../../../../prices/abstract/ISwapPrice.js";
+import {ISwapWrapperOptions, WrapperCtorTokens} from "../../../ISwapWrapper.js";
 import {Buffer} from "buffer";
-import {IntermediaryError} from "../../../../errors/IntermediaryError";
-import {SwapType} from "../../../../enums/SwapType";
+import {IntermediaryError} from "../../../../errors/IntermediaryError.js";
+import {SwapType} from "../../../../enums/SwapType.js";
 import {
     extendAbortController, mapArrayToObject,
     randomBytes,
     throwIfUndefined
-} from "../../../../utils/Utils";
-import { toOutputScript} from "../../../../utils/BitcoinUtils";
-import {FromBTCResponseType, IntermediaryAPI} from "../../../../intermediaries/apis/IntermediaryAPI";
-import {RequestError} from "../../../../errors/RequestError";
+} from "../../../../utils/Utils.js";
+import { toOutputScript} from "../../../../utils/BitcoinUtils.js";
+import {FromBTCResponseType, IntermediaryAPI} from "../../../../intermediaries/apis/IntermediaryAPI.js";
+import {RequestError} from "../../../../errors/RequestError.js";
 import {BTC_NETWORK, TEST_NETWORK} from "@scure/btc-signer/utils";
-import {UnifiedSwapEventListener} from "../../../../events/UnifiedSwapEventListener";
-import {UnifiedSwapStorage} from "../../../../storage/UnifiedSwapStorage";
-import {ISwap} from "../../../ISwap";
-import {IClaimableSwapWrapper} from "../../../IClaimableSwapWrapper";
-import {IFromBTCSelfInitDefinition} from "../IFromBTCSelfInitSwap";
-import {AmountData} from "../../../../types/AmountData";
-import {tryWithRetries} from "../../../../utils/RetryUtils";
-import {AllOptional} from "../../../../utils/TypeUtils";
-import {UserError} from "../../../../errors/UserError";
+import {UnifiedSwapEventListener} from "../../../../events/UnifiedSwapEventListener.js";
+import {UnifiedSwapStorage} from "../../../../storage/UnifiedSwapStorage.js";
+import {ISwap} from "../../../ISwap.js";
+import {IClaimableSwapWrapper} from "../../../IClaimableSwapWrapper.js";
+import {IFromBTCSelfInitDefinition} from "../IFromBTCSelfInitSwap.js";
+import {AmountData} from "../../../../types/AmountData.js";
+import {tryWithRetries} from "../../../../utils/RetryUtils.js";
+import {AllOptional} from "../../../../utils/TypeUtils.js";
+import {UserError} from "../../../../errors/UserError.js";
 
 export type FromBTCOptions = {
     /**

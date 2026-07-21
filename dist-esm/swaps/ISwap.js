@@ -1,10 +1,10 @@
-import { SwapType } from "../enums/SwapType";
+import { SwapType } from "../enums/SwapType.js";
 import { EventEmitter } from "events";
-import { randomBytes, toBigInt } from "../utils/Utils";
-import { SwapDirection } from "../enums/SwapDirection";
-import { ppmToPercentage } from "../types/fees/PercentagePPM";
-import { isSCToken } from "../types/Token";
-import { isPriceInfoType } from "../types/PriceInfoType";
+import { randomBytes, toBigInt } from "../utils/Utils.js";
+import { SwapDirection } from "../enums/SwapDirection.js";
+import { ppmToPercentage } from "../types/fees/PercentagePPM.js";
+import { isSCToken } from "../types/Token.js";
+import { isPriceInfoType } from "../types/PriceInfoType.js";
 /**
  * Type guard to check if an object is an ISwapInit
  *

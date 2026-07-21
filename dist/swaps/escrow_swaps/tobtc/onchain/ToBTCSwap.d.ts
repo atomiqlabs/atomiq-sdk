@@ -1,10 +1,10 @@
-import { ToBTCDefinition, ToBTCWrapper } from "./ToBTCWrapper";
-import { IToBTCSwap, IToBTCSwapInit } from "../IToBTCSwap";
-import { SwapType } from "../../../../enums/SwapType";
+import { ToBTCDefinition, ToBTCWrapper } from "./ToBTCWrapper.js";
+import { IToBTCSwap, IToBTCSwapInit } from "../IToBTCSwap.js";
+import { SwapType } from "../../../../enums/SwapType.js";
 import { ChainType, SwapData } from "@atomiqlabs/base";
-import { TokenAmount } from "../../../../types/TokenAmount";
-import { BtcToken } from "../../../../types/Token";
-import { LoggerType } from "../../../../utils/Logger";
+import { TokenAmount } from "../../../../types/TokenAmount.js";
+import { BtcToken } from "../../../../types/Token.js";
+import { LoggerType } from "../../../../utils/Logger.js";
 export type ToBTCSwapInit<T extends SwapData> = IToBTCSwapInit<T> & {
     address?: string;
     amount?: bigint;

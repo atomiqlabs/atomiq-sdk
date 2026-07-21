@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.utils = exports.DUST_THRESHOLDS = void 0;
-const Logger_1 = require("../../utils/Logger");
-const logger = (0, Logger_1.getLogger)("CoinSelect: ");
+const Logger_js_1 = require("../../utils/Logger.js");
+const logger = (0, Logger_js_1.getLogger)("CoinSelect: ");
 // baseline estimates, used to improve performance
 const TX_EMPTY_SIZE = 4 + 1 + 1 + 4;
 const TX_INPUT_BASE = 32 + 4 + 1 + 4;

@@ -1,13 +1,13 @@
-import { createApiEndpoint, toApiAmount, toApiLNURL, toApiToken } from "./ApiTypes";
-import { serializeAction } from "./SerializedAction";
-import { FeeType } from "../enums/FeeType";
-import { SwapSide } from "../enums/SwapSide";
-import { SwapType } from "../enums/SwapType";
-import { FromBTCLNSwap, FromBTCLNSwapState } from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap";
-import { FromBTCLNAutoSwap, FromBTCLNAutoSwapState } from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap";
-import { IEscrowSwap } from "../swaps/escrow_swaps/IEscrowSwap";
-import { ToBTCLNSwap } from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNSwap";
-import { isSwapType } from "../utils/SwapUtils";
+import { createApiEndpoint, toApiAmount, toApiLNURL, toApiToken } from "./ApiTypes.js";
+import { serializeAction } from "./SerializedAction.js";
+import { FeeType } from "../enums/FeeType.js";
+import { SwapSide } from "../enums/SwapSide.js";
+import { SwapType } from "../enums/SwapType.js";
+import { FromBTCLNSwap, FromBTCLNSwapState } from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap.js";
+import { FromBTCLNAutoSwap, FromBTCLNAutoSwapState } from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap.js";
+import { IEscrowSwap } from "../swaps/escrow_swaps/IEscrowSwap.js";
+import { ToBTCLNSwap } from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNSwap.js";
+import { isSwapType } from "../utils/SwapUtils.js";
 function requiresSecretRevealForApi(swap, state) {
     if (swap instanceof FromBTCLNSwap) {
         if (swap.hasSecretPreimage())

@@ -1,9 +1,9 @@
-import { IFromBTCWrapper } from "./IFromBTCWrapper";
+import { IFromBTCWrapper } from "./IFromBTCWrapper.js";
 import { Buffer } from "buffer";
-import { randomBytes } from "../../../utils/Utils";
-import { IntermediaryError } from "../../../errors/IntermediaryError";
-import { LNURL } from "../../../lnurl/LNURL";
-import { UserError } from "../../../errors/UserError";
+import { randomBytes } from "../../../utils/Utils.js";
+import { IntermediaryError } from "../../../errors/IntermediaryError.js";
+import { LNURL } from "../../../lnurl/LNURL.js";
+import { UserError } from "../../../errors/UserError.js";
 import { sha256 } from "@noble/hashes/sha256";
 /**
  * Base class for wrappers of escrow-based Lightning -> Smart chain swaps

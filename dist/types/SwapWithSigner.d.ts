@@ -1,4 +1,4 @@
-import { ISwap } from "../swaps/ISwap";
+import { ISwap } from "../swaps/ISwap.js";
 import { ChainType } from "@atomiqlabs/base";
 /**
  * Proxy type that auto-injects a smart chain signer into swap methods

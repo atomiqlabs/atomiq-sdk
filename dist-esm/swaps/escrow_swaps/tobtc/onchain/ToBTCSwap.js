@@ -1,12 +1,12 @@
-import { isIToBTCSwapInit, IToBTCSwap } from "../IToBTCSwap";
-import { SwapType } from "../../../../enums/SwapType";
+import { isIToBTCSwapInit, IToBTCSwap } from "../IToBTCSwap.js";
+import { SwapType } from "../../../../enums/SwapType.js";
 import { Buffer } from "buffer";
-import { IntermediaryError } from "../../../../errors/IntermediaryError";
-import { toBigInt } from "../../../../utils/Utils";
-import { toTokenAmount } from "../../../../types/TokenAmount";
-import { BitcoinTokens } from "../../../../types/Token";
-import { getLogger } from "../../../../utils/Logger";
-import { fromOutputScript } from "../../../../utils/BitcoinUtils";
+import { IntermediaryError } from "../../../../errors/IntermediaryError.js";
+import { toBigInt } from "../../../../utils/Utils.js";
+import { toTokenAmount } from "../../../../types/TokenAmount.js";
+import { BitcoinTokens } from "../../../../types/Token.js";
+import { getLogger } from "../../../../utils/Logger.js";
+import { fromOutputScript } from "../../../../utils/BitcoinUtils.js";
 export function isToBTCSwapInit(obj) {
     return (obj.address == null || typeof (obj.address) === "string") &&
         (obj.amount == null || typeof (obj.amount) === "bigint") &&

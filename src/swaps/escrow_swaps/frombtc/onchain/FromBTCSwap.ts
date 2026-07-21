@@ -1,6 +1,6 @@
-import {IFromBTCSelfInitSwap} from "../IFromBTCSelfInitSwap";
-import {SwapType} from "../../../../enums/SwapType";
-import {FromBTCDefinition, FromBTCWrapper} from "./FromBTCWrapper";
+import {IFromBTCSelfInitSwap} from "../IFromBTCSelfInitSwap.js";
+import {SwapType} from "../../../../enums/SwapType.js";
+import {FromBTCDefinition, FromBTCWrapper} from "./FromBTCWrapper.js";
 import {
     BtcTxWithBlockheight,
     ChainType,
@@ -13,40 +13,40 @@ import {Buffer} from "buffer";
 import {
     extendAbortController,
     getTxoHash, toBigInt
-} from "../../../../utils/Utils";
+} from "../../../../utils/Utils.js";
 import {
     fromOutputScript, getSenderAddress, getVoutIndex,
     parsePsbtTransaction,
     toOutputScript,
-} from "../../../../utils/BitcoinUtils";
-import {IBitcoinWallet, isIBitcoinWallet} from "../../../../bitcoin/wallet/IBitcoinWallet";
-import {IBTCWalletSwap} from "../../../IBTCWalletSwap";
+} from "../../../../utils/BitcoinUtils.js";
+import {IBitcoinWallet, isIBitcoinWallet} from "../../../../bitcoin/wallet/IBitcoinWallet.js";
+import {IBTCWalletSwap} from "../../../IBTCWalletSwap.js";
 import {Transaction} from "@scure/btc-signer";
-import {SingleAddressBitcoinWallet} from "../../../../bitcoin/wallet/SingleAddressBitcoinWallet";
+import {SingleAddressBitcoinWallet} from "../../../../bitcoin/wallet/SingleAddressBitcoinWallet.js";
 import {
     MinimalBitcoinWalletInterface,
     MinimalBitcoinWalletInterfaceWithSigner
-} from "../../../../types/wallets/MinimalBitcoinWalletInterface";
-import {IClaimableSwap} from "../../../IClaimableSwap";
-import {IEscrowSelfInitSwapInit, isIEscrowSelfInitSwapInit} from "../../IEscrowSelfInitSwap";
-import {IAddressSwap} from "../../../IAddressSwap";
-import {TokenAmount, toTokenAmount} from "../../../../types/TokenAmount";
-import {BitcoinTokens, BtcToken, SCToken} from "../../../../types/Token";
-import {getLogger, LoggerType} from "../../../../utils/Logger";
-import {timeoutPromise} from "../../../../utils/TimeoutUtils";
-import {toBitcoinWallet} from "../../../../utils/BitcoinWalletUtils";
+} from "../../../../types/wallets/MinimalBitcoinWalletInterface.js";
+import {IClaimableSwap} from "../../../IClaimableSwap.js";
+import {IEscrowSelfInitSwapInit, isIEscrowSelfInitSwapInit} from "../../IEscrowSelfInitSwap.js";
+import {IAddressSwap} from "../../../IAddressSwap.js";
+import {TokenAmount, toTokenAmount} from "../../../../types/TokenAmount.js";
+import {BitcoinTokens, BtcToken, SCToken} from "../../../../types/Token.js";
+import {getLogger, LoggerType} from "../../../../utils/Logger.js";
+import {timeoutPromise} from "../../../../utils/TimeoutUtils.js";
+import {toBitcoinWallet} from "../../../../utils/BitcoinWalletUtils.js";
 import {
     SwapExecutionActionSendToAddress,
     SwapExecutionActionSignPSBT,
     SwapExecutionActionSignSmartChainTx,
     SwapExecutionActionWait
-} from "../../../../types/SwapExecutionAction";
+} from "../../../../types/SwapExecutionAction.js";
 import {
     SwapExecutionStepPayment,
     SwapExecutionStepSettlement,
     SwapExecutionStepSetup
-} from "../../../../types/SwapExecutionStep";
-import {SwapStateInfo} from "../../../../types/SwapStateInfo";
+} from "../../../../types/SwapExecutionStep.js";
+import {SwapStateInfo} from "../../../../types/SwapStateInfo.js";
 
 /**
  * State enum for legacy escrow based Bitcoin -> Smart chain swaps.

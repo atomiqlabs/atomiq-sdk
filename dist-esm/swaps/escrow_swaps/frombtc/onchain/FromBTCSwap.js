@@ -1,17 +1,17 @@
-import { IFromBTCSelfInitSwap } from "../IFromBTCSelfInitSwap";
-import { SwapType } from "../../../../enums/SwapType";
+import { IFromBTCSelfInitSwap } from "../IFromBTCSelfInitSwap.js";
+import { SwapType } from "../../../../enums/SwapType.js";
 import { isAbstractSigner, SwapCommitStateType } from "@atomiqlabs/base";
 import { Buffer } from "buffer";
-import { extendAbortController, getTxoHash, toBigInt } from "../../../../utils/Utils";
-import { fromOutputScript, getSenderAddress, getVoutIndex, parsePsbtTransaction, toOutputScript, } from "../../../../utils/BitcoinUtils";
-import { isIBitcoinWallet } from "../../../../bitcoin/wallet/IBitcoinWallet";
+import { extendAbortController, getTxoHash, toBigInt } from "../../../../utils/Utils.js";
+import { fromOutputScript, getSenderAddress, getVoutIndex, parsePsbtTransaction, toOutputScript, } from "../../../../utils/BitcoinUtils.js";
+import { isIBitcoinWallet } from "../../../../bitcoin/wallet/IBitcoinWallet.js";
 import { Transaction } from "@scure/btc-signer";
-import { SingleAddressBitcoinWallet } from "../../../../bitcoin/wallet/SingleAddressBitcoinWallet";
-import { isIEscrowSelfInitSwapInit } from "../../IEscrowSelfInitSwap";
-import { toTokenAmount } from "../../../../types/TokenAmount";
-import { BitcoinTokens } from "../../../../types/Token";
-import { getLogger } from "../../../../utils/Logger";
-import { toBitcoinWallet } from "../../../../utils/BitcoinWalletUtils";
+import { SingleAddressBitcoinWallet } from "../../../../bitcoin/wallet/SingleAddressBitcoinWallet.js";
+import { isIEscrowSelfInitSwapInit } from "../../IEscrowSelfInitSwap.js";
+import { toTokenAmount } from "../../../../types/TokenAmount.js";
+import { BitcoinTokens } from "../../../../types/Token.js";
+import { getLogger } from "../../../../utils/Logger.js";
+import { toBitcoinWallet } from "../../../../utils/BitcoinWalletUtils.js";
 /**
  * State enum for legacy escrow based Bitcoin -> Smart chain swaps.
  *

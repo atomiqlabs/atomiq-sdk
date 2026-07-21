@@ -1,22 +1,22 @@
-import { ISwap, ISwapInit } from "../ISwap";
+import { ISwap, ISwapInit } from "../ISwap.js";
 import { BtcTx, ChainType, SpvWithdrawalClaimedState, SpvWithdrawalClosedState, SpvWithdrawalFrontedState } from "@atomiqlabs/base";
-import { SwapType } from "../../enums/SwapType";
-import { SpvFromBTCTypeDefinition, SpvFromBTCWrapper } from "./SpvFromBTCWrapper";
+import { SwapType } from "../../enums/SwapType.js";
+import { SpvFromBTCTypeDefinition, SpvFromBTCWrapper } from "./SpvFromBTCWrapper.js";
 import { Transaction } from "@scure/btc-signer";
-import { Fee } from "../../types/fees/Fee";
-import { BitcoinWalletUtxo, IBitcoinWallet } from "../../bitcoin/wallet/IBitcoinWallet";
-import { IBTCWalletSwap } from "../IBTCWalletSwap";
-import { ISwapWithGasDrop } from "../ISwapWithGasDrop";
-import { MinimalBitcoinWalletInterface, MinimalBitcoinWalletInterfaceWithSigner } from "../../types/wallets/MinimalBitcoinWalletInterface";
-import { IClaimableSwap } from "../IClaimableSwap";
-import { FeeType } from "../../enums/FeeType";
-import { TokenAmount } from "../../types/TokenAmount";
-import { BtcToken, SCToken } from "../../types/Token";
-import { LoggerType } from "../../utils/Logger";
-import { PriceInfoType } from "../../types/PriceInfoType";
-import { SwapExecutionActionSignPSBT, SwapExecutionActionSignSmartChainTx, SwapExecutionActionWait } from "../../types/SwapExecutionAction";
-import { SwapExecutionStepPayment, SwapExecutionStepSettlement } from "../../types/SwapExecutionStep";
-import { SwapStateInfo } from "../../types/SwapStateInfo";
+import { Fee } from "../../types/fees/Fee.js";
+import { BitcoinWalletUtxo, IBitcoinWallet } from "../../bitcoin/wallet/IBitcoinWallet.js";
+import { IBTCWalletSwap } from "../IBTCWalletSwap.js";
+import { ISwapWithGasDrop } from "../ISwapWithGasDrop.js";
+import { MinimalBitcoinWalletInterface, MinimalBitcoinWalletInterfaceWithSigner } from "../../types/wallets/MinimalBitcoinWalletInterface.js";
+import { IClaimableSwap } from "../IClaimableSwap.js";
+import { FeeType } from "../../enums/FeeType.js";
+import { TokenAmount } from "../../types/TokenAmount.js";
+import { BtcToken, SCToken } from "../../types/Token.js";
+import { LoggerType } from "../../utils/Logger.js";
+import { PriceInfoType } from "../../types/PriceInfoType.js";
+import { SwapExecutionActionSignPSBT, SwapExecutionActionSignSmartChainTx, SwapExecutionActionWait } from "../../types/SwapExecutionAction.js";
+import { SwapExecutionStepPayment, SwapExecutionStepSettlement } from "../../types/SwapExecutionStep.js";
+import { SwapStateInfo } from "../../types/SwapStateInfo.js";
 /**
  * State enum for SPV vault (UTXO-controlled vault) based swaps
  * @category Swaps/Bitcoin → Smart chain

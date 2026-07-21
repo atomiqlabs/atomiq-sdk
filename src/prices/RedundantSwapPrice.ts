@@ -1,15 +1,15 @@
-import {IPriceProvider} from "./abstract/IPriceProvider";
-import {BinancePriceProvider} from "./providers/BinancePriceProvider";
-import {OKXPriceProvider} from "./providers/OKXPriceProvider";
-import {CoinGeckoPriceProvider} from "./providers/CoinGeckoPriceProvider";
-import {CoinPaprikaPriceProvider} from "./providers/CoinPaprikaPriceProvider";
-import {promiseAny} from "../utils/Utils";
-import {ICachedSwapPrice} from "./abstract/ICachedSwapPrice";
-import {RequestError} from "../errors/RequestError";
-import {ChainIds, MultiChain} from "../swapper/Swapper";
-import {KrakenPriceProvider} from "./providers/KrakenPriceProvider";
-import {getLogger} from "../utils/Logger";
-import {tryWithRetries} from "../utils/RetryUtils";
+import {IPriceProvider} from "./abstract/IPriceProvider.js";
+import {BinancePriceProvider} from "./providers/BinancePriceProvider.js";
+import {OKXPriceProvider} from "./providers/OKXPriceProvider.js";
+import {CoinGeckoPriceProvider} from "./providers/CoinGeckoPriceProvider.js";
+import {CoinPaprikaPriceProvider} from "./providers/CoinPaprikaPriceProvider.js";
+import {promiseAny} from "../utils/Utils.js";
+import {ICachedSwapPrice} from "./abstract/ICachedSwapPrice.js";
+import {RequestError} from "../errors/RequestError.js";
+import {ChainIds, MultiChain} from "../swapper/Swapper.js";
+import {KrakenPriceProvider} from "./providers/KrakenPriceProvider.js";
+import {getLogger} from "../utils/Logger.js";
+import {tryWithRetries} from "../utils/RetryUtils.js";
 
 /**
  * Asset configuration for redundant swap pricing

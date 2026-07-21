@@ -1,4 +1,4 @@
-import { ISwapWrapper } from "../ISwapWrapper";
+import { ISwapWrapper } from "../ISwapWrapper.js";
 import { ClaimEvent, InitializeEvent, RefundEvent } from "@atomiqlabs/base";
 /**
  * Base class for wrappers of escrow-based swaps (i.e. swaps utilizing PrTLC and HTLC primitives)

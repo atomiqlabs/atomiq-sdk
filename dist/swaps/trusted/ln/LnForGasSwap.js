@@ -2,16 +2,16 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.LnForGasSwap = exports.isLnForGasSwapInit = exports.LnForGasSwapState = void 0;
 const bolt11_1 = require("@atomiqlabs/bolt11");
-const SwapType_1 = require("../../../enums/SwapType");
-const Utils_1 = require("../../../utils/Utils");
-const ISwap_1 = require("../../ISwap");
-const IntermediaryAPI_1 = require("../../../intermediaries/apis/IntermediaryAPI");
-const FeeType_1 = require("../../../enums/FeeType");
-const PercentagePPM_1 = require("../../../types/fees/PercentagePPM");
-const TokenAmount_1 = require("../../../types/TokenAmount");
-const Token_1 = require("../../../types/Token");
-const Logger_1 = require("../../../utils/Logger");
-const TimeoutUtils_1 = require("../../../utils/TimeoutUtils");
+const SwapType_js_1 = require("../../../enums/SwapType.js");
+const Utils_js_1 = require("../../../utils/Utils.js");
+const ISwap_js_1 = require("../../ISwap.js");
+const IntermediaryAPI_js_1 = require("../../../intermediaries/apis/IntermediaryAPI.js");
+const FeeType_js_1 = require("../../../enums/FeeType.js");
+const PercentagePPM_js_1 = require("../../../types/fees/PercentagePPM.js");
+const TokenAmount_js_1 = require("../../../types/TokenAmount.js");
+const Token_js_1 = require("../../../types/Token.js");
+const Logger_js_1 = require("../../../utils/Logger.js");
+const TimeoutUtils_js_1 = require("../../../utils/TimeoutUtils.js");
 /**
  * State enum for trusted Lightning gas swaps
  *
@@ -52,7 +52,7 @@ function isLnForGasSwapInit(obj) {
         typeof (obj.outputAmount) === "bigint" &&
         typeof (obj.recipient) === "string" &&
         typeof (obj.token) === "string" &&
-        (0, ISwap_1.isISwapInit)(obj);
+        (0, ISwap_js_1.isISwapInit)(obj);
 }
 exports.isLnForGasSwapInit = isLnForGasSwapInit;
 /**
@@ -61,12 +61,12 @@ exports.isLnForGasSwapInit = isLnForGasSwapInit;
  *
  * @category Swaps/Trusted Gas Swaps
  */
-class LnForGasSwap extends ISwap_1.ISwap {
+class LnForGasSwap extends ISwap_js_1.ISwap {
     constructor(wrapper, initOrObj) {
         if (isLnForGasSwapInit(initOrObj) && initOrObj.url != null)
             initOrObj.url += "/lnforgas";
         super(wrapper, initOrObj);
-        this.TYPE = SwapType_1.SwapType.TRUSTED_FROM_BTCLN;
+        this.TYPE = SwapType_js_1.SwapType.TRUSTED_FROM_BTCLN;
         /**
          * @internal
          */
@@ -88,7 +88,7 @@ class LnForGasSwap extends ISwap_1.ISwap {
         }
         else {
             this.pr = initOrObj.pr;
-            this.outputAmount = (0, Utils_1.toBigInt)(initOrObj.outputAmount);
+            this.outputAmount = (0, Utils_js_1.toBigInt)(initOrObj.outputAmount);
             this.recipient = initOrObj.recipient;
             this.token = initOrObj.token;
             this.scTxId = initOrObj.scTxId;
@@ -99,7 +99,7 @@ class LnForGasSwap extends ISwap_1.ISwap {
             if (decoded.timeExpireDate != null)
                 this.expiry = decoded.timeExpireDate * 1000;
         }
-        this.logger = (0, Logger_1.getLogger)("LnForGas(" + this.getId() + "): ");
+        this.logger = (0, Logger_js_1.getLogger)("LnForGas(" + this.getId() + "): ");
     }
     /**
      * @inheritDoc
@@ -259,13 +259,13 @@ class LnForGasSwap extends ISwap_1.ISwap {
      * @inheritDoc
      */
     getOutput() {
-        return (0, TokenAmount_1.toTokenAmount)(this.outputAmount, this.wrapper._tokens[this.wrapper._chain.getNativeCurrencyAddress()], this.wrapper._prices, this.pricingInfo);
+        return (0, TokenAmount_js_1.toTokenAmount)(this.outputAmount, this.wrapper._tokens[this.wrapper._chain.getNativeCurrencyAddress()], this.wrapper._prices, this.pricingInfo);
     }
     /**
      * @inheritDoc
      */
     getInputToken() {
-        return Token_1.BitcoinTokens.BTCLN;
+        return Token_js_1.BitcoinTokens.BTCLN;
     }
     /**
      * @inheritDoc
@@ -276,7 +276,7 @@ class LnForGasSwap extends ISwap_1.ISwap {
         if (msats == null)
             throw new Error("Swap lightning invoice has no msat amount field!");
         const amount = (BigInt(msats) + 999n) / 1000n;
-        return (0, TokenAmount_1.toTokenAmount)(amount, Token_1.BitcoinTokens.BTCLN, this.wrapper._prices, this.pricingInfo);
+        return (0, TokenAmount_js_1.toTokenAmount)(amount, Token_js_1.BitcoinTokens.BTCLN, this.wrapper._prices, this.pricingInfo);
     }
     /**
      * @inheritDoc
@@ -287,7 +287,7 @@ class LnForGasSwap extends ISwap_1.ISwap {
         if (msats == null)
             throw new Error("Swap lightning invoice has no msat amount field!");
         const amount = (BigInt(msats) + 999n) / 1000n;
-        return (0, TokenAmount_1.toTokenAmount)(amount - (this.swapFeeBtc ?? 0n), Token_1.BitcoinTokens.BTCLN, this.wrapper._prices, this.pricingInfo);
+        return (0, TokenAmount_js_1.toTokenAmount)(amount - (this.swapFeeBtc ?? 0n), Token_js_1.BitcoinTokens.BTCLN, this.wrapper._prices, this.pricingInfo);
     }
     /**
      * Returns the swap fee charged by the intermediary (LP) on this swap
@@ -299,16 +299,16 @@ class LnForGasSwap extends ISwap_1.ISwap {
             throw new Error("No pricing info known, cannot estimate swap fee!");
         const feeWithoutBaseFee = this.swapFeeBtc == null ? 0n : this.swapFeeBtc - this.pricingInfo.satsBaseFee;
         const swapFeePPM = feeWithoutBaseFee * 1000000n / this.getInputWithoutFee().rawAmount;
-        const amountInSrcToken = (0, TokenAmount_1.toTokenAmount)(this.swapFeeBtc ?? 0n, Token_1.BitcoinTokens.BTCLN, this.wrapper._prices, this.pricingInfo);
+        const amountInSrcToken = (0, TokenAmount_js_1.toTokenAmount)(this.swapFeeBtc ?? 0n, Token_js_1.BitcoinTokens.BTCLN, this.wrapper._prices, this.pricingInfo);
         return {
             amountInSrcToken,
-            amountInDstToken: (0, TokenAmount_1.toTokenAmount)(this.swapFee ?? 0n, this.wrapper._tokens[this.wrapper._chain.getNativeCurrencyAddress()], this.wrapper._prices, this.pricingInfo),
+            amountInDstToken: (0, TokenAmount_js_1.toTokenAmount)(this.swapFee ?? 0n, this.wrapper._tokens[this.wrapper._chain.getNativeCurrencyAddress()], this.wrapper._prices, this.pricingInfo),
             currentUsdValue: amountInSrcToken.currentUsdValue,
             usdValue: amountInSrcToken.usdValue,
             pastUsdValue: amountInSrcToken.pastUsdValue,
             composition: {
-                base: (0, TokenAmount_1.toTokenAmount)(this.pricingInfo.satsBaseFee, Token_1.BitcoinTokens.BTCLN, this.wrapper._prices, this.pricingInfo),
-                percentage: (0, PercentagePPM_1.ppmToPercentage)(swapFeePPM)
+                base: (0, TokenAmount_js_1.toTokenAmount)(this.pricingInfo.satsBaseFee, Token_js_1.BitcoinTokens.BTCLN, this.wrapper._prices, this.pricingInfo),
+                percentage: (0, PercentagePPM_js_1.ppmToPercentage)(swapFeePPM)
             }
         };
     }
@@ -323,7 +323,7 @@ class LnForGasSwap extends ISwap_1.ISwap {
      */
     getFeeBreakdown() {
         return [{
-                type: FeeType_1.FeeType.SWAP,
+                type: FeeType_js_1.FeeType.SWAP,
                 fee: this.getSwapFee()
             }];
     }
@@ -415,7 +415,7 @@ class LnForGasSwap extends ISwap_1.ISwap {
                     amount: this.getInput()
                 }],
             waitForTransactions: async (maxWaitTimeSeconds, pollIntervalSeconds, abortSignal) => {
-                const abortController = (0, Utils_1.extendAbortController)(abortSignal, maxWaitTimeSeconds, "Timed out waiting for lightning payment");
+                const abortController = (0, Utils_js_1.extendAbortController)(abortSignal, maxWaitTimeSeconds, "Timed out waiting for lightning payment");
                 let lightningTxId;
                 try {
                     const success = await this.waitForPayment(pollIntervalSeconds, abortController.signal, (txId) => {
@@ -445,7 +445,7 @@ class LnForGasSwap extends ISwap_1.ISwap {
             pollTimeSeconds: 5,
             expectedTimeSeconds: 10,
             wait: async (maxWaitTimeSeconds, pollIntervalSeconds, abortSignal) => {
-                const abortController = (0, Utils_1.extendAbortController)(abortSignal, maxWaitTimeSeconds, "Timed out waiting for LP payout");
+                const abortController = (0, Utils_js_1.extendAbortController)(abortSignal, maxWaitTimeSeconds, "Timed out waiting for LP payout");
                 await this.waitForPayment(pollIntervalSeconds, abortController.signal);
             }
         };
@@ -496,7 +496,7 @@ class LnForGasSwap extends ISwap_1.ISwap {
         const response = await this.wrapper._lpApi.getTrustedInvoiceStatus(this.url, paymentHash, this.wrapper._options.getRequestTimeout);
         this.logger.debug("checkInvoicePaid(): LP response: ", response);
         switch (response.code) {
-            case IntermediaryAPI_1.TrustedInvoiceStatusResponseCodes.PAID:
+            case IntermediaryAPI_js_1.TrustedInvoiceStatusResponseCodes.PAID:
                 this.scTxId = response.data.txId;
                 const txStatus = await this.wrapper._chain.getTxIdStatus(this.scTxId);
                 if (txStatus === "success") {
@@ -506,7 +506,7 @@ class LnForGasSwap extends ISwap_1.ISwap {
                     return true;
                 }
                 return null;
-            case IntermediaryAPI_1.TrustedInvoiceStatusResponseCodes.EXPIRED:
+            case IntermediaryAPI_js_1.TrustedInvoiceStatusResponseCodes.EXPIRED:
                 if (this._state === LnForGasSwapState.PR_CREATED) {
                     this._state = LnForGasSwapState.EXPIRED;
                 }
@@ -516,7 +516,7 @@ class LnForGasSwap extends ISwap_1.ISwap {
                 if (save)
                     await this._saveAndEmit();
                 return false;
-            case IntermediaryAPI_1.TrustedInvoiceStatusResponseCodes.TX_SENT:
+            case IntermediaryAPI_js_1.TrustedInvoiceStatusResponseCodes.TX_SENT:
                 this.scTxId = response.data.txId;
                 if (this._state === LnForGasSwapState.PR_CREATED) {
                     this._state = LnForGasSwapState.PR_PAID;
@@ -524,14 +524,14 @@ class LnForGasSwap extends ISwap_1.ISwap {
                         await this._saveAndEmit();
                 }
                 return null;
-            case IntermediaryAPI_1.TrustedInvoiceStatusResponseCodes.PENDING:
+            case IntermediaryAPI_js_1.TrustedInvoiceStatusResponseCodes.PENDING:
                 if (this._state === LnForGasSwapState.PR_CREATED) {
                     this._state = LnForGasSwapState.PR_PAID;
                     if (save)
                         await this._saveAndEmit();
                 }
                 return null;
-            case IntermediaryAPI_1.TrustedInvoiceStatusResponseCodes.AWAIT_PAYMENT:
+            case IntermediaryAPI_js_1.TrustedInvoiceStatusResponseCodes.AWAIT_PAYMENT:
                 return null;
             default:
                 this._state = LnForGasSwapState.FAILED;
@@ -566,7 +566,7 @@ class LnForGasSwap extends ISwap_1.ISwap {
                 }
             }
             if (this._state === LnForGasSwapState.PR_CREATED || this._state === LnForGasSwapState.PR_PAID)
-                await (0, TimeoutUtils_1.timeoutPromise)((checkIntervalSeconds ?? 5) * 1000, abortSignal);
+                await (0, TimeoutUtils_js_1.timeoutPromise)((checkIntervalSeconds ?? 5) * 1000, abortSignal);
         }
         if (abortSignal != null)
             abortSignal.throwIfAborted();

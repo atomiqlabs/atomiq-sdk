@@ -1,27 +1,27 @@
 import {decode as bolt11Decode} from "@atomiqlabs/bolt11";
-import {SwapType} from "../../../enums/SwapType";
+import {SwapType} from "../../../enums/SwapType.js";
 import {ChainType} from "@atomiqlabs/base";
-import {LnForGasSwapTypeDefinition, LnForGasWrapper} from "./LnForGasWrapper";
-import {extendAbortController, toBigInt} from "../../../utils/Utils";
-import {isISwapInit, ISwap, ISwapInit} from "../../ISwap";
-import {TrustedInvoiceStatusResponseCodes} from "../../../intermediaries/apis/IntermediaryAPI";
-import {Fee} from "../../../types/fees/Fee";
-import {IAddressSwap} from "../../IAddressSwap";
-import {FeeType} from "../../../enums/FeeType";
-import {ppmToPercentage} from "../../../types/fees/PercentagePPM";
-import {TokenAmount, toTokenAmount} from "../../../types/TokenAmount";
-import {BitcoinTokens, BtcToken, SCToken} from "../../../types/Token";
-import {getLogger, LoggerType} from "../../../utils/Logger";
-import {timeoutPromise} from "../../../utils/TimeoutUtils";
+import {LnForGasSwapTypeDefinition, LnForGasWrapper} from "./LnForGasWrapper.js";
+import {extendAbortController, toBigInt} from "../../../utils/Utils.js";
+import {isISwapInit, ISwap, ISwapInit} from "../../ISwap.js";
+import {TrustedInvoiceStatusResponseCodes} from "../../../intermediaries/apis/IntermediaryAPI.js";
+import {Fee} from "../../../types/fees/Fee.js";
+import {IAddressSwap} from "../../IAddressSwap.js";
+import {FeeType} from "../../../enums/FeeType.js";
+import {ppmToPercentage} from "../../../types/fees/PercentagePPM.js";
+import {TokenAmount, toTokenAmount} from "../../../types/TokenAmount.js";
+import {BitcoinTokens, BtcToken, SCToken} from "../../../types/Token.js";
+import {getLogger, LoggerType} from "../../../utils/Logger.js";
+import {timeoutPromise} from "../../../utils/TimeoutUtils.js";
 import {
     SwapExecutionActionSendToAddress,
     SwapExecutionActionWait
-} from "../../../types/SwapExecutionAction";
+} from "../../../types/SwapExecutionAction.js";
 import {
     SwapExecutionStepPayment,
     SwapExecutionStepSettlement
-} from "../../../types/SwapExecutionStep";
-import {SwapStateInfo} from "../../../types/SwapStateInfo";
+} from "../../../types/SwapExecutionStep.js";
+import {SwapStateInfo} from "../../../types/SwapStateInfo.js";
 
 /**
  * State enum for trusted Lightning gas swaps

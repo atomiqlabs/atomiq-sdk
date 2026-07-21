@@ -1,8 +1,8 @@
-import { LnForGasSwap, LnForGasSwapState } from "./LnForGasSwap";
-import { ISwapWrapper } from "../../ISwapWrapper";
+import { LnForGasSwap, LnForGasSwapState } from "./LnForGasSwap.js";
+import { ISwapWrapper } from "../../ISwapWrapper.js";
 import { decode as bolt11Decode } from "@atomiqlabs/bolt11";
-import { IntermediaryError } from "../../../errors/IntermediaryError";
-import { SwapType } from "../../../enums/SwapType";
+import { IntermediaryError } from "../../../errors/IntermediaryError.js";
+import { SwapType } from "../../../enums/SwapType.js";
 /**
  * Trusted swap for Bitcoin Lightning -> Smart chains, to be used for minor amounts to get gas tokens on
  *  the destination chain, which is only needed for Solana, which still uses legacy swaps

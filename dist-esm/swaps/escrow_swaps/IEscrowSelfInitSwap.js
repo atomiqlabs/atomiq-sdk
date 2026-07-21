@@ -1,7 +1,7 @@
-import { IEscrowSwap, isIEscrowSwapInit } from "./IEscrowSwap";
+import { IEscrowSwap, isIEscrowSwapInit } from "./IEscrowSwap.js";
 import { SignatureVerificationError } from "@atomiqlabs/base";
-import { toTokenAmount } from "../../types/TokenAmount";
-import { timeoutPromise } from "../../utils/TimeoutUtils";
+import { toTokenAmount } from "../../types/TokenAmount.js";
+import { timeoutPromise } from "../../utils/TimeoutUtils.js";
 export function isIEscrowSelfInitSwapInit(obj) {
     return typeof obj === "object" &&
         typeof (obj.feeRate) === "string" &&

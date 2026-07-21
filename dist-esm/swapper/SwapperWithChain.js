@@ -1,8 +1,8 @@
-import { SwapType } from "../enums/SwapType";
-import { SwapPriceWithChain } from "../prices/SwapPriceWithChain";
-import { SwapperWithSigner } from "./SwapperWithSigner";
-import { UserError } from "../errors/UserError";
-import { BitcoinTokens, isSCToken } from "../types/Token";
+import { SwapType } from "../enums/SwapType.js";
+import { SwapPriceWithChain } from "../prices/SwapPriceWithChain.js";
+import { SwapperWithSigner } from "./SwapperWithSigner.js";
+import { UserError } from "../errors/UserError.js";
+import { BitcoinTokens, isSCToken } from "../types/Token.js";
 /**
  * Chain-specific wrapper around Swapper for a particular blockchain
  *

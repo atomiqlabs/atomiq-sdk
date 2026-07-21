@@ -1,4 +1,4 @@
-import { ParamEncoder } from "../ParamEncoder";
+import { ParamEncoder } from "../ParamEncoder.js";
 export class StreamParamEncoder extends ParamEncoder {
     constructor() {
         let stream = new TransformStream();

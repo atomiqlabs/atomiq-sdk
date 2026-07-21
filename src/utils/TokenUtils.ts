@@ -1,6 +1,6 @@
-import {Token} from "../types/Token";
+import {Token} from "../types/Token.js";
 
-import {fromDecimal, toDecimal} from "./Utils";
+import {fromDecimal, toDecimal} from "./Utils.js";
 
 /**
  * Converts a raw bigint amount to a human-readable string with decimals

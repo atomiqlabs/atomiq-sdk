@@ -1,5 +1,5 @@
 import {secp256k1, schnorr} from "@noble/curves/secp256k1";
-import {randomBytes} from "../../utils/Utils";
+import {randomBytes} from "../../utils/Utils.js";
 
 
 function parsePrivateKey(value: string, name: string) {

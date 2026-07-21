@@ -1,13 +1,13 @@
-import { BinancePriceProvider } from "./providers/BinancePriceProvider";
-import { OKXPriceProvider } from "./providers/OKXPriceProvider";
-import { CoinGeckoPriceProvider } from "./providers/CoinGeckoPriceProvider";
-import { CoinPaprikaPriceProvider } from "./providers/CoinPaprikaPriceProvider";
-import { promiseAny } from "../utils/Utils";
-import { ICachedSwapPrice } from "./abstract/ICachedSwapPrice";
-import { RequestError } from "../errors/RequestError";
-import { KrakenPriceProvider } from "./providers/KrakenPriceProvider";
-import { getLogger } from "../utils/Logger";
-import { tryWithRetries } from "../utils/RetryUtils";
+import { BinancePriceProvider } from "./providers/BinancePriceProvider.js";
+import { OKXPriceProvider } from "./providers/OKXPriceProvider.js";
+import { CoinGeckoPriceProvider } from "./providers/CoinGeckoPriceProvider.js";
+import { CoinPaprikaPriceProvider } from "./providers/CoinPaprikaPriceProvider.js";
+import { promiseAny } from "../utils/Utils.js";
+import { ICachedSwapPrice } from "./abstract/ICachedSwapPrice.js";
+import { RequestError } from "../errors/RequestError.js";
+import { KrakenPriceProvider } from "./providers/KrakenPriceProvider.js";
+import { getLogger } from "../utils/Logger.js";
+import { tryWithRetries } from "../utils/RetryUtils.js";
 const logger = getLogger("RedundantSwapPrice: ");
 /**
  * Swap price API using multiple price sources, handles errors on the APIs and automatically switches between them, such

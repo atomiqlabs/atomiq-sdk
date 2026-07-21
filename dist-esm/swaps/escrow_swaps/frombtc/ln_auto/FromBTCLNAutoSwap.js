@@ -1,21 +1,21 @@
 import { decode as bolt11Decode } from "@atomiqlabs/bolt11";
-import { SwapType } from "../../../../enums/SwapType";
+import { SwapType } from "../../../../enums/SwapType.js";
 import { ChainSwapType, isAbstractSigner, SwapClaimWitnessMessage, SwapCommitStateType, SwapData, } from "@atomiqlabs/base";
 import { Buffer } from "buffer";
-import { LNURL } from "../../../../lnurl/LNURL";
-import { UserError } from "../../../../errors/UserError";
-import { InvoiceStatusResponseCodes } from "../../../../intermediaries/apis/IntermediaryAPI";
-import { IntermediaryError } from "../../../../errors/IntermediaryError";
-import { extendAbortController, toBigInt } from "../../../../utils/Utils";
-import { IEscrowSwap, isIEscrowSwapInit } from "../../IEscrowSwap";
-import { FeeType } from "../../../../enums/FeeType";
-import { ppmToPercentage } from "../../../../types/fees/PercentagePPM";
-import { toTokenAmount } from "../../../../types/TokenAmount";
-import { BitcoinTokens } from "../../../../types/Token";
-import { getLogger } from "../../../../utils/Logger";
-import { timeoutPromise } from "../../../../utils/TimeoutUtils";
-import { isLNURLWithdraw } from "../../../../types/lnurl/LNURLWithdraw";
-import { deserializePriceInfoType, isPriceInfoType, serializePriceInfoType } from "../../../../types/PriceInfoType";
+import { LNURL } from "../../../../lnurl/LNURL.js";
+import { UserError } from "../../../../errors/UserError.js";
+import { InvoiceStatusResponseCodes } from "../../../../intermediaries/apis/IntermediaryAPI.js";
+import { IntermediaryError } from "../../../../errors/IntermediaryError.js";
+import { extendAbortController, toBigInt } from "../../../../utils/Utils.js";
+import { IEscrowSwap, isIEscrowSwapInit } from "../../IEscrowSwap.js";
+import { FeeType } from "../../../../enums/FeeType.js";
+import { ppmToPercentage } from "../../../../types/fees/PercentagePPM.js";
+import { toTokenAmount } from "../../../../types/TokenAmount.js";
+import { BitcoinTokens } from "../../../../types/Token.js";
+import { getLogger } from "../../../../utils/Logger.js";
+import { timeoutPromise } from "../../../../utils/TimeoutUtils.js";
+import { isLNURLWithdraw } from "../../../../types/lnurl/LNURLWithdraw.js";
+import { deserializePriceInfoType, isPriceInfoType, serializePriceInfoType } from "../../../../types/PriceInfoType.js";
 import { sha256 } from "@noble/hashes/sha2";
 /**
  * State enum for FromBTCLNAuto swaps

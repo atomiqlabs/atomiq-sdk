@@ -1,4 +1,4 @@
-import {toBigInt} from "../utils/Utils";
+import {toBigInt} from "../utils/Utils.js";
 
 /**
  * Pricing information for swap validation

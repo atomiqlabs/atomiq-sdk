@@ -6,36 +6,36 @@ import {
     InitializeEvent, LightningNetworkApi, LNNodeLiquidity, Messenger,
     RefundEvent, SwapCommitState, SwapCommitStateType
 } from "@atomiqlabs/base";
-import {Intermediary} from "../../../../intermediaries/Intermediary";
+import {Intermediary} from "../../../../intermediaries/Intermediary.js";
 import {Buffer} from "buffer";
-import {UserError} from "../../../../errors/UserError";
-import {IntermediaryError} from "../../../../errors/IntermediaryError";
-import {SwapType} from "../../../../enums/SwapType";
+import {UserError} from "../../../../errors/UserError.js";
+import {IntermediaryError} from "../../../../errors/IntermediaryError.js";
+import {SwapType} from "../../../../enums/SwapType.js";
 import {
     extendAbortController, mapArrayToObject, parseHashValueExact32Bytes,
     randomBytes,
     throwIfUndefined
-} from "../../../../utils/Utils";
+} from "../../../../utils/Utils.js";
 import {
     FromBTCLNAutoResponseType,
     IntermediaryAPI
-} from "../../../../intermediaries/apis/IntermediaryAPI";
-import {RequestError} from "../../../../errors/RequestError";
-import {ISwapPrice} from "../../../../prices/abstract/ISwapPrice";
+} from "../../../../intermediaries/apis/IntermediaryAPI.js";
+import {RequestError} from "../../../../errors/RequestError.js";
+import {ISwapPrice} from "../../../../prices/abstract/ISwapPrice.js";
 import {EventEmitter} from "events";
-import {ISwapWrapperOptions, WrapperCtorTokens} from "../../../ISwapWrapper";
-import {UnifiedSwapEventListener} from "../../../../events/UnifiedSwapEventListener";
-import {UnifiedSwapStorage} from "../../../../storage/UnifiedSwapStorage";
-import {ISwap} from "../../../ISwap";
-import {FromBTCLNAutoSwap, FromBTCLNAutoSwapInit, FromBTCLNAutoSwapState} from "./FromBTCLNAutoSwap";
-import {IFromBTCLNDefinition, IFromBTCLNWrapper} from "../IFromBTCLNWrapper";
-import {IClaimableSwapWrapper} from "../../../IClaimableSwapWrapper";
-import {AmountData} from "../../../../types/AmountData";
-import {LNURLWithdrawParamsWithUrl} from "../../../../types/lnurl/LNURLWithdraw";
-import {tryWithRetries} from "../../../../utils/RetryUtils";
-import {AllOptional} from "../../../../utils/TypeUtils";
+import {ISwapWrapperOptions, WrapperCtorTokens} from "../../../ISwapWrapper.js";
+import {UnifiedSwapEventListener} from "../../../../events/UnifiedSwapEventListener.js";
+import {UnifiedSwapStorage} from "../../../../storage/UnifiedSwapStorage.js";
+import {ISwap} from "../../../ISwap.js";
+import {FromBTCLNAutoSwap, FromBTCLNAutoSwapInit, FromBTCLNAutoSwapState} from "./FromBTCLNAutoSwap.js";
+import {IFromBTCLNDefinition, IFromBTCLNWrapper} from "../IFromBTCLNWrapper.js";
+import {IClaimableSwapWrapper} from "../../../IClaimableSwapWrapper.js";
+import {AmountData} from "../../../../types/AmountData.js";
+import {LNURLWithdrawParamsWithUrl} from "../../../../types/lnurl/LNURLWithdraw.js";
+import {tryWithRetries} from "../../../../utils/RetryUtils.js";
+import {AllOptional} from "../../../../utils/TypeUtils.js";
 import {sha256} from "@noble/hashes/sha2";
-import {fromHumanReadableString} from "../../../../utils/TokenUtils";
+import {fromHumanReadableString} from "../../../../utils/TokenUtils.js";
 
 export type FromBTCLNAutoOptions = {
     /**

@@ -1,14 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.IEscrowSwap = exports.isIEscrowSwapInit = void 0;
-const ISwap_1 = require("../ISwap");
+const ISwap_js_1 = require("../ISwap.js");
 const base_1 = require("@atomiqlabs/base");
 const buffer_1 = require("buffer");
-const TimeoutUtils_1 = require("../../utils/TimeoutUtils");
+const TimeoutUtils_js_1 = require("../../utils/TimeoutUtils.js");
 function isIEscrowSwapInit(obj) {
     return typeof obj === 'object' &&
         (obj.data == null || typeof obj.data === 'object') &&
-        (0, ISwap_1.isISwapInit)(obj);
+        (0, ISwap_js_1.isISwapInit)(obj);
 }
 exports.isIEscrowSwapInit = isIEscrowSwapInit;
 /**
@@ -16,7 +16,7 @@ exports.isIEscrowSwapInit = isIEscrowSwapInit;
  *
  * @category Swaps/Abstract
  */
-class IEscrowSwap extends ISwap_1.ISwap {
+class IEscrowSwap extends ISwap_js_1.ISwap {
     constructor(wrapper, swapInitOrObj) {
         super(wrapper, swapInitOrObj);
         if (isIEscrowSwapInit(swapInitOrObj)) {
@@ -113,7 +113,7 @@ class IEscrowSwap extends ISwap_1.ISwap {
         intervalSeconds ??= 5;
         let status = { type: base_1.SwapCommitStateType.NOT_COMMITED };
         while (status?.type === base_1.SwapCommitStateType.NOT_COMMITED) {
-            await (0, TimeoutUtils_1.timeoutPromise)(intervalSeconds * 1000, abortSignal);
+            await (0, TimeoutUtils_js_1.timeoutPromise)(intervalSeconds * 1000, abortSignal);
             try {
                 status = await this._contract.getCommitStatus(this._getInitiator(), this._data);
                 if (status?.type === base_1.SwapCommitStateType.NOT_COMMITED &&
@@ -143,7 +143,7 @@ class IEscrowSwap extends ISwap_1.ISwap {
         intervalSeconds ??= 5;
         let status = { type: base_1.SwapCommitStateType.COMMITED };
         while (status?.type === base_1.SwapCommitStateType.COMMITED || status?.type === base_1.SwapCommitStateType.REFUNDABLE) {
-            await (0, TimeoutUtils_1.timeoutPromise)(intervalSeconds * 1000, abortSignal);
+            await (0, TimeoutUtils_js_1.timeoutPromise)(intervalSeconds * 1000, abortSignal);
             try {
                 status = await this._contract.getCommitStatus(this._getInitiator(), this._data);
             }

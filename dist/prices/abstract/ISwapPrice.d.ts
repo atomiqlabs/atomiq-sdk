@@ -1,6 +1,6 @@
-import { ChainIds, MultiChain } from "../../swapper/Swapper";
-import { Token } from "../../types/Token";
-import { PriceInfoType } from "../../types/PriceInfoType";
+import { ChainIds, MultiChain } from "../../swapper/Swapper.js";
+import { Token } from "../../types/Token.js";
+import { PriceInfoType } from "../../types/PriceInfoType.js";
 /**
  * Abstract base class for swap pricing implementations
  *

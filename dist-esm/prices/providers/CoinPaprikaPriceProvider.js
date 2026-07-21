@@ -1,5 +1,5 @@
-import { HttpPriceProvider } from "./abstract/HttpPriceProvider";
-import { httpGet } from "../../http/HttpUtils";
+import { HttpPriceProvider } from "./abstract/HttpPriceProvider.js";
+import { httpGet } from "../../http/HttpUtils.js";
 /**
  * Price provider using CoinPaprika API
  * @category Pricing

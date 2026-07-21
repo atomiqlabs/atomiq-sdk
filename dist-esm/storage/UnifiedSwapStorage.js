@@ -1,4 +1,4 @@
-import { getLogger } from "../utils/Logger";
+import { getLogger } from "../utils/Logger.js";
 const logger = getLogger("UnifiedSwapStorage: ");
 const indexes = [
     { key: "id", type: "string", unique: true, nullable: false },

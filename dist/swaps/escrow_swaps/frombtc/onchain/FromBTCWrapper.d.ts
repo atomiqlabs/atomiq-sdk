@@ -1,21 +1,21 @@
 /// <reference types="node" />
-import { IFromBTCWrapper } from "../IFromBTCWrapper";
-import { FromBTCSwap, FromBTCSwapState } from "./FromBTCSwap";
+import { IFromBTCWrapper } from "../IFromBTCWrapper.js";
+import { FromBTCSwap, FromBTCSwapState } from "./FromBTCSwap.js";
 import { ChainType, ClaimEvent, InitializeEvent, RefundEvent, RelaySynchronizer, SwapData, BtcRelay, BitcoinRpcWithAddressIndex, SwapCommitState } from "@atomiqlabs/base";
 import { EventEmitter } from "events";
-import { Intermediary } from "../../../../intermediaries/Intermediary";
-import { ISwapPrice } from "../../../../prices/abstract/ISwapPrice";
-import { ISwapWrapperOptions, WrapperCtorTokens } from "../../../ISwapWrapper";
-import { SwapType } from "../../../../enums/SwapType";
-import { IntermediaryAPI } from "../../../../intermediaries/apis/IntermediaryAPI";
+import { Intermediary } from "../../../../intermediaries/Intermediary.js";
+import { ISwapPrice } from "../../../../prices/abstract/ISwapPrice.js";
+import { ISwapWrapperOptions, WrapperCtorTokens } from "../../../ISwapWrapper.js";
+import { SwapType } from "../../../../enums/SwapType.js";
+import { IntermediaryAPI } from "../../../../intermediaries/apis/IntermediaryAPI.js";
 import { BTC_NETWORK } from "@scure/btc-signer/utils";
-import { UnifiedSwapEventListener } from "../../../../events/UnifiedSwapEventListener";
-import { UnifiedSwapStorage } from "../../../../storage/UnifiedSwapStorage";
-import { ISwap } from "../../../ISwap";
-import { IClaimableSwapWrapper } from "../../../IClaimableSwapWrapper";
-import { IFromBTCSelfInitDefinition } from "../IFromBTCSelfInitSwap";
-import { AmountData } from "../../../../types/AmountData";
-import { AllOptional } from "../../../../utils/TypeUtils";
+import { UnifiedSwapEventListener } from "../../../../events/UnifiedSwapEventListener.js";
+import { UnifiedSwapStorage } from "../../../../storage/UnifiedSwapStorage.js";
+import { ISwap } from "../../../ISwap.js";
+import { IClaimableSwapWrapper } from "../../../IClaimableSwapWrapper.js";
+import { IFromBTCSelfInitDefinition } from "../IFromBTCSelfInitSwap.js";
+import { AmountData } from "../../../../types/AmountData.js";
+import { AllOptional } from "../../../../utils/TypeUtils.js";
 export type FromBTCOptions = {
     /**
      * A flag to attach 0 watchtower fee to the swap, this would make the settlement unattractive for the watchtowers

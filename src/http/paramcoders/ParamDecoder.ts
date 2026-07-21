@@ -1,4 +1,4 @@
-import {IParamReader} from "./IParamReader";
+import {IParamReader} from "./IParamReader.js";
 import {Buffer} from "buffer";
 
 function ensureBuffer(input: any): Buffer {

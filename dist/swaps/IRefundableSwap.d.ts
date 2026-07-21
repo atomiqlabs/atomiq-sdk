@@ -1,6 +1,6 @@
 import { ChainType } from "@atomiqlabs/base";
-import { ISwap } from "./ISwap";
-import { ISwapWrapper, SwapTypeDefinition } from "./ISwapWrapper";
+import { ISwap } from "./ISwap.js";
+import { ISwapWrapper, SwapTypeDefinition } from "./ISwapWrapper.js";
 /**
  * Type guard to check if an object is an {@link IRefundableSwap}
  *

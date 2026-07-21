@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UnifiedSwapStorage = void 0;
-const Logger_1 = require("../utils/Logger");
-const logger = (0, Logger_1.getLogger)("UnifiedSwapStorage: ");
+const Logger_js_1 = require("../utils/Logger.js");
+const logger = (0, Logger_js_1.getLogger)("UnifiedSwapStorage: ");
 const indexes = [
     { key: "id", type: "string", unique: true, nullable: false },
     { key: "escrowHash", type: "string", unique: true, nullable: true },

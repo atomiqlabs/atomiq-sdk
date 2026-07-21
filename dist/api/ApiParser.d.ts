@@ -1,4 +1,4 @@
-import { InputSchema } from "./ApiTypes";
+import { InputSchema } from "./ApiTypes.js";
 /**
  * Parses raw input values according to the endpoint schema.
  *

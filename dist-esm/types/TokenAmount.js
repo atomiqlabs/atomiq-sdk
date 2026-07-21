@@ -1,5 +1,5 @@
-import { isToken } from "./Token";
-import { toDecimal } from "../utils/Utils";
+import { isToken } from "./Token.js";
+import { toDecimal } from "../utils/Utils.js";
 /**
  * Type guard for {@link TokenAmount}
  *

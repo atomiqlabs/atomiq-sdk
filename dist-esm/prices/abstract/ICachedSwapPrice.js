@@ -1,4 +1,4 @@
-import { ISwapPrice } from "./ISwapPrice";
+import { ISwapPrice } from "./ISwapPrice.js";
 const DEFAULT_CACHE_DURATION = 10000;
 export class ICachedSwapPrice extends ISwapPrice {
     constructor(maxAllowedFeeDiffPPM, cacheTimeout) {

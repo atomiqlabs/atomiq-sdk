@@ -1,7 +1,7 @@
-import { ISwapWrapper } from "../../ISwapWrapper";
-import { IntermediaryError } from "../../../errors/IntermediaryError";
-import { OnchainForGasSwap, OnchainForGasSwapState } from "./OnchainForGasSwap";
-import { SwapType } from "../../../enums/SwapType";
+import { ISwapWrapper } from "../../ISwapWrapper.js";
+import { IntermediaryError } from "../../../errors/IntermediaryError.js";
+import { OnchainForGasSwap, OnchainForGasSwapState } from "./OnchainForGasSwap.js";
+import { SwapType } from "../../../enums/SwapType.js";
 /**
  * Trusted swap for Bitcoin -> Smart chains, to be used for minor amounts to get gas tokens on the
  *  destination chain, which is only needed for Solana, which still uses legacy swaps

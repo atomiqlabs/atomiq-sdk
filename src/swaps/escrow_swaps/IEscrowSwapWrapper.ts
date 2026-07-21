@@ -1,4 +1,4 @@
-import {ISwapWrapper, ISwapWrapperOptions, SwapTypeDefinition, WrapperCtorTokens} from "../ISwapWrapper";
+import {ISwapWrapper, ISwapWrapperOptions, SwapTypeDefinition, WrapperCtorTokens} from "../ISwapWrapper.js";
 import {
     ChainType,
     ClaimEvent,
@@ -8,15 +8,15 @@ import {
     SwapCommitState,
     SwapEvent
 } from "@atomiqlabs/base";
-import {ISwap} from "../ISwap";
-import {UnifiedSwapStorage} from "../../storage/UnifiedSwapStorage";
-import {UnifiedSwapEventListener} from "../../events/UnifiedSwapEventListener";
-import {ISwapPrice} from "../../prices/abstract/ISwapPrice";
+import {ISwap} from "../ISwap.js";
+import {UnifiedSwapStorage} from "../../storage/UnifiedSwapStorage.js";
+import {UnifiedSwapEventListener} from "../../events/UnifiedSwapEventListener.js";
+import {ISwapPrice} from "../../prices/abstract/ISwapPrice.js";
 import {EventEmitter} from "events";
-import {SwapType} from "../../enums/SwapType";
-import {IEscrowSwap} from "./IEscrowSwap";
-import {Intermediary} from "../../intermediaries/Intermediary";
-import {IntermediaryAPI} from "../../intermediaries/apis/IntermediaryAPI";
+import {SwapType} from "../../enums/SwapType.js";
+import {IEscrowSwap} from "./IEscrowSwap.js";
+import {Intermediary} from "../../intermediaries/Intermediary.js";
+import {IntermediaryAPI} from "../../intermediaries/apis/IntermediaryAPI.js";
 
 export type IEscrowSwapDefinition<T extends ChainType, W extends IEscrowSwapWrapper<T, any>, S extends IEscrowSwap<T>> = SwapTypeDefinition<T, W, S>;
 

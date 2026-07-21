@@ -1,14 +1,14 @@
-import {CoinselectAddressTypes} from "../coinselect2";
+import {CoinselectAddressTypes} from "../coinselect2/index.js";
 import {BTC_NETWORK, NETWORK, pubECDSA, randomPrivateKeyBytes, TEST_NETWORK} from "@scure/btc-signer/utils"
 import {getAddress, Transaction, WIF} from "@scure/btc-signer";
 import {Buffer} from "buffer";
-import {identifyAddressType, BitcoinWallet} from "./BitcoinWallet";
+import {identifyAddressType, BitcoinWallet} from "./BitcoinWallet.js";
 import {BitcoinNetwork, BitcoinRpcWithAddressIndex, getLogger} from "@atomiqlabs/base";
 import {HDKey} from "@scure/bip32";
 import {entropyToMnemonic, generateMnemonic, mnemonicToSeed} from "@scure/bip39";
 import {wordlist} from "@scure/bip39/wordlists/english.js";
 import {sha256} from "@noble/hashes/sha2";
-import {BitcoinWalletUtxo, BitcoinWalletUtxoBase} from "./IBitcoinWallet";
+import {BitcoinWalletUtxo, BitcoinWalletUtxoBase} from "./IBitcoinWallet.js";
 
 const logger = getLogger("SingleAddressBitcoinWallet: ");
 

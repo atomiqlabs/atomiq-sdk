@@ -1,16 +1,16 @@
 import {decode as bolt11Decode} from "@atomiqlabs/bolt11";
-import {ToBTCLNDefinition, ToBTCLNWrapper} from "./ToBTCLNWrapper";
-import {isIToBTCSwapInit, IToBTCSwap, IToBTCSwapInit} from "../IToBTCSwap";
-import {SwapType} from "../../../../enums/SwapType";
+import {ToBTCLNDefinition, ToBTCLNWrapper} from "./ToBTCLNWrapper.js";
+import {isIToBTCSwapInit, IToBTCSwap, IToBTCSwapInit} from "../IToBTCSwap.js";
+import {SwapType} from "../../../../enums/SwapType.js";
 import {ChainType, SwapData} from "@atomiqlabs/base";
 import {Buffer} from "buffer";
 import {sha256} from "@noble/hashes/sha2";
-import {IntermediaryError} from "../../../../errors/IntermediaryError";
-import {isLNURLPaySuccessAction, LNURL, LNURLPaySuccessAction} from "../../../../lnurl/LNURL";
-import {TokenAmount, toTokenAmount} from "../../../../types/TokenAmount";
-import {BitcoinTokens, BtcToken} from "../../../../types/Token";
-import {getLogger, LoggerType} from "../../../../utils/Logger";
-import {LNURLDecodedSuccessAction} from "../../../../types/lnurl/LNURLPay";
+import {IntermediaryError} from "../../../../errors/IntermediaryError.js";
+import {isLNURLPaySuccessAction, LNURL, LNURLPaySuccessAction} from "../../../../lnurl/LNURL.js";
+import {TokenAmount, toTokenAmount} from "../../../../types/TokenAmount.js";
+import {BitcoinTokens, BtcToken} from "../../../../types/Token.js";
+import {getLogger, LoggerType} from "../../../../utils/Logger.js";
+import {LNURLDecodedSuccessAction} from "../../../../types/lnurl/LNURLPay.js";
 
 export type ToBTCLNSwapInit<T extends SwapData> = IToBTCSwapInit<T> & {
     confidence: number;

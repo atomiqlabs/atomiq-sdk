@@ -1,8 +1,8 @@
-import { LnForGasSwap, LnForGasSwapState } from "./LnForGasSwap";
-import { ISwapWrapper, SwapTypeDefinition } from "../../ISwapWrapper";
+import { LnForGasSwap, LnForGasSwapState } from "./LnForGasSwap.js";
+import { ISwapWrapper, SwapTypeDefinition } from "../../ISwapWrapper.js";
 import { ChainType } from "@atomiqlabs/base";
-import { Intermediary } from "../../../intermediaries/Intermediary";
-import { SwapType } from "../../../enums/SwapType";
+import { Intermediary } from "../../../intermediaries/Intermediary.js";
+import { SwapType } from "../../../enums/SwapType.js";
 export type LnForGasSwapTypeDefinition<T extends ChainType> = SwapTypeDefinition<T, LnForGasWrapper<T>, LnForGasSwap<T>>;
 /**
  * Trusted swap for Bitcoin Lightning -> Smart chains, to be used for minor amounts to get gas tokens on

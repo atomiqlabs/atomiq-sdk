@@ -1,21 +1,21 @@
 /// <reference types="node" />
-import { ISwapWrapper, ISwapWrapperOptions, SwapTypeDefinition, WrapperCtorTokens } from "../ISwapWrapper";
+import { ISwapWrapper, ISwapWrapperOptions, SwapTypeDefinition, WrapperCtorTokens } from "../ISwapWrapper.js";
 import { BitcoinRpcWithAddressIndex, BtcBlock, BtcRelay, ChainEvent, ChainType, RelaySynchronizer, SpvVaultData, SpvWithdrawalClaimedState, SpvWithdrawalFrontedState } from "@atomiqlabs/base";
-import { SpvFromBTCSwap, SpvFromBTCSwapState } from "./SpvFromBTCSwap";
+import { SpvFromBTCSwap, SpvFromBTCSwapState } from "./SpvFromBTCSwap.js";
 import { BTC_NETWORK } from "@scure/btc-signer/utils";
-import { SwapType } from "../../enums/SwapType";
-import { UnifiedSwapStorage } from "../../storage/UnifiedSwapStorage";
-import { UnifiedSwapEventListener } from "../../events/UnifiedSwapEventListener";
-import { ISwapPrice } from "../../prices/abstract/ISwapPrice";
+import { SwapType } from "../../enums/SwapType.js";
+import { UnifiedSwapStorage } from "../../storage/UnifiedSwapStorage.js";
+import { UnifiedSwapEventListener } from "../../events/UnifiedSwapEventListener.js";
+import { ISwapPrice } from "../../prices/abstract/ISwapPrice.js";
 import { EventEmitter } from "events";
-import { Intermediary } from "../../intermediaries/Intermediary";
-import { IntermediaryAPI } from "../../intermediaries/apis/IntermediaryAPI";
-import { CoinselectAddressTypes } from "../../bitcoin/coinselect2";
+import { Intermediary } from "../../intermediaries/Intermediary.js";
+import { IntermediaryAPI } from "../../intermediaries/apis/IntermediaryAPI.js";
+import { CoinselectAddressTypes } from "../../bitcoin/coinselect2/index.js";
 import { Transaction } from "@scure/btc-signer";
-import { ISwap } from "../ISwap";
-import { IClaimableSwapWrapper } from "../IClaimableSwapWrapper";
-import { AllOptional } from "../../utils/TypeUtils";
-import { BitcoinWalletUtxoBase } from "../../bitcoin/wallet/IBitcoinWallet";
+import { ISwap } from "../ISwap.js";
+import { IClaimableSwapWrapper } from "../IClaimableSwapWrapper.js";
+import { AllOptional } from "../../utils/TypeUtils.js";
+import { BitcoinWalletUtxoBase } from "../../bitcoin/wallet/IBitcoinWallet.js";
 export type SpvFromBTCOptions = {
     /**
      * Optional additional native token to receive as an output of the swap (e.g. STRK on Starknet or cBTC on Citrea).

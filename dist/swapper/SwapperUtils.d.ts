@@ -1,13 +1,13 @@
 import { Transaction } from "@scure/btc-signer";
 import { BTC_NETWORK } from "@scure/btc-signer/utils";
-import { SwapType } from "../enums/SwapType";
-import { ChainIds, MultiChain, Swapper } from "./Swapper";
-import { IBitcoinWallet } from "../bitcoin/wallet/IBitcoinWallet";
-import { MinimalBitcoinWalletInterface } from "../types/wallets/MinimalBitcoinWalletInterface";
-import { TokenAmount } from "../types/TokenAmount";
-import { SCToken } from "../types/Token";
-import { LNURLWithdraw } from "../types/lnurl/LNURLWithdraw";
-import { LNURLPay } from "../types/lnurl/LNURLPay";
+import { SwapType } from "../enums/SwapType.js";
+import { ChainIds, MultiChain, Swapper } from "./Swapper.js";
+import { IBitcoinWallet } from "../bitcoin/wallet/IBitcoinWallet.js";
+import { MinimalBitcoinWalletInterface } from "../types/wallets/MinimalBitcoinWalletInterface.js";
+import { TokenAmount } from "../types/TokenAmount.js";
+import { SCToken } from "../types/Token.js";
+import { LNURLWithdraw } from "../types/lnurl/LNURLWithdraw.js";
+import { LNURLPay } from "../types/lnurl/LNURLPay.js";
 /**
  * Utility class providing helper methods for address parsing, token balances, serialization
  *  and other miscellaneous things.

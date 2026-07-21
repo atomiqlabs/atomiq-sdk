@@ -1,7 +1,7 @@
-import { ISwapPrice } from "./abstract/ISwapPrice";
-import { ChainIds, MultiChain } from "../swapper/Swapper";
-import { Token } from "../types/Token";
-import { PriceInfoType } from "../types/PriceInfoType";
+import { ISwapPrice } from "./abstract/ISwapPrice.js";
+import { ChainIds, MultiChain } from "../swapper/Swapper.js";
+import { Token } from "../types/Token.js";
+import { PriceInfoType } from "../types/PriceInfoType.js";
 /**
  * Chain-specific wrapper for swap pricing
  *

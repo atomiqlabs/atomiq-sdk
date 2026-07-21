@@ -1,6 +1,6 @@
 import { Transaction } from "@scure/btc-signer";
-import { isTokenAmount } from "./TokenAmount";
-import { BitcoinTokens } from "./Token";
+import { isTokenAmount } from "./TokenAmount.js";
+import { BitcoinTokens } from "./Token.js";
 const swapExecutionActionWaitNames = {
     LP: "Awaiting LP payout",
     SETTLEMENT: "Automatic settlement",

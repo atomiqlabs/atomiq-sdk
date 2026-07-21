@@ -1,14 +1,14 @@
-import {ToBTCDefinition, ToBTCWrapper} from "./ToBTCWrapper";
-import {isIToBTCSwapInit, IToBTCSwap, IToBTCSwapInit} from "../IToBTCSwap";
-import {SwapType} from "../../../../enums/SwapType";
+import {ToBTCDefinition, ToBTCWrapper} from "./ToBTCWrapper.js";
+import {isIToBTCSwapInit, IToBTCSwap, IToBTCSwapInit} from "../IToBTCSwap.js";
+import {SwapType} from "../../../../enums/SwapType.js";
 import {ChainType, SwapData} from "@atomiqlabs/base";
 import {Buffer} from "buffer";
-import {IntermediaryError} from "../../../../errors/IntermediaryError";
-import {toBigInt} from "../../../../utils/Utils";
-import {TokenAmount, toTokenAmount} from "../../../../types/TokenAmount";
-import {BitcoinTokens, BtcToken} from "../../../../types/Token";
-import {getLogger, LoggerType} from "../../../../utils/Logger";
-import {fromOutputScript} from "../../../../utils/BitcoinUtils";
+import {IntermediaryError} from "../../../../errors/IntermediaryError.js";
+import {toBigInt} from "../../../../utils/Utils.js";
+import {TokenAmount, toTokenAmount} from "../../../../types/TokenAmount.js";
+import {BitcoinTokens, BtcToken} from "../../../../types/Token.js";
+import {getLogger, LoggerType} from "../../../../utils/Logger.js";
+import {fromOutputScript} from "../../../../utils/BitcoinUtils.js";
 
 
 export type ToBTCSwapInit<T extends SwapData> = IToBTCSwapInit<T> & {

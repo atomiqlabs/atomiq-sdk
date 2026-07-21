@@ -8,12 +8,12 @@ import {
     SpvVaultFrontEvent,
     SwapEvent
 } from "@atomiqlabs/base";
-import {ISwap} from "../swaps/ISwap";
+import {ISwap} from "../swaps/ISwap.js";
 import {EventListener} from "@atomiqlabs/base/src/events/ChainEvents";
-import {SwapType} from "../enums/SwapType";
-import {UnifiedSwapStorage} from "../storage/UnifiedSwapStorage";
+import {SwapType} from "../enums/SwapType.js";
+import {UnifiedSwapStorage} from "../storage/UnifiedSwapStorage.js";
 
-import {getLogger} from "../utils/Logger";
+import {getLogger} from "../utils/Logger.js";
 
 function chainEventToEscrowHash(event: ChainEvent<any>): string | undefined {
     if(event instanceof SwapEvent) return event.escrowHash;

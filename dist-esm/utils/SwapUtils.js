@@ -1,4 +1,4 @@
-import { SwapType } from "../enums/SwapType";
+import { SwapType } from "../enums/SwapType.js";
 /**
  * Type guard to check if a swap is of a specific swap type
  *

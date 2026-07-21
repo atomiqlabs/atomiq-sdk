@@ -1,15 +1,15 @@
 import { decode as bolt11Decode } from "@atomiqlabs/bolt11";
 import { ChainSwapType, SwapCommitStateType } from "@atomiqlabs/base";
-import { Intermediary } from "../../../../intermediaries/Intermediary";
+import { Intermediary } from "../../../../intermediaries/Intermediary.js";
 import { Buffer } from "buffer";
-import { UserError } from "../../../../errors/UserError";
-import { IntermediaryError } from "../../../../errors/IntermediaryError";
-import { SwapType } from "../../../../enums/SwapType";
-import { extendAbortController, mapArrayToObject, parseHashValueExact32Bytes, randomBytes, throwIfUndefined } from "../../../../utils/Utils";
-import { RequestError } from "../../../../errors/RequestError";
-import { FromBTCLNAutoSwap, FromBTCLNAutoSwapState } from "./FromBTCLNAutoSwap";
-import { IFromBTCLNWrapper } from "../IFromBTCLNWrapper";
-import { tryWithRetries } from "../../../../utils/RetryUtils";
+import { UserError } from "../../../../errors/UserError.js";
+import { IntermediaryError } from "../../../../errors/IntermediaryError.js";
+import { SwapType } from "../../../../enums/SwapType.js";
+import { extendAbortController, mapArrayToObject, parseHashValueExact32Bytes, randomBytes, throwIfUndefined } from "../../../../utils/Utils.js";
+import { RequestError } from "../../../../errors/RequestError.js";
+import { FromBTCLNAutoSwap, FromBTCLNAutoSwapState } from "./FromBTCLNAutoSwap.js";
+import { IFromBTCLNWrapper } from "../IFromBTCLNWrapper.js";
+import { tryWithRetries } from "../../../../utils/RetryUtils.js";
 import { sha256 } from "@noble/hashes/sha2";
 /**
  * New escrow based (HTLC) swaps for Bitcoin Lightning -> Smart chain swaps not requiring manual settlement on

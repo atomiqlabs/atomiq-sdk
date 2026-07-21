@@ -1,4 +1,4 @@
-import { HttpPriceProvider } from "./HttpPriceProvider";
+import { HttpPriceProvider } from "./HttpPriceProvider.js";
 export class ExchangePriceProvider extends HttpPriceProvider {
     /**
      * @inheritDoc

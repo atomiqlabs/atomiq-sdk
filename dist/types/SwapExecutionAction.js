@@ -2,8 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.isSwapExecutionActionWait = exports.isSwapExecutionActionSignSmartChainTx = exports.isSwapExecutionActionSignPSBT = exports.isSwapExecutionActionSendToAddress = void 0;
 const btc_signer_1 = require("@scure/btc-signer");
-const TokenAmount_1 = require("./TokenAmount");
-const Token_1 = require("./Token");
+const TokenAmount_js_1 = require("./TokenAmount.js");
+const Token_js_1 = require("./Token.js");
 const swapExecutionActionWaitNames = {
     LP: "Awaiting LP payout",
     SETTLEMENT: "Automatic settlement",
@@ -42,7 +42,7 @@ function isSwapExecutionActionSendToAddress(obj, lightning) {
             tx.type === (resolvedLightning ? "BOLT11_PAYMENT_REQUEST" : "BITCOIN_ADDRESS") &&
             typeof (tx.address) === "string" &&
             typeof (tx.hyperlink) === "string" &&
-            (0, TokenAmount_1.isTokenAmount)(tx.amount, resolvedLightning ? Token_1.BitcoinTokens.BTCLN : Token_1.BitcoinTokens.BTC, true)) &&
+            (0, TokenAmount_js_1.isTokenAmount)(tx.amount, resolvedLightning ? Token_js_1.BitcoinTokens.BTCLN : Token_js_1.BitcoinTokens.BTC, true)) &&
         typeof (obj.waitForTransactions) === "function";
 }
 exports.isSwapExecutionActionSendToAddress = isSwapExecutionActionSendToAddress;

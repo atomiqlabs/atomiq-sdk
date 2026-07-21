@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Intermediary = void 0;
-const SwapType_1 = require("../enums/SwapType");
-const RetryUtils_1 = require("../utils/RetryUtils");
+const SwapType_js_1 = require("../enums/SwapType.js");
+const RetryUtils_js_1 = require("../utils/RetryUtils.js");
 /**
  * Represents an intermediary (liquidity provider)
  *
@@ -30,7 +30,7 @@ class Intermediary {
             const swapType = parseInt(_swapType);
             const serviceInfo = this.services[swapType];
             const btcBounds = { min: BigInt(serviceInfo.min), max: BigInt(serviceInfo.max) };
-            const isSend = swapType === SwapType_1.SwapType.TO_BTC || swapType === SwapType_1.SwapType.TO_BTCLN;
+            const isSend = swapType === SwapType_js_1.SwapType.TO_BTC || swapType === SwapType_js_1.SwapType.TO_BTCLN;
             this.swapBounds[swapType] = {};
             for (let chainIdentifier in serviceInfo.chainTokens) {
                 this.swapBounds[swapType][chainIdentifier] = {};
@@ -61,12 +61,12 @@ class Intermediary {
      * @private
      */
     getSupportedTokens(chainIdentifier, swapTypesArr = [
-        SwapType_1.SwapType.TO_BTC,
-        SwapType_1.SwapType.TO_BTCLN,
-        SwapType_1.SwapType.FROM_BTC,
-        SwapType_1.SwapType.FROM_BTCLN,
-        SwapType_1.SwapType.SPV_VAULT_FROM_BTC,
-        SwapType_1.SwapType.FROM_BTCLN_AUTO
+        SwapType_js_1.SwapType.TO_BTC,
+        SwapType_js_1.SwapType.TO_BTCLN,
+        SwapType_js_1.SwapType.FROM_BTC,
+        SwapType_js_1.SwapType.FROM_BTCLN,
+        SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC,
+        SwapType_js_1.SwapType.FROM_BTCLN_AUTO
     ]) {
         const swapTypes = new Set(swapTypesArr);
         let tokens = new Set();
@@ -88,12 +88,12 @@ class Intermediary {
      */
     async getReputation(chainIdentifier, swapContract, tokens, abortSignal) {
         const checkReputationTokens = tokens == null ?
-            this.getSupportedTokens(chainIdentifier, [SwapType_1.SwapType.TO_BTC, SwapType_1.SwapType.TO_BTCLN]) :
+            this.getSupportedTokens(chainIdentifier, [SwapType_js_1.SwapType.TO_BTC, SwapType_js_1.SwapType.TO_BTCLN]) :
             new Set(tokens);
         const promises = [];
         const reputation = {};
         for (let token of checkReputationTokens) {
-            promises.push((0, RetryUtils_1.tryWithRetries)(() => swapContract.getIntermediaryReputation(this.getAddress(chainIdentifier), token), undefined, undefined, abortSignal).then(result => {
+            promises.push((0, RetryUtils_js_1.tryWithRetries)(() => swapContract.getIntermediaryReputation(this.getAddress(chainIdentifier), token), undefined, undefined, abortSignal).then(result => {
                 if (result != null)
                     reputation[token] = result;
             }));
@@ -115,7 +115,7 @@ class Intermediary {
      * @param abortSignal
      */
     async getLiquidity(chainIdentifier, swapContract, token, abortSignal) {
-        const result = await (0, RetryUtils_1.tryWithRetries)(() => swapContract.getBalance(this.getAddress(chainIdentifier), token, true), undefined, undefined, abortSignal);
+        const result = await (0, RetryUtils_js_1.tryWithRetries)(() => swapContract.getBalance(this.getAddress(chainIdentifier), token, true), undefined, undefined, abortSignal);
         this.liquidity ??= {};
         this.liquidity[chainIdentifier] ??= {};
         this.liquidity[chainIdentifier][token] = result;

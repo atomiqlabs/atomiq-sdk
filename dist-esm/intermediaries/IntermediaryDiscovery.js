@@ -1,11 +1,11 @@
-import { Intermediary } from "./Intermediary";
-import { SwapType } from "../enums/SwapType";
+import { Intermediary } from "./Intermediary.js";
+import { SwapType } from "../enums/SwapType.js";
 import { EventEmitter } from "events";
 import { Buffer } from "buffer";
-import { bigIntMax, bigIntMin, extendAbortController } from "../utils/Utils";
-import { getLogger } from "../utils/Logger";
-import { httpGet } from "../http/HttpUtils";
-import { tryWithRetries } from "../utils/RetryUtils";
+import { bigIntMax, bigIntMin, extendAbortController } from "../utils/Utils.js";
+import { getLogger } from "../utils/Logger.js";
+import { httpGet } from "../http/HttpUtils.js";
+import { tryWithRetries } from "../utils/RetryUtils.js";
 /**
  * Swap handler type mapping for intermediary communication
  *

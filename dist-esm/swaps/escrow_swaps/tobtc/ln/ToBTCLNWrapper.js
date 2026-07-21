@@ -1,17 +1,17 @@
 import { decode as bolt11Decode } from "@atomiqlabs/bolt11";
-import { ToBTCLNSwap } from "./ToBTCLNSwap";
-import { IToBTCWrapper } from "../IToBTCWrapper";
-import { UserError } from "../../../../errors/UserError";
+import { ToBTCLNSwap } from "./ToBTCLNSwap.js";
+import { IToBTCWrapper } from "../IToBTCWrapper.js";
+import { UserError } from "../../../../errors/UserError.js";
 import { ChainSwapType, SwapCommitStateType } from "@atomiqlabs/base";
-import { Intermediary } from "../../../../intermediaries/Intermediary";
-import { IntermediaryError } from "../../../../errors/IntermediaryError";
-import { SwapType } from "../../../../enums/SwapType";
-import { extendAbortController, mapArrayToObject, throwIfUndefined } from "../../../../utils/Utils";
-import { RequestError } from "../../../../errors/RequestError";
-import { LNURL } from "../../../../lnurl/LNURL";
-import { ToBTCSwapState } from "../IToBTCSwap";
+import { Intermediary } from "../../../../intermediaries/Intermediary.js";
+import { IntermediaryError } from "../../../../errors/IntermediaryError.js";
+import { SwapType } from "../../../../enums/SwapType.js";
+import { extendAbortController, mapArrayToObject, throwIfUndefined } from "../../../../utils/Utils.js";
+import { RequestError } from "../../../../errors/RequestError.js";
+import { LNURL } from "../../../../lnurl/LNURL.js";
+import { ToBTCSwapState } from "../IToBTCSwap.js";
 import { sha256 } from "@noble/hashes/sha2";
-import { tryWithRetries } from "../../../../utils/RetryUtils";
+import { tryWithRetries } from "../../../../utils/RetryUtils.js";
 /**
  * Escrow based (HTLC) swap for Smart chains -> Bitcoin lightning
  *

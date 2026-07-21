@@ -1,25 +1,25 @@
-import {RequestError} from "../errors/RequestError";
+import {RequestError} from "../errors/RequestError.js";
 import {decode as bolt11Decode, PaymentRequestObject, TagsObject} from "@atomiqlabs/bolt11";
-import {UserError} from "../errors/UserError";
+import {UserError} from "../errors/UserError.js";
 import {bech32} from "@scure/base";
 import {cbc} from "@noble/ciphers/aes";
 import {Buffer} from "buffer";
 import {sha256} from "@noble/hashes/sha2";
-import {httpGet} from "../http/HttpUtils";
+import {httpGet} from "../http/HttpUtils.js";
 import {
     isLNURLWithdrawParams,
     LNURLWithdraw,
     LNURLWithdrawParams,
     LNURLWithdrawParamsWithUrl
-} from "../types/lnurl/LNURLWithdraw";
+} from "../types/lnurl/LNURLWithdraw.js";
 import {
     isLNURLPayParams,
     LNURLDecodedSuccessAction,
     LNURLPay,
     LNURLPayParams,
     LNURLPayParamsWithUrl
-} from "../types/lnurl/LNURLPay";
-import {tryWithRetries} from "../utils/RetryUtils";
+} from "../types/lnurl/LNURLPay.js";
+import {tryWithRetries} from "../utils/RetryUtils.js";
 
 type LNURLOk = {
     status: "OK"

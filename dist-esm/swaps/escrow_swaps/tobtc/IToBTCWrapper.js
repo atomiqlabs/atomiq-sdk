@@ -1,7 +1,7 @@
-import { ToBTCSwapState } from "./IToBTCSwap";
-import { IntermediaryError } from "../../../errors/IntermediaryError";
-import { IEscrowSwapWrapper } from "../IEscrowSwapWrapper";
-import { mapArrayToObject } from "../../../utils/Utils";
+import { ToBTCSwapState } from "./IToBTCSwap.js";
+import { IntermediaryError } from "../../../errors/IntermediaryError.js";
+import { IEscrowSwapWrapper } from "../IEscrowSwapWrapper.js";
+import { mapArrayToObject } from "../../../utils/Utils.js";
 /**
  * Base class for wrappers of escrow-based Smart chain -> Bitcoin (on-chain & lightning) swaps
  *

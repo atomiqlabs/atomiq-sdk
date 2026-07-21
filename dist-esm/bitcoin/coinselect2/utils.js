@@ -1,4 +1,4 @@
-import { getLogger } from "../../utils/Logger";
+import { getLogger } from "../../utils/Logger.js";
 const logger = getLogger("CoinSelect: ");
 // baseline estimates, used to improve performance
 const TX_EMPTY_SIZE = 4 + 1 + 1 + 4;

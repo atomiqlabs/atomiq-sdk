@@ -2,23 +2,23 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FromBTCLNAutoSwap = exports.isFromBTCLNAutoSwapInit = exports.FromBTCLNAutoSwapState = void 0;
 const bolt11_1 = require("@atomiqlabs/bolt11");
-const SwapType_1 = require("../../../../enums/SwapType");
+const SwapType_js_1 = require("../../../../enums/SwapType.js");
 const base_1 = require("@atomiqlabs/base");
 const buffer_1 = require("buffer");
-const LNURL_1 = require("../../../../lnurl/LNURL");
-const UserError_1 = require("../../../../errors/UserError");
-const IntermediaryAPI_1 = require("../../../../intermediaries/apis/IntermediaryAPI");
-const IntermediaryError_1 = require("../../../../errors/IntermediaryError");
-const Utils_1 = require("../../../../utils/Utils");
-const IEscrowSwap_1 = require("../../IEscrowSwap");
-const FeeType_1 = require("../../../../enums/FeeType");
-const PercentagePPM_1 = require("../../../../types/fees/PercentagePPM");
-const TokenAmount_1 = require("../../../../types/TokenAmount");
-const Token_1 = require("../../../../types/Token");
-const Logger_1 = require("../../../../utils/Logger");
-const TimeoutUtils_1 = require("../../../../utils/TimeoutUtils");
-const LNURLWithdraw_1 = require("../../../../types/lnurl/LNURLWithdraw");
-const PriceInfoType_1 = require("../../../../types/PriceInfoType");
+const LNURL_js_1 = require("../../../../lnurl/LNURL.js");
+const UserError_js_1 = require("../../../../errors/UserError.js");
+const IntermediaryAPI_js_1 = require("../../../../intermediaries/apis/IntermediaryAPI.js");
+const IntermediaryError_js_1 = require("../../../../errors/IntermediaryError.js");
+const Utils_js_1 = require("../../../../utils/Utils.js");
+const IEscrowSwap_js_1 = require("../../IEscrowSwap.js");
+const FeeType_js_1 = require("../../../../enums/FeeType.js");
+const PercentagePPM_js_1 = require("../../../../types/fees/PercentagePPM.js");
+const TokenAmount_js_1 = require("../../../../types/TokenAmount.js");
+const Token_js_1 = require("../../../../types/Token.js");
+const Logger_js_1 = require("../../../../utils/Logger.js");
+const TimeoutUtils_js_1 = require("../../../../utils/TimeoutUtils.js");
+const LNURLWithdraw_js_1 = require("../../../../types/lnurl/LNURLWithdraw.js");
+const PriceInfoType_js_1 = require("../../../../types/PriceInfoType.js");
 const sha2_1 = require("@noble/hashes/sha2");
 /**
  * State enum for FromBTCLNAuto swaps
@@ -85,11 +85,11 @@ function isFromBTCLNAutoSwapInit(obj) {
         (obj.btcAmountGas == null || typeof obj.btcAmountGas === "bigint") &&
         typeof obj.gasSwapFeeBtc === "bigint" &&
         typeof obj.gasSwapFee === "bigint" &&
-        (obj.gasPricingInfo == null || (0, PriceInfoType_1.isPriceInfoType)(obj.gasPricingInfo)) &&
+        (obj.gasPricingInfo == null || (0, PriceInfoType_js_1.isPriceInfoType)(obj.gasPricingInfo)) &&
         (obj.lnurl == null || typeof (obj.lnurl) === "string") &&
         (obj.lnurlK1 == null || typeof (obj.lnurlK1) === "string") &&
         (obj.lnurlCallback == null || typeof (obj.lnurlCallback) === "string") &&
-        (0, IEscrowSwap_1.isIEscrowSwapInit)(obj);
+        (0, IEscrowSwap_js_1.isIEscrowSwapInit)(obj);
 }
 exports.isFromBTCLNAutoSwapInit = isFromBTCLNAutoSwapInit;
 /**
@@ -100,7 +100,7 @@ exports.isFromBTCLNAutoSwapInit = isFromBTCLNAutoSwapInit;
  *
  * @category Swaps/Lightning → Smart chain
  */
-class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
+class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
     /**
      * Sets the LNURL data for the swap
      *
@@ -115,7 +115,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
         if (isFromBTCLNAutoSwapInit(initOrObject) && initOrObject.url != null)
             initOrObject.url += "/frombtcln_auto";
         super(wrapper, initOrObject);
-        this.TYPE = SwapType_1.SwapType.FROM_BTCLN_AUTO;
+        this.TYPE = SwapType_js_1.SwapType.FROM_BTCLN_AUTO;
         /**
          * @internal
          */
@@ -127,7 +127,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
         /**
          * @internal
          */
-        this.inputToken = Token_1.BitcoinTokens.BTCLN;
+        this.inputToken = Token_js_1.BitcoinTokens.BTCLN;
         this.lnurlFailSignal = new AbortController();
         this.prPosted = false;
         this.broadcastTickCounter = 0;
@@ -155,11 +155,11 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
             else {
                 this.initialSwapData = base_1.SwapData.deserialize(initOrObject.initialSwapData);
             }
-            this.btcAmountSwap = (0, Utils_1.toBigInt)(initOrObject.btcAmountSwap);
-            this.btcAmountGas = (0, Utils_1.toBigInt)(initOrObject.btcAmountGas);
-            this.gasSwapFeeBtc = (0, Utils_1.toBigInt)(initOrObject.gasSwapFeeBtc);
-            this.gasSwapFee = (0, Utils_1.toBigInt)(initOrObject.gasSwapFee);
-            this.gasPricingInfo = (0, PriceInfoType_1.deserializePriceInfoType)(initOrObject.gasPricingInfo);
+            this.btcAmountSwap = (0, Utils_js_1.toBigInt)(initOrObject.btcAmountSwap);
+            this.btcAmountGas = (0, Utils_js_1.toBigInt)(initOrObject.btcAmountGas);
+            this.gasSwapFeeBtc = (0, Utils_js_1.toBigInt)(initOrObject.gasSwapFeeBtc);
+            this.gasSwapFee = (0, Utils_js_1.toBigInt)(initOrObject.gasSwapFee);
+            this.gasPricingInfo = (0, PriceInfoType_js_1.deserializePriceInfoType)(initOrObject.gasPricingInfo);
             this._commitTxId = initOrObject.commitTxId;
             this._claimTxId = initOrObject.claimTxId;
             this._commitedAt = initOrObject.commitedAt;
@@ -170,7 +170,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
             this.usesClaimHashAsId = initOrObject.usesClaimHashAsId ?? false;
         }
         this.tryRecomputeSwapPrice();
-        this.logger = (0, Logger_1.getLogger)("FromBTCLNAuto(" + this.getIdentifierHashString() + "): ");
+        this.logger = (0, Logger_js_1.getLogger)("FromBTCLNAuto(" + this.getIdentifierHashString() + "): ");
     }
     /**
      * @inheritDoc
@@ -457,19 +457,19 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
      * @inheritDoc
      */
     getInputToken() {
-        return Token_1.BitcoinTokens.BTCLN;
+        return Token_js_1.BitcoinTokens.BTCLN;
     }
     /**
      * @inheritDoc
      */
     getInput() {
-        return (0, TokenAmount_1.toTokenAmount)(this.getLightningInvoiceSats(), this.inputToken, this.wrapper._prices, this.pricingInfo);
+        return (0, TokenAmount_js_1.toTokenAmount)(this.getLightningInvoiceSats(), this.inputToken, this.wrapper._prices, this.pricingInfo);
     }
     /**
      * @inheritDoc
      */
     getInputWithoutFee() {
-        return (0, TokenAmount_1.toTokenAmount)(this.getInputAmountWithoutFee(), this.inputToken, this.wrapper._prices, this.pricingInfo);
+        return (0, TokenAmount_js_1.toTokenAmount)(this.getInputAmountWithoutFee(), this.inputToken, this.wrapper._prices, this.pricingInfo);
     }
     /**
      * @inheritDoc
@@ -481,13 +481,13 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
      * @inheritDoc
      */
     getOutput() {
-        return (0, TokenAmount_1.toTokenAmount)(this.getSwapData().getAmount(), this.wrapper._tokens[this.getSwapData().getToken()], this.wrapper._prices, this.pricingInfo);
+        return (0, TokenAmount_js_1.toTokenAmount)(this.getSwapData().getAmount(), this.wrapper._tokens[this.getSwapData().getToken()], this.wrapper._prices, this.pricingInfo);
     }
     /**
      * @inheritDoc
      */
     getGasDropOutput() {
-        return (0, TokenAmount_1.toTokenAmount)(this.getSwapData().getSecurityDeposit() - this.getSwapData().getClaimerBounty(), this.wrapper._tokens[this.getSwapData().getDepositToken()], this.wrapper._prices, this.gasPricingInfo);
+        return (0, TokenAmount_js_1.toTokenAmount)(this.getSwapData().getSecurityDeposit() - this.getSwapData().getClaimerBounty(), this.wrapper._tokens[this.getSwapData().getDepositToken()], this.wrapper._prices, this.gasPricingInfo);
     }
     /**
      * Returns the swap fee charged by the intermediary (LP) on this swap
@@ -507,16 +507,16 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
         const swapFeePPM = inputSats != null
             ? feeWithoutBaseFee * 1000000n / (inputSats - this.swapFeeBtc - this.gasSwapFeeBtc)
             : 0n;
-        const amountInSrcToken = (0, TokenAmount_1.toTokenAmount)(this.swapFeeBtc + this.gasSwapFeeBtc, Token_1.BitcoinTokens.BTCLN, this.wrapper._prices, this.pricingInfo);
+        const amountInSrcToken = (0, TokenAmount_js_1.toTokenAmount)(this.swapFeeBtc + this.gasSwapFeeBtc, Token_js_1.BitcoinTokens.BTCLN, this.wrapper._prices, this.pricingInfo);
         return {
             amountInSrcToken,
-            amountInDstToken: (0, TokenAmount_1.toTokenAmount)(this.swapFee + gasSwapFeeInOutputToken, outputToken, this.wrapper._prices, this.pricingInfo),
+            amountInDstToken: (0, TokenAmount_js_1.toTokenAmount)(this.swapFee + gasSwapFeeInOutputToken, outputToken, this.wrapper._prices, this.pricingInfo),
             currentUsdValue: amountInSrcToken.currentUsdValue,
             pastUsdValue: amountInSrcToken.pastUsdValue,
             usdValue: amountInSrcToken.usdValue,
             composition: {
-                base: (0, TokenAmount_1.toTokenAmount)(this.pricingInfo.satsBaseFee, Token_1.BitcoinTokens.BTCLN, this.wrapper._prices, this.pricingInfo),
-                percentage: (0, PercentagePPM_1.ppmToPercentage)(swapFeePPM)
+                base: (0, TokenAmount_js_1.toTokenAmount)(this.pricingInfo.satsBaseFee, Token_js_1.BitcoinTokens.BTCLN, this.wrapper._prices, this.pricingInfo),
+                percentage: (0, PercentagePPM_js_1.ppmToPercentage)(swapFeePPM)
             }
         };
     }
@@ -535,10 +535,10 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
             * (10n ** BigInt(outputToken.decimals))
             * 1000000n
             / this.pricingInfo.swapPriceUSatPerToken;
-        const amountInSrcToken = (0, TokenAmount_1.toTokenAmount)(btcWatchtowerFee, Token_1.BitcoinTokens.BTCLN, this.wrapper._prices, this.pricingInfo);
+        const amountInSrcToken = (0, TokenAmount_js_1.toTokenAmount)(btcWatchtowerFee, Token_js_1.BitcoinTokens.BTCLN, this.wrapper._prices, this.pricingInfo);
         return {
             amountInSrcToken,
-            amountInDstToken: (0, TokenAmount_1.toTokenAmount)(watchtowerFeeInOutputToken, outputToken, this.wrapper._prices, this.pricingInfo),
+            amountInDstToken: (0, TokenAmount_js_1.toTokenAmount)(watchtowerFeeInOutputToken, outputToken, this.wrapper._prices, this.pricingInfo),
             currentUsdValue: amountInSrcToken.currentUsdValue,
             usdValue: amountInSrcToken.usdValue,
             pastUsdValue: amountInSrcToken.pastUsdValue
@@ -550,10 +550,10 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
     getFee() {
         const swapFee = this.getSwapFee();
         const watchtowerFee = this.getWatchtowerFee();
-        const amountInSrcToken = (0, TokenAmount_1.toTokenAmount)(swapFee.amountInSrcToken.rawAmount + watchtowerFee.amountInSrcToken.rawAmount, Token_1.BitcoinTokens.BTCLN, this.wrapper._prices, this.pricingInfo);
+        const amountInSrcToken = (0, TokenAmount_js_1.toTokenAmount)(swapFee.amountInSrcToken.rawAmount + watchtowerFee.amountInSrcToken.rawAmount, Token_js_1.BitcoinTokens.BTCLN, this.wrapper._prices, this.pricingInfo);
         return {
             amountInSrcToken,
-            amountInDstToken: (0, TokenAmount_1.toTokenAmount)(swapFee.amountInDstToken.rawAmount + watchtowerFee.amountInDstToken.rawAmount, this.wrapper._tokens[this.getSwapData().getToken()], this.wrapper._prices, this.pricingInfo),
+            amountInDstToken: (0, TokenAmount_js_1.toTokenAmount)(swapFee.amountInDstToken.rawAmount + watchtowerFee.amountInDstToken.rawAmount, this.wrapper._tokens[this.getSwapData().getToken()], this.wrapper._prices, this.pricingInfo),
             currentUsdValue: amountInSrcToken.currentUsdValue,
             usdValue: amountInSrcToken.usdValue,
             pastUsdValue: amountInSrcToken.pastUsdValue
@@ -565,11 +565,11 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
     getFeeBreakdown() {
         return [
             {
-                type: FeeType_1.FeeType.SWAP,
+                type: FeeType_js_1.FeeType.SWAP,
                 fee: this.getSwapFee()
             },
             {
-                type: FeeType_1.FeeType.NETWORK_OUTPUT,
+                type: FeeType_js_1.FeeType.NETWORK_OUTPUT,
                 fee: this.getWatchtowerFee()
             }
         ];
@@ -627,7 +627,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
             if (walletOrLnurlWithdraw != null && this.lnurl == null) {
                 if (this.pr == null || !this.pr.toLowerCase().startsWith("ln"))
                     throw new Error("Input lightning network invoice not available, the swap was probably recovered!");
-                if (typeof (walletOrLnurlWithdraw) === "string" || (0, LNURLWithdraw_1.isLNURLWithdraw)(walletOrLnurlWithdraw)) {
+                if (typeof (walletOrLnurlWithdraw) === "string" || (0, LNURLWithdraw_js_1.isLNURLWithdraw)(walletOrLnurlWithdraw)) {
                     await this.settleWithLNURLWithdraw(walletOrLnurlWithdraw);
                 }
                 else {
@@ -758,7 +758,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
                     amount: this.getInput()
                 }],
             waitForTransactions: async (maxWaitTimeSeconds, pollIntervalSeconds, abortSignal) => {
-                const abortController = (0, Utils_1.extendAbortController)(abortSignal, maxWaitTimeSeconds, "Timed out waiting for lightning payment");
+                const abortController = (0, Utils_js_1.extendAbortController)(abortSignal, maxWaitTimeSeconds, "Timed out waiting for lightning payment");
                 const success = await this._waitForLpPaymentReceived(pollIntervalSeconds, abortController.signal);
                 if (!success)
                     throw new Error("Quote expired while waiting for Lightning payment");
@@ -777,7 +777,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
             pollTimeSeconds: 5,
             expectedTimeSeconds: 10,
             wait: async (maxWaitTimeSeconds, pollIntervalSeconds, abortSignal) => {
-                const abortController = (0, Utils_1.extendAbortController)(abortSignal, maxWaitTimeSeconds, "Timed out waiting for LP payout");
+                const abortController = (0, Utils_js_1.extendAbortController)(abortSignal, maxWaitTimeSeconds, "Timed out waiting for LP payout");
                 await this.waitTillCommited(pollIntervalSeconds, abortController.signal);
             }
         };
@@ -896,7 +896,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
             throw new Error("Failed to check LP payment received, payment hash not known (probably recovered swap?)");
         const resp = await this.wrapper._lpApi.getInvoiceStatus(this.url, paymentHash.toString("hex"));
         switch (resp.code) {
-            case IntermediaryAPI_1.InvoiceStatusResponseCodes.PAID:
+            case IntermediaryAPI_js_1.InvoiceStatusResponseCodes.PAID:
                 const data = new (this.wrapper._swapDataDeserializer(this._contractVersion))(resp.data.data);
                 if (this._state === FromBTCLNAutoSwapState.PR_CREATED || this._state === FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED)
                     try {
@@ -905,7 +905,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
                     }
                     catch (e) { }
                 return null;
-            case IntermediaryAPI_1.InvoiceStatusResponseCodes.EXPIRED:
+            case IntermediaryAPI_js_1.InvoiceStatusResponseCodes.EXPIRED:
                 this._state = FromBTCLNAutoSwapState.QUOTE_EXPIRED;
                 this.initiated = true;
                 if (save)
@@ -966,7 +966,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
         if (this.lnurl != null && this.lnurlK1 != null && this.lnurlCallback != null && !this.prPosted) {
             if (this.pr == null || !this.pr.toLowerCase().startsWith("ln"))
                 throw new Error("Input lightning network invoice not available, the swap was probably recovered!");
-            LNURL_1.LNURL.postInvoiceToLNURLWithdraw({ k1: this.lnurlK1, callback: this.lnurlCallback }, this.pr).catch(e => {
+            LNURL_js_1.LNURL.postInvoiceToLNURLWithdraw({ k1: this.lnurlK1, callback: this.lnurlCallback }, this.pr).catch(e => {
                 this.lnurlFailSignal.abort(e);
             });
             this.prPosted = true;
@@ -994,20 +994,20 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
             ];
             if (this.url != null)
                 promises.push((async () => {
-                    let resp = { code: IntermediaryAPI_1.InvoiceStatusResponseCodes.PENDING, msg: "" };
-                    while (!abortController.signal.aborted && resp.code === IntermediaryAPI_1.InvoiceStatusResponseCodes.PENDING) {
+                    let resp = { code: IntermediaryAPI_js_1.InvoiceStatusResponseCodes.PENDING, msg: "" };
+                    while (!abortController.signal.aborted && resp.code === IntermediaryAPI_js_1.InvoiceStatusResponseCodes.PENDING) {
                         resp = await this.wrapper._lpApi.getInvoiceStatus(this.url, paymentHash.toString("hex"));
-                        if (resp.code === IntermediaryAPI_1.InvoiceStatusResponseCodes.PENDING)
-                            await (0, TimeoutUtils_1.timeoutPromise)(checkIntervalSeconds * 1000, abortController.signal);
+                        if (resp.code === IntermediaryAPI_js_1.InvoiceStatusResponseCodes.PENDING)
+                            await (0, TimeoutUtils_js_1.timeoutPromise)(checkIntervalSeconds * 1000, abortController.signal);
                     }
                     this.lnurlFailSignal.signal.removeEventListener("abort", lnurlFailListener);
                     abortController.signal.throwIfAborted();
-                    if (resp.code === IntermediaryAPI_1.InvoiceStatusResponseCodes.PAID) {
+                    if (resp.code === IntermediaryAPI_js_1.InvoiceStatusResponseCodes.PAID) {
                         const swapData = new (this.wrapper._swapDataDeserializer(this._contractVersion))(resp.data.data);
                         return await this._saveRealSwapData(swapData, true);
                     }
                     if (this._state === FromBTCLNAutoSwapState.PR_CREATED || this._state === FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED) {
-                        if (resp.code === IntermediaryAPI_1.InvoiceStatusResponseCodes.EXPIRED) {
+                        if (resp.code === IntermediaryAPI_js_1.InvoiceStatusResponseCodes.EXPIRED) {
                             await this._saveAndEmit(FromBTCLNAutoSwapState.QUOTE_EXPIRED);
                         }
                         return false;
@@ -1032,31 +1032,31 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
      */
     async checkIntermediaryReturnedData(data) {
         if (!data.isPayOut())
-            throw new IntermediaryError_1.IntermediaryError("Invalid not pay out");
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid not pay out");
         if (data.getType() !== base_1.ChainSwapType.HTLC)
-            throw new IntermediaryError_1.IntermediaryError("Invalid swap type");
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid swap type");
         if (!data.isOfferer(this.getSwapData().getOfferer()))
-            throw new IntermediaryError_1.IntermediaryError("Invalid offerer used");
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid offerer used");
         if (!data.isClaimer(this._getInitiator()))
-            throw new IntermediaryError_1.IntermediaryError("Invalid claimer used");
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid claimer used");
         if (!data.isToken(this.getSwapData().getToken()))
-            throw new IntermediaryError_1.IntermediaryError("Invalid token used");
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid token used");
         if (data.getSecurityDeposit() !== this.getSwapData().getSecurityDeposit())
-            throw new IntermediaryError_1.IntermediaryError("Invalid security deposit!");
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid security deposit!");
         if (data.getClaimerBounty() !== this.getSwapData().getClaimerBounty())
-            throw new IntermediaryError_1.IntermediaryError("Invalid security deposit!");
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid security deposit!");
         if (data.getAmount() < this.getSwapData().getAmount())
-            throw new IntermediaryError_1.IntermediaryError("Invalid amount received!");
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid amount received!");
         if (data.getClaimHash() !== this.getSwapData().getClaimHash())
-            throw new IntermediaryError_1.IntermediaryError("Invalid payment hash used!");
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid payment hash used!");
         if (!data.isDepositToken(this.getSwapData().getDepositToken()))
-            throw new IntermediaryError_1.IntermediaryError("Invalid deposit token used!");
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid deposit token used!");
         if (data.hasSuccessAction())
-            throw new IntermediaryError_1.IntermediaryError("Invalid has success action");
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid has success action");
         if (await this.wrapper._contract(this._contractVersion).isExpired(this._getInitiator(), data))
-            throw new IntermediaryError_1.IntermediaryError("Not enough time to claim!");
+            throw new IntermediaryError_js_1.IntermediaryError("Not enough time to claim!");
         if (this.wrapper._getHtlcTimeout(data) <= (Date.now() / 1000))
-            throw new IntermediaryError_1.IntermediaryError("HTLC expires too soon!");
+            throw new IntermediaryError_js_1.IntermediaryError("HTLC expires too soon!");
     }
     /**
      * Waits till a lightning network payment is received by the intermediary, and the intermediary
@@ -1103,7 +1103,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
             return Promise.resolve();
         if (this._state !== FromBTCLNAutoSwapState.PR_PAID)
             throw new Error("Invalid state");
-        const abortController = (0, Utils_1.extendAbortController)(abortSignal);
+        const abortController = (0, Utils_js_1.extendAbortController)(abortSignal);
         let result;
         try {
             result = await Promise.race([
@@ -1304,9 +1304,9 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
             throw new Error("Cannot settle LNURL-withdraw swap with different LNURL");
         let lnurlParams;
         if (typeof (lnurl) === "string") {
-            const parsedLNURL = await LNURL_1.LNURL.getLNURL(lnurl);
+            const parsedLNURL = await LNURL_js_1.LNURL.getLNURL(lnurl);
             if (parsedLNURL == null || parsedLNURL.tag !== "withdrawRequest")
-                throw new UserError_1.UserError("Invalid LNURL-withdraw to settle the swap");
+                throw new UserError_js_1.UserError("Invalid LNURL-withdraw to settle the swap");
             lnurlParams = parsedLNURL;
         }
         else {
@@ -1314,7 +1314,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
         }
         if (this.pr == null || !this.pr.toLowerCase().startsWith("ln"))
             throw new Error("Input lightning network invoice not available, the swap was probably recovered!");
-        LNURL_1.LNURL.useLNURLWithdraw(lnurlParams, this.pr).catch(e => this.lnurlFailSignal.abort(e));
+        LNURL_js_1.LNURL.useLNURLWithdraw(lnurlParams, this.pr).catch(e => this.lnurlFailSignal.abort(e));
         this.lnurl = lnurlParams.url;
         this.lnurlCallback = lnurlParams.callback;
         this.lnurlK1 = lnurlParams.k1;
@@ -1337,7 +1337,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_1.IEscrowSwap {
             btcAmountGas: this.btcAmountGas == null ? null : this.btcAmountGas.toString(10),
             gasSwapFeeBtc: this.gasSwapFeeBtc == null ? null : this.gasSwapFeeBtc.toString(10),
             gasSwapFee: this.gasSwapFee == null ? null : this.gasSwapFee.toString(10),
-            gasPricingInfo: (0, PriceInfoType_1.serializePriceInfoType)(this.gasPricingInfo),
+            gasPricingInfo: (0, PriceInfoType_js_1.serializePriceInfoType)(this.gasPricingInfo),
             pr: this.pr,
             secret: this.secret,
             lnurl: this.lnurl,

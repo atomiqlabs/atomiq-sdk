@@ -1,5 +1,5 @@
 import {decode as bolt11Decode} from "@atomiqlabs/bolt11";
-import {SwapType} from "../../../../enums/SwapType";
+import {SwapType} from "../../../../enums/SwapType.js";
 import {
     ChainSwapType,
     ChainType,
@@ -10,46 +10,46 @@ import {
     SwapData,
 } from "@atomiqlabs/base";
 import {Buffer} from "buffer";
-import {LNURL} from "../../../../lnurl/LNURL";
-import {UserError} from "../../../../errors/UserError";
+import {LNURL} from "../../../../lnurl/LNURL.js";
+import {UserError} from "../../../../errors/UserError.js";
 import {
     IntermediaryAPI,
     InvoiceStatusResponse,
     InvoiceStatusResponseCodes
-} from "../../../../intermediaries/apis/IntermediaryAPI";
-import {IntermediaryError} from "../../../../errors/IntermediaryError";
-import {extendAbortController, toBigInt} from "../../../../utils/Utils";
-import {Fee} from "../../../../types/fees/Fee";
-import {IAddressSwap} from "../../../IAddressSwap";
-import {FromBTCLNAutoDefinition, FromBTCLNAutoWrapper} from "./FromBTCLNAutoWrapper";
-import {ISwapWithGasDrop} from "../../../ISwapWithGasDrop";
-import {MinimalLightningNetworkWalletInterface} from "../../../../types/wallets/MinimalLightningNetworkWalletInterface";
-import {IClaimableSwap} from "../../../IClaimableSwap";
-import {IEscrowSwap, IEscrowSwapInit, isIEscrowSwapInit} from "../../IEscrowSwap";
-import {FeeType} from "../../../../enums/FeeType";
-import {ppmToPercentage} from "../../../../types/fees/PercentagePPM";
-import {TokenAmount, toTokenAmount} from "../../../../types/TokenAmount";
-import {BitcoinTokens, BtcToken, SCToken} from "../../../../types/Token";
-import {getLogger, LoggerType} from "../../../../utils/Logger";
-import {timeoutPromise} from "../../../../utils/TimeoutUtils";
-import {isLNURLWithdraw, LNURLWithdraw, LNURLWithdrawParamsWithUrl} from "../../../../types/lnurl/LNURLWithdraw";
+} from "../../../../intermediaries/apis/IntermediaryAPI.js";
+import {IntermediaryError} from "../../../../errors/IntermediaryError.js";
+import {extendAbortController, toBigInt} from "../../../../utils/Utils.js";
+import {Fee} from "../../../../types/fees/Fee.js";
+import {IAddressSwap} from "../../../IAddressSwap.js";
+import {FromBTCLNAutoDefinition, FromBTCLNAutoWrapper} from "./FromBTCLNAutoWrapper.js";
+import {ISwapWithGasDrop} from "../../../ISwapWithGasDrop.js";
+import {MinimalLightningNetworkWalletInterface} from "../../../../types/wallets/MinimalLightningNetworkWalletInterface.js";
+import {IClaimableSwap} from "../../../IClaimableSwap.js";
+import {IEscrowSwap, IEscrowSwapInit, isIEscrowSwapInit} from "../../IEscrowSwap.js";
+import {FeeType} from "../../../../enums/FeeType.js";
+import {ppmToPercentage} from "../../../../types/fees/PercentagePPM.js";
+import {TokenAmount, toTokenAmount} from "../../../../types/TokenAmount.js";
+import {BitcoinTokens, BtcToken, SCToken} from "../../../../types/Token.js";
+import {getLogger, LoggerType} from "../../../../utils/Logger.js";
+import {timeoutPromise} from "../../../../utils/TimeoutUtils.js";
+import {isLNURLWithdraw, LNURLWithdraw, LNURLWithdrawParamsWithUrl} from "../../../../types/lnurl/LNURLWithdraw.js";
 import {
     deserializePriceInfoType,
     isPriceInfoType,
     PriceInfoType,
     serializePriceInfoType
-} from "../../../../types/PriceInfoType";
+} from "../../../../types/PriceInfoType.js";
 import {sha256} from "@noble/hashes/sha2";
 import {
     SwapExecutionActionSendToAddress,
     SwapExecutionActionSignSmartChainTx,
     SwapExecutionActionWait
-} from "../../../../types/SwapExecutionAction";
+} from "../../../../types/SwapExecutionAction.js";
 import {
     SwapExecutionStepPayment,
     SwapExecutionStepSettlement
-} from "../../../../types/SwapExecutionStep";
-import {SwapStateInfo} from "../../../../types/SwapStateInfo";
+} from "../../../../types/SwapExecutionStep.js";
+import {SwapStateInfo} from "../../../../types/SwapStateInfo.js";
 
 /**
  * State enum for FromBTCLNAuto swaps

@@ -1,4 +1,4 @@
-import { getLogger } from "../utils/Logger";
+import { getLogger } from "../utils/Logger.js";
 function toCompositeIndex(values) {
     if (values.length === 0)
         return [];

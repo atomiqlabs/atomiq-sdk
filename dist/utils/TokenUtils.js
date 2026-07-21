@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.fromHumanReadableString = exports.toHumanReadableString = void 0;
-const Utils_1 = require("./Utils");
+const Utils_js_1 = require("./Utils.js");
 /**
  * Converts a raw bigint amount to a human-readable string with decimals
  *
@@ -13,7 +13,7 @@ const Utils_1 = require("./Utils");
 function toHumanReadableString(amount, token) {
     if (amount == null)
         return "";
-    return (0, Utils_1.toDecimal)(amount, token.decimals, undefined, token.displayDecimals);
+    return (0, Utils_js_1.toDecimal)(amount, token.decimals, undefined, token.displayDecimals);
 }
 exports.toHumanReadableString = toHumanReadableString;
 /**
@@ -28,7 +28,7 @@ function fromHumanReadableString(amount, token) {
     if (amount === "" || amount == null)
         return null;
     try {
-        return (0, Utils_1.fromDecimal)(amount, token.decimals);
+        return (0, Utils_js_1.fromDecimal)(amount, token.decimals);
     }
     catch (e) {
         return null;

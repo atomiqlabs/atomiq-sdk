@@ -1,19 +1,19 @@
 import { decode as bolt11Decode } from "@atomiqlabs/bolt11";
-import { IFromBTCSelfInitSwap } from "../IFromBTCSelfInitSwap";
-import { SwapType } from "../../../../enums/SwapType";
+import { IFromBTCSelfInitSwap } from "../IFromBTCSelfInitSwap.js";
+import { SwapType } from "../../../../enums/SwapType.js";
 import { ChainSwapType, isAbstractSigner, SwapCommitStateType, SwapData } from "@atomiqlabs/base";
 import { Buffer } from "buffer";
-import { LNURL } from "../../../../lnurl/LNURL";
-import { UserError } from "../../../../errors/UserError";
-import { PaymentAuthorizationResponseCodes } from "../../../../intermediaries/apis/IntermediaryAPI";
-import { IntermediaryError } from "../../../../errors/IntermediaryError";
-import { extendAbortController } from "../../../../utils/Utils";
-import { isIEscrowSelfInitSwapInit } from "../../IEscrowSelfInitSwap";
-import { toTokenAmount } from "../../../../types/TokenAmount";
-import { BitcoinTokens } from "../../../../types/Token";
-import { getLogger } from "../../../../utils/Logger";
-import { timeoutPromise } from "../../../../utils/TimeoutUtils";
-import { isLNURLWithdraw } from "../../../../types/lnurl/LNURLWithdraw";
+import { LNURL } from "../../../../lnurl/LNURL.js";
+import { UserError } from "../../../../errors/UserError.js";
+import { PaymentAuthorizationResponseCodes } from "../../../../intermediaries/apis/IntermediaryAPI.js";
+import { IntermediaryError } from "../../../../errors/IntermediaryError.js";
+import { extendAbortController } from "../../../../utils/Utils.js";
+import { isIEscrowSelfInitSwapInit } from "../../IEscrowSelfInitSwap.js";
+import { toTokenAmount } from "../../../../types/TokenAmount.js";
+import { BitcoinTokens } from "../../../../types/Token.js";
+import { getLogger } from "../../../../utils/Logger.js";
+import { timeoutPromise } from "../../../../utils/TimeoutUtils.js";
+import { isLNURLWithdraw } from "../../../../types/lnurl/LNURLWithdraw.js";
 import { sha256 } from "@noble/hashes/sha2";
 /**
  * State enum for legacy Lightning -> Smart chain swaps

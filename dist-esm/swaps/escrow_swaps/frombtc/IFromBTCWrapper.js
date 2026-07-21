@@ -1,7 +1,7 @@
-import { IntermediaryError } from "../../../errors/IntermediaryError";
-import { mapArrayToObject, randomBytes } from "../../../utils/Utils";
+import { IntermediaryError } from "../../../errors/IntermediaryError.js";
+import { mapArrayToObject, randomBytes } from "../../../utils/Utils.js";
 import { BigIntBufferUtils } from "@atomiqlabs/base";
-import { IEscrowSwapWrapper } from "../IEscrowSwapWrapper";
+import { IEscrowSwapWrapper } from "../IEscrowSwapWrapper.js";
 /**
  * Base class for wrappers of escrow-based Bitcoin (on-chain & lightning) -> Smart chain swaps
  *

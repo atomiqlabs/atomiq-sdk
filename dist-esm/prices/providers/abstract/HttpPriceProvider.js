@@ -1,4 +1,4 @@
-import { IPriceProvider } from "../../abstract/IPriceProvider";
+import { IPriceProvider } from "../../abstract/IPriceProvider.js";
 export class HttpPriceProvider extends IPriceProvider {
     constructor(coinsMap, url, httpRequestTimeout) {
         super(coinsMap);

@@ -1,15 +1,15 @@
-import { IToBTCDefinition, IToBTCWrapper } from "./IToBTCWrapper";
+import { IToBTCDefinition, IToBTCWrapper } from "./IToBTCWrapper.js";
 import { ChainType, SignatureData, SwapCommitState, SwapData } from "@atomiqlabs/base";
-import { RefundAuthorizationResponse } from "../../../intermediaries/apis/IntermediaryAPI";
-import { Fee } from "../../../types/fees/Fee";
-import { IEscrowSelfInitSwap, IEscrowSelfInitSwapInit } from "../IEscrowSelfInitSwap";
-import { IRefundableSwap } from "../../IRefundableSwap";
-import { FeeType } from "../../../enums/FeeType";
-import { TokenAmount } from "../../../types/TokenAmount";
-import { BtcToken, SCToken } from "../../../types/Token";
-import { SwapExecutionActionSignSmartChainTx, SwapExecutionActionWait } from "../../../types/SwapExecutionAction";
-import { SwapExecutionStepPayment, SwapExecutionStepRefund, SwapExecutionStepSettlement } from "../../../types/SwapExecutionStep";
-import { SwapStateInfo } from "../../../types/SwapStateInfo";
+import { RefundAuthorizationResponse } from "../../../intermediaries/apis/IntermediaryAPI.js";
+import { Fee } from "../../../types/fees/Fee.js";
+import { IEscrowSelfInitSwap, IEscrowSelfInitSwapInit } from "../IEscrowSelfInitSwap.js";
+import { IRefundableSwap } from "../../IRefundableSwap.js";
+import { FeeType } from "../../../enums/FeeType.js";
+import { TokenAmount } from "../../../types/TokenAmount.js";
+import { BtcToken, SCToken } from "../../../types/Token.js";
+import { SwapExecutionActionSignSmartChainTx, SwapExecutionActionWait } from "../../../types/SwapExecutionAction.js";
+import { SwapExecutionStepPayment, SwapExecutionStepRefund, SwapExecutionStepSettlement } from "../../../types/SwapExecutionStep.js";
+import { SwapStateInfo } from "../../../types/SwapStateInfo.js";
 export type IToBTCSwapInit<T extends SwapData> = IEscrowSelfInitSwapInit<T> & {
     signatureData?: SignatureData;
     data: T;

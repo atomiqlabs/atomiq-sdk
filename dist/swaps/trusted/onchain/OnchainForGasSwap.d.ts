@@ -1,17 +1,17 @@
-import { SwapType } from "../../../enums/SwapType";
+import { SwapType } from "../../../enums/SwapType.js";
 import { ChainType } from "@atomiqlabs/base";
-import { ISwap, ISwapInit } from "../../ISwap";
-import { OnchainForGasSwapTypeDefinition, OnchainForGasWrapper } from "./OnchainForGasWrapper";
-import { Fee } from "../../../types/fees/Fee";
-import { IBitcoinWallet } from "../../../bitcoin/wallet/IBitcoinWallet";
-import { IAddressSwap } from "../../IAddressSwap";
-import { IBTCWalletSwap } from "../../IBTCWalletSwap";
+import { ISwap, ISwapInit } from "../../ISwap.js";
+import { OnchainForGasSwapTypeDefinition, OnchainForGasWrapper } from "./OnchainForGasWrapper.js";
+import { Fee } from "../../../types/fees/Fee.js";
+import { IBitcoinWallet } from "../../../bitcoin/wallet/IBitcoinWallet.js";
+import { IAddressSwap } from "../../IAddressSwap.js";
+import { IBTCWalletSwap } from "../../IBTCWalletSwap.js";
 import { Transaction } from "@scure/btc-signer";
-import { MinimalBitcoinWalletInterface, MinimalBitcoinWalletInterfaceWithSigner } from "../../../types/wallets/MinimalBitcoinWalletInterface";
-import { FeeType } from "../../../enums/FeeType";
-import { TokenAmount } from "../../../types/TokenAmount";
-import { BtcToken, SCToken } from "../../../types/Token";
-import { LoggerType } from "../../../utils/Logger";
+import { MinimalBitcoinWalletInterface, MinimalBitcoinWalletInterfaceWithSigner } from "../../../types/wallets/MinimalBitcoinWalletInterface.js";
+import { FeeType } from "../../../enums/FeeType.js";
+import { TokenAmount } from "../../../types/TokenAmount.js";
+import { BtcToken, SCToken } from "../../../types/Token.js";
+import { LoggerType } from "../../../utils/Logger.js";
 /**
  * State enum for trusted on-chain gas swaps
  *

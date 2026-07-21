@@ -1,11 +1,11 @@
-import {IBitcoinWallet} from "../bitcoin/wallet/IBitcoinWallet";
+import {IBitcoinWallet} from "../bitcoin/wallet/IBitcoinWallet.js";
 import {Transaction} from "@scure/btc-signer";
 import {
     MinimalBitcoinWalletInterface,
     MinimalBitcoinWalletInterfaceWithSigner
-} from "../types/wallets/MinimalBitcoinWalletInterface";
-import {TokenAmount} from "../types/TokenAmount";
-import {BtcToken} from "../types/Token";
+} from "../types/wallets/MinimalBitcoinWalletInterface.js";
+import {TokenAmount} from "../types/TokenAmount.js";
+import {BtcToken} from "../types/Token.js";
 
 /**
  * Type guard to check if an object is an {@link IBTCWalletSwap}

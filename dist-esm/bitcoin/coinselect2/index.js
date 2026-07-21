@@ -1,6 +1,6 @@
-import { accumulative } from "./accumulative";
-import { blackjack } from "./blackjack";
-import { DUST_THRESHOLDS, utils } from "./utils";
+import { accumulative } from "./accumulative.js";
+import { blackjack } from "./blackjack.js";
+import { DUST_THRESHOLDS, utils } from "./utils.js";
 // order by descending value, minus the inputs approximate fee
 function utxoScore(x, feeRate) {
     let valueAfterFee = x.value - (feeRate * utils.inputBytes(x));

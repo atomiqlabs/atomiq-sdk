@@ -1,12 +1,12 @@
 import { isAbstractSigner, SignatureVerificationError, SwapCommitStateType } from "@atomiqlabs/base";
-import { RefundAuthorizationResponseCodes } from "../../../intermediaries/apis/IntermediaryAPI";
-import { IntermediaryError } from "../../../errors/IntermediaryError";
-import { extendAbortController, toBigInt } from "../../../utils/Utils";
-import { IEscrowSelfInitSwap, isIEscrowSelfInitSwapInit } from "../IEscrowSelfInitSwap";
-import { FeeType } from "../../../enums/FeeType";
-import { ppmToPercentage } from "../../../types/fees/PercentagePPM";
-import { toTokenAmount } from "../../../types/TokenAmount";
-import { timeoutPromise } from "../../../utils/TimeoutUtils";
+import { RefundAuthorizationResponseCodes } from "../../../intermediaries/apis/IntermediaryAPI.js";
+import { IntermediaryError } from "../../../errors/IntermediaryError.js";
+import { extendAbortController, toBigInt } from "../../../utils/Utils.js";
+import { IEscrowSelfInitSwap, isIEscrowSelfInitSwapInit } from "../IEscrowSelfInitSwap.js";
+import { FeeType } from "../../../enums/FeeType.js";
+import { ppmToPercentage } from "../../../types/fees/PercentagePPM.js";
+import { toTokenAmount } from "../../../types/TokenAmount.js";
+import { timeoutPromise } from "../../../utils/TimeoutUtils.js";
 export function isIToBTCSwapInit(obj) {
     return typeof (obj.networkFee) === "bigint" &&
         typeof (obj.networkFeeBtc) === "bigint" &&

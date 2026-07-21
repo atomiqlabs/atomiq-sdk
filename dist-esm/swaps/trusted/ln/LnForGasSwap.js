@@ -1,14 +1,14 @@
 import { decode as bolt11Decode } from "@atomiqlabs/bolt11";
-import { SwapType } from "../../../enums/SwapType";
-import { extendAbortController, toBigInt } from "../../../utils/Utils";
-import { isISwapInit, ISwap } from "../../ISwap";
-import { TrustedInvoiceStatusResponseCodes } from "../../../intermediaries/apis/IntermediaryAPI";
-import { FeeType } from "../../../enums/FeeType";
-import { ppmToPercentage } from "../../../types/fees/PercentagePPM";
-import { toTokenAmount } from "../../../types/TokenAmount";
-import { BitcoinTokens } from "../../../types/Token";
-import { getLogger } from "../../../utils/Logger";
-import { timeoutPromise } from "../../../utils/TimeoutUtils";
+import { SwapType } from "../../../enums/SwapType.js";
+import { extendAbortController, toBigInt } from "../../../utils/Utils.js";
+import { isISwapInit, ISwap } from "../../ISwap.js";
+import { TrustedInvoiceStatusResponseCodes } from "../../../intermediaries/apis/IntermediaryAPI.js";
+import { FeeType } from "../../../enums/FeeType.js";
+import { ppmToPercentage } from "../../../types/fees/PercentagePPM.js";
+import { toTokenAmount } from "../../../types/TokenAmount.js";
+import { BitcoinTokens } from "../../../types/Token.js";
+import { getLogger } from "../../../utils/Logger.js";
+import { timeoutPromise } from "../../../utils/TimeoutUtils.js";
 /**
  * State enum for trusted Lightning gas swaps
  *

@@ -1,5 +1,5 @@
-import { SwapExecutionAction } from "../types/SwapExecutionAction";
-import { ApiAmount } from "./ApiTypes";
+import { SwapExecutionAction } from "../types/SwapExecutionAction.js";
+import { ApiAmount } from "./ApiTypes.js";
 /**
  * Strips non-serializable fields (functions, complex objects) from SwapExecutionAction types.
  * Uses key-remapping to truly omit function keys from the resulting type.

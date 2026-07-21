@@ -1,19 +1,19 @@
 /// <reference types="node" />
-import { SwapType } from "../enums/SwapType";
+import { SwapType } from "../enums/SwapType.js";
 import { EventEmitter } from "events";
-import { ISwapWrapper, SwapTypeDefinition } from "./ISwapWrapper";
+import { ISwapWrapper, SwapTypeDefinition } from "./ISwapWrapper.js";
 import { ChainType } from "@atomiqlabs/base";
-import { SwapDirection } from "../enums/SwapDirection";
-import { Fee } from "../types/fees/Fee";
-import { FeeBreakdown } from "../types/fees/FeeBreakdown";
-import { PercentagePPM } from "../types/fees/PercentagePPM";
-import { TokenAmount } from "../types/TokenAmount";
-import { Token } from "../types/Token";
-import { SwapExecutionAction } from "../types/SwapExecutionAction";
-import { LoggerType } from "../utils/Logger";
-import { PriceInfoType } from "../types/PriceInfoType";
-import { SwapStateInfo } from "../types/SwapStateInfo";
-import { SwapExecutionStep } from "../types/SwapExecutionStep";
+import { SwapDirection } from "../enums/SwapDirection.js";
+import { Fee } from "../types/fees/Fee.js";
+import { FeeBreakdown } from "../types/fees/FeeBreakdown.js";
+import { PercentagePPM } from "../types/fees/PercentagePPM.js";
+import { TokenAmount } from "../types/TokenAmount.js";
+import { Token } from "../types/Token.js";
+import { SwapExecutionAction } from "../types/SwapExecutionAction.js";
+import { LoggerType } from "../utils/Logger.js";
+import { PriceInfoType } from "../types/PriceInfoType.js";
+import { SwapStateInfo } from "../types/SwapStateInfo.js";
+import { SwapExecutionStep } from "../types/SwapExecutionStep.js";
 /**
  * Initialization data for creating a swap
  *

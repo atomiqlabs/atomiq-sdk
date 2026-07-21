@@ -2,14 +2,14 @@
 /// <reference types="node" />
 import { ChainEvent, ChainType } from "@atomiqlabs/base";
 import { EventEmitter } from "events";
-import { ISwap } from "./ISwap";
-import { ISwapPrice } from "../prices/abstract/ISwapPrice";
-import { UnifiedSwapEventListener } from "../events/UnifiedSwapEventListener";
-import { SwapType } from "../enums/SwapType";
-import { UnifiedSwapStorage } from "../storage/UnifiedSwapStorage";
-import { SCToken } from "../types/Token";
-import { PriceInfoType } from "../types/PriceInfoType";
-import { IntermediaryAPI } from "../intermediaries/apis/IntermediaryAPI";
+import { ISwap } from "./ISwap.js";
+import { ISwapPrice } from "../prices/abstract/ISwapPrice.js";
+import { UnifiedSwapEventListener } from "../events/UnifiedSwapEventListener.js";
+import { SwapType } from "../enums/SwapType.js";
+import { UnifiedSwapStorage } from "../storage/UnifiedSwapStorage.js";
+import { SCToken } from "../types/Token.js";
+import { PriceInfoType } from "../types/PriceInfoType.js";
+import { IntermediaryAPI } from "../intermediaries/apis/IntermediaryAPI.js";
 export declare const DEFAULT_MAX_PARALLEL_SWAP_TICKS = 50;
 export declare const DEFAULT_MAX_PARALLEL_SWAP_SYNCS = 50;
 /**
@@ -69,7 +69,7 @@ export declare abstract class ISwapWrapper<T extends ChainType, D extends SwapTy
      * Logger instance
      * @internal
      */
-    protected readonly logger: import("../utils/Logger").LoggerType;
+    protected readonly logger: import("../utils/Logger.js").LoggerType;
     /**
      * Persistent storage backend for the swaps
      * @internal

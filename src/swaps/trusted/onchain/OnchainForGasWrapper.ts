@@ -1,16 +1,16 @@
-import {ISwapWrapper, ISwapWrapperOptions, SwapTypeDefinition, WrapperCtorTokens} from "../../ISwapWrapper";
-import {IntermediaryError} from "../../../errors/IntermediaryError";
+import {ISwapWrapper, ISwapWrapperOptions, SwapTypeDefinition, WrapperCtorTokens} from "../../ISwapWrapper.js";
+import {IntermediaryError} from "../../../errors/IntermediaryError.js";
 import {BitcoinRpcWithAddressIndex, ChainType} from "@atomiqlabs/base";
-import {OnchainForGasSwap, OnchainForGasSwapInit, OnchainForGasSwapState} from "./OnchainForGasSwap";
-import {ISwapPrice} from "../../../prices/abstract/ISwapPrice";
+import {OnchainForGasSwap, OnchainForGasSwapInit, OnchainForGasSwapState} from "./OnchainForGasSwap.js";
+import {ISwapPrice} from "../../../prices/abstract/ISwapPrice.js";
 import {EventEmitter} from "events";
-import {Intermediary} from "../../../intermediaries/Intermediary";
-import {SwapType} from "../../../enums/SwapType";
-import {UnifiedSwapEventListener} from "../../../events/UnifiedSwapEventListener";
-import {UnifiedSwapStorage} from "../../../storage/UnifiedSwapStorage";
-import {ISwap} from "../../ISwap";
+import {Intermediary} from "../../../intermediaries/Intermediary.js";
+import {SwapType} from "../../../enums/SwapType.js";
+import {UnifiedSwapEventListener} from "../../../events/UnifiedSwapEventListener.js";
+import {UnifiedSwapStorage} from "../../../storage/UnifiedSwapStorage.js";
+import {ISwap} from "../../ISwap.js";
 import {BTC_NETWORK} from "@scure/btc-signer/utils";
-import {IntermediaryAPI} from "../../../intermediaries/apis/IntermediaryAPI";
+import {IntermediaryAPI} from "../../../intermediaries/apis/IntermediaryAPI.js";
 
 export type OnchainForGasWrapperOptions = ISwapWrapperOptions & {
     bitcoinNetwork: BTC_NETWORK

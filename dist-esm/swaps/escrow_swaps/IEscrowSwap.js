@@ -1,7 +1,7 @@
-import { isISwapInit, ISwap } from "../ISwap";
+import { isISwapInit, ISwap } from "../ISwap.js";
 import { SwapCommitStateType } from "@atomiqlabs/base";
 import { Buffer } from "buffer";
-import { timeoutPromise } from "../../utils/TimeoutUtils";
+import { timeoutPromise } from "../../utils/TimeoutUtils.js";
 export function isIEscrowSwapInit(obj) {
     return typeof obj === 'object' &&
         (obj.data == null || typeof obj.data === 'object') &&

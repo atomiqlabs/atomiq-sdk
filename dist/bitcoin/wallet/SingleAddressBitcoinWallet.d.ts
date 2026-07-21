@@ -1,12 +1,12 @@
 /// <reference types="node" />
 /// <reference types="node" />
-import { CoinselectAddressTypes } from "../coinselect2";
+import { CoinselectAddressTypes } from "../coinselect2/index.js";
 import { BTC_NETWORK } from "@scure/btc-signer/utils";
 import { Transaction } from "@scure/btc-signer";
 import { Buffer } from "buffer";
-import { BitcoinWallet } from "./BitcoinWallet";
+import { BitcoinWallet } from "./BitcoinWallet.js";
 import { BitcoinNetwork, BitcoinRpcWithAddressIndex } from "@atomiqlabs/base";
-import { BitcoinWalletUtxo, BitcoinWalletUtxoBase } from "./IBitcoinWallet";
+import { BitcoinWalletUtxo, BitcoinWalletUtxoBase } from "./IBitcoinWallet.js";
 /**
  * Bitcoin wallet implementation deriving a single address from a WIF encoded private key
  *

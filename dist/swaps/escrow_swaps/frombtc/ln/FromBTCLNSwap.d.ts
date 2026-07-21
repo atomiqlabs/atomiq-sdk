@@ -1,21 +1,21 @@
 /// <reference types="node" />
 /// <reference types="node" />
-import { FromBTCLNDefinition, FromBTCLNWrapper } from "./FromBTCLNWrapper";
-import { IFromBTCSelfInitSwap } from "../IFromBTCSelfInitSwap";
-import { SwapType } from "../../../../enums/SwapType";
+import { FromBTCLNDefinition, FromBTCLNWrapper } from "./FromBTCLNWrapper.js";
+import { IFromBTCSelfInitSwap } from "../IFromBTCSelfInitSwap.js";
+import { SwapType } from "../../../../enums/SwapType.js";
 import { ChainType, SignatureData, SwapCommitState, SwapData } from "@atomiqlabs/base";
 import { Buffer } from "buffer";
-import { MinimalLightningNetworkWalletInterface } from "../../../../types/wallets/MinimalLightningNetworkWalletInterface";
-import { IClaimableSwap } from "../../../IClaimableSwap";
-import { IAddressSwap } from "../../../IAddressSwap";
-import { IEscrowSelfInitSwapInit } from "../../IEscrowSelfInitSwap";
-import { TokenAmount } from "../../../../types/TokenAmount";
-import { BtcToken, SCToken } from "../../../../types/Token";
-import { LoggerType } from "../../../../utils/Logger";
-import { LNURLWithdraw } from "../../../../types/lnurl/LNURLWithdraw";
-import { SwapExecutionActionSendToAddress, SwapExecutionActionSignSmartChainTx } from "../../../../types/SwapExecutionAction";
-import { SwapExecutionStepPayment, SwapExecutionStepSettlement } from "../../../../types/SwapExecutionStep";
-import { SwapStateInfo } from "../../../../types/SwapStateInfo";
+import { MinimalLightningNetworkWalletInterface } from "../../../../types/wallets/MinimalLightningNetworkWalletInterface.js";
+import { IClaimableSwap } from "../../../IClaimableSwap.js";
+import { IAddressSwap } from "../../../IAddressSwap.js";
+import { IEscrowSelfInitSwapInit } from "../../IEscrowSelfInitSwap.js";
+import { TokenAmount } from "../../../../types/TokenAmount.js";
+import { BtcToken, SCToken } from "../../../../types/Token.js";
+import { LoggerType } from "../../../../utils/Logger.js";
+import { LNURLWithdraw } from "../../../../types/lnurl/LNURLWithdraw.js";
+import { SwapExecutionActionSendToAddress, SwapExecutionActionSignSmartChainTx } from "../../../../types/SwapExecutionAction.js";
+import { SwapExecutionStepPayment, SwapExecutionStepSettlement } from "../../../../types/SwapExecutionStep.js";
+import { SwapStateInfo } from "../../../../types/SwapStateInfo.js";
 /**
  * State enum for legacy Lightning -> Smart chain swaps
  * @category Swaps/Legacy/Lightning → Smart chain

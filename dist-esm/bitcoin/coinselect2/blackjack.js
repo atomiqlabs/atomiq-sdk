@@ -1,4 +1,4 @@
-import { utils } from "./utils";
+import { utils } from "./utils.js";
 // add inputs until we reach or surpass the target value (or deplete)
 // worst-case: O(n)
 export function blackjack(utxos, outputs, feeRate, type, requiredInputs) {

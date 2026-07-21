@@ -1,13 +1,13 @@
 import { decode as bolt11Decode } from "@atomiqlabs/bolt11";
-import { isIToBTCSwapInit, IToBTCSwap } from "../IToBTCSwap";
-import { SwapType } from "../../../../enums/SwapType";
+import { isIToBTCSwapInit, IToBTCSwap } from "../IToBTCSwap.js";
+import { SwapType } from "../../../../enums/SwapType.js";
 import { Buffer } from "buffer";
 import { sha256 } from "@noble/hashes/sha2";
-import { IntermediaryError } from "../../../../errors/IntermediaryError";
-import { isLNURLPaySuccessAction, LNURL } from "../../../../lnurl/LNURL";
-import { toTokenAmount } from "../../../../types/TokenAmount";
-import { BitcoinTokens } from "../../../../types/Token";
-import { getLogger } from "../../../../utils/Logger";
+import { IntermediaryError } from "../../../../errors/IntermediaryError.js";
+import { isLNURLPaySuccessAction, LNURL } from "../../../../lnurl/LNURL.js";
+import { toTokenAmount } from "../../../../types/TokenAmount.js";
+import { BitcoinTokens } from "../../../../types/Token.js";
+import { getLogger } from "../../../../utils/Logger.js";
 export function isToBTCLNSwapInit(obj) {
     return typeof (obj.confidence) === "number" &&
         (obj.pr == null || typeof (obj.pr) === "string") &&

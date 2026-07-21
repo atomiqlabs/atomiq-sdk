@@ -1,11 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ResponseParamDecoder = void 0;
-const ParamDecoder_1 = require("../ParamDecoder");
+const ParamDecoder_js_1 = require("../ParamDecoder.js");
 const buffer_1 = require("buffer");
-const Logger_1 = require("../../../utils/Logger");
-const logger = (0, Logger_1.getLogger)("ResponseParamDecoder: ");
-class ResponseParamDecoder extends ParamDecoder_1.ParamDecoder {
+const Logger_js_1 = require("../../../utils/Logger.js");
+const logger = (0, Logger_js_1.getLogger)("ResponseParamDecoder: ");
+class ResponseParamDecoder extends ParamDecoder_js_1.ParamDecoder {
     constructor(resp, abortSignal) {
         super();
         this.abortSignal = abortSignal;

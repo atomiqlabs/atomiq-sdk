@@ -1,7 +1,7 @@
 import { NETWORK, pubECDSA, randomPrivateKeyBytes } from "@scure/btc-signer/utils";
 import { getAddress, WIF } from "@scure/btc-signer";
 import { Buffer } from "buffer";
-import { identifyAddressType, BitcoinWallet } from "./BitcoinWallet";
+import { identifyAddressType, BitcoinWallet } from "./BitcoinWallet.js";
 import { getLogger } from "@atomiqlabs/base";
 import { HDKey } from "@scure/bip32";
 import { entropyToMnemonic, generateMnemonic, mnemonicToSeed } from "@scure/bip39";

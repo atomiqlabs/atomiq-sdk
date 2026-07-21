@@ -1,5 +1,5 @@
-import { utils } from "./utils";
-import { getLogger } from "../../utils/Logger";
+import { utils } from "./utils.js";
+import { getLogger } from "../../utils/Logger.js";
 const logger = getLogger("CoinSelect: ");
 // add inputs until we reach or surpass the target value (or deplete)
 // worst-case: O(n)

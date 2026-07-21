@@ -1,4 +1,4 @@
-import {isISwapInit, ISwap, ISwapInit} from "../ISwap";
+import {isISwapInit, ISwap, ISwapInit} from "../ISwap.js";
 import {
     BtcTx,
     BtcTxWithBlockheight,
@@ -10,45 +10,45 @@ import {
     SpvWithdrawalState,
     SpvWithdrawalStateType
 } from "@atomiqlabs/base";
-import {SwapType} from "../../enums/SwapType";
-import {SpvFromBTCTypeDefinition, SpvFromBTCWrapper} from "./SpvFromBTCWrapper";
-import {extendAbortController} from "../../utils/Utils";
-import {parsePsbtTransaction, toCoinselectAddressType, toOutputScript} from "../../utils/BitcoinUtils";
+import {SwapType} from "../../enums/SwapType.js";
+import {SpvFromBTCTypeDefinition, SpvFromBTCWrapper} from "./SpvFromBTCWrapper.js";
+import {extendAbortController} from "../../utils/Utils.js";
+import {parsePsbtTransaction, toCoinselectAddressType, toOutputScript} from "../../utils/BitcoinUtils.js";
 import {getInputType, Transaction} from "@scure/btc-signer";
 import {Buffer} from "buffer";
-import {Fee} from "../../types/fees/Fee";
-import {BitcoinWalletUtxo, IBitcoinWallet, isIBitcoinWallet} from "../../bitcoin/wallet/IBitcoinWallet";
-import {IntermediaryAPI} from "../../intermediaries/apis/IntermediaryAPI";
-import {IBTCWalletSwap} from "../IBTCWalletSwap";
-import {ISwapWithGasDrop} from "../ISwapWithGasDrop";
+import {Fee} from "../../types/fees/Fee.js";
+import {BitcoinWalletUtxo, IBitcoinWallet, isIBitcoinWallet} from "../../bitcoin/wallet/IBitcoinWallet.js";
+import {IntermediaryAPI} from "../../intermediaries/apis/IntermediaryAPI.js";
+import {IBTCWalletSwap} from "../IBTCWalletSwap.js";
+import {ISwapWithGasDrop} from "../ISwapWithGasDrop.js";
 import {
     MinimalBitcoinWalletInterface,
     MinimalBitcoinWalletInterfaceWithSigner
-} from "../../types/wallets/MinimalBitcoinWalletInterface";
-import {IClaimableSwap} from "../IClaimableSwap";
-import {FeeType} from "../../enums/FeeType";
-import {ppmToPercentage} from "../../types/fees/PercentagePPM";
-import {TokenAmount, toTokenAmount} from "../../types/TokenAmount";
-import {BitcoinTokens, BtcToken, SCToken} from "../../types/Token";
-import {getLogger, LoggerType} from "../../utils/Logger";
-import {timeoutPromise} from "../../utils/TimeoutUtils";
+} from "../../types/wallets/MinimalBitcoinWalletInterface.js";
+import {IClaimableSwap} from "../IClaimableSwap.js";
+import {FeeType} from "../../enums/FeeType.js";
+import {ppmToPercentage} from "../../types/fees/PercentagePPM.js";
+import {TokenAmount, toTokenAmount} from "../../types/TokenAmount.js";
+import {BitcoinTokens, BtcToken, SCToken} from "../../types/Token.js";
+import {getLogger, LoggerType} from "../../utils/Logger.js";
+import {timeoutPromise} from "../../utils/TimeoutUtils.js";
 import {
     deserializePriceInfoType,
     isPriceInfoType,
     PriceInfoType,
     serializePriceInfoType
-} from "../../types/PriceInfoType";
-import {toBitcoinWallet} from "../../utils/BitcoinWalletUtils";
+} from "../../types/PriceInfoType.js";
+import {toBitcoinWallet} from "../../utils/BitcoinWalletUtils.js";
 import {
     SwapExecutionAction,
     SwapExecutionActionSignPSBT, SwapExecutionActionSignSmartChainTx,
     SwapExecutionActionWait
-} from "../../types/SwapExecutionAction";
+} from "../../types/SwapExecutionAction.js";
 import {
     SwapExecutionStepPayment,
     SwapExecutionStepSettlement
-} from "../../types/SwapExecutionStep";
-import {SwapStateInfo} from "../../types/SwapStateInfo";
+} from "../../types/SwapExecutionStep.js";
+import {SwapStateInfo} from "../../types/SwapStateInfo.js";
 
 /**
  * State enum for SPV vault (UTXO-controlled vault) based swaps

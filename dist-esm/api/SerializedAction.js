@@ -1,4 +1,4 @@
-import { toApiAmount } from "./ApiTypes";
+import { toApiAmount } from "./ApiTypes.js";
 /**
  * Runtime serializer that strips non-serializable fields from a SwapExecutionAction.
  * Matches the compile-time SerializedAction<T> type.

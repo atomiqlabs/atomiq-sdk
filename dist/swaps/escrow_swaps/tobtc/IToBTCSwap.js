@@ -2,14 +2,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.IToBTCSwap = exports.ToBTCSwapState = exports.isIToBTCSwapInit = void 0;
 const base_1 = require("@atomiqlabs/base");
-const IntermediaryAPI_1 = require("../../../intermediaries/apis/IntermediaryAPI");
-const IntermediaryError_1 = require("../../../errors/IntermediaryError");
-const Utils_1 = require("../../../utils/Utils");
-const IEscrowSelfInitSwap_1 = require("../IEscrowSelfInitSwap");
-const FeeType_1 = require("../../../enums/FeeType");
-const PercentagePPM_1 = require("../../../types/fees/PercentagePPM");
-const TokenAmount_1 = require("../../../types/TokenAmount");
-const TimeoutUtils_1 = require("../../../utils/TimeoutUtils");
+const IntermediaryAPI_js_1 = require("../../../intermediaries/apis/IntermediaryAPI.js");
+const IntermediaryError_js_1 = require("../../../errors/IntermediaryError.js");
+const Utils_js_1 = require("../../../utils/Utils.js");
+const IEscrowSelfInitSwap_js_1 = require("../IEscrowSelfInitSwap.js");
+const FeeType_js_1 = require("../../../enums/FeeType.js");
+const PercentagePPM_js_1 = require("../../../types/fees/PercentagePPM.js");
+const TokenAmount_js_1 = require("../../../types/TokenAmount.js");
+const TimeoutUtils_js_1 = require("../../../utils/TimeoutUtils.js");
 function isIToBTCSwapInit(obj) {
     return typeof (obj.networkFee) === "bigint" &&
         typeof (obj.networkFeeBtc) === "bigint" &&
@@ -18,7 +18,7 @@ function isIToBTCSwapInit(obj) {
             typeof (obj.signatureData.timeout) === "string" &&
             typeof (obj.signatureData.signature) === "string")) &&
         typeof (obj.data) === 'object' &&
-        (0, IEscrowSelfInitSwap_1.isIEscrowSelfInitSwapInit)(obj);
+        (0, IEscrowSelfInitSwap_js_1.isIEscrowSelfInitSwapInit)(obj);
 }
 exports.isIToBTCSwapInit = isIToBTCSwapInit;
 /**
@@ -83,7 +83,7 @@ const ToBTCSwapStateDescription = {
  *
  * @category Swaps/Smart chain → Bitcoin
  */
-class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
+class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
     constructor(wrapper, initOrObject) {
         super(wrapper, initOrObject);
         /**
@@ -102,8 +102,8 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
             this.signatureData = initOrObject.signatureData;
         }
         else {
-            this.networkFee = (0, Utils_1.toBigInt)(initOrObject.networkFee);
-            this.networkFeeBtc = (0, Utils_1.toBigInt)(initOrObject.networkFeeBtc);
+            this.networkFee = (0, Utils_js_1.toBigInt)(initOrObject.networkFee);
+            this.networkFeeBtc = (0, Utils_js_1.toBigInt)(initOrObject.networkFeeBtc);
         }
     }
     /**
@@ -254,16 +254,16 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
         const feeWithoutBaseFee = this.swapFeeBtc - this.pricingInfo.satsBaseFee;
         const output = this.getOutput();
         const swapFeePPM = output.rawAmount == null ? 0n : feeWithoutBaseFee * 1000000n / output.rawAmount;
-        const amountInDstToken = (0, TokenAmount_1.toTokenAmount)(this.swapFeeBtc, this.outputToken, this.wrapper._prices, this.pricingInfo);
+        const amountInDstToken = (0, TokenAmount_js_1.toTokenAmount)(this.swapFeeBtc, this.outputToken, this.wrapper._prices, this.pricingInfo);
         return {
-            amountInSrcToken: (0, TokenAmount_1.toTokenAmount)(this.swapFee, this.wrapper._tokens[this._data.getToken()], this.wrapper._prices, this.pricingInfo),
+            amountInSrcToken: (0, TokenAmount_js_1.toTokenAmount)(this.swapFee, this.wrapper._tokens[this._data.getToken()], this.wrapper._prices, this.pricingInfo),
             amountInDstToken,
             currentUsdValue: amountInDstToken.currentUsdValue,
             usdValue: amountInDstToken.usdValue,
             pastUsdValue: amountInDstToken.pastUsdValue,
             composition: {
-                base: (0, TokenAmount_1.toTokenAmount)(this.pricingInfo.satsBaseFee, this.outputToken, this.wrapper._prices, this.pricingInfo),
-                percentage: (0, PercentagePPM_1.ppmToPercentage)(swapFeePPM)
+                base: (0, TokenAmount_js_1.toTokenAmount)(this.pricingInfo.satsBaseFee, this.outputToken, this.wrapper._prices, this.pricingInfo),
+                percentage: (0, PercentagePPM_js_1.ppmToPercentage)(swapFeePPM)
             }
         };
     }
@@ -273,9 +273,9 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
      * @internal
      */
     getNetworkFee() {
-        const amountInDstToken = (0, TokenAmount_1.toTokenAmount)(this.networkFeeBtc, this.outputToken, this.wrapper._prices, this.pricingInfo);
+        const amountInDstToken = (0, TokenAmount_js_1.toTokenAmount)(this.networkFeeBtc, this.outputToken, this.wrapper._prices, this.pricingInfo);
         return {
-            amountInSrcToken: (0, TokenAmount_1.toTokenAmount)(this.networkFee, this.wrapper._tokens[this._data.getToken()], this.wrapper._prices, this.pricingInfo),
+            amountInSrcToken: (0, TokenAmount_js_1.toTokenAmount)(this.networkFee, this.wrapper._tokens[this._data.getToken()], this.wrapper._prices, this.pricingInfo),
             amountInDstToken,
             currentUsdValue: amountInDstToken.currentUsdValue,
             usdValue: amountInDstToken.usdValue,
@@ -286,9 +286,9 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
      * @inheritDoc
      */
     getFee() {
-        const amountInDstToken = (0, TokenAmount_1.toTokenAmount)(this.swapFeeBtc + this.networkFeeBtc, this.outputToken, this.wrapper._prices, this.pricingInfo);
+        const amountInDstToken = (0, TokenAmount_js_1.toTokenAmount)(this.swapFeeBtc + this.networkFeeBtc, this.outputToken, this.wrapper._prices, this.pricingInfo);
         return {
-            amountInSrcToken: (0, TokenAmount_1.toTokenAmount)(this.swapFee + this.networkFee, this.wrapper._tokens[this._data.getToken()], this.wrapper._prices, this.pricingInfo),
+            amountInSrcToken: (0, TokenAmount_js_1.toTokenAmount)(this.swapFee + this.networkFee, this.wrapper._tokens[this._data.getToken()], this.wrapper._prices, this.pricingInfo),
             amountInDstToken,
             currentUsdValue: amountInDstToken.currentUsdValue,
             usdValue: amountInDstToken.usdValue,
@@ -301,11 +301,11 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
     getFeeBreakdown() {
         return [
             {
-                type: FeeType_1.FeeType.SWAP,
+                type: FeeType_js_1.FeeType.SWAP,
                 fee: this.getSwapFee()
             },
             {
-                type: FeeType_1.FeeType.NETWORK_OUTPUT,
+                type: FeeType_js_1.FeeType.NETWORK_OUTPUT,
                 fee: this.getNetworkFee()
             }
         ];
@@ -320,13 +320,13 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
      * @inheritDoc
      */
     getInput() {
-        return (0, TokenAmount_1.toTokenAmount)(this._data.getAmount(), this.wrapper._tokens[this._data.getToken()], this.wrapper._prices, this.pricingInfo);
+        return (0, TokenAmount_js_1.toTokenAmount)(this._data.getAmount(), this.wrapper._tokens[this._data.getToken()], this.wrapper._prices, this.pricingInfo);
     }
     /**
      * @inheritDoc
      */
     getInputWithoutFee() {
-        return (0, TokenAmount_1.toTokenAmount)(this._data.getAmount() - (this.swapFee + this.networkFee), this.wrapper._tokens[this._data.getToken()], this.wrapper._prices, this.pricingInfo);
+        return (0, TokenAmount_js_1.toTokenAmount)(this._data.getAmount() - (this.swapFee + this.networkFee), this.wrapper._tokens[this._data.getToken()], this.wrapper._prices, this.pricingInfo);
     }
     /**
      * Checks if the initiator/sender on the source chain has enough balance to go through with the swap
@@ -341,8 +341,8 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
             required = required + commitFee;
         return {
             enoughBalance: balance >= required,
-            balance: (0, TokenAmount_1.toTokenAmount)(balance, this.wrapper._tokens[this._data.getToken()], this.wrapper._prices, this.pricingInfo),
-            required: (0, TokenAmount_1.toTokenAmount)(required, this.wrapper._tokens[this._data.getToken()], this.wrapper._prices, this.pricingInfo)
+            balance: (0, TokenAmount_js_1.toTokenAmount)(balance, this.wrapper._tokens[this._data.getToken()], this.wrapper._prices, this.pricingInfo),
+            required: (0, TokenAmount_js_1.toTokenAmount)(required, this.wrapper._tokens[this._data.getToken()], this.wrapper._prices, this.pricingInfo)
         };
     }
     /**
@@ -356,8 +356,8 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
         ]);
         return {
             enoughBalance: balance >= commitFee,
-            balance: (0, TokenAmount_1.toTokenAmount)(balance, this.wrapper._getNativeToken(), this.wrapper._prices),
-            required: (0, TokenAmount_1.toTokenAmount)(commitFee, this.wrapper._getNativeToken(), this.wrapper._prices)
+            balance: (0, TokenAmount_js_1.toTokenAmount)(balance, this.wrapper._getNativeToken(), this.wrapper._prices),
+            required: (0, TokenAmount_js_1.toTokenAmount)(commitFee, this.wrapper._getNativeToken(), this.wrapper._prices)
         };
     }
     //////////////////////////////
@@ -646,7 +646,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
             return Promise.resolve();
         if (this._state !== ToBTCSwapState.CREATED && this._state !== ToBTCSwapState.QUOTE_SOFT_EXPIRED)
             throw new Error("Invalid state (not CREATED)");
-        const abortController = (0, Utils_1.extendAbortController)(abortSignal);
+        const abortController = (0, Utils_js_1.extendAbortController)(abortSignal);
         let result;
         try {
             result = await Promise.race([
@@ -691,10 +691,10 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
         if (this.url == null)
             throw new Error("LP URL not specified!");
         checkIntervalSeconds ??= 5;
-        let resp = { code: IntermediaryAPI_1.RefundAuthorizationResponseCodes.PENDING, msg: "" };
-        while (!abortSignal?.aborted && (resp.code === IntermediaryAPI_1.RefundAuthorizationResponseCodes.PENDING || resp.code === IntermediaryAPI_1.RefundAuthorizationResponseCodes.NOT_FOUND)) {
+        let resp = { code: IntermediaryAPI_js_1.RefundAuthorizationResponseCodes.PENDING, msg: "" };
+        while (!abortSignal?.aborted && (resp.code === IntermediaryAPI_js_1.RefundAuthorizationResponseCodes.PENDING || resp.code === IntermediaryAPI_js_1.RefundAuthorizationResponseCodes.NOT_FOUND)) {
             resp = await this.wrapper._lpApi.getRefundAuthorization(this.url, this.getLpIdentifier(), this._data.getSequence());
-            if (resp.code === IntermediaryAPI_1.RefundAuthorizationResponseCodes.PAID) {
+            if (resp.code === IntermediaryAPI_js_1.RefundAuthorizationResponseCodes.PAID) {
                 const validResponse = await this._setPaymentResult(resp.data, true);
                 if (validResponse) {
                     if (this._state === ToBTCSwapState.COMMITED || this._state === ToBTCSwapState.REFUNDABLE) {
@@ -702,12 +702,12 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
                     }
                 }
                 else {
-                    resp = { code: IntermediaryAPI_1.RefundAuthorizationResponseCodes.PENDING, msg: "" };
+                    resp = { code: IntermediaryAPI_js_1.RefundAuthorizationResponseCodes.PENDING, msg: "" };
                 }
             }
-            if (resp.code === IntermediaryAPI_1.RefundAuthorizationResponseCodes.PENDING ||
-                resp.code === IntermediaryAPI_1.RefundAuthorizationResponseCodes.NOT_FOUND)
-                await (0, TimeoutUtils_1.timeoutPromise)(checkIntervalSeconds * 1000, abortSignal);
+            if (resp.code === IntermediaryAPI_js_1.RefundAuthorizationResponseCodes.PENDING ||
+                resp.code === IntermediaryAPI_js_1.RefundAuthorizationResponseCodes.NOT_FOUND)
+                await (0, TimeoutUtils_js_1.timeoutPromise)(checkIntervalSeconds * 1000, abortSignal);
         }
         return resp;
     }
@@ -729,7 +729,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
         //Check if that maybe already concluded according to the LP
         const resp = await this.wrapper._lpApi.getRefundAuthorization(this.url, this.getLpIdentifier(), this._data.getSequence());
         switch (resp.code) {
-            case IntermediaryAPI_1.RefundAuthorizationResponseCodes.PAID:
+            case IntermediaryAPI_js_1.RefundAuthorizationResponseCodes.PAID:
                 const processed = await this._setPaymentResult(resp.data, true);
                 if (processed) {
                     this._state = ToBTCSwapState.SOFT_CLAIMED;
@@ -737,7 +737,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
                         await this._saveAndEmit();
                 }
                 return processed;
-            case IntermediaryAPI_1.RefundAuthorizationResponseCodes.REFUND_DATA:
+            case IntermediaryAPI_js_1.RefundAuthorizationResponseCodes.REFUND_DATA:
                 await this._contract.isValidRefundAuthorization(this._data, resp.data);
                 this._state = ToBTCSwapState.REFUNDABLE;
                 if (save)
@@ -767,7 +767,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
             return Promise.resolve(true);
         if (this._state !== ToBTCSwapState.COMMITED && this._state !== ToBTCSwapState.SOFT_CLAIMED)
             throw new Error("Invalid state (not COMMITED)");
-        const abortController = (0, Utils_1.extendAbortController)(abortSignal);
+        const abortController = (0, Utils_js_1.extendAbortController)(abortSignal);
         let timedOut = false;
         if (maxWaitTimeSeconds != null) {
             const timeout = setTimeout(() => {
@@ -800,18 +800,18 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
         }
         this.logger.debug("waitTillRefunded(): Resolved from intermediary response");
         switch (result.code) {
-            case IntermediaryAPI_1.RefundAuthorizationResponseCodes.PAID:
+            case IntermediaryAPI_js_1.RefundAuthorizationResponseCodes.PAID:
                 return true;
-            case IntermediaryAPI_1.RefundAuthorizationResponseCodes.REFUND_DATA:
+            case IntermediaryAPI_js_1.RefundAuthorizationResponseCodes.REFUND_DATA:
                 const resultData = result.data;
                 await this._contract.isValidRefundAuthorization(this._data, resultData);
                 await this._saveAndEmit(ToBTCSwapState.REFUNDABLE);
                 return false;
-            case IntermediaryAPI_1.RefundAuthorizationResponseCodes.EXPIRED:
+            case IntermediaryAPI_js_1.RefundAuthorizationResponseCodes.EXPIRED:
                 if (await this._contract.isExpired(this._getInitiator(), this._data))
                     throw new Error("Swap expired");
-                throw new IntermediaryError_1.IntermediaryError("Swap expired");
-            case IntermediaryAPI_1.RefundAuthorizationResponseCodes.NOT_FOUND:
+                throw new IntermediaryError_js_1.IntermediaryError("Swap expired");
+            case IntermediaryAPI_js_1.RefundAuthorizationResponseCodes.NOT_FOUND:
                 if (this._state === ToBTCSwapState.CLAIMED)
                     return true;
                 throw new Error("LP swap not found");
@@ -825,7 +825,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
      */
     async getRefundNetworkFee() {
         const swapContract = this._contract;
-        return (0, TokenAmount_1.toTokenAmount)(await swapContract.getRefundFee(this._getInitiator(), this._data), this.wrapper._getNativeToken(), this.wrapper._prices);
+        return (0, TokenAmount_js_1.toTokenAmount)(await swapContract.getRefundFee(this._getInitiator(), this._data), this.wrapper._getNativeToken(), this.wrapper._prices);
     }
     /**
      * @inheritDoc
@@ -859,10 +859,10 @@ class IToBTCSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
             if (this.url == null)
                 throw new Error("LP URL not known, cannot get cooperative refund message, wait till expiry to refund!");
             const res = await this.wrapper._lpApi.getRefundAuthorization(this.url, this.getLpIdentifier(), this._data.getSequence());
-            if (res.code === IntermediaryAPI_1.RefundAuthorizationResponseCodes.REFUND_DATA) {
+            if (res.code === IntermediaryAPI_js_1.RefundAuthorizationResponseCodes.REFUND_DATA) {
                 return await this._contract.txsRefundWithAuthorization(signer, this._data, res.data, true, true);
             }
-            throw new IntermediaryError_1.IntermediaryError("Invalid intermediary cooperative message returned");
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid intermediary cooperative message returned");
         }
     }
     /**

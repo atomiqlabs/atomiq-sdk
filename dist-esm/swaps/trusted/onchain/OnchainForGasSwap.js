@@ -1,19 +1,19 @@
-import { SwapType } from "../../../enums/SwapType";
-import { toBigInt } from "../../../utils/Utils";
-import { parsePsbtTransaction, toOutputScript } from "../../../utils/BitcoinUtils";
-import { isISwapInit, ISwap } from "../../ISwap";
-import { TrustedAddressStatusResponseCodes } from "../../../intermediaries/apis/IntermediaryAPI";
-import { isIBitcoinWallet } from "../../../bitcoin/wallet/IBitcoinWallet";
+import { SwapType } from "../../../enums/SwapType.js";
+import { toBigInt } from "../../../utils/Utils.js";
+import { parsePsbtTransaction, toOutputScript } from "../../../utils/BitcoinUtils.js";
+import { isISwapInit, ISwap } from "../../ISwap.js";
+import { TrustedAddressStatusResponseCodes } from "../../../intermediaries/apis/IntermediaryAPI.js";
+import { isIBitcoinWallet } from "../../../bitcoin/wallet/IBitcoinWallet.js";
 import { Transaction } from "@scure/btc-signer";
-import { SingleAddressBitcoinWallet } from "../../../bitcoin/wallet/SingleAddressBitcoinWallet";
+import { SingleAddressBitcoinWallet } from "../../../bitcoin/wallet/SingleAddressBitcoinWallet.js";
 import { Buffer } from "buffer";
-import { FeeType } from "../../../enums/FeeType";
-import { ppmToPercentage } from "../../../types/fees/PercentagePPM";
-import { toTokenAmount } from "../../../types/TokenAmount";
-import { BitcoinTokens } from "../../../types/Token";
-import { getLogger } from "../../../utils/Logger";
-import { timeoutPromise } from "../../../utils/TimeoutUtils";
-import { toBitcoinWallet } from "../../../utils/BitcoinWalletUtils";
+import { FeeType } from "../../../enums/FeeType.js";
+import { ppmToPercentage } from "../../../types/fees/PercentagePPM.js";
+import { toTokenAmount } from "../../../types/TokenAmount.js";
+import { BitcoinTokens } from "../../../types/Token.js";
+import { getLogger } from "../../../utils/Logger.js";
+import { timeoutPromise } from "../../../utils/TimeoutUtils.js";
+import { toBitcoinWallet } from "../../../utils/BitcoinWalletUtils.js";
 /**
  * State enum for trusted on-chain gas swaps
  *

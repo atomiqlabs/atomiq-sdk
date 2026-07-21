@@ -1,5 +1,5 @@
-import { ExchangePriceProvider } from "./abstract/ExchangePriceProvider";
-import { httpGet } from "../../http/HttpUtils";
+import { ExchangePriceProvider } from "./abstract/ExchangePriceProvider.js";
+import { httpGet } from "../../http/HttpUtils.js";
 /**
  * Price provider using Binance exchange API
  *

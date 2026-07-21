@@ -1,9 +1,9 @@
-import { IEscrowSwap, IEscrowSwapInit } from "./IEscrowSwap";
+import { IEscrowSwap, IEscrowSwapInit } from "./IEscrowSwap.js";
 import { ChainType, SignatureData, SwapData } from "@atomiqlabs/base";
-import { IEscrowSwapDefinition, IEscrowSwapWrapper } from "./IEscrowSwapWrapper";
-import { SwapTypeDefinition } from "../ISwapWrapper";
-import { TokenAmount } from "../../types/TokenAmount";
-import { SCToken } from "../../types/Token";
+import { IEscrowSwapDefinition, IEscrowSwapWrapper } from "./IEscrowSwapWrapper.js";
+import { SwapTypeDefinition } from "../ISwapWrapper.js";
+import { TokenAmount } from "../../types/TokenAmount.js";
+import { SCToken } from "../../types/Token.js";
 export type IEscrowSelfInitSwapInit<T extends SwapData> = IEscrowSwapInit<T> & {
     feeRate: string;
     signatureData?: SignatureData;

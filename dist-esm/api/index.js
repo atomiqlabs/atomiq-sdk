@@ -1,4 +1,4 @@
-export { toApiLNURL, toApiToken } from "./ApiTypes";
-export * from "./SwapperApi";
-export * from "./ApiEndpoints";
-export { parseApiInput } from "./ApiParser";
+export { toApiLNURL, toApiToken } from "./ApiTypes.js";
+export * from "./SwapperApi.js";
+export * from "./ApiEndpoints.js";
+export { parseApiInput } from "./ApiParser.js";

@@ -1,24 +1,24 @@
 /// <reference types="node" />
 /// <reference types="node" />
-import { SwapType } from "../../../../enums/SwapType";
+import { SwapType } from "../../../../enums/SwapType.js";
 import { ChainType, SwapCommitState, SwapData } from "@atomiqlabs/base";
 import { Buffer } from "buffer";
-import { Fee } from "../../../../types/fees/Fee";
-import { IAddressSwap } from "../../../IAddressSwap";
-import { FromBTCLNAutoDefinition, FromBTCLNAutoWrapper } from "./FromBTCLNAutoWrapper";
-import { ISwapWithGasDrop } from "../../../ISwapWithGasDrop";
-import { MinimalLightningNetworkWalletInterface } from "../../../../types/wallets/MinimalLightningNetworkWalletInterface";
-import { IClaimableSwap } from "../../../IClaimableSwap";
-import { IEscrowSwap, IEscrowSwapInit } from "../../IEscrowSwap";
-import { FeeType } from "../../../../enums/FeeType";
-import { TokenAmount } from "../../../../types/TokenAmount";
-import { BtcToken, SCToken } from "../../../../types/Token";
-import { LoggerType } from "../../../../utils/Logger";
-import { LNURLWithdraw } from "../../../../types/lnurl/LNURLWithdraw";
-import { PriceInfoType } from "../../../../types/PriceInfoType";
-import { SwapExecutionActionSendToAddress, SwapExecutionActionSignSmartChainTx, SwapExecutionActionWait } from "../../../../types/SwapExecutionAction";
-import { SwapExecutionStepPayment, SwapExecutionStepSettlement } from "../../../../types/SwapExecutionStep";
-import { SwapStateInfo } from "../../../../types/SwapStateInfo";
+import { Fee } from "../../../../types/fees/Fee.js";
+import { IAddressSwap } from "../../../IAddressSwap.js";
+import { FromBTCLNAutoDefinition, FromBTCLNAutoWrapper } from "./FromBTCLNAutoWrapper.js";
+import { ISwapWithGasDrop } from "../../../ISwapWithGasDrop.js";
+import { MinimalLightningNetworkWalletInterface } from "../../../../types/wallets/MinimalLightningNetworkWalletInterface.js";
+import { IClaimableSwap } from "../../../IClaimableSwap.js";
+import { IEscrowSwap, IEscrowSwapInit } from "../../IEscrowSwap.js";
+import { FeeType } from "../../../../enums/FeeType.js";
+import { TokenAmount } from "../../../../types/TokenAmount.js";
+import { BtcToken, SCToken } from "../../../../types/Token.js";
+import { LoggerType } from "../../../../utils/Logger.js";
+import { LNURLWithdraw } from "../../../../types/lnurl/LNURLWithdraw.js";
+import { PriceInfoType } from "../../../../types/PriceInfoType.js";
+import { SwapExecutionActionSendToAddress, SwapExecutionActionSignSmartChainTx, SwapExecutionActionWait } from "../../../../types/SwapExecutionAction.js";
+import { SwapExecutionStepPayment, SwapExecutionStepSettlement } from "../../../../types/SwapExecutionStep.js";
+import { SwapStateInfo } from "../../../../types/SwapStateInfo.js";
 /**
  * State enum for FromBTCLNAuto swaps
  * @category Swaps/Lightning → Smart chain

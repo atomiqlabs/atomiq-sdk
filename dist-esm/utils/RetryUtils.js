@@ -1,5 +1,5 @@
-import { timeoutPromise } from "./TimeoutUtils";
-import { getLogger } from "./Logger";
+import { timeoutPromise } from "./TimeoutUtils.js";
+import { getLogger } from "./Logger.js";
 const logger = getLogger("RetryUtils: ");
 function isConstructor(fn) {
     return (typeof fn === 'function' &&

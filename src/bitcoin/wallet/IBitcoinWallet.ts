@@ -1,6 +1,6 @@
 import {Address, Transaction} from "@scure/btc-signer";
 import {BTC_NETWORK} from "@scure/btc-signer/utils";
-import {CoinselectAddressTypes} from "../coinselect2";
+import {CoinselectAddressTypes} from "../coinselect2/index.js";
 
 /**
  * UTXO data structure for Bitcoin wallets

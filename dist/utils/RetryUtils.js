@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.tryWithRetries = void 0;
-const TimeoutUtils_1 = require("./TimeoutUtils");
-const Logger_1 = require("./Logger");
-const logger = (0, Logger_1.getLogger)("RetryUtils: ");
+const TimeoutUtils_js_1 = require("./TimeoutUtils.js");
+const Logger_js_1 = require("./Logger.js");
+const logger = (0, Logger_js_1.getLogger)("RetryUtils: ");
 function isConstructor(fn) {
     return (typeof fn === 'function' &&
         fn.prototype != null &&
@@ -59,7 +59,7 @@ async function tryWithRetries(func, retryPolicy, errorAllowed, abortSignal, fail
         if (abortSignal != null && abortSignal.aborted)
             throw (abortSignal.reason || new Error("Aborted"));
         if (i !== retryPolicy.maxRetries - 1) {
-            await (0, TimeoutUtils_1.timeoutPromise)(retryPolicy.exponential ? retryPolicy.delay * Math.pow(2, i) : retryPolicy.delay, abortSignal);
+            await (0, TimeoutUtils_js_1.timeoutPromise)(retryPolicy.exponential ? retryPolicy.delay * Math.pow(2, i) : retryPolicy.delay, abortSignal);
         }
     }
     throw err;

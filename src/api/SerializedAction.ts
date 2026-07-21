@@ -4,8 +4,8 @@ import {
     SwapExecutionActionSignPSBT,
     SwapExecutionActionSignSmartChainTx,
     SwapExecutionActionWait
-} from "../types/SwapExecutionAction";
-import {ApiAmount, toApiAmount} from "./ApiTypes";
+} from "../types/SwapExecutionAction.js";
+import {ApiAmount, toApiAmount} from "./ApiTypes.js";
 
 /**
  * Strips non-serializable fields (functions, complex objects) from SwapExecutionAction types.

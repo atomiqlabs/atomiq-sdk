@@ -1,5 +1,5 @@
 import { secp256k1, schnorr } from "@noble/curves/secp256k1";
-import { randomBytes } from "../../utils/Utils";
+import { randomBytes } from "../../utils/Utils.js";
 function parsePrivateKey(value, name) {
     if (!/^[0-9a-fA-F]{64}$/.test(value))
         throw new Error(`${name} must be a 32-byte hex private key`);

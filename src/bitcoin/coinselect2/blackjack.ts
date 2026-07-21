@@ -28,7 +28,7 @@ export function blackjack (
         const inputBytes = utils.inputBytes(input);
         const cpfpFee = utils.inputCpfpAdditionalFee(input, feeRate);
 
-        const fee = Math.ceil((feeRate * (bytesAccum + inputBytes)) + cpfpAddFee + cpfpFee);
+        const fee = utils.calculateFee(bytesAccum + inputBytes, feeRate, cpfpAddFee + cpfpFee);
         const inputValue = utils.uintOrNaN(input.value);
 
         // would it waste value?
@@ -45,5 +45,5 @@ export function blackjack (
         return utils.finalize(inputs, outputs, feeRate, type);
     }
 
-    return { fee: Math.ceil((feeRate * bytesAccum) + cpfpAddFee) };
+    return { fee: utils.calculateFee(bytesAccum, feeRate, cpfpAddFee) };
 }

@@ -133,6 +133,10 @@ function transactionBytes (
     return size;
 }
 
+function calculateFee(vSize: number, feeRate: number, additionalFee: number = 0): number {
+    return Math.ceil((feeRate * Math.ceil(vSize)) + additionalFee);
+}
+
 function numberOrNaN(v: number): number {
     if (typeof v !== 'number') return NaN;
     if (!isFinite(v)) return NaN;
@@ -181,7 +185,7 @@ function finalize<T extends Omit<CoinselectTxInput, "txId" | "address" | "vout" 
 
   if(changeType!=null) {
       const bytesWithChangeOutput = transactionBytes(inputs, [...outputs, {type: changeType}], changeType);
-      const feeAfterExtraOutput = Math.ceil((feeRate * bytesWithChangeOutput) + cpfpAddFee);
+      const feeAfterExtraOutput = calculateFee(bytesWithChangeOutput, feeRate, cpfpAddFee);
 
       logger.debug("finalize(): TX fee after adding change output: ", feeAfterExtraOutput);
       const remainderAfterExtraOutput = Math.floor(sumOrNaN(inputs) - (sumOrNaN(outputs) + feeAfterExtraOutput));
@@ -198,7 +202,7 @@ function finalize<T extends Omit<CoinselectTxInput, "txId" | "address" | "vout" 
   const fee = sumOrNaN(inputs) - sumOrNaN(outputs);
   logger.debug("finalize(): Re-calculated total fee: ", fee);
   if (!isFinite(fee) || fee<0) {
-      const expectedFee = Math.ceil((feeRate * bytesAccum) + cpfpAddFee);
+      const expectedFee = calculateFee(bytesAccum, feeRate, cpfpAddFee);
       return { expectedFee, fee: expectedFee };
   }
 
@@ -218,7 +222,7 @@ function finalize<T extends Omit<CoinselectTxInput, "txId" | "address" | "vout" 
   );
 
   return {
-    expectedFee: Math.ceil((feeRate * bytesAccum) + cpfpAddFee),
+    expectedFee: calculateFee(bytesAccum, feeRate, cpfpAddFee),
     inputs: inputs,
     outputs: outputs,
     effectiveFeeRate: txFee / txVSize,
@@ -263,6 +267,7 @@ export const utils = {
   sumOrNaN: sumOrNaN,
   sumForgiving: sumForgiving,
   transactionBytes: transactionBytes,
+  calculateFee: calculateFee,
   uintOrNaN: uintOrNaN,
   numberOrNaN: numberOrNaN,
   isDetrimentalInput,

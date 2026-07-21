@@ -79,7 +79,7 @@ export function maxSendable (
         inputs.push(utxo);
     }
 
-    const fee = Math.ceil((feeRate * bytesAccum) + cpfpAddFee);
+    const fee = utils.calculateFee(bytesAccum, feeRate, cpfpAddFee);
     const outputValue = inAccum - fee - outAccum;
 
     const dustThreshold = DUST_THRESHOLDS[output.type];

@@ -121,7 +121,7 @@ export interface IBitcoinWallet {
      *
      * @param change Whether to get the address for receiving funds or for receiving change
      */
-    getAddressInfo?(change: boolean): {address: string, publicKey: string};
+    getAddressInfo(change: boolean): {address: string, publicKey: string};
 
     /**
      * Returns confirmed and unconfirmed balance in satoshis of the wallet
@@ -148,6 +148,6 @@ export interface IBitcoinWallet {
     /**
      * Returns a list of available UTXOs for the wallet
      */
-    getUtxoPool?(): Promise<BitcoinWalletUtxo[]>;
+    getUtxoPool(): Promise<BitcoinWalletUtxo[]>;
 
 }

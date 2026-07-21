@@ -403,13 +403,11 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
 
         const wallet = toBitcoinWallet(intermediateWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
 
-        if(wallet.getAddressInfo==null) throw new Error("Wallet must implement getAddressInfo function!");
         const walletAddressInfo = wallet.getAddressInfo(false);
         const walletAddressType = toCoinselectAddressType(this.wrapper._options.bitcoinNetwork, walletAddressInfo.address);
         assertSupportedSpvFundingType(walletAddressType);
 
         if(existingUtxos==null) {
-            if(wallet.getUtxoPool==null) throw new Error("Intermediate bitcoin wallet has to support getUtxoPool() fn!");
             existingUtxos = await wallet.getUtxoPool();
         }
         existingUtxos.forEach(utxo => assertSupportedSpvFundingType(utxo.type));
@@ -620,6 +618,9 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
 
         const invalidUtxos: ExternalDepositInvalidUtxo[] = [];
         for(const utxo of rehydratedWalletUtxos) {
+            //Only check UTXOs at the expected address
+            if(utxo.address!==requiredDepositInfo.address) continue;
+
             const key = getUtxoKey(utxo);
             if(selectedUtxosKeys.has(key) || ignoredUtxoKeys?.has(key)) continue;
 
@@ -705,8 +706,6 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
                 this.wrapper._btcRpc,
                 this.wrapper._options.bitcoinNetwork
             );
-            if(intermediateWallet.getUtxoPool==null)
-                throw new Error("Intermediate bitcoin wallet has to support getUtxoPool() fn!");
             return await intermediateWallet.getUtxoPool();
         }
 
@@ -757,7 +756,6 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
         if(spendFully!=null) throw new Error("Spend fully flag is not supported in the intermediate wallet mode!");
 
         const bitcoinWallet = toBitcoinWallet(_bitcoinWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
-        if(bitcoinWallet.getUtxoPool==null) throw new Error("Intermediate bitcoin wallet has to support getUtxoPool() fn!");
         const rehydratedWalletUtxos = utxos ?? await bitcoinWallet.getUtxoPool();
         const selectedRehydratedUtxos = this.getRehydratedSelectedExistingUtxos(rehydratedWalletUtxos);
 

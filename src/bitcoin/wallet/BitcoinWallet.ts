@@ -301,6 +301,7 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
     }
 
     abstract getAddressInfo(change: boolean): { address: string; publicKey: string };
+    abstract getUtxoPool(): Promise<BitcoinWalletUtxo[]>;
 
     abstract getBalance(): Promise<{
         confirmedBalance: bigint,

@@ -1187,14 +1187,12 @@ export class SpvFromBTCWrapper<
         quote: Promise<SpvFromBTCSwap<T>>,
         intermediary: Intermediary
     }[] {
-        if(bitcoinWallet.getAddressInfo==null) throw new Error("Wallet must implement getAddressInfo function!");
         const receiveWalletAddressInfo = bitcoinWallet.getAddressInfo(false);
         const sourceWalletAddressType = toCoinselectAddressType(this._options.bitcoinNetwork, receiveWalletAddressInfo.address);
         assertSupportedSpvFundingType(sourceWalletAddressType);
 
         let utxos = options?.sourceWalletUtxos;
         if(utxos==null) {
-            if(bitcoinWallet.getUtxoPool==null) throw new Error("Wallet must implement getUtxoPool function!");
             utxos = bitcoinWallet.getUtxoPool();
         }
         const validatedUtxos = Promise.resolve(utxos).then(resolvedUtxos => {

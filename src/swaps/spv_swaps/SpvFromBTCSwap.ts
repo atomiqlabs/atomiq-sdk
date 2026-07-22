@@ -239,7 +239,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
      */
     private getIntermediateWalletSwapModeInfoOrThrow(operation: string): SpvFromBTCIntermediateWalletSwapModeInfo {
         if(this.swapMode !== "intermediate_wallet" || this.externalSwapModeInfo == null) {
-            throw new Error(`${operation} requires SPV external deposit mode`);
+            throw new Error(`${operation} requires 'intermediate_wallet' swap mode`);
         }
         return this.externalSwapModeInfo;
     }
@@ -525,6 +525,29 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
         const info = this.getIntermediateWalletSwapModeInfoOrThrow("getHyperlink()");
         if(info.requiredDeposit==null) throw new Error("Needs to specify a required deposit amount!");
         return "bitcoin:" + info.requiredDeposit.address + "?amount=" + encodeURIComponent((Number(info.requiredDeposit.amount) / 100000000).toString(10));
+    }
+
+    /**
+     * Returns whether the current swap in "intermediate_wallet" mode requires an additional external deposit to be made
+     */
+    requiresExternalDeposit(): boolean {
+        return this.isAddressSwapMode();
+    }
+
+    /**
+     * Returns the required additional external deposit amount in "intermediate_wallet" mode, or `null` if not required
+     *
+     * @throws {Error} If the swap is not using the "intermediate_wallet" swap mode.
+     */
+    getExternalDepositAmount(): TokenAmount<BtcToken<false>, true> | null {
+        const info = this.getIntermediateWalletSwapModeInfoOrThrow("getExternalDepositAmount()");
+        if(info.requiredDeposit==null) return null;
+        return toTokenAmount(
+            info.requiredDeposit.amount,
+            BitcoinTokens.BTC,
+            this.wrapper._prices,
+            this.pricingInfo
+        );
     }
 
     /**

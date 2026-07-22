@@ -36,26 +36,45 @@ import {
 } from "../../types/SwapExecutionAction";
 import {SwapExecutionStepPayment, SwapExecutionStepSettlement} from "../../types/SwapExecutionStep";
 import {CoinselectAddressTypes, CoinselectTxInput, CoinselectTxOutput, utils} from "../../bitcoin/coinselect2/utils";
-import {isSpvFromBTCSwapInit, SpvFromBTCSwapBase, SpvFromBTCSwapInit, SpvFromBTCSwapState} from "./SpvFromBTCSwapBase";
+import {
+    isSpvFromBTCSwapInit,
+    SpvFromBTCSwapBase,
+    SpvFromBTCSwapBaseExecuteCallbacks,
+    SpvFromBTCSwapBaseExecuteOptions,
+    SpvFromBTCSwapInit,
+    SpvFromBTCSwapState
+} from "./SpvFromBTCSwapBase";
 import {Fee} from "../../types/fees/Fee";
 import {addPsbtInputs, toBitcoinWallet} from "../../utils/BitcoinWalletUtils";
 import {identifyAddressType} from "../../bitcoin/wallet/BitcoinWallet";
 
-type ExternalDepositInvalidReason = "amount_too_small" | "amount_too_large" | "deposit_fee_too_low";
-
-type ExternalDepositInvalidUtxo = {
+/**
+ * An external intermediate-wallet deposit that cannot fund the quoted SPV swap.
+ *
+ * @remarks
+ * `requiredAmount` and `actualAmount` are denominated in satoshis. `effectiveFeeRate` and `minimumFeeRate` are
+ * populated when `reason` is `"deposit_fee_too_low"` and are denominated in sats/vB.
+ */
+export type SpvFromBTCExternalDepositInvalidUtxo = {
     key: string,
     utxo: BitcoinWalletUtxo,
-    reason: ExternalDepositInvalidReason,
+    reason: "amount_too_small" | "amount_too_large" | "deposit_fee_too_low",
     requiredAmount: bigint,
     actualAmount: bigint,
     effectiveFeeRate?: number,
     minimumFeeRate?: number
 };
 
-type ExternalDepositMatchResult = {
-    matchedUtxo: BitcoinWalletUtxo | null,
-    invalidUtxos: ExternalDepositInvalidUtxo[]
+type SpvFromBTCSwapExecuteCallbacks = SpvFromBTCSwapBaseExecuteCallbacks & {
+    onExternalDepositReceived?: (depositTxId: string) => void,
+    onInvalidExternalDeposit?: (
+        invalidDeposits: SpvFromBTCExternalDepositInvalidUtxo[]
+    ) => boolean | void | Promise<boolean | void>
+};
+
+type SpvFromBTCSwapExecuteOptions = SpvFromBTCSwapBaseExecuteOptions & {
+    externalDepositCheckIntervalSeconds?: number,
+    maxWaitForExternalDepositSeconds?: number
 };
 
 /**
@@ -586,7 +605,10 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
      * @returns Matching fresh wallet UTXO or all newly detected invalid UTXOs
      * @throws {Error} if the swap is not in external mode
      */
-    private getMatchingExternalDepositUtxo(rehydratedWalletUtxos: BitcoinWalletUtxo[], ignoredUtxoKeys?: Set<string>): ExternalDepositMatchResult {
+    private getMatchingExternalDepositUtxo(rehydratedWalletUtxos: BitcoinWalletUtxo[], ignoredUtxoKeys?: Set<string>): {
+        matchedUtxo: BitcoinWalletUtxo | null,
+        invalidUtxos: SpvFromBTCExternalDepositInvalidUtxo[]
+    } {
         const info = this.getIntermediateWalletSwapModeInfoOrThrow("getMatchingExternalDepositUtxo()");
         if(info.requiredDeposit == null) return {
             matchedUtxo: null,
@@ -600,7 +622,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
         );
         const selectedUtxosKeys = toUtxoSet(info.selectedExistingUtxos);
 
-        const invalidUtxos: ExternalDepositInvalidUtxo[] = [];
+        const invalidUtxos: SpvFromBTCExternalDepositInvalidUtxo[] = [];
         for(const utxo of rehydratedWalletUtxos) {
             //Only check UTXOs at the expected address
             if(utxo.address!==requiredDepositInfo.address) continue;
@@ -793,24 +815,18 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
         };
     }
 
-    /**
-     * Waits until the external deposit address receives the exact future UTXO required by this quote.
-     *
-     * @param _intermediateWallet Optional wallet used to fetch UTXOs; the configured Bitcoin RPC is used when omitted
-     * @param maxWaitTimeSeconds Optional maximum wait time before aborting
-     * @param pollIntervalSeconds Optional polling interval; defaults to five seconds
-     * @param onInvalidDeposit Optional callback invoked with all newly detected invalid UTXOs; return falsish to stop waiting
-     * @param abortSignal Optional external abort signal
-     * @returns External deposit wait status
-     * @throws {Error} if the swap is not in external mode or no additional deposit is required
-     */
-    async waitForExternalDeposit(
+    private async _waitForExternalDeposit(
         _intermediateWallet?: IBitcoinWallet | MinimalBitcoinWalletInterface,
         maxWaitTimeSeconds?: number,
         pollIntervalSeconds?: number,
-        onInvalidDeposit?: (invalidUtxos: ExternalDepositInvalidUtxo[]) => boolean | void | Promise<boolean | void>,
+        onInvalidDeposit?: (
+            invalidUtxos: SpvFromBTCExternalDepositInvalidUtxo[]
+        ) => boolean | void | Promise<boolean | void>,
         abortSignal?: AbortSignal
-    ): Promise<BitcoinWalletUtxo> {
+    ): Promise<{
+        rehydratedUtxos: BitcoinWalletUtxo[],
+        newlyDepositedUtxo: BitcoinWalletUtxo
+    }> {
         const info = this.getIntermediateWalletSwapModeInfoOrThrow("waitForExternalDeposit()");
         if(info.requiredDeposit == null) {
             throw new Error("No external deposit required for this SPV swap");
@@ -826,11 +842,14 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
             while(this._state !== SpvFromBTCSwapState.QUOTE_EXPIRED && await this._verifyQuoteValid()) {
                 const walletUtxos = await this.getIntermediateWalletUtxos(_intermediateWallet);
 
-                this.getRehydratedSelectedExistingUtxos(walletUtxos);
+                const rehydratedUtxos = this.getRehydratedSelectedExistingUtxos(walletUtxos);
                 const matchResult = this.getMatchingExternalDepositUtxo(walletUtxos, ignoredUtxoKeys);
                 if(matchResult.matchedUtxo != null) {
                     await this.setExternalDepositTxId(matchResult.matchedUtxo.txId);
-                    return matchResult.matchedUtxo;
+                    return {
+                        rehydratedUtxos,
+                        newlyDepositedUtxo: matchResult.matchedUtxo
+                    };
                 }
                 if(matchResult.invalidUtxos.length > 0) {
                     if(onInvalidDeposit == null || !await onInvalidDeposit(matchResult.invalidUtxos))
@@ -851,6 +870,78 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
         } finally {
             abortController.abort();
         }
+    }
+
+    /**
+     * Waits until the external deposit address receives the exact future UTXO required by this quote.
+     *
+     * @param _intermediateWallet Optional wallet used to fetch UTXOs; the configured Bitcoin RPC is used when omitted
+     * @param maxWaitTimeSeconds Optional maximum wait time before aborting
+     * @param pollIntervalSeconds Optional polling interval; defaults to five seconds
+     * @param onInvalidDeposit Optional callback invoked with all newly detected invalid UTXOs; return falsish to stop waiting
+     * @param abortSignal Optional external abort signal
+     * @returns The newly deposited UTXO matching the quote
+     * @throws {Error} if the swap is not in external mode or no additional deposit is required
+     */
+    async waitForExternalDeposit(
+        _intermediateWallet?: IBitcoinWallet | MinimalBitcoinWalletInterface,
+        maxWaitTimeSeconds?: number,
+        pollIntervalSeconds?: number,
+        onInvalidDeposit?: (
+            invalidUtxos: SpvFromBTCExternalDepositInvalidUtxo[]
+        ) => boolean | void | Promise<boolean | void>,
+        abortSignal?: AbortSignal
+    ): Promise<BitcoinWalletUtxo> {
+        const result = await this._waitForExternalDeposit(
+            _intermediateWallet,
+            maxWaitTimeSeconds,
+            pollIntervalSeconds,
+            onInvalidDeposit,
+            abortSignal
+        );
+        return result.newlyDepositedUtxo;
+    }
+
+    /**
+     * Executes this swap, waiting for the quoted external deposit first when intermediate-wallet funding is active.
+     *
+     * @param wallet Bitcoin wallet used to discover and sign the intermediate-wallet funding inputs
+     * @param callbacks Callbacks used to track the external deposit and normal SPV execution lifecycle
+     * @param options Execution polling, timeout, and cancellation options
+     * @returns Whether the swap settled automatically
+     */
+    async execute(
+        wallet: IBitcoinWallet | MinimalBitcoinWalletInterfaceWithSigner,
+        callbacks?: SpvFromBTCSwapExecuteCallbacks,
+        options?: SpvFromBTCSwapExecuteOptions
+    ): Promise<boolean> {
+        let baseOptions: SpvFromBTCSwapBaseExecuteOptions | undefined = options;
+
+        if(this.swapMode==="intermediate_wallet") {
+            if(options?.feeRate!==undefined)
+                throw new Error("Manual fee rate is not supported in the intermediate wallet mode!");
+            if(options?.utxos!==undefined)
+                throw new Error("Manual UTXO selection is not supported in the intermediate wallet mode!");
+            if(options?.spendFully!==undefined)
+                throw new Error("Spend fully flag is not supported in the intermediate wallet mode!");
+
+            if(this._state===SpvFromBTCSwapState.CREATED && this.externalSwapModeInfo?.requiredDeposit!=null) {
+                const result = await this._waitForExternalDeposit(
+                    wallet,
+                    options?.maxWaitForExternalDepositSeconds,
+                    options?.externalDepositCheckIntervalSeconds,
+                    callbacks?.onInvalidExternalDeposit,
+                    options?.abortSignal
+                );
+                callbacks?.onExternalDepositReceived?.(result.newlyDepositedUtxo.txId);
+                baseOptions = {
+                    ...options,
+                    utxos: result.rehydratedUtxos.concat([result.newlyDepositedUtxo])
+                };
+            }
+        }
+
+        return await super.execute(wallet, callbacks, baseOptions);
     }
 
     /**

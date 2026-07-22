@@ -106,7 +106,8 @@ export {IEscrowSwapWrapper} from "./swaps/escrow_swaps/IEscrowSwapWrapper.js";
 
 export {
     SpvFromBTCSwap,
-    SpvFromBTCSwapMode
+    SpvFromBTCSwapMode,
+    SpvFromBTCExternalDepositInvalidUtxo
 } from "./swaps/spv_swaps/SpvFromBTCSwap.js";
 export {SpvFromBTCSwapState} from "./swaps/spv_swaps/SpvFromBTCSwapState.js";
 export {SpvFromBTCWrapper} from "./swaps/spv_swaps/SpvFromBTCWrapper.js";

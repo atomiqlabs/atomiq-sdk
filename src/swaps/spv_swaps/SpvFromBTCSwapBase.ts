@@ -51,6 +51,33 @@ import { SpvFromBTCSwapState } from "./SpvFromBTCSwapState.js";
 
 export {SpvFromBTCSwapState};
 
+/**
+ * Progress callbacks shared by all SPV BTC -> smart-chain execution flows.
+ */
+export type SpvFromBTCSwapBaseExecuteCallbacks = {
+    onSourceTransactionSent?: (sourceTxId: string) => void,
+    onSourceTransactionConfirmationStatus?: (
+        sourceTxId?: string,
+        confirmations?: number,
+        targetConfirmations?: number,
+        etaMs?: number
+    ) => void,
+    onSourceTransactionConfirmed?: (sourceTxId: string) => void,
+    onSwapSettled?: (destinationTxId: string) => void
+};
+
+/**
+ * Options shared by all SPV BTC -> smart-chain execution flows.
+ */
+export type SpvFromBTCSwapBaseExecuteOptions = {
+    feeRate?: number,
+    abortSignal?: AbortSignal,
+    btcTxCheckIntervalSeconds?: number,
+    maxWaitTillAutomaticSettlementSeconds?: number,
+    utxos?: BitcoinWalletUtxo[],
+    spendFully?: boolean
+};
+
 const SpvFromBTCSwapStateDescription = {
     [SpvFromBTCSwapState.CLOSED]: "Catastrophic failure has occurred when processing the swap on the smart chain side, this implies a bug in the smart contract code or the user and intermediary deliberately creating a bitcoin transaction with invalid format unparsable by the smart contract.",
     [SpvFromBTCSwapState.FAILED]: "Some of the bitcoin swap transaction inputs were double-spent, this means the swap has failed and no BTC was sent",
@@ -1001,20 +1028,8 @@ export abstract class SpvFromBTCSwapBase<T extends ChainType>
      */
     async execute(
         wallet: IBitcoinWallet | MinimalBitcoinWalletInterfaceWithSigner,
-        callbacks?: {
-            onSourceTransactionSent?: (sourceTxId: string) => void,
-            onSourceTransactionConfirmationStatus?: (sourceTxId?: string, confirmations?: number, targetConfirations?: number, etaMs?: number) => void,
-            onSourceTransactionConfirmed?: (sourceTxId: string) => void,
-            onSwapSettled?: (destinationTxId: string) => void
-        },
-        options?: {
-            feeRate?: number,
-            abortSignal?: AbortSignal,
-            btcTxCheckIntervalSeconds?: number,
-            maxWaitTillAutomaticSettlementSeconds?: number,
-            utxos?: BitcoinWalletUtxo[],
-            spendFully?: boolean
-        }
+        callbacks?: SpvFromBTCSwapBaseExecuteCallbacks,
+        options?: SpvFromBTCSwapBaseExecuteOptions
     ): Promise<boolean> {
         if (this._state === SpvFromBTCSwapState.CLOSED) throw new Error("Swap encountered a catastrophic failure!");
         if (this._state === SpvFromBTCSwapState.FAILED) throw new Error("Swap failed!");

@@ -28,6 +28,7 @@ npm install @atomiqlabs/chain-evm@latest
   - [Smart Chain -> BTC L1](#swap-smart-chain---bitcoin-on-chain)
   - [BTC L1 -> Solana (Old swap protocol)](#swap-bitcoin-on-chain---solana)
   - [BTC L1 -> Starknet/EVM (New swap protocol)](#swap-bitcoin-on-chain---starknetevm)
+  - [BTC L1 -> Starknet/EVM with external deposit](#swap-bitcoin-on-chain---starknetevm-with-external-deposit)
   - [Smart Chain -> BTC Lightning network L2](#swap-smart-chain---bitcoin-lightning-network)
   - [Smart Chain -> BTC Lightning network L2 (LNURL-pay)](#swap-smart-chain---bitcoin-lightning-network-1)
   - [BTC Lightning network L2 -> Solana (Old swap protocol)](#swap-bitcoin-lightning-network---solana)
@@ -657,6 +658,279 @@ if(!automaticSettlementSuccess) {
 - SpvFromBTCSwapState.CLAIM_CLAIMED = 6
   - Swap funds are claimed to the user's wallet
   - 
+</details>
+
+#### Swap Bitcoin on-chain -> Starknet/EVM with external deposit
+
+An external deposit allows a Bitcoin payment coming from another wallet, exchange, or service to fund an SPV swap. The SDK uses a temporary, user-controlled intermediate Bitcoin wallet: the external payer sends one UTXO with the quoted amount to this wallet, the SDK automatically detects it, and the intermediate wallet then signs the final SPV transaction.
+
+The external deposit and the final SPV transaction are two separate Bitcoin transactions. Keep access to the intermediate wallet until all funds have been swapped or refunded. The same flow applies to supported EVM chains.
+
+##### Creating the intermediate wallet
+
+The Bitcoin wallet key needs a source of entropy. The SDK supports two ways of producing it:
+
+###### a) Random mnemonic
+
+Generate a new mnemonic and intermediate wallet together:
+
+```typescript
+const {
+    wallet: intermediateWallet,
+    mnemonic
+} = await swapper.Utils.generateBitcoinWallet();
+
+await saveMnemonicSecurely(mnemonic);
+```
+
+> **Important:** Make it clear that the user must back up the mnemonic before using the wallet or funds may be permanently lost. Web apps should prompt the user to download the mnemonic as a file.
+
+The wallet can later be restored from this backup:
+
+```typescript
+const intermediateWallet = await swapper.Utils.createBitcoinWalletFromMnemonic(
+    await loadMnemonicSecurely()
+);
+```
+
+###### b) Reproducible smart-chain signer entropy
+
+When supported, `getReproducibleEntropy()` derives entropy from an ECDSA-DN deterministic signature. This recreates the same intermediate wallet without exposing the smart-chain private key or storing another mnemonic:
+
+```typescript
+if(starknetSigner.getReproducibleEntropy==null) {
+    throw new Error("Signer does not support reproducible entropy");
+}
+
+const entropy = await starknetSigner.getReproducibleEntropy(
+    "atomiq-intermediate-bitcoin-wallet"
+);
+const intermediateWallet = await swapper.Utils.createBitcoinWalletFromEntropy(entropy);
+```
+
+Most browser-extension wallets can provide reproducible entropy, so this is often the better choice for web apps that already have an extension wallet connected. The same signer account, application name, Bitcoin network, and derivation path must always be used to reproduce the wallet.
+
+> Optionally, an application can inspect an existing intermediate wallet for UI or recovery purposes. Quote creation fetches and considers its UTXOs automatically, so this is not required before requesting a quote.
+>
+> ```typescript
+> const {confirmedBalance, unconfirmedBalance} = await intermediateWallet.getBalance();
+> const {balance: spendableBalance, feeRate, totalFee} = await intermediateWallet.getSpendableBalance();
+> ```
+>
+> `getBalance()` returns the raw confirmed and unconfirmed balances in satoshis. `getSpendableBalance()` estimates the maximum currently spendable amount after the Bitcoin network fee.
+
+##### Getting swap quote
+
+The quote first uses any balance already present in the intermediate wallet. If that balance fully covers the swap, `requiresExternalDeposit()` returns `false` and no external payment is needed. Otherwise it returns `true`, and `getExternalDepositAmount()` returns only the missing difference that still has to be deposited. For example, if the wallet already contains `0.002 BTC` and the quote requires `0.01 BTC`, the external deposit is approximately `0.008 BTC` (subject to the quoted Bitcoin fee).
+
+```typescript
+const swap: SpvFromBTCSwap<StarknetChainType> = await swapper.swap(
+    Tokens.BITCOIN.BTC,
+    Tokens.STARKNET.STRK,
+    "0.0001", // Or use undefined to swap the full existing balance of the intermediate wallet
+    SwapAmountType.EXACT_IN,
+    intermediateWallet, // Pass the intermediate wallet as the Bitcoin source
+    starknetSigner.getAddress(),
+    {
+        gasAmount: 1_000_000_000_000_000_000n
+    }
+);
+
+const inputWithFees: string = swap.getInput().toString();
+const output: string = swap.getOutput().toString();
+const expiry: number = swap.getQuoteExpiry();
+
+if(swap.requiresExternalDeposit()) {
+    const depositAmount = swap.getExternalDepositAmount()!;
+    const depositAddress = swap.getAddress();
+    const bitcoinUri = swap.getHyperlink();
+
+    //Display depositAmount/address or use bitcoinUri for a BIP-21 payment QR code
+}
+```
+
+##### Executing the swap (simple)
+
+`execute()` handles both funding cases automatically. When an external deposit is required, it waits until the matching incoming UTXO is detected. When the wallet already has enough balance, it immediately signs and submits the final SPV transaction. It then waits for Bitcoin confirmations and automatic settlement in both cases:
+
+```typescript
+const automaticSettlementSuccess = await swap.execute(
+    intermediateWallet,
+    {
+        onExternalDepositReceived: (depositTxId: string) => {
+            //The preliminary external deposit was detected
+        },
+        onInvalidExternalDeposit: invalidDeposits => {
+            //Notify the user about deposits with an incorrect amount or fee rate
+            return true; //Keep waiting for a valid deposit; return false to stop and recover
+        },
+        onSourceTransactionSent: (txId: string) => {
+            //The final SPV Bitcoin transaction was submitted
+        },
+        onSourceTransactionConfirmationStatus: (txId, confirmations, targetConfirmations, txEtaMs) => {
+            //Final Bitcoin transaction confirmation status
+        },
+        onSourceTransactionConfirmed: (txId: string) => {
+            //The final Bitcoin transaction confirmed
+        },
+        onSwapSettled: (destinationTxId: string) => {
+            //Swap settled on Starknet/EVM
+        }
+    }
+);
+
+if(!automaticSettlementSuccess) {
+    await swap.claim(starknetSigner);
+}
+```
+
+##### Invalid deposits and recovery
+
+The quote expects one external-deposit UTXO with the exact requested amount. Invalid deposits are reported as `amount_too_small`, `amount_too_large`, or `deposit_fee_too_low`. When `onInvalidExternalDeposit` is absent or returns a falsy value, execution stops with a re-quote error. Returning `true` ignores the invalid UTXO and continues waiting; this can be useful for a low-fee deposit that may become usable later.
+
+> All recovery paths require the saved mnemonic or access to the smart-chain signer used to reproduce the wallet.
+
+After stopping execution because of an invalid deposit, there are three recovery options:
+
+###### a) Re-create the same swap
+
+The deposited funds are now part of the intermediate-wallet balance, so the replacement quote only waits for any additional amount still missing:
+
+```typescript
+const replacementSwap = await swapper.swap(
+   Tokens.BITCOIN.BTC,
+   Tokens.STARKNET.STRK,
+   "0.0001",
+   SwapAmountType.EXACT_IN,
+   intermediateWallet,
+   starknetSigner.getAddress()
+);
+
+await replacementSwap.execute(intermediateWallet);
+```
+
+###### b) Swap the deposited amount
+
+Sweep the full intermediate-wallet balance through a new exact-input swap by passing an `undefined` amount:
+
+```typescript
+const recoverySwap = await swapper.swap(
+   Tokens.BITCOIN.BTC,
+   Tokens.STARKNET.STRK,
+   undefined,
+   SwapAmountType.EXACT_IN,
+   intermediateWallet,
+   starknetSigner.getAddress()
+);
+
+await recoverySwap.execute(intermediateWallet);
+```
+
+###### c) Refund the BTC
+
+Refund the spendable BTC balance back to the sender or another normal Bitcoin wallet:
+
+```typescript
+const {balance, feeRate} = await intermediateWallet.getSpendableBalance();
+await intermediateWallet.sendTransaction(refundAddress, balance, feeRate);
+```
+
+<details>
+<summary>Manual swap execution (advanced)</summary>
+
+- __1.__ Wait for the external deposit when required
+
+  ```typescript
+  if(swap.requiresExternalDeposit()) {
+      const depositAmount = swap.getExternalDepositAmount()!;
+      const abortController = new AbortController();
+
+      const depositedUtxo = await swap.waitForExternalDeposit(
+          intermediateWallet,
+          undefined, //Wait until the quote expires
+          5, //Poll every 5 seconds
+          invalidDeposits => true, //Ignore invalid deposits and keep waiting
+          abortController.signal
+      );
+  }
+  ```
+
+- __2.__ Sign and submit the final swap Bitcoin transaction
+
+  ```typescript
+  const bitcoinTxId = await swap.sendBitcoinTransaction(intermediateWallet);
+  ```
+
+- __3.__ Wait for the Bitcoin transaction to confirm
+
+  ```typescript
+  await swap.waitForBitcoinTransaction(
+      (txId, confirmations, targetConfirmations, txEtaMs) => {
+          //Bitcoin confirmation status
+      }
+  );
+  ```
+
+- __4.__ Wait for automatic settlement
+
+  ```typescript
+  const automaticSettlementSuccess = await swap.waitTillClaimed(60);
+  ```
+
+- __5.__ If automatic settlement times out, settle manually on the destination chain
+
+  - __a.__ Claim with the smart-chain signer
+
+    ```typescript
+    if(!automaticSettlementSuccess) {
+        await swap.claim(starknetSigner);
+    }
+    ```
+
+  - __b.__ Or get the unsigned transactions and [sign and send them manually](#manually-signing-smart-chain-transactions)
+
+    ```typescript
+    if(!automaticSettlementSuccess) {
+        const txsClaim = await swap.txsClaim();
+        //Sign and send these transactions...
+        ...
+        //Wait until the SDK observes the settlement transaction
+        await swap.waitTillClaimed();
+    }
+    ```
+
+</details>
+
+<details>
+<summary>Swap states</summary>
+
+The swap remains in `SpvFromBTCSwapState.CREATED` while waiting for a required external deposit. Receiving an external deposit by itself does not advance the swap state; the state changes once the final swap Bitcoin transaction is signed and submitted.
+
+- SpvFromBTCSwapState.CLOSED = -5
+  - Catastrophic failure during destination-chain settlement; this should never happen
+- SpvFromBTCSwapState.FAILED = -4
+  - Inputs of the final swap Bitcoin transaction were double-spent and the swap failed
+- SpvFromBTCSwapState.DECLINED = -3
+  - The LP declined to co-sign the final swap Bitcoin transaction; funds remaining in the intermediate wallet can be re-quoted or refunded
+- SpvFromBTCSwapState.QUOTE_EXPIRED = -2
+  - The quote expired before the final swap Bitcoin transaction was submitted; deposited funds remain in the intermediate wallet for recovery
+- SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED = -1
+  - The quote probably expired, but may still succeed if final swap Bitcoin transaction submission already started
+- SpvFromBTCSwapState.CREATED = 0
+  - The quote is waiting for the required external deposit, or is ready to sign immediately when the wallet already has enough balance
+- SpvFromBTCSwapState.SIGNED = 1
+  - The final swap Bitcoin transaction was signed and submitted by the client
+- SpvFromBTCSwapState.POSTED = 2
+  - The final swap Bitcoin transaction was sent to the LP for co-signing
+- SpvFromBTCSwapState.BROADCASTED = 3
+  - The LP co-signed and broadcasted the final swap Bitcoin transaction
+- SpvFromBTCSwapState.FRONTED = 4
+  - Swap funds were fronted to the destination wallet before final settlement
+- SpvFromBTCSwapState.BTC_TX_CONFIRMED = 5
+  - The final swap Bitcoin transaction reached the required confirmations
+- SpvFromBTCSwapState.CLAIMED = 6
+  - The swap settled and the destination funds were received
+
 </details>
 
 ### Bitcoin lightning network swaps

@@ -1,5 +1,6 @@
 import {IFromBTCSelfInitSwap} from "../IFromBTCSelfInitSwap.js";
 import {SwapType} from "../../../../enums/SwapType.js";
+import {ISwap} from "../../../ISwap.js";
 import {FromBTCDefinition, FromBTCWrapper} from "./FromBTCWrapper.js";
 import {
     BtcTxWithBlockheight,
@@ -1750,4 +1751,12 @@ export class FromBTCSwap<T extends ChainType = ChainType>
         return false;
     }
 
+}
+
+/**
+ * Type guard narrowing an {@link ISwap} to a {@link FromBTCSwap} (a legacy on-chain
+ * Bitcoin -> smart chain escrow swap, {@link SwapType.FROM_BTC}).
+ */
+export function isFromBTCSwap<T extends ChainType = ChainType>(swap: ISwap<T>): swap is FromBTCSwap<T> {
+    return swap.getType() === SwapType.FROM_BTC;
 }

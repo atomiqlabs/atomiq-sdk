@@ -1570,3 +1570,10 @@ export class FromBTCLNAutoSwap extends IEscrowSwap {
         }
     }
 }
+/**
+ * Type guard narrowing an {@link ISwap} to a {@link FromBTCLNAutoSwap} (an auto-claimed
+ * Lightning Bitcoin -> smart chain swap, {@link SwapType.FROM_BTCLN_AUTO}).
+ */
+export function isFromBTCLNAutoSwap(swap) {
+    return swap.getType() === SwapType.FROM_BTCLN_AUTO;
+}

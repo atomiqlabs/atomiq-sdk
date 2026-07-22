@@ -2,6 +2,7 @@ import {decode as bolt11Decode} from "@atomiqlabs/bolt11";
 import {FromBTCLNDefinition, FromBTCLNWrapper} from "./FromBTCLNWrapper.js";
 import {IFromBTCSelfInitSwap} from "../IFromBTCSelfInitSwap.js";
 import {SwapType} from "../../../../enums/SwapType.js";
+import {ISwap} from "../../../ISwap.js";
 import {
     ChainSwapType,
     ChainType, isAbstractSigner,
@@ -1667,4 +1668,12 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
         }
     }
 
+}
+
+/**
+ * Type guard narrowing an {@link ISwap} to a {@link FromBTCLNSwap} (a legacy Lightning
+ * Bitcoin -> smart chain escrow swap, {@link SwapType.FROM_BTCLN}).
+ */
+export function isFromBTCLNSwap<T extends ChainType = ChainType>(swap: ISwap<T>): swap is FromBTCLNSwap<T> {
+    return swap.getType() === SwapType.FROM_BTCLN;
 }

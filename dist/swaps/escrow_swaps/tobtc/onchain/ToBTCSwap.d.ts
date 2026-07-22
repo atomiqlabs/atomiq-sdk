@@ -1,6 +1,7 @@
 import { ToBTCDefinition, ToBTCWrapper } from "./ToBTCWrapper.js";
 import { IToBTCSwap, IToBTCSwapInit } from "../IToBTCSwap.js";
 import { SwapType } from "../../../../enums/SwapType.js";
+import { ISwap } from "../../../ISwap.js";
 import { ChainType, SwapData } from "@atomiqlabs/base";
 import { TokenAmount } from "../../../../types/TokenAmount.js";
 import { BtcToken } from "../../../../types/Token.js";
@@ -71,3 +72,8 @@ export declare class ToBTCSwap<T extends ChainType = ChainType> extends IToBTCSw
      */
     serialize(): any;
 }
+/**
+ * Type guard narrowing an {@link ISwap} to a {@link ToBTCSwap} (an on-chain
+ * smart chain -> Bitcoin escrow swap, {@link SwapType.TO_BTC}).
+ */
+export declare function isToBTCSwap<T extends ChainType = ChainType>(swap: ISwap<T>): swap is ToBTCSwap<T>;

@@ -751,3 +751,11 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
     }
 
 }
+
+/**
+ * Type guard narrowing an {@link ISwap} to a {@link LnForGasSwap} (a trusted Lightning
+ * Bitcoin -> smart chain gas top-up swap, {@link SwapType.TRUSTED_FROM_BTCLN}).
+ */
+export function isLnForGasSwap<T extends ChainType = ChainType>(swap: ISwap<T>): swap is LnForGasSwap<T> {
+    return swap.getType() === SwapType.TRUSTED_FROM_BTCLN;
+}

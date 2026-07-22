@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SpvFromBTCSwap = exports.isSpvFromBTCSwapInit = exports.SpvFromBTCSwapState = void 0;
+exports.isSpvFromBTCSwap = exports.SpvFromBTCSwap = exports.isSpvFromBTCSwapInit = exports.SpvFromBTCSwapState = void 0;
 const ISwap_js_1 = require("../ISwap.js");
 const base_1 = require("@atomiqlabs/base");
 const SwapType_js_1 = require("../../enums/SwapType.js");
@@ -1685,3 +1685,11 @@ class SpvFromBTCSwap extends ISwap_js_1.ISwap {
     }
 }
 exports.SpvFromBTCSwap = SpvFromBTCSwap;
+/**
+ * Type guard narrowing an {@link ISwap} to a {@link SpvFromBTCSwap} (an SPV-vault
+ * Bitcoin -> smart chain swap, {@link SwapType.SPV_VAULT_FROM_BTC}).
+ */
+function isSpvFromBTCSwap(swap) {
+    return swap.getType() === SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC;
+}
+exports.isSpvFromBTCSwap = isSpvFromBTCSwap;

@@ -1,4 +1,6 @@
 import {IToBTCDefinition, IToBTCWrapper} from "./IToBTCWrapper.js";
+import {ISwap} from "../../ISwap.js";
+import {SwapType} from "../../../enums/SwapType.js";
 import {
     ChainType,
     isAbstractSigner,
@@ -1323,5 +1325,20 @@ export abstract class IToBTCSwap<
                 break;
         }
         return false;
+    }
+}
+
+/**
+ * Type guard narrowing an {@link ISwap} to the {@link IToBTCSwap} family
+ * (escrow swaps sending to Bitcoin: TO_BTC, TO_BTCLN).
+ */
+export function isIToBTCSwap<T extends ChainType = ChainType>(swap: ISwap<T>): swap is IToBTCSwap<T> {
+    const type = swap.getType();
+    switch (type) {
+        case SwapType.TO_BTC:   case SwapType.TO_BTCLN:   return true;
+        case SwapType.FROM_BTC: case SwapType.FROM_BTCLN:
+        case SwapType.TRUSTED_FROM_BTC: case SwapType.TRUSTED_FROM_BTCLN:
+        case SwapType.SPV_VAULT_FROM_BTC: case SwapType.FROM_BTCLN_AUTO: return false;
+        default: { const _exhaustive: never = type; return false; }
     }
 }

@@ -1,4 +1,6 @@
 import {IFromBTCWrapper} from "./IFromBTCWrapper.js";
+import {ISwap} from "../../ISwap.js";
+import {SwapType} from "../../../enums/SwapType.js";
 import {ChainType, SignatureVerificationError,} from "@atomiqlabs/base";
 import {Fee} from "../../../types/fees/Fee.js";
 import {IAddressSwap} from "../../IAddressSwap.js";
@@ -297,4 +299,19 @@ export abstract class IFromBTCSelfInitSwap<
      */
     abstract waitTillClaimed(maxWaitTimeSeconds?: number, abortSignal?: AbortSignal): Promise<boolean>;
 
+}
+
+/**
+ * Type guard narrowing an {@link ISwap} to the {@link IFromBTCSelfInitSwap} family
+ * (self-initiated escrow swaps from Bitcoin: FROM_BTC, FROM_BTCLN).
+ */
+export function isIFromBTCSelfInitSwap<T extends ChainType = ChainType>(swap: ISwap<T>): swap is IFromBTCSelfInitSwap<T> {
+    const type = swap.getType();
+    switch (type) {
+        case SwapType.FROM_BTC: case SwapType.FROM_BTCLN: return true;
+        case SwapType.TO_BTC:   case SwapType.TO_BTCLN:
+        case SwapType.TRUSTED_FROM_BTC: case SwapType.TRUSTED_FROM_BTCLN:
+        case SwapType.SPV_VAULT_FROM_BTC: case SwapType.FROM_BTCLN_AUTO: return false;
+        default: { const _exhaustive: never = type; return false; }
+    }
 }

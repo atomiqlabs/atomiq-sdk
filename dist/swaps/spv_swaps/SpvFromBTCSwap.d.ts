@@ -692,3 +692,8 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
      */
     _shouldCheckWithdrawalState(frontingAddress?: string | null, vaultDataUtxo?: string | null): Promise<boolean>;
 }
+/**
+ * Type guard narrowing an {@link ISwap} to a {@link SpvFromBTCSwap} (an SPV-vault
+ * Bitcoin -> smart chain swap, {@link SwapType.SPV_VAULT_FROM_BTC}).
+ */
+export declare function isSpvFromBTCSwap<T extends ChainType = ChainType>(swap: ISwap<T>): swap is SpvFromBTCSwap<T>;

@@ -1,3 +1,4 @@
+import { SwapType } from "../../../enums/SwapType.js";
 import { SignatureVerificationError, } from "@atomiqlabs/base";
 import { IEscrowSelfInitSwap } from "../IEscrowSelfInitSwap.js";
 import { FeeType } from "../../../enums/FeeType.js";
@@ -182,5 +183,26 @@ export class IFromBTCSelfInitSwap extends IEscrowSelfInitSwap {
     async getClaimNetworkFee() {
         const swapContract = this._contract;
         return toTokenAmount(await swapContract.getClaimFee(this._getInitiator(), this.getSwapData()), this.wrapper._getNativeToken(), this.wrapper._prices);
+    }
+}
+/**
+ * Type guard narrowing an {@link ISwap} to the {@link IFromBTCSelfInitSwap} family
+ * (self-initiated escrow swaps from Bitcoin: FROM_BTC, FROM_BTCLN).
+ */
+export function isIFromBTCSelfInitSwap(swap) {
+    const type = swap.getType();
+    switch (type) {
+        case SwapType.FROM_BTC:
+        case SwapType.FROM_BTCLN: return true;
+        case SwapType.TO_BTC:
+        case SwapType.TO_BTCLN:
+        case SwapType.TRUSTED_FROM_BTC:
+        case SwapType.TRUSTED_FROM_BTCLN:
+        case SwapType.SPV_VAULT_FROM_BTC:
+        case SwapType.FROM_BTCLN_AUTO: return false;
+        default: {
+            const _exhaustive = type;
+            return false;
+        }
     }
 }

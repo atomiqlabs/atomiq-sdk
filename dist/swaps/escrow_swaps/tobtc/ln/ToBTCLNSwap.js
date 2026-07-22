@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ToBTCLNSwap = exports.isToBTCLNSwapInit = void 0;
+exports.isToBTCLNSwap = exports.ToBTCLNSwap = exports.isToBTCLNSwapInit = void 0;
 const bolt11_1 = require("@atomiqlabs/bolt11");
 const IToBTCSwap_js_1 = require("../IToBTCSwap.js");
 const SwapType_js_1 = require("../../../../enums/SwapType.js");
@@ -278,3 +278,11 @@ class ToBTCLNSwap extends IToBTCSwap_js_1.IToBTCSwap {
     }
 }
 exports.ToBTCLNSwap = ToBTCLNSwap;
+/**
+ * Type guard narrowing an {@link ISwap} to a {@link ToBTCLNSwap} (a Lightning
+ * smart chain -> Bitcoin escrow swap, {@link SwapType.TO_BTCLN}).
+ */
+function isToBTCLNSwap(swap) {
+    return swap.getType() === SwapType_js_1.SwapType.TO_BTCLN;
+}
+exports.isToBTCLNSwap = isToBTCLNSwap;

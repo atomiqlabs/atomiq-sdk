@@ -903,6 +903,15 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
     }
 
     /**
+     * @inheritDoc
+     */
+    async estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<BtcToken<false>, true> | null> {
+        if(this.swapMode==="psbt") return await super.estimateBitcoinFee(_bitcoinWallet, feeRate);
+        const info = this.getIntermediateWalletSwapModeInfoOrThrow("estimateBitcoinFee");
+        return toTokenAmount(info.totalNetworkFee, BitcoinTokens.BTC, this.wrapper._prices, this.pricingInfo);
+    }
+
+    /**
      * Executes this swap, waiting for the quoted external deposit first when intermediate-wallet funding is active.
      *
      * @param wallet Bitcoin wallet used to discover and sign the intermediate-wallet funding inputs
@@ -942,30 +951,6 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
         }
 
         return await super.execute(wallet, callbacks, baseOptions);
-    }
-
-    /**
-     * Signs and submits the SPV funding PSBT from the external intermediate deposit wallet.
-     *
-     * @remarks
-     * This processes only the Bitcoin deposit transaction. It does not wait for Bitcoin confirmations or destination
-     * settlement; use the normal swap lifecycle actions after this returns. Full-spend external mode consumes the
-     * funding set without change, while change-aware mode allows wallet change from the selected UTXOs.
-     *
-     * @param wallet Intermediate Bitcoin wallet able to sign the funded PSBT
-     * @returns Bitcoin transaction id returned by {@link submitPsbt}
-     * @throws {Error} if the swap is not in external mode, the required deposit is missing, or the quote expired
-     */
-    async processViaIntermediateWallet(
-        wallet: IBitcoinWallet | MinimalBitcoinWalletInterfaceWithSigner
-    ): Promise<string> {
-        if(!await this._verifyQuoteValid()) throw new Error("Swap quote expired!");
-        if(this.swapMode!=="intermediate_wallet") throw new Error("Only available in intermediate wallet swap mode!");
-        const {psbt, psbtBase64, psbtHex, signInputs} = await this.getFundedPsbt(wallet);
-        const signedPsbt = isIBitcoinWallet(wallet)
-            ? await wallet.signPsbt(psbt, signInputs)
-            : await wallet.signPsbt({psbt, psbtHex, psbtBase64}, signInputs);
-        return await this.submitPsbt(signedPsbt);
     }
 
     /**

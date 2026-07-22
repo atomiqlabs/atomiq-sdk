@@ -1683,6 +1683,8 @@ export class SpvFromBTCSwap extends ISwap {
 /**
  * Type guard narrowing an {@link ISwap} to a {@link SpvFromBTCSwap} (an SPV-vault
  * Bitcoin -> smart chain swap, {@link SwapType.SPV_VAULT_FROM_BTC}).
+ *
+ * @category Swaps/Bitcoin → Smart chain
  */
 export function isSpvFromBTCSwap(swap) {
     return swap.getType() === SwapType.SPV_VAULT_FROM_BTC;

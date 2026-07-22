@@ -626,6 +626,8 @@ exports.LnForGasSwap = LnForGasSwap;
 /**
  * Type guard narrowing an {@link ISwap} to a {@link LnForGasSwap} (a trusted Lightning
  * Bitcoin -> smart chain gas top-up swap, {@link SwapType.TRUSTED_FROM_BTCLN}).
+ *
+ * @category Swaps/Trusted Gas Swaps
  */
 function isLnForGasSwap(swap) {
     return swap.getType() === SwapType_js_1.SwapType.TRUSTED_FROM_BTCLN;

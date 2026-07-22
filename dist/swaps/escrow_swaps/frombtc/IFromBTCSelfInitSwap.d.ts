@@ -164,5 +164,7 @@ export declare abstract class IFromBTCSelfInitSwap<T extends ChainType = ChainTy
 /**
  * Type guard narrowing an {@link ISwap} to the {@link IFromBTCSelfInitSwap} family
  * (self-initiated escrow swaps from Bitcoin: FROM_BTC, FROM_BTCLN).
+ *
+ * @category Swaps/Abstract
  */
 export declare function isIFromBTCSelfInitSwap<T extends ChainType = ChainType>(swap: ISwap<T>): swap is IFromBTCSelfInitSwap<T>;

@@ -75,5 +75,7 @@ export declare class ToBTCSwap<T extends ChainType = ChainType> extends IToBTCSw
 /**
  * Type guard narrowing an {@link ISwap} to a {@link ToBTCSwap} (an on-chain
  * smart chain -> Bitcoin escrow swap, {@link SwapType.TO_BTC}).
+ *
+ * @category Swaps/Smart chain → Bitcoin
  */
 export declare function isToBTCSwap<T extends ChainType = ChainType>(swap: ISwap<T>): swap is ToBTCSwap<T>;

@@ -694,6 +694,8 @@ export class OnchainForGasSwap extends ISwap {
 /**
  * Type guard narrowing an {@link ISwap} to an {@link OnchainForGasSwap} (a trusted on-chain
  * Bitcoin -> smart chain gas top-up swap, {@link SwapType.TRUSTED_FROM_BTC}).
+ *
+ * @category Swaps/Trusted Gas Swaps
  */
 export function isOnchainForGasSwap(swap) {
     return swap.getType() === SwapType.TRUSTED_FROM_BTC;

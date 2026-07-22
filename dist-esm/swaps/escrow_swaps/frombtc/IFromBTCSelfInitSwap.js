@@ -188,6 +188,8 @@ export class IFromBTCSelfInitSwap extends IEscrowSelfInitSwap {
 /**
  * Type guard narrowing an {@link ISwap} to the {@link IFromBTCSelfInitSwap} family
  * (self-initiated escrow swaps from Bitcoin: FROM_BTC, FROM_BTCLN).
+ *
+ * @category Swaps/Abstract
  */
 export function isIFromBTCSelfInitSwap(swap) {
     const type = swap.getType();

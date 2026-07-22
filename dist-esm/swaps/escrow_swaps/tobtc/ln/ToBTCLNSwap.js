@@ -265,6 +265,8 @@ export class ToBTCLNSwap extends IToBTCSwap {
 /**
  * Type guard narrowing an {@link ISwap} to a {@link ToBTCLNSwap} (a Lightning
  * smart chain -> Bitcoin escrow swap, {@link SwapType.TO_BTCLN}).
+ *
+ * @category Swaps/Smart chain → Lightning
  */
 export function isToBTCLNSwap(swap) {
     return swap.getType() === SwapType.TO_BTCLN;

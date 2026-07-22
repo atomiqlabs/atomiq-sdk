@@ -156,6 +156,8 @@ exports.ToBTCSwap = ToBTCSwap;
 /**
  * Type guard narrowing an {@link ISwap} to a {@link ToBTCSwap} (an on-chain
  * smart chain -> Bitcoin escrow swap, {@link SwapType.TO_BTC}).
+ *
+ * @category Swaps/Smart chain → Bitcoin
  */
 function isToBTCSwap(swap) {
     return swap.getType() === SwapType_js_1.SwapType.TO_BTC;

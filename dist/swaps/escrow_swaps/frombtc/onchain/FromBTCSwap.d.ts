@@ -493,5 +493,7 @@ export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromB
 /**
  * Type guard narrowing an {@link ISwap} to a {@link FromBTCSwap} (a legacy on-chain
  * Bitcoin -> smart chain escrow swap, {@link SwapType.FROM_BTC}).
+ *
+ * @category Swaps/Legacy/Bitcoin → Smart chain
  */
 export declare function isFromBTCSwap<T extends ChainType = ChainType>(swap: ISwap<T>): swap is FromBTCSwap<T>;

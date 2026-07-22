@@ -192,6 +192,8 @@ exports.IFromBTCSelfInitSwap = IFromBTCSelfInitSwap;
 /**
  * Type guard narrowing an {@link ISwap} to the {@link IFromBTCSelfInitSwap} family
  * (self-initiated escrow swaps from Bitcoin: FROM_BTC, FROM_BTCLN).
+ *
+ * @category Swaps/Abstract
  */
 function isIFromBTCSelfInitSwap(swap) {
     const type = swap.getType();

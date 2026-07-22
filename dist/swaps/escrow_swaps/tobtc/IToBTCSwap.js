@@ -1099,6 +1099,8 @@ exports.IToBTCSwap = IToBTCSwap;
 /**
  * Type guard narrowing an {@link ISwap} to the {@link IToBTCSwap} family
  * (escrow swaps sending to Bitcoin: TO_BTC, TO_BTCLN).
+ *
+ * @category Swaps/Smart chain → Bitcoin
  */
 function isIToBTCSwap(swap) {
     const type = swap.getType();

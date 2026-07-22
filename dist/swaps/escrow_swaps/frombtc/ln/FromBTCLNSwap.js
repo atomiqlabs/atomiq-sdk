@@ -1420,6 +1420,8 @@ exports.FromBTCLNSwap = FromBTCLNSwap;
 /**
  * Type guard narrowing an {@link ISwap} to a {@link FromBTCLNSwap} (a legacy Lightning
  * Bitcoin -> smart chain escrow swap, {@link SwapType.FROM_BTCLN}).
+ *
+ * @category Swaps/Legacy/Lightning → Smart chain
  */
 function isFromBTCLNSwap(swap) {
     return swap.getType() === SwapType_js_1.SwapType.FROM_BTCLN;

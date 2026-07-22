@@ -1464,6 +1464,8 @@ exports.FromBTCSwap = FromBTCSwap;
 /**
  * Type guard narrowing an {@link ISwap} to a {@link FromBTCSwap} (a legacy on-chain
  * Bitcoin -> smart chain escrow swap, {@link SwapType.FROM_BTC}).
+ *
+ * @category Swaps/Legacy/Bitcoin → Smart chain
  */
 function isFromBTCSwap(swap) {
     return swap.getType() === SwapType_js_1.SwapType.FROM_BTC;

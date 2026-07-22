@@ -1688,6 +1688,8 @@ exports.SpvFromBTCSwap = SpvFromBTCSwap;
 /**
  * Type guard narrowing an {@link ISwap} to a {@link SpvFromBTCSwap} (an SPV-vault
  * Bitcoin -> smart chain swap, {@link SwapType.SPV_VAULT_FROM_BTC}).
+ *
+ * @category Swaps/Bitcoin → Smart chain
  */
 function isSpvFromBTCSwap(swap) {
     return swap.getType() === SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC;

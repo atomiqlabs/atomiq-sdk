@@ -1459,6 +1459,8 @@ export class FromBTCSwap extends IFromBTCSelfInitSwap {
 /**
  * Type guard narrowing an {@link ISwap} to a {@link FromBTCSwap} (a legacy on-chain
  * Bitcoin -> smart chain escrow swap, {@link SwapType.FROM_BTC}).
+ *
+ * @category Swaps/Legacy/Bitcoin → Smart chain
  */
 export function isFromBTCSwap(swap) {
     return swap.getType() === SwapType.FROM_BTC;

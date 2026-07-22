@@ -1415,6 +1415,8 @@ export class FromBTCLNSwap extends IFromBTCSelfInitSwap {
 /**
  * Type guard narrowing an {@link ISwap} to a {@link FromBTCLNSwap} (a legacy Lightning
  * Bitcoin -> smart chain escrow swap, {@link SwapType.FROM_BTCLN}).
+ *
+ * @category Swaps/Legacy/Lightning → Smart chain
  */
 export function isFromBTCLNSwap(swap) {
     return swap.getType() === SwapType.FROM_BTCLN;

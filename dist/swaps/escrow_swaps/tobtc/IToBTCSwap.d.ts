@@ -448,5 +448,7 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
 /**
  * Type guard narrowing an {@link ISwap} to the {@link IToBTCSwap} family
  * (escrow swaps sending to Bitcoin: TO_BTC, TO_BTCLN).
+ *
+ * @category Swaps/Smart chain → Bitcoin
  */
 export declare function isIToBTCSwap<T extends ChainType = ChainType>(swap: ISwap<T>): swap is IToBTCSwap<T>;

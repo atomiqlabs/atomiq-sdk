@@ -1578,6 +1578,8 @@ exports.FromBTCLNAutoSwap = FromBTCLNAutoSwap;
 /**
  * Type guard narrowing an {@link ISwap} to a {@link FromBTCLNAutoSwap} (an auto-claimed
  * Lightning Bitcoin -> smart chain swap, {@link SwapType.FROM_BTCLN_AUTO}).
+ *
+ * @category Swaps/Lightning → Smart chain
  */
 function isFromBTCLNAutoSwap(swap) {
     return swap.getType() === SwapType_js_1.SwapType.FROM_BTCLN_AUTO;

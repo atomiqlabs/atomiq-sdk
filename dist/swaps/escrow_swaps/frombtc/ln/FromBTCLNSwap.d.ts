@@ -549,5 +549,7 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
 /**
  * Type guard narrowing an {@link ISwap} to a {@link FromBTCLNSwap} (a legacy Lightning
  * Bitcoin -> smart chain escrow swap, {@link SwapType.FROM_BTCLN}).
+ *
+ * @category Swaps/Legacy/Lightning → Smart chain
  */
 export declare function isFromBTCLNSwap<T extends ChainType = ChainType>(swap: ISwap<T>): swap is FromBTCLNSwap<T>;

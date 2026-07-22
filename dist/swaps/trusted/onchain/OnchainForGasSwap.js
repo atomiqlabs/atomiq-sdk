@@ -699,6 +699,8 @@ exports.OnchainForGasSwap = OnchainForGasSwap;
 /**
  * Type guard narrowing an {@link ISwap} to an {@link OnchainForGasSwap} (a trusted on-chain
  * Bitcoin -> smart chain gas top-up swap, {@link SwapType.TRUSTED_FROM_BTC}).
+ *
+ * @category Swaps/Trusted Gas Swaps
  */
 function isOnchainForGasSwap(swap) {
     return swap.getType() === SwapType_js_1.SwapType.TRUSTED_FROM_BTC;

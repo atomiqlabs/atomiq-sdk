@@ -1331,6 +1331,8 @@ export abstract class IToBTCSwap<
 /**
  * Type guard narrowing an {@link ISwap} to the {@link IToBTCSwap} family
  * (escrow swaps sending to Bitcoin: TO_BTC, TO_BTCLN).
+ *
+ * @category Swaps/Smart chain → Bitcoin
  */
 export function isIToBTCSwap<T extends ChainType = ChainType>(swap: ISwap<T>): swap is IToBTCSwap<T> {
     const type = swap.getType();

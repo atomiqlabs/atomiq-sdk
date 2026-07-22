@@ -652,5 +652,7 @@ export declare class FromBTCLNAutoSwap<T extends ChainType = ChainType> extends 
 /**
  * Type guard narrowing an {@link ISwap} to a {@link FromBTCLNAutoSwap} (an auto-claimed
  * Lightning Bitcoin -> smart chain swap, {@link SwapType.FROM_BTCLN_AUTO}).
+ *
+ * @category Swaps/Lightning → Smart chain
  */
 export declare function isFromBTCLNAutoSwap<T extends ChainType = ChainType>(swap: ISwap<T>): swap is FromBTCLNAutoSwap<T>;

@@ -128,6 +128,8 @@ exports.IEscrowSelfInitSwap = IEscrowSelfInitSwap;
 /**
  * Type guard narrowing an {@link ISwap} to the {@link IEscrowSelfInitSwap} family
  * (escrow swaps the user must initiate on the smart chain: FROM_BTC, FROM_BTCLN, TO_BTC, TO_BTCLN).
+ *
+ * @category Swaps/Abstract
  */
 function isIEscrowSelfInitSwap(swap) {
     const type = swap.getType();

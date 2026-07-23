@@ -718,7 +718,7 @@ class SpvFromBTCSwapBase extends ISwap_js_1.ISwap {
             throw new Error("Swap quote expired!");
         if (this._state === SpvFromBTCSwapState_js_1.SpvFromBTCSwapState.CLAIMED || this._state === SpvFromBTCSwapState_js_1.SpvFromBTCSwapState.FRONTED)
             throw new Error("Swap already settled or fronted!");
-        if (this._state === SpvFromBTCSwapState_js_1.SpvFromBTCSwapState.CREATED) {
+        if (this._state === SpvFromBTCSwapState_js_1.SpvFromBTCSwapState.CREATED || this._state === SpvFromBTCSwapState_js_1.SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED) {
             const txId = await this.sendBitcoinTransaction(wallet, options?.feeRate, options?.utxos, options?.spendFully);
             if (callbacks?.onSourceTransactionSent != null)
                 callbacks.onSourceTransactionSent(txId);

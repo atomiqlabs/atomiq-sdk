@@ -714,7 +714,7 @@ export class SpvFromBTCSwapBase extends ISwap {
             throw new Error("Swap quote expired!");
         if (this._state === SpvFromBTCSwapState.CLAIMED || this._state === SpvFromBTCSwapState.FRONTED)
             throw new Error("Swap already settled or fronted!");
-        if (this._state === SpvFromBTCSwapState.CREATED) {
+        if (this._state === SpvFromBTCSwapState.CREATED || this._state === SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED) {
             const txId = await this.sendBitcoinTransaction(wallet, options?.feeRate, options?.utxos, options?.spendFully);
             if (callbacks?.onSourceTransactionSent != null)
                 callbacks.onSourceTransactionSent(txId);

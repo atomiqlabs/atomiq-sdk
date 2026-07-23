@@ -10,6 +10,7 @@ import { BitcoinTokens } from "../types/Token.js";
 import { isLNURLWithdraw } from "../types/lnurl/LNURLWithdraw.js";
 import { isLNURLPay } from "../types/lnurl/LNURLPay.js";
 import { toBitcoinWallet } from "../utils/BitcoinWalletUtils.js";
+import { Buffer } from "buffer";
 /**
  * Utility class providing helper methods for address parsing, token balances, serialization
  *  and other miscellaneous things.
@@ -20,6 +21,43 @@ export class SwapperUtils {
     constructor(root) {
         this.bitcoinNetwork = root._btcNetwork;
         this.root = root;
+    }
+    /**
+     * Generates a random mnemonic and a single-address Bitcoin wallet using this swapper's Bitcoin backend and network.
+     *
+     * @param options Optional derivation and fee configuration
+     * @returns The generated wallet and its mnemonic; callers are responsible for securely persisting the mnemonic
+     */
+    async generateBitcoinWallet(options) {
+        const mnemonic = SingleAddressBitcoinWallet.generateRandomMnemonic();
+        return {
+            wallet: await this.createBitcoinWalletFromMnemonic(mnemonic, options),
+            mnemonic
+        };
+    }
+    /**
+     * Restores a single-address Bitcoin wallet from a mnemonic using this swapper's Bitcoin backend and network.
+     *
+     * @param mnemonic Mnemonic phrase from which to derive the wallet
+     * @param options Optional derivation and fee configuration
+     * @returns Wallet derived from `mnemonic`
+     */
+    createBitcoinWalletFromMnemonic(mnemonic, options) {
+        return SingleAddressBitcoinWallet.fromMnemonic(this.root._bitcoinRpc, this.bitcoinNetwork, mnemonic, options?.derivationPath, options?.feeMultiplier, options?.feeOverride);
+    }
+    /**
+     * Creates a reproducible single-address Bitcoin wallet from entropy using this swapper's Bitcoin backend and network.
+     *
+     * @remarks
+     * The entropy is deterministically converted to a mnemonic before deriving the wallet. Supplying the same entropy,
+     * network, and derivation path recreates the same wallet.
+     *
+     * @param entropy At least 128 bits of reproducible entropy
+     * @param options Optional derivation and fee configuration
+     * @returns Wallet deterministically derived from `entropy`
+     */
+    createBitcoinWalletFromEntropy(entropy, options) {
+        return this.createBitcoinWalletFromMnemonic(SingleAddressBitcoinWallet.mnemonicFromEntropy(Buffer.from(entropy)), options);
     }
     /**
      * Checks whether a passed address is a valid address on the smart chain

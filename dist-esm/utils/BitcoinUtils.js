@@ -50,8 +50,10 @@ export function toOutputScript(network, address) {
     }
     throw new Error(`Unrecognized output script type: ${outputScript.type}`);
 }
-export function toCoinselectAddressType(outputScript) {
-    const data = OutScript.decode(outputScript);
+export function toCoinselectAddressType(outputScriptOrNetwork, address) {
+    const data = address == null
+        ? OutScript.decode(outputScriptOrNetwork)
+        : Address(outputScriptOrNetwork).decode(address);
     switch (data.type) {
         case "pkh":
             return "p2pkh";
@@ -65,6 +67,39 @@ export function toCoinselectAddressType(outputScript) {
             return "p2tr";
     }
     throw new Error("Unrecognized address type!");
+}
+/**
+ * Fetches and converts all UTXOs for a Bitcoin address into the SDK wallet UTXO shape.
+ *
+ * @param bitcoinRpc Bitcoin RPC/address-index backend used for UTXO and CPFP lookups
+ * @param network Bitcoin network used to decode the address and output script
+ * @param address Bitcoin address whose current UTXOs should be returned
+ * @param publicKey
+ * @param addressType Optional precomputed address type; inferred from `address` when omitted
+ * @returns Full wallet UTXOs suitable for wallet funding and SPV external deposit execution
+ */
+export async function getWalletAddressUtxos(bitcoinRpc, network, address, publicKey, addressType) {
+    const resolvedAddressType = addressType ?? toCoinselectAddressType(network, address);
+    const utxos = await bitcoinRpc.getAddressUTXOs(address);
+    const outputScript = toOutputScript(network, address);
+    return await Promise.all(utxos.map(async (utxo) => ({
+        vout: utxo.vout,
+        txId: utxo.txid,
+        value: Number(utxo.value),
+        type: resolvedAddressType,
+        outputScript,
+        address,
+        publicKey,
+        cpfp: !utxo.confirmed ? await bitcoinRpc.getCPFPData(utxo.txid).then(result => {
+            if (result == null)
+                return undefined;
+            return {
+                txVsize: result.adjustedVsize,
+                txEffectiveFeeRate: result.effectiveFeePerVsize
+            };
+        }) : undefined,
+        confirmed: utxo.confirmed
+    })));
 }
 function getDummySpec(type) {
     switch (type) {
@@ -160,4 +195,13 @@ export function getSenderAddress(psbt, network, inputIndex = 0) {
     catch (e) {
         return Buffer.from(script).toString("hex");
     }
+}
+export function getUtxoKey(utxo) {
+    return `${utxo.txId}:${utxo.vout}`;
+}
+export function toUtxoMap(utxos) {
+    return new Map(utxos.map(utxo => ([getUtxoKey(utxo), utxo])));
+}
+export function toUtxoSet(utxos) {
+    return new Set(utxos.map(utxo => getUtxoKey(utxo)));
 }

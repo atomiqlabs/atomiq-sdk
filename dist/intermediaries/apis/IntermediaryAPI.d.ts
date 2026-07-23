@@ -256,6 +256,9 @@ export type SpvFromBTCPrepare = SwapInit & {
         };
     }[] | undefined>;
     amountFeeRate?: Promise<number | undefined>;
+    amountSkipDetrimental?: boolean;
+    amountChangeValue?: Promise<bigint | undefined>;
+    amountChangeVSize?: Promise<number | undefined>;
 };
 declare const SpvFromBTCInitResponseSchema: {
     readonly txId: FieldTypeEnum.String;

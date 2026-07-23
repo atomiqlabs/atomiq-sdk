@@ -16,10 +16,8 @@ function blackjack(utxos, outputs, feeRate, type, requiredInputs) {
     for (let i = 0; i < utxos.length; ++i) {
         const input = utxos[i];
         const inputBytes = utils_js_1.utils.inputBytes(input);
-        let cpfpFee = 0;
-        if (input.cpfp != null && input.cpfp.txEffectiveFeeRate < feeRate)
-            cpfpFee = Math.ceil(input.cpfp.txVsize * (feeRate - input.cpfp.txEffectiveFeeRate));
-        const fee = Math.ceil((feeRate * (bytesAccum + inputBytes)) + cpfpAddFee + cpfpFee);
+        const cpfpFee = utils_js_1.utils.inputCpfpAdditionalFee(input, feeRate);
+        const fee = utils_js_1.utils.calculateFee(bytesAccum + inputBytes, feeRate, cpfpAddFee + cpfpFee);
         const inputValue = utils_js_1.utils.uintOrNaN(input.value);
         // would it waste value?
         if ((inAccum + inputValue) > (outAccum + fee + threshold))
@@ -31,8 +29,8 @@ function blackjack(utxos, outputs, feeRate, type, requiredInputs) {
         // go again?
         if (inAccum < outAccum + fee)
             continue;
-        return utils_js_1.utils.finalize(inputs, outputs, feeRate, type, cpfpAddFee);
+        return utils_js_1.utils.finalize(inputs, outputs, feeRate, type);
     }
-    return { fee: (feeRate * bytesAccum) + cpfpAddFee };
+    return { fee: utils_js_1.utils.calculateFee(bytesAccum, feeRate, cpfpAddFee) };
 }
 exports.blackjack = blackjack;

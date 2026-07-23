@@ -3,11 +3,29 @@ import { BTC_NETWORK } from "@scure/btc-signer/utils";
 import { SwapType } from "../enums/SwapType.js";
 import { ChainIds, MultiChain, Swapper } from "./Swapper.js";
 import { IBitcoinWallet } from "../bitcoin/wallet/IBitcoinWallet.js";
+import { SingleAddressBitcoinWallet } from "../bitcoin/wallet/SingleAddressBitcoinWallet.js";
 import { MinimalBitcoinWalletInterface } from "../types/wallets/MinimalBitcoinWalletInterface.js";
 import { TokenAmount } from "../types/TokenAmount.js";
 import { SCToken } from "../types/Token.js";
 import { LNURLWithdraw } from "../types/lnurl/LNURLWithdraw.js";
 import { LNURLPay } from "../types/lnurl/LNURLPay.js";
+/**
+ * Optional derivation and fee configuration for SDK-provided single-address Bitcoin wallets.
+ */
+type BitcoinWalletCreationOptions = {
+    /**
+     * Custom BIP32 derivation path. Defaults to the network's native SegWit account 0 path.
+     */
+    derivationPath?: string;
+    /**
+     * Multiplier applied to Bitcoin fee estimates. Defaults to the wallet's standard multiplier.
+     */
+    feeMultiplier?: number;
+    /**
+     * Fixed Bitcoin fee rate in sats/vB returned by the wallet instead of querying the configured backend.
+     */
+    feeOverride?: number;
+};
 /**
  * Utility class providing helper methods for address parsing, token balances, serialization
  *  and other miscellaneous things.
@@ -18,6 +36,36 @@ export declare class SwapperUtils<T extends MultiChain> {
     readonly bitcoinNetwork: BTC_NETWORK;
     private readonly root;
     constructor(root: Swapper<T>);
+    /**
+     * Generates a random mnemonic and a single-address Bitcoin wallet using this swapper's Bitcoin backend and network.
+     *
+     * @param options Optional derivation and fee configuration
+     * @returns The generated wallet and its mnemonic; callers are responsible for securely persisting the mnemonic
+     */
+    generateBitcoinWallet(options?: BitcoinWalletCreationOptions): Promise<{
+        wallet: SingleAddressBitcoinWallet;
+        mnemonic: string;
+    }>;
+    /**
+     * Restores a single-address Bitcoin wallet from a mnemonic using this swapper's Bitcoin backend and network.
+     *
+     * @param mnemonic Mnemonic phrase from which to derive the wallet
+     * @param options Optional derivation and fee configuration
+     * @returns Wallet derived from `mnemonic`
+     */
+    createBitcoinWalletFromMnemonic(mnemonic: string, options?: BitcoinWalletCreationOptions): Promise<SingleAddressBitcoinWallet>;
+    /**
+     * Creates a reproducible single-address Bitcoin wallet from entropy using this swapper's Bitcoin backend and network.
+     *
+     * @remarks
+     * The entropy is deterministically converted to a mnemonic before deriving the wallet. Supplying the same entropy,
+     * network, and derivation path recreates the same wallet.
+     *
+     * @param entropy At least 128 bits of reproducible entropy
+     * @param options Optional derivation and fee configuration
+     * @returns Wallet deterministically derived from `entropy`
+     */
+    createBitcoinWalletFromEntropy(entropy: Uint8Array, options?: BitcoinWalletCreationOptions): Promise<SingleAddressBitcoinWallet>;
     /**
      * Checks whether a passed address is a valid address on the smart chain
      *
@@ -220,3 +268,4 @@ export declare class SwapperUtils<T extends MultiChain> {
      */
     deserializeSignedTransaction<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier, tx: string): Promise<T[ChainIdentifier]["SignedTXType"]>;
 }
+export {};

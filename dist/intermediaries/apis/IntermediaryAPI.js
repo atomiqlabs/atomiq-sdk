@@ -601,6 +601,10 @@ class IntermediaryAPI {
                 await init.amountUtxos;
             if (init.amountFeeRate != null)
                 await init.amountFeeRate;
+            if (init.amountChangeValue != null)
+                await init.amountChangeValue;
+            if (init.amountChangeVSize != null)
+                await init.amountChangeVSize;
             const amount = await init.amount;
             return amount.toString(10);
         })();
@@ -616,7 +620,10 @@ class IntermediaryAPI {
             callerFeeRate: init.callerFeeRate.then(val => val.toString(10)),
             stickyAddress: init.stickyAddress,
             amountUtxos: init.amountUtxos,
-            amountFeeRate: init.amountFeeRate
+            amountFeeRate: init.amountFeeRate,
+            amountSkipDetrimental: init.amountSkipDetrimental,
+            amountChangeValue: init.amountChangeValue?.then(val => val?.toString(10)),
+            amountChangeVSize: init.amountChangeVSize
         }, {
             code: SchemaVerifier_js_1.FieldTypeEnum.Number,
             msg: SchemaVerifier_js_1.FieldTypeEnum.String,

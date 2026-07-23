@@ -29,6 +29,8 @@ import { LNURLPay } from "../types/lnurl/LNURLPay.js";
 import { LightningInvoiceCreateService } from "../types/wallets/LightningInvoiceCreateService.js";
 import { Intermediary } from "../intermediaries/Intermediary.js";
 import { SwapTypeMapping } from "../utils/SwapUtils.js";
+import { IBitcoinWallet } from "../bitcoin/wallet/IBitcoinWallet";
+import { MinimalBitcoinWalletInterface } from "../types/wallets/MinimalBitcoinWalletInterface";
 import { SwapSide } from "../enums/SwapSide.js";
 /**
  * Chain-specific wrapper around Swapper for a particular blockchain
@@ -249,7 +251,7 @@ export declare class SwapperWithChain<T extends MultiChain, ChainIdentifier exte
     /**
      * @internal
      */
-    swap(srcToken: BtcToken<false> | "BTC" | "BITCOIN-BTC", dstToken: SCToken<ChainIdentifier>, amount: bigint | string, exactIn: boolean | SwapAmountType, src: undefined | string, dstSmartchainWallet: string, options?: (SupportsSwapType<T[ChainIdentifier], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCOptions : FromBTCOptions)): Promise<(SupportsSwapType<T[ChainIdentifier], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCSwap<T[ChainIdentifier]> : FromBTCSwap<T[ChainIdentifier]>)>;
+    swap(srcToken: BtcToken<false> | "BTC" | "BITCOIN-BTC", dstToken: SCToken<ChainIdentifier>, amount: bigint | string | undefined, exactIn: boolean | SwapAmountType, src: undefined | string | IBitcoinWallet | MinimalBitcoinWalletInterface, dstSmartchainWallet: string, options?: (SupportsSwapType<T[ChainIdentifier], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCOptions : FromBTCOptions)): Promise<(SupportsSwapType<T[ChainIdentifier], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCSwap<T[ChainIdentifier]> : FromBTCSwap<T[ChainIdentifier]>)>;
     /**
      * @internal
      */
@@ -277,7 +279,7 @@ export declare class SwapperWithChain<T extends MultiChain, ChainIdentifier exte
      * @param dst Destination smart chain address, bitcoin on-chain address, lightning invoice, LNURL-pay
      * @param options Options for the swap
      */
-    swap(srcToken: Token<ChainIdentifier> | string, dstToken: Token<ChainIdentifier> | string, amount: bigint | string | undefined, exactIn: boolean | SwapAmountType, src: undefined | string | LNURLWithdraw, dst: string | LNURLPay | LightningInvoiceCreateService, options?: FromBTCLNOptions | SpvFromBTCOptions | FromBTCOptions | ToBTCOptions | (ToBTCLNOptions & {
+    swap(srcToken: Token<ChainIdentifier> | string, dstToken: Token<ChainIdentifier> | string, amount: bigint | string | undefined, exactIn: boolean | SwapAmountType, src: undefined | string | LNURLWithdraw | IBitcoinWallet | MinimalBitcoinWalletInterface, dst: string | LNURLPay | LightningInvoiceCreateService, options?: FromBTCLNOptions | SpvFromBTCOptions | FromBTCOptions | ToBTCOptions | (ToBTCLNOptions & {
         comment?: string;
     }) | FromBTCLNAutoOptions): Promise<ISwap<T[ChainIdentifier]>>;
     /**

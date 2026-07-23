@@ -48,10 +48,11 @@ export declare abstract class BitcoinWallet implements IBitcoinWallet {
      * Internal helper function for fetching the UTXO set of a given wallet address
      *
      * @param sendingAddress
+     * @param sendingPublicKey
      * @param sendingAddressType
      * @protected
      */
-    protected _getUtxoPool(sendingAddress: string, sendingAddressType: CoinselectAddressTypes): Promise<BitcoinWalletUtxo[]>;
+    protected _getUtxoPool(sendingAddress: string, sendingPublicKey: string, sendingAddressType: CoinselectAddressTypes): Promise<BitcoinWalletUtxo[]>;
     /**
      *
      * @param sendingAccounts
@@ -83,6 +84,7 @@ export declare abstract class BitcoinWallet implements IBitcoinWallet {
         };
     }>;
     protected _getSpendableBalance(sendingAccounts: {
+        pubkey: string;
         address: string;
         addressType: CoinselectAddressTypes;
     }[], psbt?: Transaction, feeRate?: number, outputAddressType?: CoinselectAddressTypes, utxoPool?: BitcoinWalletUtxoBase[]): Promise<{
@@ -96,6 +98,12 @@ export declare abstract class BitcoinWallet implements IBitcoinWallet {
     abstract getTransactionFee(address: string, amount: bigint, feeRate?: number): Promise<number>;
     abstract getFundedPsbtFee(psbt: Transaction, feeRate?: number): Promise<number>;
     abstract getReceiveAddress(): string;
+    getChangeAddress(): string;
+    abstract getAddressInfo(change: boolean): {
+        address: string;
+        publicKey: string;
+    };
+    abstract getUtxoPool(): Promise<BitcoinWalletUtxo[]>;
     abstract getBalance(): Promise<{
         confirmedBalance: bigint;
         unconfirmedBalance: bigint;
@@ -106,7 +114,8 @@ export declare abstract class BitcoinWallet implements IBitcoinWallet {
         totalFee: number;
     }>;
     static bitcoinNetworkToObject(network: BitcoinNetwork): BTC_NETWORK;
-    static getSpendableBalance(utxoPool: BitcoinWalletUtxoBase[], feeRate: number, psbt?: Transaction, outputAddressType?: CoinselectAddressTypes): {
+    static getSpendableBalance(utxoPool: BitcoinWalletUtxoBase[], feeRate: number, psbt?: Transaction, outputAddressType?: CoinselectAddressTypes, skipDetrimental?: boolean): {
+        selectedUtxos: BitcoinWalletUtxoBase[];
         balance: bigint;
         totalFee: number;
     };

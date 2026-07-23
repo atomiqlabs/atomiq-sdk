@@ -14,7 +14,8 @@ export declare function maxSendable(utxos: Omit<CoinselectTxInput, "txId" | "add
 }, feeRate: number, requiredInputs?: Omit<CoinselectTxInput, "txId" | "address" | "vout" | "outputScript">[], additionalOutputs?: {
     script: Buffer;
     value: number;
-}[]): {
+}[], skipDetrimental?: boolean): {
+    selectedUtxos: Omit<CoinselectTxInput, "txId" | "address" | "vout" | "outputScript">[];
     value: number;
     fee: number;
 };

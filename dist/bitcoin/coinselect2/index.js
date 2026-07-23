@@ -27,7 +27,8 @@ function coinSelect(utxos, outputs, feeRate, type, requiredInputs) {
     return (0, accumulative_js_1.accumulative)(utxos, outputs, feeRate, type, requiredInputs);
 }
 exports.coinSelect = coinSelect;
-function maxSendable(utxos, output, feeRate, requiredInputs, additionalOutputs) {
+function maxSendable(utxos, output, feeRate, requiredInputs, additionalOutputs, skipDetrimental) {
+    skipDetrimental ??= true;
     if (!isFinite(utils_js_1.utils.numberOrNaN(feeRate)))
         throw new Error("Invalid feeRate passed!");
     const outputs = additionalOutputs ?? [];
@@ -45,7 +46,7 @@ function maxSendable(utxos, output, feeRate, requiredInputs, additionalOutputs) 
             cpfpFee = Math.ceil(utxo.cpfp.txVsize * (feeRate - utxo.cpfp.txEffectiveFeeRate));
         const utxoValue = utils_js_1.utils.uintOrNaN(utxo.value);
         // skip detrimental input
-        if (utxoFee + cpfpFee > utxo.value) {
+        if (skipDetrimental && utxoFee + cpfpFee > utxo.value) {
             continue;
         }
         bytesAccum += utxoBytes;
@@ -53,15 +54,17 @@ function maxSendable(utxos, output, feeRate, requiredInputs, additionalOutputs) 
         cpfpAddFee += cpfpFee;
         inputs.push(utxo);
     }
-    const fee = (feeRate * bytesAccum) + cpfpAddFee;
+    const fee = utils_js_1.utils.calculateFee(bytesAccum, feeRate, cpfpAddFee);
     const outputValue = inAccum - fee - outAccum;
     const dustThreshold = utils_js_1.DUST_THRESHOLDS[output.type];
     if (outputValue < dustThreshold)
         return {
+            selectedUtxos: inputs,
             fee,
             value: 0
         };
     return {
+        selectedUtxos: inputs,
         fee,
         value: outputValue
     };

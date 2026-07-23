@@ -8,6 +8,7 @@ import {TransactionInputUpdate} from "@scure/btc-signer/psbt";
 import {getLogger} from "../../utils/Logger.js";
 import {BitcoinNetwork, BitcoinRpcWithAddressIndex} from "@atomiqlabs/base";
 import {utils} from "../coinselect2/utils.js";
+import { addPsbtInputs } from "../../utils/BitcoinWalletUtils.js";
 
 /**
  * Identifies the address type of a Bitcoin address

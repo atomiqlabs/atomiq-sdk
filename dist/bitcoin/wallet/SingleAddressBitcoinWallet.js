@@ -29,7 +29,7 @@ class SingleAddressBitcoinWallet extends BitcoinWallet_js_1.BitcoinWallet {
             catch (e) {
                 this.privKey = (0, btc_signer_1.WIF)().decode(addressDataOrWIF);
             }
-            this.pubkey = (0, utils_1.pubECDSA)(this.privKey);
+            this.pubkey = buffer_1.Buffer.from((0, utils_1.pubECDSA)(this.privKey));
             const address = (0, btc_signer_1.getAddress)("wpkh", this.privKey, network);
             if (address == null)
                 throw new Error("Failed to generate p2wpkh address from the provided private key!");
@@ -60,7 +60,7 @@ class SingleAddressBitcoinWallet extends BitcoinWallet_js_1.BitcoinWallet {
      */
     toBitcoinWalletAccounts() {
         return [{
-                pubkey: buffer_1.Buffer.from(this.pubkey).toString("hex"), address: this.address, addressType: this.addressType
+                pubkey: this.pubkey.toString("hex"), address: this.address, addressType: this.addressType
             }];
     }
     /**
@@ -119,10 +119,19 @@ class SingleAddressBitcoinWallet extends BitcoinWallet_js_1.BitcoinWallet {
         return this.address;
     }
     /**
+     * @inheritDoc
+     */
+    getAddressInfo(change) {
+        return {
+            address: this.address,
+            publicKey: this.getPublicKey()
+        };
+    }
+    /**
      * Returns the public key of the wallet
      */
     getPublicKey() {
-        return buffer_1.Buffer.from(this.pubkey).toString("hex");
+        return this.pubkey.toString("hex");
     }
     /**
      * @inheritDoc
@@ -134,13 +143,13 @@ class SingleAddressBitcoinWallet extends BitcoinWallet_js_1.BitcoinWallet {
      * @inheritDoc
      */
     getSpendableBalance(psbt, feeRate, outputAddressType, utxos) {
-        return this._getSpendableBalance([{ address: this.address, addressType: this.addressType }], psbt, feeRate, outputAddressType, utxos);
+        return this._getSpendableBalance([{ address: this.address, pubkey: this.getPublicKey(), addressType: this.addressType }], psbt, feeRate, outputAddressType, utxos);
     }
     /**
      * @inheritDoc
      */
     async getUtxoPool() {
-        return this._getUtxoPool(this.address, this.addressType);
+        return this._getUtxoPool(this.address, this.getPublicKey(), this.addressType);
     }
     /**
      * Generates a new random private key WIF that can be used to instantiate the bitcoin wallet instance
@@ -182,7 +191,7 @@ class SingleAddressBitcoinWallet extends BitcoinWallet_js_1.BitcoinWallet {
         const networkObject = network == null || typeof (network) === "object"
             ? network
             : BitcoinWallet_js_1.BitcoinWallet.bitcoinNetworkToObject(network);
-        derivationPath = networkObject == null || networkObject.bech32 === utils_1.NETWORK.bech32
+        derivationPath ??= networkObject == null || networkObject.bech32 === utils_1.NETWORK.bech32
             ? "m/84'/0'/0'/0/0" //Mainnet
             : "m/84'/1'/0'/0/0"; //Testnet
         const seed = await (0, bip39_1.mnemonicToSeed)(mnemonic);
@@ -191,6 +200,22 @@ class SingleAddressBitcoinWallet extends BitcoinWallet_js_1.BitcoinWallet {
         if (privateKey == null)
             throw new Error("Cannot derive private key from the mnemonic!");
         return (0, btc_signer_1.WIF)(networkObject).encode(privateKey);
+    }
+    /**
+     * Creates a single-address wallet from a mnemonic using the same async derivation as
+     * {@link SingleAddressBitcoinWallet.mnemonicToPrivateKey}.
+     *
+     * @param mempoolApi Bitcoin RPC/address-index backend used for wallet balance, UTXO and broadcast operations
+     * @param network Bitcoin network used for derivation defaults and address encoding
+     * @param mnemonic Mnemonic phrase to derive the wallet private key from
+     * @param derivationPath Optional BIP32 derivation path; defaults to native segwit account 0 for the network
+     * @param feeMultiplier Optional multiplier applied to backend fee estimates
+     * @param feeOverride Optional fixed fee rate in sats/vB returned by this wallet
+     * @returns Wallet derived from the mnemonic at `derivationPath`
+     * @throws {Error} if the mnemonic cannot derive a private key for the selected path
+     */
+    static async fromMnemonic(mempoolApi, network, mnemonic, derivationPath, feeMultiplier, feeOverride) {
+        return new SingleAddressBitcoinWallet(mempoolApi, network, await SingleAddressBitcoinWallet.mnemonicToPrivateKey(mnemonic, network, derivationPath), feeMultiplier, feeOverride);
     }
 }
 exports.SingleAddressBitcoinWallet = SingleAddressBitcoinWallet;

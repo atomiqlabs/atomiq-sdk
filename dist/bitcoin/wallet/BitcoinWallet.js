@@ -201,11 +201,11 @@ class BitcoinWallet {
             inputAddressIndexes
         };
     }
-    async _getSpendableBalance(sendingAccounts, psbt, feeRate, outputAddressType, utxoPool) {
+    async _getSpendableBalance(sendingAccounts, psbt, feeRate, outputAddressTypeOrAddress, utxoPool) {
         feeRate ??= await this.getFeeRate();
         utxoPool ??= (await Promise.all(sendingAccounts.map(acc => this._getUtxoPool(acc.address, acc.pubkey, acc.addressType)))).flat();
         return {
-            ...BitcoinWallet.getSpendableBalance(utxoPool ?? (await Promise.all(sendingAccounts.map(acc => this._getUtxoPool(acc.address, acc.pubkey, acc.addressType)))).flat(), feeRate ?? await this.getFeeRate(), psbt, outputAddressType),
+            ...BitcoinWallet.getSpendableBalance(utxoPool ?? (await Promise.all(sendingAccounts.map(acc => this._getUtxoPool(acc.address, acc.pubkey, acc.addressType)))).flat(), feeRate ?? await this.getFeeRate(), psbt, outputAddressTypeOrAddress != null ? this._toCoinselectAddressType(outputAddressTypeOrAddress) : undefined),
             feeRate
         };
     }

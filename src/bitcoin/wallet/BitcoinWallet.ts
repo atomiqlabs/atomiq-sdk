@@ -272,7 +272,7 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
         }[],
         psbt?: Transaction,
         feeRate?: number,
-        outputAddressType?: CoinselectAddressTypes,
+        outputAddressTypeOrAddress?: CoinselectAddressTypes | string,
         utxoPool?: BitcoinWalletUtxoBase[]
     ): Promise<{
         balance: bigint,
@@ -287,7 +287,7 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
                 utxoPool ?? (await Promise.all(sendingAccounts.map(acc => this._getUtxoPool(acc.address, acc.pubkey, acc.addressType)))).flat(),
                 feeRate ?? await this.getFeeRate(),
                 psbt,
-                outputAddressType
+                outputAddressTypeOrAddress!=null ? this._toCoinselectAddressType(outputAddressTypeOrAddress) : undefined
             ),
             feeRate
         };

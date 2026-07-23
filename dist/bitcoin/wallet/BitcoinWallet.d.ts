@@ -87,7 +87,7 @@ export declare abstract class BitcoinWallet implements IBitcoinWallet {
         pubkey: string;
         address: string;
         addressType: CoinselectAddressTypes;
-    }[], psbt?: Transaction, feeRate?: number, outputAddressType?: CoinselectAddressTypes, utxoPool?: BitcoinWalletUtxoBase[]): Promise<{
+    }[], psbt?: Transaction, feeRate?: number, outputAddressTypeOrAddress?: CoinselectAddressTypes | string, utxoPool?: BitcoinWalletUtxoBase[]): Promise<{
         balance: bigint;
         feeRate: number;
         totalFee: number;

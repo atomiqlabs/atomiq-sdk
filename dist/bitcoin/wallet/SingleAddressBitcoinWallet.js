@@ -143,7 +143,7 @@ class SingleAddressBitcoinWallet extends BitcoinWallet_js_1.BitcoinWallet {
      * @inheritDoc
      */
     getSpendableBalance(psbt, feeRate, outputAddressTypeOrAddress, utxos) {
-        return this._getSpendableBalance([{ address: this.address, pubkey: this.getPublicKey(), addressType: this.addressType }], psbt, feeRate, outputAddressTypeOrAddress != null ? this._toCoinselectAddressType(outputAddressTypeOrAddress) : undefined, utxos);
+        return this._getSpendableBalance([{ address: this.address, pubkey: this.getPublicKey(), addressType: this.addressType }], psbt, feeRate, outputAddressTypeOrAddress, utxos);
     }
     /**
      * @inheritDoc

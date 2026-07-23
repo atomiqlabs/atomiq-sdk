@@ -169,7 +169,7 @@ export class SingleAddressBitcoinWallet extends BitcoinWallet {
         return this._getSpendableBalance(
             [{address: this.address, pubkey: this.getPublicKey(), addressType: this.addressType}],
             psbt, feeRate,
-            outputAddressTypeOrAddress!=null ? this._toCoinselectAddressType(outputAddressTypeOrAddress) : undefined,
+            outputAddressTypeOrAddress,
             utxos
         );
     }

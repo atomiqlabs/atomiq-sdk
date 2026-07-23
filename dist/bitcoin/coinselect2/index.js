@@ -33,7 +33,6 @@ function maxSendable(utxos, output, feeRate, requiredInputs, additionalOutputs, 
         throw new Error("Invalid feeRate passed!");
     const outputs = additionalOutputs ?? [];
     const inputs = requiredInputs ?? [];
-    let bytesAccum = utils_js_1.utils.transactionBytes(inputs, outputs.concat([output]));
     let cpfpAddFee = 0;
     let inAccum = utils_js_1.utils.sumOrNaN(inputs);
     let outAccum = utils_js_1.utils.sumOrNaN(outputs);
@@ -49,12 +48,14 @@ function maxSendable(utxos, output, feeRate, requiredInputs, additionalOutputs, 
         if (skipDetrimental && utxoFee + cpfpFee > utxo.value) {
             continue;
         }
-        bytesAccum += utxoBytes;
         inAccum += utxoValue;
         cpfpAddFee += cpfpFee;
         inputs.push(utxo);
     }
-    const fee = utils_js_1.utils.calculateFee(bytesAccum, feeRate, cpfpAddFee);
+    // Calculate the complete transaction size after selecting the inputs so transactionBytes()
+    // can include the SegWit marker and flag when the first selected input is a SegWit input.
+    const transactionSize = utils_js_1.utils.transactionBytes(inputs, [...outputs, output]);
+    const fee = utils_js_1.utils.calculateFee(transactionSize, feeRate, cpfpAddFee);
     const outputValue = inAccum - fee - outAccum;
     const dustThreshold = utils_js_1.DUST_THRESHOLDS[output.type];
     if (outputValue < dustThreshold)

@@ -55,7 +55,6 @@ export function maxSendable (
 
     const outputs = additionalOutputs ?? [];
     const inputs = requiredInputs ?? [];
-    let bytesAccum = utils.transactionBytes(inputs, (outputs as {script: Buffer}[]).concat([output]));
     let cpfpAddFee = 0;
     let inAccum = utils.sumOrNaN(inputs);
     let outAccum = utils.sumOrNaN(outputs);
@@ -73,13 +72,15 @@ export function maxSendable (
             continue;
         }
 
-        bytesAccum += utxoBytes;
         inAccum += utxoValue;
         cpfpAddFee += cpfpFee;
         inputs.push(utxo);
     }
 
-    const fee = utils.calculateFee(bytesAccum, feeRate, cpfpAddFee);
+    // Calculate the complete transaction size after selecting the inputs so transactionBytes()
+    // can include the SegWit marker and flag when the first selected input is a SegWit input.
+    const transactionSize = utils.transactionBytes(inputs, [...outputs, output]);
+    const fee = utils.calculateFee(transactionSize, feeRate, cpfpAddFee);
     const outputValue = inAccum - fee - outAccum;
 
     const dustThreshold = DUST_THRESHOLDS[output.type];

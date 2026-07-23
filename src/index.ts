@@ -48,7 +48,8 @@ export * from "./enums/SwapDirection.js";
 export * from "./enums/SwapSide.js";
 export * from "./enums/SwapType.js";
 
-export * from "./errors/IntermediaryError.js";
+export * from "./errors/IntermediaryError.js"
+export * from "./errors/InvalidBitcoinDepositError";
 export * from "./errors/RequestError.js";
 export * from "./errors/UserError.js";
 

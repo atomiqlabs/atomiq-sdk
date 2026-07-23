@@ -47,6 +47,7 @@ import {
 import {Fee} from "../../types/fees/Fee";
 import {addPsbtInputs, toBitcoinWallet} from "../../utils/BitcoinWalletUtils";
 import {identifyAddressType} from "../../bitcoin/wallet/BitcoinWallet";
+import {InvalidBitcoinDepositError} from "../../errors/InvalidBitcoinDepositError";
 
 /**
  * An external intermediate-wallet deposit that cannot fund the quoted SPV swap.
@@ -851,6 +852,12 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
         };
     }
 
+    /**
+     * @throws {InvalidBitcoinDepositError} If an invalid deposit was mode and was not consumed by the `onInvalidDeposit`
+     *  callback
+     *
+     * @private
+     */
     private async _waitForExternalDeposit(
         _intermediateWallet?: IBitcoinWallet | MinimalBitcoinWalletInterface,
         maxWaitTimeSeconds?: number,
@@ -889,7 +896,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
                 }
                 if(matchResult.invalidUtxos.length > 0) {
                     if(onInvalidDeposit == null || !await onInvalidDeposit(matchResult.invalidUtxos))
-                        throw new Error("Invalid Bitcoin amount deposited, please re-quote!");
+                        throw new InvalidBitcoinDepositError(matchResult.invalidUtxos);
                     matchResult.invalidUtxos.forEach(invalidUtxo => {
                         if(invalidUtxo.reason!=="deposit_fee_too_low") ignoredUtxoKeys.add(invalidUtxo.key);
                     });
@@ -918,6 +925,8 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
      * @param abortSignal Optional external abort signal
      * @returns The newly deposited UTXO matching the quote
      * @throws {Error} if the swap is not in external mode or no additional deposit is required
+     * @throws {InvalidBitcoinDepositError} If an invalid deposit was mode and was not consumed by the `onInvalidDeposit`
+     *  callback
      */
     async waitForExternalDeposit(
         _intermediateWallet?: IBitcoinWallet | MinimalBitcoinWalletInterface,
@@ -954,6 +963,8 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
      * @param callbacks Callbacks used to track the external deposit and normal SPV execution lifecycle
      * @param options Execution polling, timeout, and cancellation options
      * @returns Whether the swap settled automatically
+     * @throws {InvalidBitcoinDepositError} If an invalid deposit was mode and was not consumed by the `onInvalidDeposit`
+     *  callback
      */
     async execute(
         wallet: IBitcoinWallet | MinimalBitcoinWalletInterfaceWithSigner,

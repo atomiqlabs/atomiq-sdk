@@ -199,28 +199,23 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
         super(wrapper, initOrObject);
 
         if(!isSpvFromBTCSwapInit(initOrObject)) {
+            this.swapMode = initOrObject.swapMode ?? "psbt";
+            this.externalDepositTxId = initOrObject.externalDepositTxId;
+
             const info = initOrObject.externalSwapModeInfo;
-            if(initOrObject.swapMode === "intermediate_wallet" && info != null) {
-                this.swapMode = "intermediate_wallet";
-                this.externalSwapModeInfo = {
-                    ...info,
-                    selectedExistingUtxos: info.selectedExistingUtxos.map((utxo: any) => ({
-                        ...utxo,
-                        outputScript: Buffer.from(utxo.outputScript, "hex"),
-                    })),
-                    requiredDeposit: info.requiredDeposit==null ? undefined : {
-                        ...info.requiredDeposit,
-                        amount: BigInt(info.requiredDeposit.amount)
-                    },
-                    changeAmount: info.changeAmount==null ? undefined : BigInt(info.changeAmount),
-                    totalNetworkFee: BigInt(info.totalNetworkFee)
-                };
-                this.externalDepositTxId = initOrObject.externalDepositTxId;
-            } else {
-                this.swapMode = "psbt";
-                this.externalSwapModeInfo = null;
-                this.externalDepositTxId = undefined;
-            }
+            if(info!=null) this.externalSwapModeInfo = {
+                ...info,
+                selectedExistingUtxos: info.selectedExistingUtxos.map((utxo: any) => ({
+                    ...utxo,
+                    outputScript: Buffer.from(utxo.outputScript, "hex"),
+                })),
+                requiredDeposit: info.requiredDeposit==null ? undefined : {
+                    ...info.requiredDeposit,
+                    amount: BigInt(info.requiredDeposit.amount)
+                },
+                changeAmount: info.changeAmount==null ? undefined : BigInt(info.changeAmount),
+                totalNetworkFee: BigInt(info.totalNetworkFee)
+            };
         }
     }
 
@@ -324,13 +319,12 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
      *
      * @remarks
      * In-memory `selectedExistingUtxos` may be full {@link BitcoinWalletUtxo} objects, but persistence narrows each
-     * UTXO to JSON-safe primitive fields and quote-time CPFP metadata. PSBT mode serializes `externalSwapModeInfo`
-     * as `null`.
+     * UTXO to JSON-safe primitive fields and quote-time CPFP metadata.
      *
      * @returns JSON stringifiable swap data suitable for SDK storage
      */
     serialize(): any {
-        const externalSwapModeInfo = this.swapMode === "intermediate_wallet" && this.externalSwapModeInfo != null
+        const externalSwapModeInfo = this.externalSwapModeInfo != null
             ? {
                 ...this.externalSwapModeInfo,
                 selectedExistingUtxos: this.externalSwapModeInfo.selectedExistingUtxos.map(utxo => ({
@@ -358,7 +352,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
             ...super.serialize(),
             swapMode: this.swapMode,
             externalSwapModeInfo,
-            externalDepositTxId: this.swapMode === "intermediate_wallet" ? this.externalDepositTxId : undefined
+            externalDepositTxId: this.externalDepositTxId
         };
     }
 
@@ -372,13 +366,32 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
     }
 
     /**
-     * Switches this swap back to normal PSBT mode and clears cached external deposit metadata.
+     * Switches this swap back to normal PSBT mode and optionally clears cached external deposit metadata.
+     *
+     * @param clearMetadata Whether to also clean the internal saved metadata for the "intermedate_wallet" swap mode
+     *  (if it was used before this function got called), if `false` is passed you can get back to "intermediate_wallet"
+     *  swap mode by calling {@link returnToIntermediateWalletSwapMode}
      */
-    async setSwapModePsbt(): Promise<void> {
+    async setSwapModePsbt(clearMetadata: boolean = true): Promise<void> {
         if(this._state !== SpvFromBTCSwapState.CREATED) throw new Error("Cannot change swap mode outside of CREATED state!");
         this.swapMode = "psbt";
-        this.externalSwapModeInfo = null;
-        this.externalDepositTxId = undefined;
+        if(clearMetadata) {
+            this.externalSwapModeInfo = null;
+            this.externalDepositTxId = undefined;
+        }
+        if(this._persisted) await this._save();
+    }
+
+    /**
+     * Returns back to the "intermediate_wallet" swap mode with the already saved and persisted mode metadata (selected
+     *  utxos, fee rate, required deposit, etc.), this is possible if the swap was previously switched from
+     *  "intermediate_wallet" swap mode to "psbt" swap mode by calling the {@link setSwapModePsbt} and passing the
+     *  `clearMetadata=false`, which retains the swap mode metadata.
+     */
+    async returnToIntermediateWalletSwapMode(): Promise<void> {
+        if(this._state !== SpvFromBTCSwapState.CREATED) throw new Error("Cannot change swap mode outside of CREATED state!");
+        if(this.externalSwapModeInfo==null) throw new Error("No 'intermediate_wallet' swap mode metadata found!");
+        this.swapMode = "intermediate_wallet";
         if(this._persisted) await this._save();
     }
 

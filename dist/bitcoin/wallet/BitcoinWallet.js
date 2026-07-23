@@ -213,6 +213,14 @@ class BitcoinWallet {
     getChangeAddress() {
         return this.getReceiveAddress();
     }
+    _toCoinselectAddressType(outputAddressTypeOrAddress) {
+        if ((0, utils_js_1.isCoinselectAddressType)(outputAddressTypeOrAddress)) {
+            return outputAddressTypeOrAddress;
+        }
+        else {
+            return identifyAddressType(outputAddressTypeOrAddress, this.network);
+        }
+    }
     static bitcoinNetworkToObject(network) {
         return btcNetworkMapping[network];
     }

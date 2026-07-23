@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.utils = exports.DUST_THRESHOLDS = void 0;
+exports.utils = exports.DUST_THRESHOLDS = exports.isCoinselectAddressType = void 0;
 const Logger_js_1 = require("../../utils/Logger.js");
 const logger = (0, Logger_js_1.getLogger)("CoinSelect: ");
 // baseline estimates, used to improve performance
@@ -20,6 +20,10 @@ const TX_OUTPUT_P2SH_P2WPKH = 23;
 const TX_OUTPUT_P2WPKH = 22;
 const TX_OUTPUT_P2WSH = 34;
 const TX_OUTPUT_P2TR = 34;
+function isCoinselectAddressType(val) {
+    return val === "p2sh-p2wpkh" || val === "p2wpkh" || val === "p2wsh" || val === "p2tr" || val === "p2pkh";
+}
+exports.isCoinselectAddressType = isCoinselectAddressType;
 const INPUT_BYTES = {
     "p2sh-p2wpkh": TX_INPUT_P2SH_P2WPKH,
     "p2wpkh": TX_INPUT_P2WPKH,

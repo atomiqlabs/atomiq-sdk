@@ -33,6 +33,10 @@ const TX_OUTPUT_P2TR = 34;
  */
 export type CoinselectAddressTypes = "p2sh-p2wpkh" | "p2wpkh" | "p2wsh" | "p2tr" | "p2pkh";
 
+export function isCoinselectAddressType(val: any): val is CoinselectAddressTypes {
+    return val==="p2sh-p2wpkh" || val==="p2wpkh" || val==="p2wsh" || val==="p2tr" || val==="p2pkh";
+}
+
 export type CoinselectTxInput = {
     script?: Buffer,
     txId: string,

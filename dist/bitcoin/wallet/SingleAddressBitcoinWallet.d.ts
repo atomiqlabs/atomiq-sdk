@@ -76,7 +76,7 @@ export declare class SingleAddressBitcoinWallet extends BitcoinWallet {
     /**
      * @inheritDoc
      */
-    getSpendableBalance(psbt?: Transaction, feeRate?: number, outputAddressType?: CoinselectAddressTypes, utxos?: BitcoinWalletUtxoBase[]): Promise<{
+    getSpendableBalance(psbt?: Transaction, feeRate?: number, outputAddressTypeOrAddress?: CoinselectAddressTypes | string, utxos?: BitcoinWalletUtxoBase[]): Promise<{
         balance: bigint;
         feeRate: number;
         totalFee: number;

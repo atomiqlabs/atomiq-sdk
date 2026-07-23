@@ -161,12 +161,17 @@ export class SingleAddressBitcoinWallet extends BitcoinWallet {
     /**
      * @inheritDoc
      */
-    getSpendableBalance(psbt?: Transaction, feeRate?: number, outputAddressType?: CoinselectAddressTypes, utxos?: BitcoinWalletUtxoBase[]): Promise<{
+    getSpendableBalance(psbt?: Transaction, feeRate?: number, outputAddressTypeOrAddress?: CoinselectAddressTypes | string, utxos?: BitcoinWalletUtxoBase[]): Promise<{
         balance: bigint,
         feeRate: number,
         totalFee: number
     }> {
-        return this._getSpendableBalance([{address: this.address, pubkey: this.getPublicKey(), addressType: this.addressType}], psbt, feeRate, outputAddressType, utxos);
+        return this._getSpendableBalance(
+            [{address: this.address, pubkey: this.getPublicKey(), addressType: this.addressType}],
+            psbt, feeRate,
+            outputAddressTypeOrAddress!=null ? this._toCoinselectAddressType(outputAddressTypeOrAddress) : undefined,
+            utxos
+        );
     }
 
     /**

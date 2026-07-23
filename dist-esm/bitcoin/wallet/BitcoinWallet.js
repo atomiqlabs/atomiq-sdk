@@ -5,7 +5,7 @@ import { Buffer } from "buffer";
 import { getDummyOutputScript, getWalletAddressUtxos, toCoinselectAddressType, toOutputScript } from "../../utils/BitcoinUtils.js";
 import { getLogger } from "../../utils/Logger.js";
 import { BitcoinNetwork } from "@atomiqlabs/base";
-import { utils } from "../coinselect2/utils.js";
+import { isCoinselectAddressType, utils } from "../coinselect2/utils.js";
 import { addPsbtInputs } from "../../utils/BitcoinWalletUtils.js";
 /**
  * Identifies the address type of a Bitcoin address
@@ -208,6 +208,14 @@ export class BitcoinWallet {
     }
     getChangeAddress() {
         return this.getReceiveAddress();
+    }
+    _toCoinselectAddressType(outputAddressTypeOrAddress) {
+        if (isCoinselectAddressType(outputAddressTypeOrAddress)) {
+            return outputAddressTypeOrAddress;
+        }
+        else {
+            return identifyAddressType(outputAddressTypeOrAddress, this.network);
+        }
     }
     static bitcoinNetworkToObject(network) {
         return btcNetworkMapping[network];

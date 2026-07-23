@@ -7,6 +7,7 @@
  * @category Bitcoin
  */
 export type CoinselectAddressTypes = "p2sh-p2wpkh" | "p2wpkh" | "p2wsh" | "p2tr" | "p2pkh";
+export declare function isCoinselectAddressType(val: any): val is CoinselectAddressTypes;
 export type CoinselectTxInput = {
     script?: Buffer;
     txId: string;

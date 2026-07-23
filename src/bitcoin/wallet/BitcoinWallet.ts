@@ -7,7 +7,7 @@ import {getDummyOutputScript, getWalletAddressUtxos, toCoinselectAddressType, to
 import {TransactionInputUpdate} from "@scure/btc-signer/psbt";
 import {getLogger} from "../../utils/Logger.js";
 import {BitcoinNetwork, BitcoinRpcWithAddressIndex} from "@atomiqlabs/base";
-import {utils} from "../coinselect2/utils.js";
+import {isCoinselectAddressType, utils} from "../coinselect2/utils.js";
 import { addPsbtInputs } from "../../utils/BitcoinWalletUtils.js";
 
 /**
@@ -308,11 +308,19 @@ export abstract class BitcoinWallet implements IBitcoinWallet {
         confirmedBalance: bigint,
         unconfirmedBalance: bigint
     }>;
-    abstract getSpendableBalance(psbt?: Transaction, feeRate?: number): Promise<{
+    abstract getSpendableBalance(psbt?: Transaction, feeRate?: number, outputAddressTypeOrAddress?: CoinselectAddressTypes | string, utxos?: BitcoinWalletUtxoBase[]): Promise<{
         balance: bigint,
         feeRate: number,
         totalFee: number
     }>;
+
+    protected _toCoinselectAddressType(outputAddressTypeOrAddress: CoinselectAddressTypes | string): CoinselectAddressTypes {
+        if(isCoinselectAddressType(outputAddressTypeOrAddress)) {
+            return outputAddressTypeOrAddress;
+        } else {
+            return identifyAddressType(outputAddressTypeOrAddress, this.network);
+        }
+    }
 
     static bitcoinNetworkToObject(network: BitcoinNetwork): BTC_NETWORK {
         return btcNetworkMapping[network];

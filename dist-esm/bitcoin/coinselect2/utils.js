@@ -17,6 +17,9 @@ const TX_OUTPUT_P2SH_P2WPKH = 23;
 const TX_OUTPUT_P2WPKH = 22;
 const TX_OUTPUT_P2WSH = 34;
 const TX_OUTPUT_P2TR = 34;
+export function isCoinselectAddressType(val) {
+    return val === "p2sh-p2wpkh" || val === "p2wpkh" || val === "p2wsh" || val === "p2tr" || val === "p2pkh";
+}
 const INPUT_BYTES = {
     "p2sh-p2wpkh": TX_INPUT_P2SH_P2WPKH,
     "p2wpkh": TX_INPUT_P2WPKH,

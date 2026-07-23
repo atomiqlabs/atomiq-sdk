@@ -136,10 +136,10 @@ export interface IBitcoinWallet {
      *
      * @param psbt A PSBT to which additional inputs from wallet's UTXO set will be added and fee estimated
      * @param feeRate Optional fee rate in sats/vB to use for the transaction
-     * @param outputAddressType Expected output address type, if known
+     * @param outputAddressTypeOrAddress Expected output address type, or the exact output address, if known
      * @param utxos Optional pre-fetched UTXOs
      */
-    getSpendableBalance(psbt?: Transaction, feeRate?: number, outputAddressType?: CoinselectAddressTypes, utxos?: BitcoinWalletUtxoBase[]): Promise<{
+    getSpendableBalance(psbt?: Transaction, feeRate?: number, outputAddressTypeOrAddress?: CoinselectAddressTypes | string, utxos?: BitcoinWalletUtxoBase[]): Promise<{
         balance: bigint,
         feeRate: number,
         totalFee: number

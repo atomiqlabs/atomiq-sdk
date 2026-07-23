@@ -108,11 +108,12 @@ export declare abstract class BitcoinWallet implements IBitcoinWallet {
         confirmedBalance: bigint;
         unconfirmedBalance: bigint;
     }>;
-    abstract getSpendableBalance(psbt?: Transaction, feeRate?: number): Promise<{
+    abstract getSpendableBalance(psbt?: Transaction, feeRate?: number, outputAddressTypeOrAddress?: CoinselectAddressTypes | string, utxos?: BitcoinWalletUtxoBase[]): Promise<{
         balance: bigint;
         feeRate: number;
         totalFee: number;
     }>;
+    protected _toCoinselectAddressType(outputAddressTypeOrAddress: CoinselectAddressTypes | string): CoinselectAddressTypes;
     static bitcoinNetworkToObject(network: BitcoinNetwork): BTC_NETWORK;
     static getSpendableBalance(utxoPool: BitcoinWalletUtxoBase[], feeRate: number, psbt?: Transaction, outputAddressType?: CoinselectAddressTypes, skipDetrimental?: boolean): {
         selectedUtxos: BitcoinWalletUtxoBase[];

@@ -498,6 +498,8 @@ if(!automaticSettlementSuccess) {
 
 NOTE: Starknet & EVM uses a new swap protocol for Bitcoin on-chain -> Smart chain swaps, the flow here is different from the one for Solana!
 
+> This flow requires signing of PSBT on the Bitcoin side, hence the need for the user to connect a Bitcoin wallet to your dApp, if you want to allow external deposit see [BTC L1 -> Starknet/EVM with external deposit](#swap-bitcoin-on-chain---starknetevm-with-external-deposit)
+
 Getting swap quote
 
 ```typescript
@@ -662,7 +664,7 @@ if(!automaticSettlementSuccess) {
 
 #### Swap Bitcoin on-chain -> Starknet/EVM with external deposit
 
-An external deposit allows a Bitcoin payment coming from another wallet, exchange, or service to fund an SPV swap. The SDK uses a temporary, user-controlled intermediate Bitcoin wallet: the external payer sends one UTXO with the quoted amount to this wallet, the SDK automatically detects it, and the intermediate wallet then signs the final SPV transaction.
+An external deposit allows a Bitcoin payment coming from another wallet, exchange, or service to fund a Bitcoin on-chain swap. The SDK uses a temporary, user-controlled intermediate Bitcoin wallet: the external payer sends one UTXO with the quoted amount to this wallet, the SDK automatically detects it, and the intermediate wallet then signs the final Bitcoin swap transaction.
 
 The external deposit and the final SPV transaction are two separate Bitcoin transactions. Keep access to the intermediate wallet until all funds have been swapped or refunded. The same flow applies to supported EVM chains.
 
@@ -855,7 +857,7 @@ await intermediateWallet.sendTransaction(refundAddress, balance, feeRate);
   }
   ```
 
-- __2.__ Sign and submit the final swap Bitcoin transaction
+- __2.__ Sign and submit the final Bitcoin swap transaction
 
   ```typescript
   const bitcoinTxId = await swap.sendBitcoinTransaction(intermediateWallet);
@@ -904,30 +906,30 @@ await intermediateWallet.sendTransaction(refundAddress, balance, feeRate);
 <details>
 <summary>Swap states</summary>
 
-The swap remains in `SpvFromBTCSwapState.CREATED` while waiting for a required external deposit. Receiving an external deposit by itself does not advance the swap state; the state changes once the final swap Bitcoin transaction is signed and submitted.
+The swap remains in `SpvFromBTCSwapState.CREATED` while waiting for a required external deposit. Receiving an external deposit by itself does not advance the swap state; the state changes once the final Bitcoin swap transaction is signed and submitted.
 
 - SpvFromBTCSwapState.CLOSED = -5
   - Catastrophic failure during destination-chain settlement; this should never happen
 - SpvFromBTCSwapState.FAILED = -4
-  - Inputs of the final swap Bitcoin transaction were double-spent and the swap failed
+  - Inputs of the final Bitcoin swap transaction were double-spent and the swap failed
 - SpvFromBTCSwapState.DECLINED = -3
-  - The LP declined to co-sign the final swap Bitcoin transaction; funds remaining in the intermediate wallet can be re-quoted or refunded
+  - The LP declined to co-sign the final Bitcoin swap transaction; funds remaining in the intermediate wallet can be re-quoted or refunded
 - SpvFromBTCSwapState.QUOTE_EXPIRED = -2
-  - The quote expired before the final swap Bitcoin transaction was submitted; deposited funds remain in the intermediate wallet for recovery
+  - The quote expired before the final Bitcoin swap transaction was submitted; deposited funds remain in the intermediate wallet for recovery
 - SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED = -1
-  - The quote probably expired, but may still succeed if final swap Bitcoin transaction submission already started
+  - The quote probably expired, but may still succeed if final Bitcoin swap transaction submission already started
 - SpvFromBTCSwapState.CREATED = 0
   - The quote is waiting for the required external deposit, or is ready to sign immediately when the wallet already has enough balance
 - SpvFromBTCSwapState.SIGNED = 1
-  - The final swap Bitcoin transaction was signed and submitted by the client
+  - The final Bitcoin swap transaction was signed and submitted by the client
 - SpvFromBTCSwapState.POSTED = 2
-  - The final swap Bitcoin transaction was sent to the LP for co-signing
+  - The final Bitcoin swap transaction was sent to the LP for co-signing
 - SpvFromBTCSwapState.BROADCASTED = 3
-  - The LP co-signed and broadcasted the final swap Bitcoin transaction
+  - The LP co-signed and broadcasted the final Bitcoin swap transaction
 - SpvFromBTCSwapState.FRONTED = 4
   - Swap funds were fronted to the destination wallet before final settlement
 - SpvFromBTCSwapState.BTC_TX_CONFIRMED = 5
-  - The final swap Bitcoin transaction reached the required confirmations
+  - The final Bitcoin swap transaction reached the required confirmations
 - SpvFromBTCSwapState.CLAIMED = 6
   - The swap settled and the destination funds were received
 

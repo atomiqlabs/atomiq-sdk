@@ -1,6 +1,6 @@
 import { assertSupportedSpvFundingType, DEFAULT_CPFP_ASSUMPTION, REQUIRED_SPV_SWAP_VAULT_ADDRESS_TYPE } from "./SpvFromBTCWrapper.js";
 import { extendAbortController } from "../../utils/Utils.js";
-import { fromOutputScript, getUtxoKey, getWalletAddressUtxos, toCoinselectAddressType, toOutputScript, toUtxoMap, toUtxoSet } from "../../utils/BitcoinUtils.js";
+import { addPsbtInputs, fromOutputScript, getUtxoKey, getWalletAddressUtxos, toCoinselectAddressType, toOutputScript, toUtxoMap, toUtxoSet } from "../../utils/BitcoinUtils.js";
 import { Buffer } from "buffer";
 import { FeeType } from "../../enums/FeeType.js";
 import { toTokenAmount } from "../../types/TokenAmount.js";
@@ -8,7 +8,7 @@ import { BitcoinTokens } from "../../types/Token.js";
 import { timeoutPromise } from "../../utils/TimeoutUtils.js";
 import { utils } from "../../bitcoin/coinselect2/utils";
 import { isSpvFromBTCSwapInit, SpvFromBTCSwapBase, SpvFromBTCSwapState } from "./SpvFromBTCSwapBase";
-import { addPsbtInputs, toBitcoinWallet } from "../../utils/BitcoinWalletUtils";
+import { toBitcoinWallet } from "../../utils/BitcoinWalletUtils";
 import { identifyAddressType } from "../../bitcoin/wallet/BitcoinWallet";
 import { InvalidBitcoinDepositError } from "../../errors/InvalidBitcoinDepositError";
 /**

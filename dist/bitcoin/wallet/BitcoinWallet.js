@@ -9,7 +9,6 @@ const BitcoinUtils_js_1 = require("../../utils/BitcoinUtils.js");
 const Logger_js_1 = require("../../utils/Logger.js");
 const base_1 = require("@atomiqlabs/base");
 const utils_js_1 = require("../coinselect2/utils.js");
-const BitcoinWalletUtils_js_1 = require("../../utils/BitcoinWalletUtils.js");
 /**
  * Identifies the address type of a Bitcoin address
  *
@@ -180,7 +179,7 @@ class BitcoinWallet {
             inputAddressIndexes[input.address] ??= [];
             inputAddressIndexes[input.address].push(index);
         });
-        await (0, BitcoinWalletUtils_js_1.addPsbtInputs)(psbt, coinselectResult.inputs.map(input => ({ ...input, type: input.type, outputScript: input.outputScript, publicKey: input.publicKey })), this.rpc, this.network);
+        await (0, BitcoinUtils_js_1.addPsbtInputs)(psbt, coinselectResult.inputs.map(input => ({ ...input, type: input.type, outputScript: input.outputScript, publicKey: input.publicKey })), this.rpc, this.network);
         coinselectResult.outputs.forEach(output => {
             if (output.script == null && output.address == null) {
                 //Change output

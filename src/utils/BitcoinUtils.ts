@@ -1,10 +1,11 @@
 import {BTC_NETWORK, isBytes, PubT, validatePubkey} from "@scure/btc-signer/utils";
 import {Buffer} from "buffer";
-import {Address, OutScript, Transaction} from "@scure/btc-signer";
+import {Address, OutScript, p2tr, p2wpkh, Transaction} from "@scure/btc-signer";
 import {CoinselectAddressTypes} from "../bitcoin/coinselect2/index.js";
-import { randomBytes } from "./Utils.js";
-import type {BitcoinRpcWithAddressIndex} from "@atomiqlabs/base";
+import {randomBytes} from "./Utils.js";
+import {BitcoinRpc, BitcoinRpcWithAddressIndex} from "@atomiqlabs/base";
 import type {BitcoinWalletUtxo} from "../bitcoin/wallet/IBitcoinWallet.js";
+import {TransactionInputUpdate} from "@scure/btc-signer/psbt";
 
 
 export function fromOutputScript(network: BTC_NETWORK, outputScriptHex: string): string {
@@ -224,6 +225,72 @@ export function getSenderAddress(psbt: Transaction, network: BTC_NETWORK, inputI
     } catch (e) {
         return Buffer.from(script).toString("hex");
     }
+}
+
+export async function addPsbtInputs(
+    psbt: Transaction,
+    inputs: {
+        txId: string,
+        vout: number,
+        type: CoinselectAddressTypes,
+        outputScript: Uint8Array,
+        publicKey: string,
+        value: number
+    }[],
+    rpc: BitcoinRpc<any>,
+    network: BTC_NETWORK
+): Promise<void> {
+    const formattedInputs: TransactionInputUpdate[] = await Promise.all<TransactionInputUpdate>(inputs.map(async (input) => {
+        switch (input.type) {
+            case "p2tr":
+                const parsed = p2tr(Buffer.from(input.publicKey!, "hex"));
+                return {
+                    txid: input.txId,
+                    index: input.vout,
+                    witnessUtxo: {
+                        script: input.outputScript!,
+                        amount: BigInt(input.value)
+                    },
+                    tapInternalKey: parsed.tapInternalKey,
+                    tapMerkleRoot: parsed.tapMerkleRoot,
+                    tapLeafScript: parsed.tapLeafScript
+                };
+            case "p2wpkh":
+                return {
+                    txid: input.txId,
+                    index: input.vout,
+                    witnessUtxo: {
+                        script: input.outputScript!,
+                        amount: BigInt(input.value)
+                    },
+                    sighashType: 0x01
+                };
+            case "p2sh-p2wpkh":
+                return {
+                    txid: input.txId,
+                    index: input.vout,
+                    witnessUtxo: {
+                        script: input.outputScript!,
+                        amount: BigInt(input.value)
+                    },
+                    redeemScript: p2wpkh(Buffer.from(input.publicKey!, "hex"), network).script,
+                    sighashType: 0x01
+                };
+            case "p2pkh":
+                const tx = await rpc.getTransaction(input.txId);
+                if (tx == null) throw new Error("Cannot fetch existing tx " + input.txId);
+                return {
+                    txid: input.txId,
+                    index: input.vout,
+                    nonWitnessUtxo: tx.raw,
+                    sighashType: 0x01
+                };
+            default:
+                throw new Error("Invalid input type: " + input.type);
+        }
+    }));
+
+    formattedInputs.forEach(input => psbt.addInput(input));
 }
 
 export function getUtxoKey(utxo: {txId: string, vout: number}): string {

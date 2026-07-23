@@ -3,12 +3,16 @@ import {BTC_NETWORK, NETWORK, TEST_NETWORK} from "@scure/btc-signer/utils"
 import {p2wpkh, Transaction, p2tr, Address} from "@scure/btc-signer";
 import {BitcoinWalletUtxo, BitcoinWalletUtxoBase, IBitcoinWallet} from "./IBitcoinWallet.js";
 import {Buffer} from "buffer";
-import {getDummyOutputScript, getWalletAddressUtxos, toCoinselectAddressType, toOutputScript} from "../../utils/BitcoinUtils.js";
-import {TransactionInputUpdate} from "@scure/btc-signer/psbt";
+import {
+    addPsbtInputs,
+    getDummyOutputScript,
+    getWalletAddressUtxos,
+    toCoinselectAddressType,
+    toOutputScript
+} from "../../utils/BitcoinUtils.js";
 import {getLogger} from "../../utils/Logger.js";
 import {BitcoinNetwork, BitcoinRpcWithAddressIndex} from "@atomiqlabs/base";
 import {isCoinselectAddressType, utils} from "../coinselect2/utils.js";
-import { addPsbtInputs } from "../../utils/BitcoinWalletUtils.js";
 
 /**
  * Identifies the address type of a Bitcoin address

@@ -4,7 +4,7 @@ import { BTC_NETWORK } from "@scure/btc-signer/utils";
 import { Buffer } from "buffer";
 import { Transaction } from "@scure/btc-signer";
 import { CoinselectAddressTypes } from "../bitcoin/coinselect2/index.js";
-import type { BitcoinRpcWithAddressIndex } from "@atomiqlabs/base";
+import { BitcoinRpc, BitcoinRpcWithAddressIndex } from "@atomiqlabs/base";
 import type { BitcoinWalletUtxo } from "../bitcoin/wallet/IBitcoinWallet.js";
 export declare function fromOutputScript(network: BTC_NETWORK, outputScriptHex: string): string;
 export declare function toOutputScript(network: BTC_NETWORK, address: string): Buffer;
@@ -43,6 +43,14 @@ export declare function getDummyAddress(network: BTC_NETWORK, type: CoinselectAd
 export declare function parsePsbtTransaction(_psbt: Transaction | string): Transaction;
 export declare function getVoutIndex(psbt: Transaction, network: BTC_NETWORK, address: string, amount: bigint): number | undefined;
 export declare function getSenderAddress(psbt: Transaction, network: BTC_NETWORK, inputIndex?: number): string | undefined;
+export declare function addPsbtInputs(psbt: Transaction, inputs: {
+    txId: string;
+    vout: number;
+    type: CoinselectAddressTypes;
+    outputScript: Uint8Array;
+    publicKey: string;
+    value: number;
+}[], rpc: BitcoinRpc<any>, network: BTC_NETWORK): Promise<void>;
 export declare function getUtxoKey(utxo: {
     txId: string;
     vout: number;

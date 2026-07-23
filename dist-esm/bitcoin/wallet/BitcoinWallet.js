@@ -2,11 +2,10 @@ import { coinSelect, maxSendable } from "../coinselect2/index.js";
 import { NETWORK, TEST_NETWORK } from "@scure/btc-signer/utils";
 import { Transaction, Address } from "@scure/btc-signer";
 import { Buffer } from "buffer";
-import { getDummyOutputScript, getWalletAddressUtxos, toCoinselectAddressType, toOutputScript } from "../../utils/BitcoinUtils.js";
+import { addPsbtInputs, getDummyOutputScript, getWalletAddressUtxos, toCoinselectAddressType, toOutputScript } from "../../utils/BitcoinUtils.js";
 import { getLogger } from "../../utils/Logger.js";
 import { BitcoinNetwork } from "@atomiqlabs/base";
 import { isCoinselectAddressType, utils } from "../coinselect2/utils.js";
-import { addPsbtInputs } from "../../utils/BitcoinWalletUtils.js";
 /**
  * Identifies the address type of a Bitcoin address
  *

@@ -533,7 +533,7 @@ class SpvFromBTCSwap extends SpvFromBTCSwapBase_1.SpvFromBTCSwapBase {
             selectedRehydratedUtxos.push(result.matchedUtxo);
         }
         const { psbt, in1sequence } = this.getPsbt();
-        await (0, BitcoinWalletUtils_1.addPsbtInputs)(psbt, selectedRehydratedUtxos, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
+        await (0, BitcoinUtils_js_1.addPsbtInputs)(psbt, selectedRehydratedUtxos, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
         psbt.updateInput(1, { sequence: in1sequence });
         //Add change output if required
         if (this.externalSwapModeInfo?.changeAmount != null) {

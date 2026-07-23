@@ -7,6 +7,7 @@ import {
 } from "./SpvFromBTCWrapper.js";
 import {extendAbortController} from "../../utils/Utils.js";
 import {
+    addPsbtInputs,
     fromOutputScript,
     getUtxoKey,
     getWalletAddressUtxos,
@@ -45,7 +46,7 @@ import {
     SpvFromBTCSwapState
 } from "./SpvFromBTCSwapBase";
 import {Fee} from "../../types/fees/Fee";
-import {addPsbtInputs, toBitcoinWallet} from "../../utils/BitcoinWalletUtils";
+import {toBitcoinWallet} from "../../utils/BitcoinWalletUtils";
 import {identifyAddressType} from "../../bitcoin/wallet/BitcoinWallet";
 import {InvalidBitcoinDepositError} from "../../errors/InvalidBitcoinDepositError";
 

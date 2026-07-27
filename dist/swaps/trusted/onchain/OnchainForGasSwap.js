@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OnchainForGasSwap = exports.isOnchainForGasSwapInit = exports.OnchainForGasSwapState = void 0;
+const OnchainForGasSwapState_js_1 = require("./OnchainForGasSwapState.js");
+Object.defineProperty(exports, "OnchainForGasSwapState", { enumerable: true, get: function () { return OnchainForGasSwapState_js_1.OnchainForGasSwapState; } });
 const SwapType_js_1 = require("../../../enums/SwapType.js");
 const Utils_js_1 = require("../../../utils/Utils.js");
 const BitcoinUtils_js_1 = require("../../../utils/BitcoinUtils.js");
@@ -17,45 +19,13 @@ const Token_js_1 = require("../../../types/Token.js");
 const Logger_js_1 = require("../../../utils/Logger.js");
 const TimeoutUtils_js_1 = require("../../../utils/TimeoutUtils.js");
 const BitcoinWalletUtils_js_1 = require("../../../utils/BitcoinWalletUtils.js");
-/**
- * State enum for trusted on-chain gas swaps
- *
- * @category Swaps/Trusted Gas Swaps
- */
-var OnchainForGasSwapState;
-(function (OnchainForGasSwapState) {
-    /**
-     * The swap quote expired without user sending in the BTC
-     */
-    OnchainForGasSwapState[OnchainForGasSwapState["EXPIRED"] = -3] = "EXPIRED";
-    /**
-     * The swap has failed after the intermediary already received the BTC on the source chain
-     */
-    OnchainForGasSwapState[OnchainForGasSwapState["FAILED"] = -2] = "FAILED";
-    /**
-     * Swap was refunded and BTC returned to the user's refund address
-     */
-    OnchainForGasSwapState[OnchainForGasSwapState["REFUNDED"] = -1] = "REFUNDED";
-    /**
-     * Swap was created, send the BTC to the swap address
-     */
-    OnchainForGasSwapState[OnchainForGasSwapState["PR_CREATED"] = 0] = "PR_CREATED";
-    /**
-     * The swap is finished after the intermediary sent funds on the destination chain
-     */
-    OnchainForGasSwapState[OnchainForGasSwapState["FINISHED"] = 1] = "FINISHED";
-    /**
-     * Swap is refundable because the intermediary cannot honor the swap request on the destination chain
-     */
-    OnchainForGasSwapState[OnchainForGasSwapState["REFUNDABLE"] = 2] = "REFUNDABLE";
-})(OnchainForGasSwapState = exports.OnchainForGasSwapState || (exports.OnchainForGasSwapState = {}));
 const OnchainForGasSwapStateDescription = {
-    [OnchainForGasSwapState.EXPIRED]: "The swap quote expired without user sending in the BTC",
-    [OnchainForGasSwapState.FAILED]: "The swap has failed after the intermediary already received the BTC on the source chain",
-    [OnchainForGasSwapState.REFUNDED]: "Swap was refunded and BTC returned to the user's refund address",
-    [OnchainForGasSwapState.PR_CREATED]: "Swap was created, send the BTC to the swap address",
-    [OnchainForGasSwapState.FINISHED]: "The swap is finished after the intermediary sent funds on the destination chain",
-    [OnchainForGasSwapState.REFUNDABLE]: "Swap is refundable because the intermediary cannot honor the swap request on the destination chain",
+    [OnchainForGasSwapState_js_1.OnchainForGasSwapState.EXPIRED]: "The swap quote expired without user sending in the BTC",
+    [OnchainForGasSwapState_js_1.OnchainForGasSwapState.FAILED]: "The swap has failed after the intermediary already received the BTC on the source chain",
+    [OnchainForGasSwapState_js_1.OnchainForGasSwapState.REFUNDED]: "Swap was refunded and BTC returned to the user's refund address",
+    [OnchainForGasSwapState_js_1.OnchainForGasSwapState.PR_CREATED]: "Swap was created, send the BTC to the swap address",
+    [OnchainForGasSwapState_js_1.OnchainForGasSwapState.FINISHED]: "The swap is finished after the intermediary sent funds on the destination chain",
+    [OnchainForGasSwapState_js_1.OnchainForGasSwapState.REFUNDABLE]: "Swap is refundable because the intermediary cannot honor the swap request on the destination chain",
 };
 function isOnchainForGasSwapInit(obj) {
     return typeof (obj.paymentHash) === "string" &&
@@ -88,7 +58,7 @@ class OnchainForGasSwap extends ISwap_js_1.ISwap {
         /**
          * @internal
          */
-        this.swapStateName = (state) => OnchainForGasSwapState[state];
+        this.swapStateName = (state) => OnchainForGasSwapState_js_1.OnchainForGasSwapState[state];
         this.wrapper = wrapper;
         if (isOnchainForGasSwapInit(initOrObj)) {
             this.paymentHash = initOrObj.paymentHash;
@@ -99,7 +69,7 @@ class OnchainForGasSwap extends ISwap_js_1.ISwap {
             this.recipient = initOrObj.recipient;
             this.token = initOrObj.token;
             this.refundAddress = initOrObj.refundAddress;
-            this._state = OnchainForGasSwapState.PR_CREATED;
+            this._state = OnchainForGasSwapState_js_1.OnchainForGasSwapState.PR_CREATED;
         }
         else {
             this.paymentHash = initOrObj.paymentHash;
@@ -193,19 +163,19 @@ class OnchainForGasSwap extends ISwap_js_1.ISwap {
      * @inheritDoc
      */
     requiresAction() {
-        return this._state === OnchainForGasSwapState.REFUNDABLE;
+        return this._state === OnchainForGasSwapState_js_1.OnchainForGasSwapState.REFUNDABLE;
     }
     /**
      * @inheritDoc
      */
     isFinished() {
-        return this._state === OnchainForGasSwapState.FINISHED || this._state === OnchainForGasSwapState.FAILED || this._state === OnchainForGasSwapState.EXPIRED || this._state === OnchainForGasSwapState.REFUNDED;
+        return this._state === OnchainForGasSwapState_js_1.OnchainForGasSwapState.FINISHED || this._state === OnchainForGasSwapState_js_1.OnchainForGasSwapState.FAILED || this._state === OnchainForGasSwapState_js_1.OnchainForGasSwapState.EXPIRED || this._state === OnchainForGasSwapState_js_1.OnchainForGasSwapState.REFUNDED;
     }
     /**
      * @inheritDoc
      */
     isQuoteExpired() {
-        return this._state === OnchainForGasSwapState.EXPIRED;
+        return this._state === OnchainForGasSwapState_js_1.OnchainForGasSwapState.EXPIRED;
     }
     /**
      * @inheritDoc
@@ -217,20 +187,20 @@ class OnchainForGasSwap extends ISwap_js_1.ISwap {
      * @inheritDoc
      */
     isFailed() {
-        return this._state === OnchainForGasSwapState.FAILED;
+        return this._state === OnchainForGasSwapState_js_1.OnchainForGasSwapState.FAILED;
     }
     /**
      * @inheritDoc
      */
     isSuccessful() {
-        return this._state === OnchainForGasSwapState.FINISHED;
+        return this._state === OnchainForGasSwapState_js_1.OnchainForGasSwapState.FINISHED;
     }
     /**
      * @inheritDoc
      */
     isInProgress() {
-        return (this._state === OnchainForGasSwapState.PR_CREATED && this.txId != null) ||
-            (this._state === OnchainForGasSwapState.REFUNDABLE && this.refundAddress != null);
+        return (this._state === OnchainForGasSwapState_js_1.OnchainForGasSwapState.PR_CREATED && this.txId != null) ||
+            (this._state === OnchainForGasSwapState_js_1.OnchainForGasSwapState.REFUNDABLE && this.refundAddress != null);
     }
     /**
      * @inheritDoc
@@ -335,7 +305,7 @@ class OnchainForGasSwap extends ISwap_js_1.ISwap {
      * @inheritDoc
      */
     async getFundedPsbt(_bitcoinWallet, feeRate, additionalOutputs) {
-        if (this._state !== OnchainForGasSwapState.PR_CREATED)
+        if (this._state !== OnchainForGasSwapState_js_1.OnchainForGasSwapState.PR_CREATED)
             throw new Error("Swap already paid for!");
         let bitcoinWallet;
         if ((0, IBitcoinWallet_js_1.isIBitcoinWallet)(_bitcoinWallet)) {
@@ -382,7 +352,7 @@ class OnchainForGasSwap extends ISwap_js_1.ISwap {
      */
     async submitPsbt(_psbt) {
         const psbt = (0, BitcoinUtils_js_1.parsePsbtTransaction)(_psbt);
-        if (this._state !== OnchainForGasSwapState.PR_CREATED)
+        if (this._state !== OnchainForGasSwapState_js_1.OnchainForGasSwapState.PR_CREATED)
             throw new Error("Swap already paid for!");
         //Ensure not expired
         if (this.expiry < Date.now()) {
@@ -412,7 +382,7 @@ class OnchainForGasSwap extends ISwap_js_1.ISwap {
      * @inheritDoc
      */
     async sendBitcoinTransaction(wallet, feeRate) {
-        if (this._state !== OnchainForGasSwapState.PR_CREATED)
+        if (this._state !== OnchainForGasSwapState_js_1.OnchainForGasSwapState.PR_CREATED)
             throw new Error("Swap already paid for!");
         //Ensure not expired
         if (this.expiry < Date.now()) {
@@ -474,11 +444,11 @@ class OnchainForGasSwap extends ISwap_js_1.ISwap {
      * @internal
      */
     async checkAddress(save = true) {
-        if (this._state === OnchainForGasSwapState.FAILED ||
-            this._state === OnchainForGasSwapState.EXPIRED ||
-            this._state === OnchainForGasSwapState.REFUNDED)
+        if (this._state === OnchainForGasSwapState_js_1.OnchainForGasSwapState.FAILED ||
+            this._state === OnchainForGasSwapState_js_1.OnchainForGasSwapState.EXPIRED ||
+            this._state === OnchainForGasSwapState_js_1.OnchainForGasSwapState.REFUNDED)
             return false;
-        if (this._state === OnchainForGasSwapState.FINISHED)
+        if (this._state === OnchainForGasSwapState_js_1.OnchainForGasSwapState.FINISHED)
             return false;
         if (this.url == null)
             return false;
@@ -518,7 +488,7 @@ class OnchainForGasSwap extends ISwap_js_1.ISwap {
             case IntermediaryAPI_js_1.TrustedAddressStatusResponseCodes.PAID:
                 const txStatus = await this.wrapper._chain.getTxIdStatus(response.data.txId);
                 if (txStatus === "success") {
-                    this._state = OnchainForGasSwapState.FINISHED;
+                    this._state = OnchainForGasSwapState_js_1.OnchainForGasSwapState.FINISHED;
                     this.scTxId = response.data.txId;
                     if (save)
                         await this._saveAndEmit();
@@ -526,25 +496,25 @@ class OnchainForGasSwap extends ISwap_js_1.ISwap {
                 }
                 return false;
             case IntermediaryAPI_js_1.TrustedAddressStatusResponseCodes.EXPIRED:
-                this._state = OnchainForGasSwapState.EXPIRED;
+                this._state = OnchainForGasSwapState_js_1.OnchainForGasSwapState.EXPIRED;
                 if (save)
                     await this._saveAndEmit();
                 return true;
             case IntermediaryAPI_js_1.TrustedAddressStatusResponseCodes.REFUNDABLE:
-                if (this._state === OnchainForGasSwapState.REFUNDABLE)
+                if (this._state === OnchainForGasSwapState_js_1.OnchainForGasSwapState.REFUNDABLE)
                     return null;
-                this._state = OnchainForGasSwapState.REFUNDABLE;
+                this._state = OnchainForGasSwapState_js_1.OnchainForGasSwapState.REFUNDABLE;
                 if (save)
                     await this._saveAndEmit();
                 return true;
             case IntermediaryAPI_js_1.TrustedAddressStatusResponseCodes.REFUNDED:
-                this._state = OnchainForGasSwapState.REFUNDED;
+                this._state = OnchainForGasSwapState_js_1.OnchainForGasSwapState.REFUNDED;
                 this.refundTxId = response.data.txId;
                 if (save)
                     await this._saveAndEmit();
                 return true;
             default:
-                this._state = OnchainForGasSwapState.FAILED;
+                this._state = OnchainForGasSwapState_js_1.OnchainForGasSwapState.FAILED;
                 if (save)
                     await this._saveAndEmit();
                 return true;
@@ -571,14 +541,14 @@ class OnchainForGasSwap extends ISwap_js_1.ISwap {
      * @inheritDoc
      */
     async waitForBitcoinTransaction(updateCallback, checkIntervalSeconds = 5, abortSignal) {
-        if (this._state !== OnchainForGasSwapState.PR_CREATED)
+        if (this._state !== OnchainForGasSwapState_js_1.OnchainForGasSwapState.PR_CREATED)
             throw new Error("Must be in PR_CREATED state!");
         if (!this.initiated) {
             this.initiated = true;
             await this._saveAndEmit();
         }
         while (!abortSignal?.aborted &&
-            this._state === OnchainForGasSwapState.PR_CREATED) {
+            this._state === OnchainForGasSwapState_js_1.OnchainForGasSwapState.PR_CREATED) {
             await this.checkAddress(true);
             if (this.txId != null && updateCallback != null) {
                 const res = await this.wrapper._btcRpc.getTransaction(this.txId);
@@ -593,11 +563,11 @@ class OnchainForGasSwap extends ISwap_js_1.ISwap {
                     updateCallback(res.txid, 0, 1, delay ?? undefined);
                 }
             }
-            if (this._state === OnchainForGasSwapState.PR_CREATED)
+            if (this._state === OnchainForGasSwapState_js_1.OnchainForGasSwapState.PR_CREATED)
                 await (0, TimeoutUtils_js_1.timeoutPromise)(checkIntervalSeconds * 1000, abortSignal);
         }
-        if (this._state === OnchainForGasSwapState.REFUNDABLE ||
-            this._state === OnchainForGasSwapState.REFUNDED)
+        if (this._state === OnchainForGasSwapState_js_1.OnchainForGasSwapState.REFUNDABLE ||
+            this._state === OnchainForGasSwapState_js_1.OnchainForGasSwapState.REFUNDED)
             return this.txId;
         if (this.isQuoteExpired())
             throw new Error("Swap expired");
@@ -614,14 +584,14 @@ class OnchainForGasSwap extends ISwap_js_1.ISwap {
      */
     async waitTillRefunded(checkIntervalSeconds, abortSignal) {
         checkIntervalSeconds ??= 5;
-        if (this._state === OnchainForGasSwapState.REFUNDED)
+        if (this._state === OnchainForGasSwapState_js_1.OnchainForGasSwapState.REFUNDED)
             return;
-        if (this._state !== OnchainForGasSwapState.REFUNDABLE)
+        if (this._state !== OnchainForGasSwapState_js_1.OnchainForGasSwapState.REFUNDABLE)
             throw new Error("Must be in REFUNDABLE state!");
         while (!abortSignal?.aborted &&
-            this._state === OnchainForGasSwapState.REFUNDABLE) {
+            this._state === OnchainForGasSwapState_js_1.OnchainForGasSwapState.REFUNDABLE) {
             await this.checkAddress(true);
-            if (this._state === OnchainForGasSwapState.REFUNDABLE)
+            if (this._state === OnchainForGasSwapState_js_1.OnchainForGasSwapState.REFUNDABLE)
                 await (0, TimeoutUtils_js_1.timeoutPromise)(checkIntervalSeconds * 1000, abortSignal);
         }
         if (this.isQuoteExpired())
@@ -676,7 +646,7 @@ class OnchainForGasSwap extends ISwap_js_1.ISwap {
      * @internal
      */
     async _sync(save) {
-        if (this._state === OnchainForGasSwapState.PR_CREATED) {
+        if (this._state === OnchainForGasSwapState_js_1.OnchainForGasSwapState.PR_CREATED) {
             //Check if it's maybe already paid
             const result = await this.checkAddress(false);
             if (result) {

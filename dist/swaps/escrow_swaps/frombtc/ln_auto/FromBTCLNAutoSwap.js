@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FromBTCLNAutoSwap = exports.isFromBTCLNAutoSwapInit = exports.FromBTCLNAutoSwapState = void 0;
+const FromBTCLNAutoSwapState_js_1 = require("./FromBTCLNAutoSwapState.js");
+Object.defineProperty(exports, "FromBTCLNAutoSwapState", { enumerable: true, get: function () { return FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState; } });
 const bolt11_1 = require("@atomiqlabs/bolt11");
 const SwapType_js_1 = require("../../../../enums/SwapType.js");
 const base_1 = require("@atomiqlabs/base");
@@ -20,63 +22,15 @@ const TimeoutUtils_js_1 = require("../../../../utils/TimeoutUtils.js");
 const LNURLWithdraw_js_1 = require("../../../../types/lnurl/LNURLWithdraw.js");
 const PriceInfoType_js_1 = require("../../../../types/PriceInfoType.js");
 const sha2_1 = require("@noble/hashes/sha2");
-/**
- * State enum for FromBTCLNAuto swaps
- * @category Swaps/Lightning → Smart chain
- */
-var FromBTCLNAutoSwapState;
-(function (FromBTCLNAutoSwapState) {
-    /**
-     * Swap has failed as the user didn't settle the HTLC on the destination before expiration
-     */
-    FromBTCLNAutoSwapState[FromBTCLNAutoSwapState["FAILED"] = -4] = "FAILED";
-    /**
-     * Swap has expired for good and there is no way how it can be executed anymore
-     */
-    FromBTCLNAutoSwapState[FromBTCLNAutoSwapState["QUOTE_EXPIRED"] = -3] = "QUOTE_EXPIRED";
-    /**
-     * A swap is almost expired, and it should be presented to the user as expired, though
-     *  there is still a chance that it will be processed
-     */
-    FromBTCLNAutoSwapState[FromBTCLNAutoSwapState["QUOTE_SOFT_EXPIRED"] = -2] = "QUOTE_SOFT_EXPIRED";
-    /**
-     * Swap HTLC on the destination chain has expired, it is not safe anymore to settle (claim) the
-     *  swap on the destination smart chain.
-     */
-    FromBTCLNAutoSwapState[FromBTCLNAutoSwapState["EXPIRED"] = -1] = "EXPIRED";
-    /**
-     * Swap quote was created, use {@link FromBTCLNAutoSwap.getAddress} or {@link FromBTCLNAutoSwap.getHyperlink}
-     *  to get the bolt11 lightning network invoice to pay to initiate the swap, then use the
-     *  {@link FromBTCLNAutoSwap.waitForPayment} to wait till the lightning network payment is received
-     *  by the intermediary (LP) and the destination HTLC escrow is created
-     */
-    FromBTCLNAutoSwapState[FromBTCLNAutoSwapState["PR_CREATED"] = 0] = "PR_CREATED";
-    /**
-     * Lightning network payment has been received by the intermediary (LP), but the destination chain
-     *  HTLC escrow hasn't been created yet. Use {@link FromBTCLNAutoSwap.waitForPayment} to continue waiting
-     *  till the destination HTLC escrow is created.
-     */
-    FromBTCLNAutoSwapState[FromBTCLNAutoSwapState["PR_PAID"] = 1] = "PR_PAID";
-    /**
-     * Swap escrow HTLC has been created on the destination chain, wait for automatic settlement by the watchtowers
-     *  using the {@link FromBTCLNAutoSwap.waitTillClaimed} function or settle manually using the
-     *  {@link FromBTCLNAutoSwap.claim} or {@link FromBTCLNAutoSwap.txsClaim} function.
-     */
-    FromBTCLNAutoSwapState[FromBTCLNAutoSwapState["CLAIM_COMMITED"] = 2] = "CLAIM_COMMITED";
-    /**
-     * Swap successfully settled and funds received on the destination chain
-     */
-    FromBTCLNAutoSwapState[FromBTCLNAutoSwapState["CLAIM_CLAIMED"] = 3] = "CLAIM_CLAIMED";
-})(FromBTCLNAutoSwapState = exports.FromBTCLNAutoSwapState || (exports.FromBTCLNAutoSwapState = {}));
 const FromBTCLNAutoSwapStateDescription = {
-    [FromBTCLNAutoSwapState.FAILED]: "Swap has failed as the user didn't settle the HTLC on the destination before expiration",
-    [FromBTCLNAutoSwapState.QUOTE_EXPIRED]: "Swap has expired for good and there is no way how it can be executed anymore",
-    [FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED]: "A swap is expired, though there is still a chance that it will be processed",
-    [FromBTCLNAutoSwapState.EXPIRED]: "Swap HTLC on the destination chain has expired, it is not safe anymore to settle (claim) the swap on the destination smart chain.",
-    [FromBTCLNAutoSwapState.PR_CREATED]: "Swap quote was created, pay the bolt11 lightning network invoice to initiate the swap, then wait till the lightning network payment is received by the intermediary (LP) and the destination HTLC escrow is created",
-    [FromBTCLNAutoSwapState.PR_PAID]: "Lightning network payment has been received by the intermediary (LP), but the destination chain HTLC escrow hasn't been created yet. Continue waiting till the destination HTLC escrow is created.",
-    [FromBTCLNAutoSwapState.CLAIM_COMMITED]: "Swap escrow HTLC has been created on the destination chain, wait for automatic settlement by the watchtowers or settle manually.",
-    [FromBTCLNAutoSwapState.CLAIM_CLAIMED]: "Swap successfully settled and funds received on the destination chain"
+    [FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.FAILED]: "Swap has failed as the user didn't settle the HTLC on the destination before expiration",
+    [FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.QUOTE_EXPIRED]: "Swap has expired for good and there is no way how it can be executed anymore",
+    [FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED]: "A swap is expired, though there is still a chance that it will be processed",
+    [FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.EXPIRED]: "Swap HTLC on the destination chain has expired, it is not safe anymore to settle (claim) the swap on the destination smart chain.",
+    [FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_CREATED]: "Swap quote was created, pay the bolt11 lightning network invoice to initiate the swap, then wait till the lightning network payment is received by the intermediary (LP) and the destination HTLC escrow is created",
+    [FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_PAID]: "Lightning network payment has been received by the intermediary (LP), but the destination chain HTLC escrow hasn't been created yet. Continue waiting till the destination HTLC escrow is created.",
+    [FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_COMMITED]: "Swap escrow HTLC has been created on the destination chain, wait for automatic settlement by the watchtowers or settle manually.",
+    [FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_CLAIMED]: "Swap successfully settled and funds received on the destination chain"
 };
 function isFromBTCLNAutoSwapInit(obj) {
     return (obj.pr == null || typeof obj.pr === "string") &&
@@ -119,7 +73,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
         /**
          * @internal
          */
-        this.swapStateName = (state) => FromBTCLNAutoSwapState[state];
+        this.swapStateName = (state) => FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState[state];
         /**
          * @internal
          */
@@ -132,7 +86,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
         this.prPosted = false;
         this.broadcastTickCounter = 0;
         if (isFromBTCLNAutoSwapInit(initOrObject)) {
-            this._state = FromBTCLNAutoSwapState.PR_CREATED;
+            this._state = FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_CREATED;
             this.pr = initOrObject.pr;
             this.secret = initOrObject.secret;
             this.initialSwapData = initOrObject.initialSwapData;
@@ -248,7 +202,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
      * @inheritDoc
      */
     requiresAction() {
-        return this._state === FromBTCLNAutoSwapState.CLAIM_COMMITED;
+        return this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_COMMITED;
     }
     /**
      * @inheritDoc
@@ -332,46 +286,46 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
      * @inheritDoc
      */
     isFinished() {
-        return this._state === FromBTCLNAutoSwapState.CLAIM_CLAIMED || this._state === FromBTCLNAutoSwapState.QUOTE_EXPIRED || this._state === FromBTCLNAutoSwapState.FAILED;
+        return this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_CLAIMED || this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.QUOTE_EXPIRED || this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.FAILED;
     }
     /**
      * @inheritDoc
      */
     isClaimable() {
-        return this._state === FromBTCLNAutoSwapState.CLAIM_COMMITED;
+        return this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_COMMITED;
     }
     /**
      * @inheritDoc
      */
     isSuccessful() {
-        return this._state === FromBTCLNAutoSwapState.CLAIM_CLAIMED;
+        return this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_CLAIMED;
     }
     /**
      * @inheritDoc
      */
     isFailed() {
-        return this._state === FromBTCLNAutoSwapState.FAILED || this._state === FromBTCLNAutoSwapState.EXPIRED;
+        return this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.FAILED || this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.EXPIRED;
     }
     /**
      * @inheritDoc
      */
     isInProgress() {
-        return (this._state === FromBTCLNAutoSwapState.PR_CREATED && this.initiated) ||
-            (this._state === FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED && this.initiated) ||
-            this._state === FromBTCLNAutoSwapState.PR_PAID ||
-            this._state === FromBTCLNAutoSwapState.CLAIM_COMMITED;
+        return (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_CREATED && this.initiated) ||
+            (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED && this.initiated) ||
+            this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_PAID ||
+            this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_COMMITED;
     }
     /**
      * @inheritDoc
      */
     isQuoteExpired() {
-        return this._state === FromBTCLNAutoSwapState.QUOTE_EXPIRED;
+        return this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.QUOTE_EXPIRED;
     }
     /**
      * @inheritDoc
      */
     isQuoteSoftExpired() {
-        return this._state === FromBTCLNAutoSwapState.QUOTE_EXPIRED;
+        return this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.QUOTE_EXPIRED;
     }
     /**
      * @inheritDoc
@@ -614,16 +568,16 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
      *  user, in case `false` is returned the user should call `swap.claim()` to settle the swap on the destination manually
      */
     async execute(walletOrLnurlWithdraw, callbacks, options) {
-        if (this._state === FromBTCLNAutoSwapState.FAILED)
+        if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.FAILED)
             throw new Error("Swap failed!");
-        if (this._state === FromBTCLNAutoSwapState.EXPIRED)
+        if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.EXPIRED)
             throw new Error("Swap HTLC expired!");
-        if (this._state === FromBTCLNAutoSwapState.QUOTE_EXPIRED || this._state === FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED)
+        if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.QUOTE_EXPIRED || this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED)
             throw new Error("Swap quote expired!");
-        if (this._state === FromBTCLNAutoSwapState.CLAIM_CLAIMED)
+        if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_CLAIMED)
             throw new Error("Swap already settled!");
         let abortSignal = options?.abortSignal;
-        if (this._state === FromBTCLNAutoSwapState.PR_CREATED) {
+        if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_CREATED) {
             if (walletOrLnurlWithdraw != null && this.lnurl == null) {
                 if (this.pr == null || !this.pr.toLowerCase().startsWith("ln"))
                     throw new Error("Input lightning network invoice not available, the swap was probably recovered!");
@@ -640,14 +594,14 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
                 }
             }
         }
-        if (this._state === FromBTCLNAutoSwapState.PR_CREATED || this._state === FromBTCLNAutoSwapState.PR_PAID) {
+        if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_CREATED || this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_PAID) {
             const paymentSuccess = await this.waitForPayment(callbacks?.onSourceTransactionReceived, options?.lightningTxCheckIntervalSeconds, abortSignal);
             if (!paymentSuccess)
                 throw new Error("Failed to receive lightning network payment");
         }
-        if (this._state === FromBTCLNAutoSwapState.CLAIM_CLAIMED)
+        if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_CLAIMED)
             return true;
-        if (this._state === FromBTCLNAutoSwapState.CLAIM_COMMITED) {
+        if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_COMMITED) {
             if (this.secret == null && options?.secret == null)
                 throw new Error("Tried to wait till settlement, but no secret pre-image is known, please pass the secret pre-image as an argument!");
             const success = await this.waitTillClaimed(options?.maxWaitTillAutomaticSettlementSeconds ?? 60, options?.abortSignal, options?.secret);
@@ -669,7 +623,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
         let destinationSettlementStatus = "inactive";
         let buildCurrentAction = async () => undefined;
         switch (state) {
-            case FromBTCLNAutoSwapState.PR_CREATED: {
+            case FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_CREATED: {
                 const quoteValid = await this._verifyQuoteValid();
                 lightningPaymentStatus = quoteValid ? "awaiting" : "soft_expired";
                 if (quoteValid && this.pr != null && this.pr.toLowerCase().startsWith("ln")) {
@@ -677,18 +631,18 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
                 }
                 break;
             }
-            case FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED:
+            case FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED:
                 lightningPaymentStatus = "soft_expired";
                 break;
-            case FromBTCLNAutoSwapState.QUOTE_EXPIRED:
+            case FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.QUOTE_EXPIRED:
                 lightningPaymentStatus = "expired";
                 break;
-            case FromBTCLNAutoSwapState.PR_PAID:
+            case FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_PAID:
                 lightningPaymentStatus = "received";
                 destinationSettlementStatus = "waiting_lp";
                 buildCurrentAction = this._buildWaitLpAction.bind(this);
                 break;
-            case FromBTCLNAutoSwapState.CLAIM_COMMITED:
+            case FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_COMMITED:
                 lightningPaymentStatus = "received";
                 if (this._commitedAt == null ||
                     options?.maxWaitTillAutomaticSettlementSeconds === 0 ||
@@ -705,12 +659,12 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
                     buildCurrentAction = this._buildWaitSettlementAction.bind(this, options?.maxWaitTillAutomaticSettlementSeconds);
                 }
                 break;
-            case FromBTCLNAutoSwapState.CLAIM_CLAIMED:
+            case FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_CLAIMED:
                 lightningPaymentStatus = "confirmed";
                 destinationSettlementStatus = "settled";
                 break;
-            case FromBTCLNAutoSwapState.EXPIRED:
-            case FromBTCLNAutoSwapState.FAILED:
+            case FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.EXPIRED:
+            case FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.FAILED:
                 lightningPaymentStatus = "expired";
                 destinationSettlementStatus = "expired";
                 break;
@@ -817,7 +771,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
         }
         if (requiredStates != null && !requiredStates.includes(this._state))
             throw new Error("Swap state has changed before transactions were submitted!");
-        if (this._state === FromBTCLNAutoSwapState.CLAIM_COMMITED) {
+        if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_COMMITED) {
             const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
             await this.waitTillClaimed(undefined, abortSignal);
             return txIds;
@@ -836,7 +790,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
             chain: this.chainIdentifier,
             txs: await this.prepareTransactions(this.txsClaim(actionOptions?.manualSettlementSmartChainSigner, actionOptions?.secret)),
             submitTransactions: async (txs, abortSignal, idempotent) => {
-                return this._submitExecutionTransactions(txs, abortSignal, [FromBTCLNAutoSwapState.CLAIM_COMMITED], idempotent);
+                return this._submitExecutionTransactions(txs, abortSignal, [FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_COMMITED], idempotent);
             },
             requiredSigner: signerAddress ?? this._getInitiator()
         };
@@ -881,13 +835,13 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
      * @internal
      */
     async _checkIntermediaryPaymentReceived(save = true) {
-        if (this._state === FromBTCLNAutoSwapState.PR_PAID ||
-            this._state === FromBTCLNAutoSwapState.CLAIM_COMMITED ||
-            this._state === FromBTCLNAutoSwapState.CLAIM_CLAIMED ||
-            this._state === FromBTCLNAutoSwapState.FAILED ||
-            this._state === FromBTCLNAutoSwapState.EXPIRED)
+        if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_PAID ||
+            this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_COMMITED ||
+            this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_CLAIMED ||
+            this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.FAILED ||
+            this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.EXPIRED)
             return true;
-        if (this._state === FromBTCLNAutoSwapState.QUOTE_EXPIRED)
+        if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.QUOTE_EXPIRED)
             return false;
         if (this.url == null)
             return false;
@@ -898,7 +852,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
         switch (resp.code) {
             case IntermediaryAPI_js_1.InvoiceStatusResponseCodes.PAID:
                 const data = new (this.wrapper._swapDataDeserializer(this._contractVersion))(resp.data.data);
-                if (this._state === FromBTCLNAutoSwapState.PR_CREATED || this._state === FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED)
+                if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_CREATED || this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED)
                     try {
                         await this._saveRealSwapData(data, save);
                         return true;
@@ -906,7 +860,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
                     catch (e) { }
                 return null;
             case IntermediaryAPI_js_1.InvoiceStatusResponseCodes.EXPIRED:
-                this._state = FromBTCLNAutoSwapState.QUOTE_EXPIRED;
+                this._state = FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.QUOTE_EXPIRED;
                 this.initiated = true;
                 if (save)
                     await this._saveAndEmit();
@@ -926,8 +880,8 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
      */
     async _saveRealSwapData(data, save) {
         await this.checkIntermediaryReturnedData(data);
-        if (this._state === FromBTCLNAutoSwapState.PR_CREATED || this._state === FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED) {
-            this._state = FromBTCLNAutoSwapState.PR_PAID;
+        if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_CREATED || this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED) {
+            this._state = FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_PAID;
             this._data = data;
             this.initiated = true;
             if (save)
@@ -955,9 +909,9 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
      */
     async _waitForLpPaymentReceived(checkIntervalSeconds, abortSignal) {
         checkIntervalSeconds ??= 5;
-        if (this._state >= FromBTCLNAutoSwapState.PR_PAID)
+        if (this._state >= FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_PAID)
             return true;
-        if (this._state !== FromBTCLNAutoSwapState.PR_CREATED)
+        if (this._state !== FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_CREATED)
             throw new Error("Must be in PR_CREATED state!");
         const abortController = new AbortController();
         if (abortSignal != null)
@@ -988,9 +942,9 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
             await this.wrapper._messenger.warmup().catch(e => {
                 this.logger.warn("waitForPayment(): Failed to warmup messenger: ", e);
             });
-        if (this._state === FromBTCLNAutoSwapState.PR_CREATED) {
+        if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_CREATED) {
             const promises = [
-                this.waitTillState(FromBTCLNAutoSwapState.PR_PAID, "gte", abortController.signal).then(() => true)
+                this.waitTillState(FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_PAID, "gte", abortController.signal).then(() => true)
             ];
             if (this.url != null)
                 promises.push((async () => {
@@ -1006,9 +960,9 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
                         const swapData = new (this.wrapper._swapDataDeserializer(this._contractVersion))(resp.data.data);
                         return await this._saveRealSwapData(swapData, true);
                     }
-                    if (this._state === FromBTCLNAutoSwapState.PR_CREATED || this._state === FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED) {
+                    if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_CREATED || this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED) {
                         if (resp.code === IntermediaryAPI_js_1.InvoiceStatusResponseCodes.EXPIRED) {
-                            await this._saveAndEmit(FromBTCLNAutoSwapState.QUOTE_EXPIRED);
+                            await this._saveAndEmit(FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.QUOTE_EXPIRED);
                         }
                         return false;
                     }
@@ -1018,7 +972,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
             if (!paymentResult)
                 return false;
         }
-        return this._state >= FromBTCLNAutoSwapState.PR_PAID;
+        return this._state >= FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_PAID;
     }
     /**
      * Checks the data returned by the intermediary in the payment auth request
@@ -1073,20 +1027,20 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
      */
     async waitForPayment(onPaymentReceived, checkIntervalSeconds, abortSignal) {
         checkIntervalSeconds ??= 5;
-        if (this._state === FromBTCLNAutoSwapState.PR_PAID) {
+        if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_PAID) {
             await this.waitTillCommited(checkIntervalSeconds, abortSignal);
         }
-        if (this._state >= FromBTCLNAutoSwapState.CLAIM_COMMITED)
+        if (this._state >= FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_COMMITED)
             return true;
         const success = await this._waitForLpPaymentReceived(checkIntervalSeconds, abortSignal);
         if (!success)
             return false;
         if (onPaymentReceived != null)
             onPaymentReceived(this.getInputTxId());
-        if (this._state === FromBTCLNAutoSwapState.PR_PAID) {
+        if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_PAID) {
             await this.waitTillCommited(checkIntervalSeconds, abortSignal);
         }
-        return this._state >= FromBTCLNAutoSwapState.CLAIM_COMMITED;
+        return this._state >= FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_COMMITED;
     }
     //////////////////////////////
     //// Commit
@@ -1099,16 +1053,16 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
      * @internal
      */
     async waitTillCommited(checkIntervalSeconds, abortSignal) {
-        if (this._state === FromBTCLNAutoSwapState.CLAIM_COMMITED || this._state === FromBTCLNAutoSwapState.CLAIM_CLAIMED)
+        if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_COMMITED || this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_CLAIMED)
             return Promise.resolve();
-        if (this._state !== FromBTCLNAutoSwapState.PR_PAID)
+        if (this._state !== FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_PAID)
             throw new Error("Invalid state");
         const abortController = (0, Utils_js_1.extendAbortController)(abortSignal);
         let result;
         try {
             result = await Promise.race([
                 this.watchdogWaitTillCommited(checkIntervalSeconds, abortController.signal),
-                this.waitTillState(FromBTCLNAutoSwapState.CLAIM_COMMITED, "gte", abortController.signal).then(() => 0)
+                this.waitTillState(FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_COMMITED, "gte", abortController.signal).then(() => 0)
             ]);
             abortController.abort();
         }
@@ -1118,16 +1072,16 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
         }
         if (result === null) {
             this.logger.debug("waitTillCommited(): Resolved from watchdog - HTLC expired");
-            if (this._state === FromBTCLNAutoSwapState.PR_PAID) {
-                await this._saveAndEmit(FromBTCLNAutoSwapState.EXPIRED);
+            if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_PAID) {
+                await this._saveAndEmit(FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.EXPIRED);
             }
             return;
         }
-        if (this._state === FromBTCLNAutoSwapState.PR_PAID) {
+        if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_PAID) {
             if (typeof (result) === "object" && result.getInitTxId != null && this._commitTxId == null)
                 this._commitTxId = await result.getInitTxId();
             this._commitedAt ??= Date.now();
-            await this._saveAndEmit(FromBTCLNAutoSwapState.CLAIM_COMMITED);
+            await this._saveAndEmit(FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_COMMITED);
         }
         if (result === 0) {
             this.logger.debug("waitTillCommited(): Resolved from state changed");
@@ -1164,7 +1118,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
                 address = (await this.wrapper._chain.wrapSigner(_signer)).getAddress();
             }
         }
-        if (this._state !== FromBTCLNAutoSwapState.CLAIM_COMMITED)
+        if (this._state !== FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_COMMITED)
             throw new Error("Must be in CLAIM_COMMITED state!");
         if (this._data == null)
             throw new Error("Unknown data, wrong state?");
@@ -1195,8 +1149,8 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
             return Promise.resolve();
         });
         this._claimTxId = result[0];
-        if (this._state === FromBTCLNAutoSwapState.CLAIM_COMMITED || this._state === FromBTCLNAutoSwapState.EXPIRED || this._state === FromBTCLNAutoSwapState.FAILED) {
-            await this._saveAndEmit(FromBTCLNAutoSwapState.CLAIM_CLAIMED);
+        if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_COMMITED || this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.EXPIRED || this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.FAILED) {
+            await this._saveAndEmit(FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_CLAIMED);
         }
         return result[0];
     }
@@ -1215,9 +1169,9 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
      * @returns {boolean} whether the swap was claimed in time or not
      */
     async waitTillClaimed(maxWaitTimeSeconds, abortSignal, secret, pollIntervalSeconds) {
-        if (this._state === FromBTCLNAutoSwapState.CLAIM_CLAIMED)
+        if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_CLAIMED)
             return Promise.resolve(true);
-        if (this._state !== FromBTCLNAutoSwapState.CLAIM_COMMITED)
+        if (this._state !== FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_COMMITED)
             throw new Error("Invalid state (not CLAIM_COMMITED)");
         if (secret != null) {
             if (!this.isValidSecretPreimage(secret))
@@ -1239,8 +1193,8 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
         try {
             res = await Promise.race([
                 this.watchdogWaitTillResult(pollIntervalSeconds, abortController.signal),
-                this.waitTillState(FromBTCLNAutoSwapState.CLAIM_CLAIMED, "eq", abortController.signal).then(() => 0),
-                this.waitTillState(FromBTCLNAutoSwapState.EXPIRED, "eq", abortController.signal).then(() => 1),
+                this.waitTillState(FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_CLAIMED, "eq", abortController.signal).then(() => 0),
+                this.waitTillState(FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.EXPIRED, "eq", abortController.signal).then(() => 1),
             ]);
             abortController.abort();
         }
@@ -1260,15 +1214,15 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
         }
         this.logger.debug("waitTillClaimed(): Resolved from watchdog");
         if (res?.type === base_1.SwapCommitStateType.PAID) {
-            if (this._state !== FromBTCLNAutoSwapState.CLAIM_CLAIMED) {
+            if (this._state !== FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_CLAIMED) {
                 this._claimTxId = await res.getClaimTxId();
-                await this._saveAndEmit(FromBTCLNAutoSwapState.CLAIM_CLAIMED);
+                await this._saveAndEmit(FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_CLAIMED);
             }
         }
         if (res?.type === base_1.SwapCommitStateType.NOT_COMMITED || res?.type === base_1.SwapCommitStateType.EXPIRED) {
-            if (this._state !== FromBTCLNAutoSwapState.CLAIM_CLAIMED &&
-                this._state !== FromBTCLNAutoSwapState.FAILED) {
-                await this._saveAndEmit(FromBTCLNAutoSwapState.FAILED);
+            if (this._state !== FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_CLAIMED &&
+                this._state !== FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.FAILED) {
+                await this._saveAndEmit(FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.FAILED);
             }
             throw new Error("Swap expired during claiming");
         }
@@ -1297,8 +1251,8 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
      *  to work. If this swap is already using an LNURL-withdraw link, this function throws.
      */
     async settleWithLNURLWithdraw(lnurl) {
-        if (this._state !== FromBTCLNAutoSwapState.PR_CREATED &&
-            this._state !== FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED)
+        if (this._state !== FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_CREATED &&
+            this._state !== FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED)
             throw new Error("Must be in PR_CREATED state!");
         if (this.lnurl != null)
             throw new Error("Cannot settle LNURL-withdraw swap with different LNURL");
@@ -1357,21 +1311,21 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
      * @private
      */
     async syncStateFromChain(quoteDefinitelyExpired, commitStatus) {
-        if (this._state === FromBTCLNAutoSwapState.PR_PAID ||
-            this._state === FromBTCLNAutoSwapState.CLAIM_COMMITED ||
-            this._state === FromBTCLNAutoSwapState.EXPIRED) {
+        if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_PAID ||
+            this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_COMMITED ||
+            this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.EXPIRED) {
             //Check for expiry before the getCommitStatus to prevent race conditions
             let quoteExpired = false;
-            if (this._state === FromBTCLNAutoSwapState.PR_PAID) {
+            if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_PAID) {
                 quoteExpired = quoteDefinitelyExpired ?? await this._verifyQuoteDefinitelyExpired();
             }
             //Check if it's already successfully paid
             commitStatus ??= await this._contract.getCommitStatus(this._getInitiator(), this._data);
             if (commitStatus != null && await this._forciblySetOnchainState(commitStatus))
                 return true;
-            if (this._state === FromBTCLNAutoSwapState.PR_PAID) {
+            if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_PAID) {
                 if (quoteExpired) {
-                    this._state = FromBTCLNAutoSwapState.QUOTE_EXPIRED;
+                    this._state = FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.QUOTE_EXPIRED;
                     return true;
                 }
             }
@@ -1383,21 +1337,21 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
      * @internal
      */
     _shouldFetchOnchainState() {
-        return this._state === FromBTCLNAutoSwapState.PR_PAID || this._state === FromBTCLNAutoSwapState.CLAIM_COMMITED || this._state === FromBTCLNAutoSwapState.EXPIRED;
+        return this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_PAID || this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_COMMITED || this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.EXPIRED;
     }
     /**
      * @inheritDoc
      * @internal
      */
     _shouldFetchExpiryStatus() {
-        return this._state === FromBTCLNAutoSwapState.PR_PAID;
+        return this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_PAID;
     }
     /**
      * @inheritDoc
      * @internal
      */
     _shouldCheckIntermediary() {
-        return this._state === FromBTCLNAutoSwapState.PR_CREATED || this._state === FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED;
+        return this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_CREATED || this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED;
     }
     /**
      * @inheritDoc
@@ -1405,9 +1359,9 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
      */
     async _sync(save, quoteDefinitelyExpired, commitStatus, skipLpCheck) {
         let changed = false;
-        if (this._state === FromBTCLNAutoSwapState.PR_CREATED || this._state === FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED) {
-            if (this._state !== FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED && this.getQuoteExpiry() < Date.now()) {
-                this._state = FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED;
+        if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_CREATED || this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED) {
+            if (this._state !== FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED && this.getQuoteExpiry() < Date.now()) {
+                this._state = FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED;
                 changed ||= true;
             }
             if (!skipLpCheck)
@@ -1419,25 +1373,25 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
                 catch (e) {
                     this.logger.error("_sync(): Failed to synchronize swap, error: ", e);
                 }
-            if (this._state === FromBTCLNAutoSwapState.PR_CREATED || this._state === FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED) {
+            if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_CREATED || this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED) {
                 if (await this._verifyQuoteDefinitelyExpired()) {
-                    this._state = FromBTCLNAutoSwapState.QUOTE_EXPIRED;
+                    this._state = FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.QUOTE_EXPIRED;
                     changed ||= true;
                 }
             }
         }
         if (await this.syncStateFromChain(quoteDefinitelyExpired, commitStatus))
             changed = true;
-        if (this._state === FromBTCLNAutoSwapState.CLAIM_COMMITED) {
+        if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_COMMITED) {
             const expired = await this._contract.isExpired(this._getInitiator(), this._data);
             if (expired) {
-                this._state = FromBTCLNAutoSwapState.EXPIRED;
+                this._state = FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.EXPIRED;
                 changed = true;
             }
         }
         if (save && changed)
             await this._saveAndEmit();
-        if (this._state === FromBTCLNAutoSwapState.CLAIM_COMMITED && this.secret != null)
+        if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_COMMITED && this.secret != null)
             await this._broadcastSecret().catch(e => {
                 this.logger.error("_sync(): Error when broadcasting swap secret: ", e);
             });
@@ -1456,7 +1410,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
                     this._claimTxId = await commitStatus.getClaimTxId();
                 if (this.secret == null || this.pr == null)
                     this._setSwapSecret(await commitStatus.getClaimResult());
-                this._state = FromBTCLNAutoSwapState.CLAIM_CLAIMED;
+                this._state = FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_CLAIMED;
                 return true;
             case base_1.SwapCommitStateType.NOT_COMMITED:
                 let changed = false;
@@ -1469,7 +1423,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
                     changed = true;
                 }
                 if (this._refundTxId != null) {
-                    this._state = FromBTCLNAutoSwapState.FAILED;
+                    this._state = FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.FAILED;
                     changed = true;
                 }
                 return changed;
@@ -1478,7 +1432,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
                     this._commitTxId = await commitStatus.getInitTxId();
                 if (this._refundTxId == null && commitStatus.getRefundTxId != null)
                     this._refundTxId = await commitStatus.getRefundTxId();
-                this._state = this._refundTxId == null ? FromBTCLNAutoSwapState.QUOTE_EXPIRED : FromBTCLNAutoSwapState.FAILED;
+                this._state = this._refundTxId == null ? FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.QUOTE_EXPIRED : FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.FAILED;
                 return true;
             case base_1.SwapCommitStateType.COMMITED:
                 let save = false;
@@ -1486,9 +1440,9 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
                     this._commitTxId = await commitStatus.getInitTxId();
                     save = true;
                 }
-                if (this._state !== FromBTCLNAutoSwapState.CLAIM_COMMITED && this._state !== FromBTCLNAutoSwapState.EXPIRED) {
+                if (this._state !== FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_COMMITED && this._state !== FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.EXPIRED) {
                     this._commitedAt ??= Date.now();
-                    this._state = FromBTCLNAutoSwapState.CLAIM_COMMITED;
+                    this._state = FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_COMMITED;
                     save = true;
                 }
                 return save;
@@ -1504,7 +1458,7 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
      * @internal
      */
     async _broadcastSecret(noCheckExpiry, secret) {
-        if (this._state !== FromBTCLNAutoSwapState.CLAIM_COMMITED)
+        if (this._state !== FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_COMMITED)
             throw new Error("Must be in CLAIM_COMMITED state to broadcast swap secret!");
         if (this._data == null)
             throw new Error("Unknown data, wrong state?");
@@ -1525,32 +1479,32 @@ class FromBTCLNAutoSwap extends IEscrowSwap_js_1.IEscrowSwap {
      */
     async _tick(save) {
         switch (this._state) {
-            case FromBTCLNAutoSwapState.PR_CREATED:
+            case FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_CREATED:
                 if (this.getQuoteExpiry() < Date.now()) {
-                    this._state = FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED;
+                    this._state = FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED;
                     if (save)
                         await this._saveAndEmit();
                     return true;
                 }
                 break;
-            case FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED:
+            case FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.QUOTE_SOFT_EXPIRED:
                 if (this.getDefinitiveExpiryTime() < Date.now()) {
-                    this._state = FromBTCLNAutoSwapState.QUOTE_EXPIRED;
+                    this._state = FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.QUOTE_EXPIRED;
                     if (save)
                         await this._saveAndEmit();
                     return true;
                 }
                 break;
-            case FromBTCLNAutoSwapState.PR_PAID:
-            case FromBTCLNAutoSwapState.CLAIM_COMMITED:
+            case FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.PR_PAID:
+            case FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_COMMITED:
                 const expired = await this._contract.isExpired(this._getInitiator(), this._data);
                 if (expired) {
-                    this._state = FromBTCLNAutoSwapState.EXPIRED;
+                    this._state = FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.EXPIRED;
                     if (save)
                         await this._saveAndEmit();
                     return true;
                 }
-                if (this._state === FromBTCLNAutoSwapState.CLAIM_COMMITED) {
+                if (this._state === FromBTCLNAutoSwapState_js_1.FromBTCLNAutoSwapState.CLAIM_COMMITED) {
                     //Broadcast the secret over the provided messenger channel
                     if (this.broadcastTickCounter === 0 && this.secret != null)
                         await this._broadcastSecret(true).catch(e => {

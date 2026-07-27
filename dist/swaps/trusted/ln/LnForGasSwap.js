@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.LnForGasSwap = exports.isLnForGasSwapInit = exports.LnForGasSwapState = void 0;
+const LnForGasSwapState_js_1 = require("./LnForGasSwapState.js");
+Object.defineProperty(exports, "LnForGasSwapState", { enumerable: true, get: function () { return LnForGasSwapState_js_1.LnForGasSwapState; } });
 const bolt11_1 = require("@atomiqlabs/bolt11");
 const SwapType_js_1 = require("../../../enums/SwapType.js");
 const Utils_js_1 = require("../../../utils/Utils.js");
@@ -12,40 +14,12 @@ const TokenAmount_js_1 = require("../../../types/TokenAmount.js");
 const Token_js_1 = require("../../../types/Token.js");
 const Logger_js_1 = require("../../../utils/Logger.js");
 const TimeoutUtils_js_1 = require("../../../utils/TimeoutUtils.js");
-/**
- * State enum for trusted Lightning gas swaps
- *
- * @category Swaps/Trusted Gas Swaps
- */
-var LnForGasSwapState;
-(function (LnForGasSwapState) {
-    /**
-     * The swap quote expired before the user paid the Lightning invoice
-     */
-    LnForGasSwapState[LnForGasSwapState["EXPIRED"] = -2] = "EXPIRED";
-    /**
-     * The swap has failed before the destination payout completed, and the held Lightning invoice was released
-     */
-    LnForGasSwapState[LnForGasSwapState["FAILED"] = -1] = "FAILED";
-    /**
-     * Swap was created, pay the provided Lightning invoice which will remain held until destination payout succeeds
-     */
-    LnForGasSwapState[LnForGasSwapState["PR_CREATED"] = 0] = "PR_CREATED";
-    /**
-     * The Lightning invoice was paid and is currently held until the user receives the destination funds
-     */
-    LnForGasSwapState[LnForGasSwapState["PR_PAID"] = 1] = "PR_PAID";
-    /**
-     * The swap is finished after the destination payout succeeded and the held Lightning invoice was settled
-     */
-    LnForGasSwapState[LnForGasSwapState["FINISHED"] = 2] = "FINISHED";
-})(LnForGasSwapState = exports.LnForGasSwapState || (exports.LnForGasSwapState = {}));
 const LnForGasSwapStateDescription = {
-    [LnForGasSwapState.EXPIRED]: "The swap quote expired before the user paid the Lightning invoice",
-    [LnForGasSwapState.FAILED]: "The swap failed before destination payout completed, and the held Lightning invoice was released back to the user",
-    [LnForGasSwapState.PR_CREATED]: "Swap was created, pay the provided Lightning invoice. The invoice will remain held until destination payout succeeds",
-    [LnForGasSwapState.PR_PAID]: "The Lightning invoice was paid and is currently held. It will only settle once the user receives the destination funds",
-    [LnForGasSwapState.FINISHED]: "The swap is finished after the destination payout succeeded and the held Lightning invoice was settled"
+    [LnForGasSwapState_js_1.LnForGasSwapState.EXPIRED]: "The swap quote expired before the user paid the Lightning invoice",
+    [LnForGasSwapState_js_1.LnForGasSwapState.FAILED]: "The swap failed before destination payout completed, and the held Lightning invoice was released back to the user",
+    [LnForGasSwapState_js_1.LnForGasSwapState.PR_CREATED]: "Swap was created, pay the provided Lightning invoice. The invoice will remain held until destination payout succeeds",
+    [LnForGasSwapState_js_1.LnForGasSwapState.PR_PAID]: "The Lightning invoice was paid and is currently held. It will only settle once the user receives the destination funds",
+    [LnForGasSwapState_js_1.LnForGasSwapState.FINISHED]: "The swap is finished after the destination payout succeeded and the held Lightning invoice was settled"
 };
 function isLnForGasSwapInit(obj) {
     return typeof (obj.pr) === "string" &&
@@ -74,7 +48,7 @@ class LnForGasSwap extends ISwap_js_1.ISwap {
         /**
          * @internal
          */
-        this.swapStateName = (state) => LnForGasSwapState[state];
+        this.swapStateName = (state) => LnForGasSwapState_js_1.LnForGasSwapState[state];
         /**
          * @internal
          */
@@ -84,7 +58,7 @@ class LnForGasSwap extends ISwap_js_1.ISwap {
             this.outputAmount = initOrObj.outputAmount;
             this.recipient = initOrObj.recipient;
             this.token = initOrObj.token;
-            this._state = LnForGasSwapState.PR_CREATED;
+            this._state = LnForGasSwapState_js_1.LnForGasSwapState.PR_CREATED;
         }
         else {
             this.pr = initOrObj.pr;
@@ -108,7 +82,7 @@ class LnForGasSwap extends ISwap_js_1.ISwap {
     upgradeVersion() {
         if (this.version == 1) {
             if (this._state === 1)
-                this._state = LnForGasSwapState.FINISHED;
+                this._state = LnForGasSwapState_js_1.LnForGasSwapState.FINISHED;
             this.version = 2;
         }
         if (this.version == null) {
@@ -192,13 +166,13 @@ class LnForGasSwap extends ISwap_js_1.ISwap {
      * @inheritDoc
      */
     isFinished() {
-        return this._state === LnForGasSwapState.FINISHED || this._state === LnForGasSwapState.FAILED || this._state === LnForGasSwapState.EXPIRED;
+        return this._state === LnForGasSwapState_js_1.LnForGasSwapState.FINISHED || this._state === LnForGasSwapState_js_1.LnForGasSwapState.FAILED || this._state === LnForGasSwapState_js_1.LnForGasSwapState.EXPIRED;
     }
     /**
      * @inheritDoc
      */
     isQuoteExpired() {
-        return this._state === LnForGasSwapState.EXPIRED;
+        return this._state === LnForGasSwapState_js_1.LnForGasSwapState.EXPIRED;
     }
     /**
      * @inheritDoc
@@ -210,19 +184,19 @@ class LnForGasSwap extends ISwap_js_1.ISwap {
      * @inheritDoc
      */
     isFailed() {
-        return this._state === LnForGasSwapState.FAILED;
+        return this._state === LnForGasSwapState_js_1.LnForGasSwapState.FAILED;
     }
     /**
      * @inheritDoc
      */
     isSuccessful() {
-        return this._state === LnForGasSwapState.FINISHED;
+        return this._state === LnForGasSwapState_js_1.LnForGasSwapState.FINISHED;
     }
     /**
      * @inheritDoc
      */
     isInProgress() {
-        return (this._state === LnForGasSwapState.PR_CREATED && this.initiated) || this._state === LnForGasSwapState.PR_PAID;
+        return (this._state === LnForGasSwapState_js_1.LnForGasSwapState.PR_CREATED && this.initiated) || this._state === LnForGasSwapState_js_1.LnForGasSwapState.PR_PAID;
     }
     /**
      * @inheritDoc
@@ -344,7 +318,7 @@ class LnForGasSwap extends ISwap_js_1.ISwap {
         let destinationSettlementStatus = "inactive";
         let buildCurrentAction = async () => undefined;
         switch (state) {
-            case LnForGasSwapState.PR_CREATED: {
+            case LnForGasSwapState_js_1.LnForGasSwapState.PR_CREATED: {
                 const quoteValid = await this._verifyQuoteValid();
                 lightningPaymentStatus = quoteValid ? "awaiting" : "soft_expired";
                 if (quoteValid) {
@@ -352,19 +326,19 @@ class LnForGasSwap extends ISwap_js_1.ISwap {
                 }
                 break;
             }
-            case LnForGasSwapState.EXPIRED:
+            case LnForGasSwapState_js_1.LnForGasSwapState.EXPIRED:
                 lightningPaymentStatus = "expired";
                 break;
-            case LnForGasSwapState.PR_PAID:
+            case LnForGasSwapState_js_1.LnForGasSwapState.PR_PAID:
                 lightningPaymentStatus = "received";
                 destinationSettlementStatus = "waiting_lp";
                 buildCurrentAction = this._buildWaitLpAction.bind(this);
                 break;
-            case LnForGasSwapState.FAILED:
+            case LnForGasSwapState_js_1.LnForGasSwapState.FAILED:
                 lightningPaymentStatus = "expired";
                 destinationSettlementStatus = "expired";
                 break;
-            case LnForGasSwapState.FINISHED:
+            case LnForGasSwapState_js_1.LnForGasSwapState.FINISHED:
                 lightningPaymentStatus = "confirmed";
                 destinationSettlementStatus = "settled";
                 break;
@@ -483,9 +457,9 @@ class LnForGasSwap extends ISwap_js_1.ISwap {
      * @internal
      */
     async checkInvoicePaid(save = true) {
-        if (this._state === LnForGasSwapState.FAILED || this._state === LnForGasSwapState.EXPIRED)
+        if (this._state === LnForGasSwapState_js_1.LnForGasSwapState.FAILED || this._state === LnForGasSwapState_js_1.LnForGasSwapState.EXPIRED)
             return false;
-        if (this._state === LnForGasSwapState.FINISHED)
+        if (this._state === LnForGasSwapState_js_1.LnForGasSwapState.FINISHED)
             return true;
         if (this.url == null)
             return false;
@@ -500,33 +474,33 @@ class LnForGasSwap extends ISwap_js_1.ISwap {
                 this.scTxId = response.data.txId;
                 const txStatus = await this.wrapper._chain.getTxIdStatus(this.scTxId);
                 if (txStatus === "success") {
-                    this._state = LnForGasSwapState.FINISHED;
+                    this._state = LnForGasSwapState_js_1.LnForGasSwapState.FINISHED;
                     if (save)
                         await this._saveAndEmit();
                     return true;
                 }
                 return null;
             case IntermediaryAPI_js_1.TrustedInvoiceStatusResponseCodes.EXPIRED:
-                if (this._state === LnForGasSwapState.PR_CREATED) {
-                    this._state = LnForGasSwapState.EXPIRED;
+                if (this._state === LnForGasSwapState_js_1.LnForGasSwapState.PR_CREATED) {
+                    this._state = LnForGasSwapState_js_1.LnForGasSwapState.EXPIRED;
                 }
                 else {
-                    this._state = LnForGasSwapState.FAILED;
+                    this._state = LnForGasSwapState_js_1.LnForGasSwapState.FAILED;
                 }
                 if (save)
                     await this._saveAndEmit();
                 return false;
             case IntermediaryAPI_js_1.TrustedInvoiceStatusResponseCodes.TX_SENT:
                 this.scTxId = response.data.txId;
-                if (this._state === LnForGasSwapState.PR_CREATED) {
-                    this._state = LnForGasSwapState.PR_PAID;
+                if (this._state === LnForGasSwapState_js_1.LnForGasSwapState.PR_CREATED) {
+                    this._state = LnForGasSwapState_js_1.LnForGasSwapState.PR_PAID;
                     if (save)
                         await this._saveAndEmit();
                 }
                 return null;
             case IntermediaryAPI_js_1.TrustedInvoiceStatusResponseCodes.PENDING:
-                if (this._state === LnForGasSwapState.PR_CREATED) {
-                    this._state = LnForGasSwapState.PR_PAID;
+                if (this._state === LnForGasSwapState_js_1.LnForGasSwapState.PR_CREATED) {
+                    this._state = LnForGasSwapState_js_1.LnForGasSwapState.PR_PAID;
                     if (save)
                         await this._saveAndEmit();
                 }
@@ -534,7 +508,7 @@ class LnForGasSwap extends ISwap_js_1.ISwap {
             case IntermediaryAPI_js_1.TrustedInvoiceStatusResponseCodes.AWAIT_PAYMENT:
                 return null;
             default:
-                this._state = LnForGasSwapState.FAILED;
+                this._state = LnForGasSwapState_js_1.LnForGasSwapState.FAILED;
                 if (save)
                     await this._saveAndEmit();
                 return false;
@@ -551,21 +525,21 @@ class LnForGasSwap extends ISwap_js_1.ISwap {
      * @throws {Error} When in invalid state (not PR_CREATED)
      */
     async waitForPayment(checkIntervalSeconds, abortSignal, onPaymentReceived) {
-        if (this._state !== LnForGasSwapState.PR_CREATED && this._state !== LnForGasSwapState.PR_PAID)
+        if (this._state !== LnForGasSwapState_js_1.LnForGasSwapState.PR_CREATED && this._state !== LnForGasSwapState_js_1.LnForGasSwapState.PR_PAID)
             throw new Error("Must be in PR_CREATED or PR_PAID state!");
         if (!this.initiated) {
             this.initiated = true;
             await this._saveAndEmit();
         }
-        while (!abortSignal?.aborted && (this._state === LnForGasSwapState.PR_CREATED || this._state === LnForGasSwapState.PR_PAID)) {
+        while (!abortSignal?.aborted && (this._state === LnForGasSwapState_js_1.LnForGasSwapState.PR_CREATED || this._state === LnForGasSwapState_js_1.LnForGasSwapState.PR_PAID)) {
             await this.checkInvoicePaid(true);
-            if (this._state === LnForGasSwapState.PR_PAID) {
+            if (this._state === LnForGasSwapState_js_1.LnForGasSwapState.PR_PAID) {
                 if (onPaymentReceived != null) {
                     onPaymentReceived(this.getInputTxId());
                     onPaymentReceived = undefined; // Set to null so it only triggers once
                 }
             }
-            if (this._state === LnForGasSwapState.PR_CREATED || this._state === LnForGasSwapState.PR_PAID)
+            if (this._state === LnForGasSwapState_js_1.LnForGasSwapState.PR_CREATED || this._state === LnForGasSwapState_js_1.LnForGasSwapState.PR_PAID)
                 await (0, TimeoutUtils_js_1.timeoutPromise)((checkIntervalSeconds ?? 5) * 1000, abortSignal);
         }
         if (abortSignal != null)
@@ -603,7 +577,7 @@ class LnForGasSwap extends ISwap_js_1.ISwap {
      * @internal
      */
     async _sync(save) {
-        if (this._state === LnForGasSwapState.PR_CREATED) {
+        if (this._state === LnForGasSwapState_js_1.LnForGasSwapState.PR_CREATED) {
             //Check if it's maybe already paid
             const res = await this.checkInvoicePaid(false);
             if (res !== null) {

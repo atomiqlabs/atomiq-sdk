@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.IToBTCSwap = exports.ToBTCSwapState = exports.isIToBTCSwapInit = void 0;
+const ToBTCSwapState_js_1 = require("./ToBTCSwapState.js");
+Object.defineProperty(exports, "ToBTCSwapState", { enumerable: true, get: function () { return ToBTCSwapState_js_1.ToBTCSwapState; } });
 const base_1 = require("@atomiqlabs/base");
 const IntermediaryAPI_js_1 = require("../../../intermediaries/apis/IntermediaryAPI.js");
 const IntermediaryError_js_1 = require("../../../errors/IntermediaryError.js");
@@ -21,62 +23,15 @@ function isIToBTCSwapInit(obj) {
         (0, IEscrowSelfInitSwap_js_1.isIEscrowSelfInitSwapInit)(obj);
 }
 exports.isIToBTCSwapInit = isIToBTCSwapInit;
-/**
- * State enum for escrow-based Smart chain -> Bitcoin (on-chain & lightning) swaps
- *
- * @category Swaps/Smart chain → Bitcoin
- */
-var ToBTCSwapState;
-(function (ToBTCSwapState) {
-    /**
-     * Intermediary (LP) was unable to process the swap and the funds were refunded on the
-     *  source chain
-     */
-    ToBTCSwapState[ToBTCSwapState["REFUNDED"] = -3] = "REFUNDED";
-    /**
-     * Swap has expired for good and there is no way how it can be executed anymore
-     */
-    ToBTCSwapState[ToBTCSwapState["QUOTE_EXPIRED"] = -2] = "QUOTE_EXPIRED";
-    /**
-     * A swap is almost expired, and it should be presented to the user as expired, though
-     *  there is still a chance that it will be processed
-     */
-    ToBTCSwapState[ToBTCSwapState["QUOTE_SOFT_EXPIRED"] = -1] = "QUOTE_SOFT_EXPIRED";
-    /**
-     * Swap was created, use the {@link IToBTCSwap.commit} or {@link IToBTCSwap.txsCommit} to
-     *  initiate it by creating the swap escrow on the source chain
-     */
-    ToBTCSwapState[ToBTCSwapState["CREATED"] = 0] = "CREATED";
-    /**
-     * Swap escrow was initiated (committed) on the source chain, the intermediary (LP) will
-     *  now process the swap. You can wait till that happens with the {@link IToBTCSwap.waitForPayment}
-     *  function.
-     */
-    ToBTCSwapState[ToBTCSwapState["COMMITED"] = 1] = "COMMITED";
-    /**
-     * The intermediary (LP) has processed the transaction and sent out the funds on the destination chain,
-     *  but hasn't yet settled the escrow on the source chain.
-     */
-    ToBTCSwapState[ToBTCSwapState["SOFT_CLAIMED"] = 2] = "SOFT_CLAIMED";
-    /**
-     * Swap was successfully settled by the intermediary (LP) on the source chain
-     */
-    ToBTCSwapState[ToBTCSwapState["CLAIMED"] = 3] = "CLAIMED";
-    /**
-     * Intermediary (LP) was unable to process the swap and the swap escrow on the source chain
-     *  is refundable, call {@link IToBTCSwap.refund} or {@link IToBTCSwap.txsRefund} to refund
-     */
-    ToBTCSwapState[ToBTCSwapState["REFUNDABLE"] = 4] = "REFUNDABLE";
-})(ToBTCSwapState = exports.ToBTCSwapState || (exports.ToBTCSwapState = {}));
 const ToBTCSwapStateDescription = {
-    [ToBTCSwapState.REFUNDED]: "Intermediary (LP) was unable to process the swap and the funds were refunded on the source chain",
-    [ToBTCSwapState.QUOTE_EXPIRED]: "Swap has expired for good and there is no way how it can be executed anymore",
-    [ToBTCSwapState.QUOTE_SOFT_EXPIRED]: "A swap is expired, though there is still a chance that it will be processed",
-    [ToBTCSwapState.CREATED]: "Swap was created, initiate it by creating the swap escrow on the source chain",
-    [ToBTCSwapState.COMMITED]: "Swap escrow was initiated (committed) on the source chain, the intermediary (LP) will now process the swap.",
-    [ToBTCSwapState.SOFT_CLAIMED]: "The intermediary (LP) has processed the transaction and sent out the funds on the destination chain, but hasn't yet settled the escrow on the source chain.",
-    [ToBTCSwapState.CLAIMED]: "Swap was successfully settled by the intermediary (LP) on the source chain",
-    [ToBTCSwapState.REFUNDABLE]: "Intermediary (LP) was unable to process the swap and the swap escrow on the source chain is refundable."
+    [ToBTCSwapState_js_1.ToBTCSwapState.REFUNDED]: "Intermediary (LP) was unable to process the swap and the funds were refunded on the source chain",
+    [ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_EXPIRED]: "Swap has expired for good and there is no way how it can be executed anymore",
+    [ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_SOFT_EXPIRED]: "A swap is expired, though there is still a chance that it will be processed",
+    [ToBTCSwapState_js_1.ToBTCSwapState.CREATED]: "Swap was created, initiate it by creating the swap escrow on the source chain",
+    [ToBTCSwapState_js_1.ToBTCSwapState.COMMITED]: "Swap escrow was initiated (committed) on the source chain, the intermediary (LP) will now process the swap.",
+    [ToBTCSwapState_js_1.ToBTCSwapState.SOFT_CLAIMED]: "The intermediary (LP) has processed the transaction and sent out the funds on the destination chain, but hasn't yet settled the escrow on the source chain.",
+    [ToBTCSwapState_js_1.ToBTCSwapState.CLAIMED]: "Swap was successfully settled by the intermediary (LP) on the source chain",
+    [ToBTCSwapState_js_1.ToBTCSwapState.REFUNDABLE]: "Intermediary (LP) was unable to process the swap and the swap escrow on the source chain is refundable."
 };
 /**
  * Base class for escrow-based Smart chain -> Bitcoin (on-chain & lightning) swaps
@@ -93,9 +48,9 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
         /**
          * @internal
          */
-        this.swapStateName = (state) => ToBTCSwapState[state];
+        this.swapStateName = (state) => ToBTCSwapState_js_1.ToBTCSwapState[state];
         if (isIToBTCSwapInit(initOrObject)) {
-            this._state = ToBTCSwapState.CREATED;
+            this._state = ToBTCSwapState_js_1.ToBTCSwapState.CREATED;
             this.networkFee = initOrObject.networkFee;
             this.networkFeeBtc = initOrObject.networkFeeBtc;
             this._data = initOrObject.data;
@@ -121,22 +76,22 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
         if (this.version == null) {
             switch (this._state) {
                 case -2:
-                    this._state = ToBTCSwapState.REFUNDED;
+                    this._state = ToBTCSwapState_js_1.ToBTCSwapState.REFUNDED;
                     break;
                 case -1:
-                    this._state = ToBTCSwapState.QUOTE_EXPIRED;
+                    this._state = ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_EXPIRED;
                     break;
                 case 0:
-                    this._state = ToBTCSwapState.CREATED;
+                    this._state = ToBTCSwapState_js_1.ToBTCSwapState.CREATED;
                     break;
                 case 1:
-                    this._state = ToBTCSwapState.COMMITED;
+                    this._state = ToBTCSwapState_js_1.ToBTCSwapState.COMMITED;
                     break;
                 case 2:
-                    this._state = ToBTCSwapState.CLAIMED;
+                    this._state = ToBTCSwapState_js_1.ToBTCSwapState.CLAIMED;
                     break;
                 case 3:
-                    this._state = ToBTCSwapState.REFUNDABLE;
+                    this._state = ToBTCSwapState_js_1.ToBTCSwapState.REFUNDABLE;
                     break;
             }
             this.version = 1;
@@ -189,43 +144,43 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
      * @inheritDoc
      */
     isFinished() {
-        return this._state === ToBTCSwapState.CLAIMED || this._state === ToBTCSwapState.REFUNDED || this._state === ToBTCSwapState.QUOTE_EXPIRED;
+        return this._state === ToBTCSwapState_js_1.ToBTCSwapState.CLAIMED || this._state === ToBTCSwapState_js_1.ToBTCSwapState.REFUNDED || this._state === ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_EXPIRED;
     }
     /**
      * @inheritDoc
      */
     isRefundable() {
-        return this._state === ToBTCSwapState.REFUNDABLE;
+        return this._state === ToBTCSwapState_js_1.ToBTCSwapState.REFUNDABLE;
     }
     /**
      * @inheritDoc
      */
     isQuoteExpired() {
-        return this._state === ToBTCSwapState.QUOTE_EXPIRED;
+        return this._state === ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_EXPIRED;
     }
     /**
      * @inheritDoc
      */
     isQuoteSoftExpired() {
-        return this._state === ToBTCSwapState.QUOTE_EXPIRED || this._state === ToBTCSwapState.QUOTE_SOFT_EXPIRED;
+        return this._state === ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_EXPIRED || this._state === ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_SOFT_EXPIRED;
     }
     /**
      * @inheritDoc
      */
     isSuccessful() {
-        return this._state === ToBTCSwapState.CLAIMED;
+        return this._state === ToBTCSwapState_js_1.ToBTCSwapState.CLAIMED;
     }
     /**
      * @inheritDoc
      */
     isFailed() {
-        return this._state === ToBTCSwapState.REFUNDED;
+        return this._state === ToBTCSwapState_js_1.ToBTCSwapState.REFUNDED;
     }
     /**
      * @inheritDoc
      */
     isInProgress() {
-        return this._state === ToBTCSwapState.COMMITED || this._state === ToBTCSwapState.SOFT_CLAIMED;
+        return this._state === ToBTCSwapState_js_1.ToBTCSwapState.COMMITED || this._state === ToBTCSwapState_js_1.ToBTCSwapState.SOFT_CLAIMED;
     }
     /**
      * Returns the time (in UNIX milliseconds) at which the swap expires and the user is able to unilaterally
@@ -373,23 +328,23 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
      *  the user can refund their funds back on the source chain by calling {@link refund}
      */
     async execute(signer, callbacks, options) {
-        if (this._state === ToBTCSwapState.QUOTE_EXPIRED || this._state === ToBTCSwapState.QUOTE_SOFT_EXPIRED)
+        if (this._state === ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_EXPIRED || this._state === ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_SOFT_EXPIRED)
             throw new Error("Quote expired");
-        if (this._state === ToBTCSwapState.REFUNDED)
+        if (this._state === ToBTCSwapState_js_1.ToBTCSwapState.REFUNDED)
             throw new Error("Swap already refunded");
-        if (this._state === ToBTCSwapState.REFUNDABLE)
+        if (this._state === ToBTCSwapState_js_1.ToBTCSwapState.REFUNDABLE)
             throw new Error("Swap refundable, refund with swap.refund()");
-        if (this._state === ToBTCSwapState.SOFT_CLAIMED || this._state === ToBTCSwapState.CLAIMED)
+        if (this._state === ToBTCSwapState_js_1.ToBTCSwapState.SOFT_CLAIMED || this._state === ToBTCSwapState_js_1.ToBTCSwapState.CLAIMED)
             throw new Error("Swap already settled!");
-        if (this._state === ToBTCSwapState.CREATED) {
+        if (this._state === ToBTCSwapState_js_1.ToBTCSwapState.CREATED) {
             const txId = await this.commit(signer, options?.abortSignal, false, callbacks?.onSourceTransactionSent);
             if (callbacks?.onSourceTransactionConfirmed != null)
                 callbacks.onSourceTransactionConfirmed(txId);
         }
         // @ts-ignore
-        if (this._state === ToBTCSwapState.CLAIMED || this._state === ToBTCSwapState.SOFT_CLAIMED)
+        if (this._state === ToBTCSwapState_js_1.ToBTCSwapState.CLAIMED || this._state === ToBTCSwapState_js_1.ToBTCSwapState.SOFT_CLAIMED)
             return true;
-        if (this._state === ToBTCSwapState.COMMITED) {
+        if (this._state === ToBTCSwapState_js_1.ToBTCSwapState.COMMITED) {
             const success = await this.waitForPayment(options?.maxWaitTillSwapProcessedSeconds ?? 120, options?.paymentCheckIntervalSeconds, options?.abortSignal);
             if (success) {
                 if (callbacks?.onSwapSettled != null)
@@ -412,39 +367,39 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
         let refundStatus = "inactive";
         let buildCurrentAction = async () => undefined;
         switch (state) {
-            case ToBTCSwapState.CREATED:
+            case ToBTCSwapState_js_1.ToBTCSwapState.CREATED:
                 const quoteValid = await this._verifyQuoteValid();
                 sourcePaymentStatus = quoteValid ? "awaiting" : "soft_expired";
                 if (this.signatureData != null && quoteValid) {
                     buildCurrentAction = this._buildInitSmartChainTxAction.bind(this);
                 }
                 break;
-            case ToBTCSwapState.QUOTE_SOFT_EXPIRED:
+            case ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_SOFT_EXPIRED:
                 sourcePaymentStatus = "soft_expired";
                 break;
-            case ToBTCSwapState.QUOTE_EXPIRED:
+            case ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_EXPIRED:
                 sourcePaymentStatus = "expired";
                 break;
-            case ToBTCSwapState.COMMITED:
+            case ToBTCSwapState_js_1.ToBTCSwapState.COMMITED:
                 sourcePaymentStatus = "confirmed";
                 destinationPayoutStatus = "waiting_lp";
                 buildCurrentAction = this._buildWaitLpAction.bind(this);
                 break;
-            case ToBTCSwapState.SOFT_CLAIMED:
+            case ToBTCSwapState_js_1.ToBTCSwapState.SOFT_CLAIMED:
                 sourcePaymentStatus = "confirmed";
                 destinationPayoutStatus = "soft_settled";
                 break;
-            case ToBTCSwapState.CLAIMED:
+            case ToBTCSwapState_js_1.ToBTCSwapState.CLAIMED:
                 sourcePaymentStatus = "confirmed";
                 destinationPayoutStatus = "settled";
                 break;
-            case ToBTCSwapState.REFUNDABLE:
+            case ToBTCSwapState_js_1.ToBTCSwapState.REFUNDABLE:
                 sourcePaymentStatus = "confirmed";
                 destinationPayoutStatus = "expired";
                 refundStatus = "awaiting";
                 buildCurrentAction = this._buildRefundSmartChainTxAction.bind(this);
                 break;
-            case ToBTCSwapState.REFUNDED:
+            case ToBTCSwapState_js_1.ToBTCSwapState.REFUNDED:
                 sourcePaymentStatus = "confirmed";
                 destinationPayoutStatus = "expired";
                 refundStatus = "refunded";
@@ -506,14 +461,14 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
         }
         if (requiredStates != null && !requiredStates.includes(this._state))
             throw new Error("Swap state has changed before transactions were submitted!");
-        if (this._state === ToBTCSwapState.CREATED || this._state === ToBTCSwapState.QUOTE_SOFT_EXPIRED) {
+        if (this._state === ToBTCSwapState_js_1.ToBTCSwapState.CREATED || this._state === ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_SOFT_EXPIRED) {
             if (!await this._verifyQuoteValid())
                 throw new Error("Quote is already expired!");
             const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
             await this.waitTillCommited(abortSignal);
             return txIds;
         }
-        if (this._state === ToBTCSwapState.REFUNDABLE) {
+        if (this._state === ToBTCSwapState_js_1.ToBTCSwapState.REFUNDABLE) {
             const txIds = await this.wrapper._chain.sendSignedAndConfirm(parsedTxs, true, abortSignal, false);
             await this.waitTillRefunded(abortSignal);
             return txIds;
@@ -531,7 +486,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
             chain: this.chainIdentifier,
             txs: await this.prepareTransactions(this.txsCommit(actionOptions?.skipChecks)),
             submitTransactions: async (txs, abortSignal, idempotent) => {
-                return this._submitExecutionTransactions(txs, abortSignal, [ToBTCSwapState.CREATED, ToBTCSwapState.QUOTE_SOFT_EXPIRED], idempotent);
+                return this._submitExecutionTransactions(txs, abortSignal, [ToBTCSwapState_js_1.ToBTCSwapState.CREATED, ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_SOFT_EXPIRED], idempotent);
             },
             requiredSigner: this._getInitiator()
         };
@@ -563,7 +518,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
             chain: this.chainIdentifier,
             txs: await this.prepareTransactions(this.txsRefund(actionOptions?.refundSmartChainSigner)),
             submitTransactions: async (txs, abortSignal, idempotent) => {
-                return this._submitExecutionTransactions(txs, abortSignal, [ToBTCSwapState.REFUNDABLE], idempotent);
+                return this._submitExecutionTransactions(txs, abortSignal, [ToBTCSwapState_js_1.ToBTCSwapState.REFUNDABLE], idempotent);
             },
             requiredSigner: signerAddress ?? this._getInitiator()
         };
@@ -604,7 +559,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
      * @throws {Error} When in invalid state (not {@link ToBTCSwapState.CREATED})
      */
     async txsCommit(skipChecks) {
-        if (this._state !== ToBTCSwapState.CREATED && (!skipChecks || this._state !== ToBTCSwapState.QUOTE_SOFT_EXPIRED))
+        if (this._state !== ToBTCSwapState_js_1.ToBTCSwapState.CREATED && (!skipChecks || this._state !== ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_SOFT_EXPIRED))
             throw new Error("Must be in CREATED state!");
         if (this.signatureData == null)
             throw new Error("Init signature data not known, cannot commit!");
@@ -631,8 +586,8 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
             return Promise.resolve();
         });
         this._commitTxId = result[result.length - 1];
-        if (this._state === ToBTCSwapState.CREATED || this._state === ToBTCSwapState.QUOTE_SOFT_EXPIRED || this._state === ToBTCSwapState.QUOTE_EXPIRED) {
-            await this._saveAndEmit(ToBTCSwapState.COMMITED);
+        if (this._state === ToBTCSwapState_js_1.ToBTCSwapState.CREATED || this._state === ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_SOFT_EXPIRED || this._state === ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_EXPIRED) {
+            await this._saveAndEmit(ToBTCSwapState_js_1.ToBTCSwapState.COMMITED);
         }
         return this._commitTxId;
     }
@@ -642,16 +597,16 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
      * @throws {Error} If swap is not in the correct state (must be {@link ToBTCSwapState.CREATED})
      */
     async waitTillCommited(abortSignal) {
-        if (this._state === ToBTCSwapState.COMMITED || this._state === ToBTCSwapState.CLAIMED)
+        if (this._state === ToBTCSwapState_js_1.ToBTCSwapState.COMMITED || this._state === ToBTCSwapState_js_1.ToBTCSwapState.CLAIMED)
             return Promise.resolve();
-        if (this._state !== ToBTCSwapState.CREATED && this._state !== ToBTCSwapState.QUOTE_SOFT_EXPIRED)
+        if (this._state !== ToBTCSwapState_js_1.ToBTCSwapState.CREATED && this._state !== ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_SOFT_EXPIRED)
             throw new Error("Invalid state (not CREATED)");
         const abortController = (0, Utils_js_1.extendAbortController)(abortSignal);
         let result;
         try {
             result = await Promise.race([
                 this.watchdogWaitTillCommited(undefined, abortController.signal),
-                this.waitTillState(ToBTCSwapState.COMMITED, "gte", abortController.signal).then(() => 0)
+                this.waitTillState(ToBTCSwapState_js_1.ToBTCSwapState.COMMITED, "gte", abortController.signal).then(() => 0)
             ]);
             abortController.abort();
         }
@@ -667,15 +622,15 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
         }
         if (result === null) {
             this.logger.debug("waitTillCommited(): Resolved from watchdog - signature expiry");
-            if (this._state === ToBTCSwapState.QUOTE_SOFT_EXPIRED || this._state === ToBTCSwapState.CREATED) {
-                await this._saveAndEmit(ToBTCSwapState.QUOTE_EXPIRED);
+            if (this._state === ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_SOFT_EXPIRED || this._state === ToBTCSwapState_js_1.ToBTCSwapState.CREATED) {
+                await this._saveAndEmit(ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_EXPIRED);
             }
             throw new Error("Quote expired while waiting for transaction confirmation!");
         }
-        if (this._state === ToBTCSwapState.QUOTE_SOFT_EXPIRED || this._state === ToBTCSwapState.CREATED || this._state === ToBTCSwapState.QUOTE_EXPIRED) {
+        if (this._state === ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_SOFT_EXPIRED || this._state === ToBTCSwapState_js_1.ToBTCSwapState.CREATED || this._state === ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_EXPIRED) {
             if (typeof (result) === "object" && result.getInitTxId != null && this._commitTxId == null)
                 this._commitTxId = await result.getInitTxId();
-            await this._saveAndEmit(ToBTCSwapState.COMMITED);
+            await this._saveAndEmit(ToBTCSwapState_js_1.ToBTCSwapState.COMMITED);
         }
     }
     //////////////////////////////
@@ -697,8 +652,8 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
             if (resp.code === IntermediaryAPI_js_1.RefundAuthorizationResponseCodes.PAID) {
                 const validResponse = await this._setPaymentResult(resp.data, true);
                 if (validResponse) {
-                    if (this._state === ToBTCSwapState.COMMITED || this._state === ToBTCSwapState.REFUNDABLE) {
-                        await this._saveAndEmit(ToBTCSwapState.SOFT_CLAIMED);
+                    if (this._state === ToBTCSwapState_js_1.ToBTCSwapState.COMMITED || this._state === ToBTCSwapState_js_1.ToBTCSwapState.REFUNDABLE) {
+                        await this._saveAndEmit(ToBTCSwapState_js_1.ToBTCSwapState.SOFT_CLAIMED);
                     }
                 }
                 else {
@@ -722,7 +677,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
      * @internal
      */
     async checkIntermediarySwapProcessed(save = true) {
-        if (this._state === ToBTCSwapState.CREATED || this._state == ToBTCSwapState.QUOTE_EXPIRED || this.url == null)
+        if (this._state === ToBTCSwapState_js_1.ToBTCSwapState.CREATED || this._state == ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_EXPIRED || this.url == null)
             return false;
         if (this.isFinished() || this.isRefundable())
             return true;
@@ -732,14 +687,14 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
             case IntermediaryAPI_js_1.RefundAuthorizationResponseCodes.PAID:
                 const processed = await this._setPaymentResult(resp.data, true);
                 if (processed) {
-                    this._state = ToBTCSwapState.SOFT_CLAIMED;
+                    this._state = ToBTCSwapState_js_1.ToBTCSwapState.SOFT_CLAIMED;
                     if (save)
                         await this._saveAndEmit();
                 }
                 return processed;
             case IntermediaryAPI_js_1.RefundAuthorizationResponseCodes.REFUND_DATA:
                 await this._contract.isValidRefundAuthorization(this._data, resp.data);
-                this._state = ToBTCSwapState.REFUNDABLE;
+                this._state = ToBTCSwapState_js_1.ToBTCSwapState.REFUNDABLE;
                 if (save)
                     await this._saveAndEmit();
                 return true;
@@ -763,9 +718,9 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
      * @throws {Error} When swap expires or if the swap has invalid state (must be {@link ToBTCSwapState.COMMITED})
      */
     async waitForPayment(maxWaitTimeSeconds, checkIntervalSeconds, abortSignal) {
-        if (this._state === ToBTCSwapState.CLAIMED)
+        if (this._state === ToBTCSwapState_js_1.ToBTCSwapState.CLAIMED)
             return Promise.resolve(true);
-        if (this._state !== ToBTCSwapState.COMMITED && this._state !== ToBTCSwapState.SOFT_CLAIMED)
+        if (this._state !== ToBTCSwapState_js_1.ToBTCSwapState.COMMITED && this._state !== ToBTCSwapState_js_1.ToBTCSwapState.SOFT_CLAIMED)
             throw new Error("Invalid state (not COMMITED)");
         const abortController = (0, Utils_js_1.extendAbortController)(abortSignal);
         let timedOut = false;
@@ -779,7 +734,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
         let result;
         try {
             result = await Promise.race([
-                this.waitTillState(ToBTCSwapState.CLAIMED, "gte", abortController.signal),
+                this.waitTillState(ToBTCSwapState_js_1.ToBTCSwapState.CLAIMED, "gte", abortController.signal),
                 this.waitTillIntermediarySwapProcessed(checkIntervalSeconds, abortController.signal)
             ]);
             abortController.abort();
@@ -793,7 +748,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
             throw e;
         }
         if (typeof result !== "object") {
-            if (this._state === ToBTCSwapState.REFUNDABLE)
+            if (this._state === ToBTCSwapState_js_1.ToBTCSwapState.REFUNDABLE)
                 throw new Error("Swap expired");
             this.logger.debug("waitTillRefunded(): Resolved from state change");
             return true;
@@ -805,14 +760,14 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
             case IntermediaryAPI_js_1.RefundAuthorizationResponseCodes.REFUND_DATA:
                 const resultData = result.data;
                 await this._contract.isValidRefundAuthorization(this._data, resultData);
-                await this._saveAndEmit(ToBTCSwapState.REFUNDABLE);
+                await this._saveAndEmit(ToBTCSwapState_js_1.ToBTCSwapState.REFUNDABLE);
                 return false;
             case IntermediaryAPI_js_1.RefundAuthorizationResponseCodes.EXPIRED:
                 if (await this._contract.isExpired(this._getInitiator(), this._data))
                     throw new Error("Swap expired");
                 throw new IntermediaryError_js_1.IntermediaryError("Swap expired");
             case IntermediaryAPI_js_1.RefundAuthorizationResponseCodes.NOT_FOUND:
-                if (this._state === ToBTCSwapState.CLAIMED)
+                if (this._state === ToBTCSwapState_js_1.ToBTCSwapState.CLAIMED)
                     return true;
                 throw new Error("LP swap not found");
         }
@@ -874,8 +829,8 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
         const signer = (0, base_1.isAbstractSigner)(_signer) ? _signer : await this.wrapper._chain.wrapSigner(_signer);
         const result = await this.wrapper._chain.sendAndConfirm(signer, await this.txsRefund(signer.getAddress()), true, abortSignal);
         this._refundTxId = result[0];
-        if (this._state === ToBTCSwapState.COMMITED || this._state === ToBTCSwapState.REFUNDABLE || this._state === ToBTCSwapState.SOFT_CLAIMED) {
-            await this._saveAndEmit(ToBTCSwapState.REFUNDED);
+        if (this._state === ToBTCSwapState_js_1.ToBTCSwapState.COMMITED || this._state === ToBTCSwapState_js_1.ToBTCSwapState.REFUNDABLE || this._state === ToBTCSwapState_js_1.ToBTCSwapState.SOFT_CLAIMED) {
+            await this._saveAndEmit(ToBTCSwapState_js_1.ToBTCSwapState.REFUNDED);
         }
         return result[0];
     }
@@ -887,19 +842,19 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
      * @throws {Error} If we tried to refund but claimer was able to claim first
      */
     async waitTillRefunded(abortSignal) {
-        if (this._state === ToBTCSwapState.REFUNDED)
+        if (this._state === ToBTCSwapState_js_1.ToBTCSwapState.REFUNDED)
             return Promise.resolve();
-        if (this._state !== ToBTCSwapState.COMMITED &&
-            this._state !== ToBTCSwapState.SOFT_CLAIMED &&
-            this._state !== ToBTCSwapState.REFUNDABLE)
+        if (this._state !== ToBTCSwapState_js_1.ToBTCSwapState.COMMITED &&
+            this._state !== ToBTCSwapState_js_1.ToBTCSwapState.SOFT_CLAIMED &&
+            this._state !== ToBTCSwapState_js_1.ToBTCSwapState.REFUNDABLE)
             throw new Error("Invalid state (not COMMITED)");
         const abortController = new AbortController();
         if (abortSignal != null)
             abortSignal.addEventListener("abort", () => abortController.abort(abortSignal.reason));
         const res = await Promise.race([
             this.watchdogWaitTillResult(undefined, abortController.signal),
-            this.waitTillState(ToBTCSwapState.REFUNDED, "eq", abortController.signal).then(() => 0),
-            this.waitTillState(ToBTCSwapState.CLAIMED, "eq", abortController.signal).then(() => 1),
+            this.waitTillState(ToBTCSwapState_js_1.ToBTCSwapState.REFUNDED, "eq", abortController.signal).then(() => 0),
+            this.waitTillState(ToBTCSwapState_js_1.ToBTCSwapState.CLAIMED, "eq", abortController.signal).then(() => 1),
         ]);
         abortController.abort();
         if (res === 0) {
@@ -914,13 +869,13 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
         if (res?.type === base_1.SwapCommitStateType.PAID) {
             if (this._claimTxId == null)
                 this._claimTxId = await res.getClaimTxId();
-            await this._saveAndEmit(ToBTCSwapState.CLAIMED);
+            await this._saveAndEmit(ToBTCSwapState_js_1.ToBTCSwapState.CLAIMED);
             throw new Error("Tried to refund swap, but claimer claimed it in the meantime!");
         }
         if (res?.type === base_1.SwapCommitStateType.NOT_COMMITED) {
             if (this._refundTxId == null && res.getRefundTxId != null)
                 this._refundTxId = await res.getRefundTxId();
-            await this._saveAndEmit(ToBTCSwapState.REFUNDED);
+            await this._saveAndEmit(ToBTCSwapState_js_1.ToBTCSwapState.REFUNDED);
         }
     }
     //////////////////////////////
@@ -945,22 +900,22 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
      * @private
      */
     async syncStateFromChain(quoteDefinitelyExpired, commitStatus) {
-        if (this._state === ToBTCSwapState.CREATED ||
-            this._state === ToBTCSwapState.QUOTE_SOFT_EXPIRED ||
-            this._state === ToBTCSwapState.COMMITED ||
-            this._state === ToBTCSwapState.SOFT_CLAIMED ||
-            this._state === ToBTCSwapState.REFUNDABLE) {
+        if (this._state === ToBTCSwapState_js_1.ToBTCSwapState.CREATED ||
+            this._state === ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_SOFT_EXPIRED ||
+            this._state === ToBTCSwapState_js_1.ToBTCSwapState.COMMITED ||
+            this._state === ToBTCSwapState_js_1.ToBTCSwapState.SOFT_CLAIMED ||
+            this._state === ToBTCSwapState_js_1.ToBTCSwapState.REFUNDABLE) {
             let quoteExpired = false;
-            if (this._state === ToBTCSwapState.CREATED || this._state === ToBTCSwapState.QUOTE_SOFT_EXPIRED) {
+            if (this._state === ToBTCSwapState_js_1.ToBTCSwapState.CREATED || this._state === ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_SOFT_EXPIRED) {
                 //Check if quote is still valid
                 quoteExpired = quoteDefinitelyExpired ?? await this._verifyQuoteDefinitelyExpired();
             }
             commitStatus ??= await this._contract.getCommitStatus(this._getInitiator(), this._data);
             if (commitStatus != null && await this._forciblySetOnchainState(commitStatus))
                 return true;
-            if ((this._state === ToBTCSwapState.CREATED || this._state === ToBTCSwapState.QUOTE_SOFT_EXPIRED)) {
+            if ((this._state === ToBTCSwapState_js_1.ToBTCSwapState.CREATED || this._state === ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_SOFT_EXPIRED)) {
                 if (quoteExpired) {
-                    this._state = ToBTCSwapState.QUOTE_EXPIRED;
+                    this._state = ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_EXPIRED;
                     return true;
                 }
             }
@@ -972,18 +927,18 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
      * @internal
      */
     _shouldFetchOnchainState() {
-        return this._state === ToBTCSwapState.CREATED ||
-            this._state === ToBTCSwapState.QUOTE_SOFT_EXPIRED ||
-            this._state === ToBTCSwapState.COMMITED ||
-            this._state === ToBTCSwapState.SOFT_CLAIMED ||
-            this._state === ToBTCSwapState.REFUNDABLE;
+        return this._state === ToBTCSwapState_js_1.ToBTCSwapState.CREATED ||
+            this._state === ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_SOFT_EXPIRED ||
+            this._state === ToBTCSwapState_js_1.ToBTCSwapState.COMMITED ||
+            this._state === ToBTCSwapState_js_1.ToBTCSwapState.SOFT_CLAIMED ||
+            this._state === ToBTCSwapState_js_1.ToBTCSwapState.REFUNDABLE;
     }
     /**
      * @inheritDoc
      * @internal
      */
     _shouldFetchExpiryStatus() {
-        return this._state === ToBTCSwapState.CREATED || this._state === ToBTCSwapState.QUOTE_SOFT_EXPIRED;
+        return this._state === ToBTCSwapState_js_1.ToBTCSwapState.CREATED || this._state === ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_SOFT_EXPIRED;
     }
     /**
      * @inheritDoc
@@ -991,7 +946,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
      */
     async _sync(save, quoteDefinitelyExpired, commitStatus) {
         let changed = await this.syncStateFromChain(quoteDefinitelyExpired, commitStatus);
-        if (this._state === ToBTCSwapState.COMMITED || this._state === ToBTCSwapState.SOFT_CLAIMED) {
+        if (this._state === ToBTCSwapState_js_1.ToBTCSwapState.COMMITED || this._state === ToBTCSwapState_js_1.ToBTCSwapState.SOFT_CLAIMED) {
             //Check if that maybe already concluded
             try {
                 if (await this.checkIntermediarySwapProcessed(false))
@@ -1023,19 +978,19 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
                 catch (e) {
                     this.logger.error(`Failed to set payment result ${eventResult} on the swap!`);
                 }
-                this._state = ToBTCSwapState.CLAIMED;
+                this._state = ToBTCSwapState_js_1.ToBTCSwapState.CLAIMED;
                 return true;
             case base_1.SwapCommitStateType.REFUNDABLE:
                 if (this._commitTxId == null && commitStatus.getInitTxId != null)
                     this._commitTxId = await commitStatus.getInitTxId();
-                this._state = ToBTCSwapState.REFUNDABLE;
+                this._state = ToBTCSwapState_js_1.ToBTCSwapState.REFUNDABLE;
                 return true;
             case base_1.SwapCommitStateType.EXPIRED:
                 if (this._commitTxId == null && commitStatus.getInitTxId != null)
                     this._commitTxId = await commitStatus.getInitTxId();
                 if (this._refundTxId == null && commitStatus.getRefundTxId)
                     this._refundTxId = await commitStatus.getRefundTxId();
-                this._state = this._refundTxId == null ? ToBTCSwapState.QUOTE_EXPIRED : ToBTCSwapState.REFUNDED;
+                this._state = this._refundTxId == null ? ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_EXPIRED : ToBTCSwapState_js_1.ToBTCSwapState.REFUNDED;
                 return true;
             case base_1.SwapCommitStateType.NOT_COMMITED:
                 let changed = false;
@@ -1048,7 +1003,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
                     changed = true;
                 }
                 if (this._refundTxId != null) {
-                    this._state = ToBTCSwapState.REFUNDED;
+                    this._state = ToBTCSwapState_js_1.ToBTCSwapState.REFUNDED;
                     changed = true;
                 }
                 return changed;
@@ -1058,8 +1013,8 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
                     this._commitTxId = await commitStatus.getInitTxId();
                     save = true;
                 }
-                if (this._state !== ToBTCSwapState.COMMITED && this._state !== ToBTCSwapState.REFUNDABLE && this._state !== ToBTCSwapState.SOFT_CLAIMED) {
-                    this._state = ToBTCSwapState.COMMITED;
+                if (this._state !== ToBTCSwapState_js_1.ToBTCSwapState.COMMITED && this._state !== ToBTCSwapState_js_1.ToBTCSwapState.REFUNDABLE && this._state !== ToBTCSwapState_js_1.ToBTCSwapState.SOFT_CLAIMED) {
+                    this._state = ToBTCSwapState_js_1.ToBTCSwapState.COMMITED;
                     save = true;
                 }
                 return save;
@@ -1072,19 +1027,19 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
      */
     async _tick(save) {
         switch (this._state) {
-            case ToBTCSwapState.CREATED:
+            case ToBTCSwapState_js_1.ToBTCSwapState.CREATED:
                 if (this.expiry < Date.now()) {
-                    this._state = ToBTCSwapState.QUOTE_SOFT_EXPIRED;
+                    this._state = ToBTCSwapState_js_1.ToBTCSwapState.QUOTE_SOFT_EXPIRED;
                     if (save)
                         await this._saveAndEmit();
                     return true;
                 }
                 break;
-            case ToBTCSwapState.COMMITED:
-            case ToBTCSwapState.SOFT_CLAIMED:
+            case ToBTCSwapState_js_1.ToBTCSwapState.COMMITED:
+            case ToBTCSwapState_js_1.ToBTCSwapState.SOFT_CLAIMED:
                 const expired = await this._contract.isExpired(this._getInitiator(), this._data);
                 if (expired) {
-                    this._state = ToBTCSwapState.REFUNDABLE;
+                    this._state = ToBTCSwapState_js_1.ToBTCSwapState.REFUNDABLE;
                     if (save)
                         await this._saveAndEmit();
                     return true;

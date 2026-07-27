@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FromBTCSwap = exports.isFromBTCSwapInit = exports.FromBTCSwapState = void 0;
+const FromBTCSwapState_js_1 = require("./FromBTCSwapState.js");
+Object.defineProperty(exports, "FromBTCSwapState", { enumerable: true, get: function () { return FromBTCSwapState_js_1.FromBTCSwapState; } });
 const IFromBTCSelfInitSwap_js_1 = require("../IFromBTCSelfInitSwap.js");
 const SwapType_js_1 = require("../../../../enums/SwapType.js");
 const base_1 = require("@atomiqlabs/base");
@@ -15,64 +17,15 @@ const TokenAmount_js_1 = require("../../../../types/TokenAmount.js");
 const Token_js_1 = require("../../../../types/Token.js");
 const Logger_js_1 = require("../../../../utils/Logger.js");
 const BitcoinWalletUtils_js_1 = require("../../../../utils/BitcoinWalletUtils.js");
-/**
- * State enum for legacy escrow based Bitcoin -> Smart chain swaps.
- *
- * @category Swaps/Legacy/Bitcoin → Smart chain
- */
-var FromBTCSwapState;
-(function (FromBTCSwapState) {
-    /**
-     * Bitcoin swap address has expired and the intermediary (LP) has already refunded
-     *  its funds. No BTC should be sent anymore!
-     */
-    FromBTCSwapState[FromBTCSwapState["FAILED"] = -4] = "FAILED";
-    /**
-     * Bitcoin swap address has expired, user should not send any BTC anymore! Though
-     *  the intermediary (LP) hasn't refunded yet. So if there is a transaction already
-     *  in-flight the swap might still succeed.
-     */
-    FromBTCSwapState[FromBTCSwapState["EXPIRED"] = -3] = "EXPIRED";
-    /**
-     * Swap has expired for good and there is no way how it can be executed anymore
-     */
-    FromBTCSwapState[FromBTCSwapState["QUOTE_EXPIRED"] = -2] = "QUOTE_EXPIRED";
-    /**
-     * A swap is almost expired, and it should be presented to the user as expired, though
-     *  there is still a chance that it will be processed
-     */
-    FromBTCSwapState[FromBTCSwapState["QUOTE_SOFT_EXPIRED"] = -1] = "QUOTE_SOFT_EXPIRED";
-    /**
-     * Swap quote was created, use the {@link FromBTCSwap.commit} or {@link FromBTCSwap.txsCommit} functions
-     *  to initiate it by creating the swap escrow on the destination smart chain
-     */
-    FromBTCSwapState[FromBTCSwapState["PR_CREATED"] = 0] = "PR_CREATED";
-    /**
-     * Swap escrow was initiated (committed) on the destination chain, user can send the BTC to the
-     *  swap address with the {@link FromBTCSwap.getFundedPsbt}, {@link FromBTCSwap.getAddress} or
-     *  {@link FromBTCSwap.getHyperlink} functions.
-     */
-    FromBTCSwapState[FromBTCSwapState["CLAIM_COMMITED"] = 1] = "CLAIM_COMMITED";
-    /**
-     * Input bitcoin transaction was confirmed, wait for automatic settlement by the watchtowers
-     *  using the {@link FromBTCSwap.waitTillClaimed} function or settle manually using the {@link FromBTCSwap.claim}
-     *  or {@link FromBTCSwap.txsClaim} function.
-     */
-    FromBTCSwapState[FromBTCSwapState["BTC_TX_CONFIRMED"] = 2] = "BTC_TX_CONFIRMED";
-    /**
-     * Swap successfully settled and funds received on the destination chain
-     */
-    FromBTCSwapState[FromBTCSwapState["CLAIM_CLAIMED"] = 3] = "CLAIM_CLAIMED";
-})(FromBTCSwapState = exports.FromBTCSwapState || (exports.FromBTCSwapState = {}));
 const FromBTCSwapStateDescription = {
-    [FromBTCSwapState.FAILED]: "Bitcoin swap address has expired and the intermediary (LP) has already refunded its funds. No BTC should be sent anymore!",
-    [FromBTCSwapState.EXPIRED]: "Bitcoin swap address has expired, user should not send any BTC anymore! Though the intermediary (LP) hasn't refunded yet. So if there is a transaction already in-flight the swap might still succeed.",
-    [FromBTCSwapState.QUOTE_EXPIRED]: "Swap has expired for good and there is no way how it can be executed anymore",
-    [FromBTCSwapState.QUOTE_SOFT_EXPIRED]: "The swap is expired, though there is still a chance that it will be processed",
-    [FromBTCSwapState.PR_CREATED]: "Swap quote was created, initiate it by creating the swap escrow on the destination smart chain",
-    [FromBTCSwapState.CLAIM_COMMITED]: "Swap escrow was initiated (committed) on the destination chain, user can send the BTC to the Bitcoin swap address.",
-    [FromBTCSwapState.BTC_TX_CONFIRMED]: "Input bitcoin transaction was confirmed, wait for automatic settlement by the watchtower or settle manually.",
-    [FromBTCSwapState.CLAIM_CLAIMED]: "Swap successfully settled and funds received on the destination chain"
+    [FromBTCSwapState_js_1.FromBTCSwapState.FAILED]: "Bitcoin swap address has expired and the intermediary (LP) has already refunded its funds. No BTC should be sent anymore!",
+    [FromBTCSwapState_js_1.FromBTCSwapState.EXPIRED]: "Bitcoin swap address has expired, user should not send any BTC anymore! Though the intermediary (LP) hasn't refunded yet. So if there is a transaction already in-flight the swap might still succeed.",
+    [FromBTCSwapState_js_1.FromBTCSwapState.QUOTE_EXPIRED]: "Swap has expired for good and there is no way how it can be executed anymore",
+    [FromBTCSwapState_js_1.FromBTCSwapState.QUOTE_SOFT_EXPIRED]: "The swap is expired, though there is still a chance that it will be processed",
+    [FromBTCSwapState_js_1.FromBTCSwapState.PR_CREATED]: "Swap quote was created, initiate it by creating the swap escrow on the destination smart chain",
+    [FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_COMMITED]: "Swap escrow was initiated (committed) on the destination chain, user can send the BTC to the Bitcoin swap address.",
+    [FromBTCSwapState_js_1.FromBTCSwapState.BTC_TX_CONFIRMED]: "Input bitcoin transaction was confirmed, wait for automatic settlement by the watchtower or settle manually.",
+    [FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_CLAIMED]: "Swap successfully settled and funds received on the destination chain"
 };
 function isFromBTCSwapInit(obj) {
     return typeof (obj.data) === "object" &&
@@ -97,7 +50,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
         /**
          * @internal
          */
-        this.swapStateName = (state) => FromBTCSwapState[state];
+        this.swapStateName = (state) => FromBTCSwapState_js_1.FromBTCSwapState[state];
         /**
          * @internal
          */
@@ -107,7 +60,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
          */
         this.inputToken = Token_js_1.BitcoinTokens.BTC;
         if (isFromBTCSwapInit(initOrObject)) {
-            this._state = FromBTCSwapState.PR_CREATED;
+            this._state = FromBTCSwapState_js_1.FromBTCSwapState.PR_CREATED;
             this._data = initOrObject.data;
             this.feeRate = initOrObject.feeRate;
             this.address = initOrObject.address;
@@ -141,22 +94,22 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
         if (this.version == null) {
             switch (this._state) {
                 case -2:
-                    this._state = FromBTCSwapState.FAILED;
+                    this._state = FromBTCSwapState_js_1.FromBTCSwapState.FAILED;
                     break;
                 case -1:
-                    this._state = FromBTCSwapState.QUOTE_EXPIRED;
+                    this._state = FromBTCSwapState_js_1.FromBTCSwapState.QUOTE_EXPIRED;
                     break;
                 case 0:
-                    this._state = FromBTCSwapState.PR_CREATED;
+                    this._state = FromBTCSwapState_js_1.FromBTCSwapState.PR_CREATED;
                     break;
                 case 1:
-                    this._state = FromBTCSwapState.CLAIM_COMMITED;
+                    this._state = FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_COMMITED;
                     break;
                 case 2:
-                    this._state = FromBTCSwapState.BTC_TX_CONFIRMED;
+                    this._state = FromBTCSwapState_js_1.FromBTCSwapState.BTC_TX_CONFIRMED;
                     break;
                 case 3:
-                    this._state = FromBTCSwapState.CLAIM_CLAIMED;
+                    this._state = FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_CLAIMED;
                     break;
             }
             this.version = 1;
@@ -168,7 +121,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
      * Returns bitcoin address where the on-chain BTC should be sent to
      */
     getAddress() {
-        if (this._state === FromBTCSwapState.PR_CREATED)
+        if (this._state === FromBTCSwapState_js_1.FromBTCSwapState.PR_CREATED)
             throw new Error("Cannot get bitcoin address of non-initiated swaps! Initiate swap first with commit() or txsCommit().");
         return this.address ?? "";
     }
@@ -184,7 +137,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
      * @inheritDoc
      */
     getHyperlink() {
-        if (this._state === FromBTCSwapState.PR_CREATED)
+        if (this._state === FromBTCSwapState_js_1.FromBTCSwapState.PR_CREATED)
             throw new Error("Cannot get bitcoin address of non-initiated swaps! Initiate swap first with commit() or txsCommit().");
         return this._getHyperlink();
     }
@@ -234,57 +187,57 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
      * @inheritDoc
      */
     requiresAction() {
-        return this.isClaimable() || (this._state === FromBTCSwapState.CLAIM_COMMITED && this.getTimeoutTime() > Date.now() && this.txId == null);
+        return this.isClaimable() || (this._state === FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_COMMITED && this.getTimeoutTime() > Date.now() && this.txId == null);
     }
     /**
      * @inheritDoc
      */
     isFinished() {
-        return this._state === FromBTCSwapState.CLAIM_CLAIMED || this._state === FromBTCSwapState.QUOTE_EXPIRED || this._state === FromBTCSwapState.FAILED;
+        return this._state === FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_CLAIMED || this._state === FromBTCSwapState_js_1.FromBTCSwapState.QUOTE_EXPIRED || this._state === FromBTCSwapState_js_1.FromBTCSwapState.FAILED;
     }
     /**
      * @inheritDoc
      */
     isClaimable() {
-        return this._state === FromBTCSwapState.BTC_TX_CONFIRMED;
+        return this._state === FromBTCSwapState_js_1.FromBTCSwapState.BTC_TX_CONFIRMED;
     }
     /**
      * @inheritDoc
      */
     isSuccessful() {
-        return this._state === FromBTCSwapState.CLAIM_CLAIMED;
+        return this._state === FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_CLAIMED;
     }
     /**
      * @inheritDoc
      */
     isFailed() {
-        return this._state === FromBTCSwapState.FAILED || this._state === FromBTCSwapState.EXPIRED;
+        return this._state === FromBTCSwapState_js_1.FromBTCSwapState.FAILED || this._state === FromBTCSwapState_js_1.FromBTCSwapState.EXPIRED;
     }
     /**
      * @inheritDoc
      */
     isInProgress() {
-        return this._state === FromBTCSwapState.CLAIM_COMMITED ||
-            this._state === FromBTCSwapState.BTC_TX_CONFIRMED;
+        return this._state === FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_COMMITED ||
+            this._state === FromBTCSwapState_js_1.FromBTCSwapState.BTC_TX_CONFIRMED;
     }
     /**
      * @inheritDoc
      */
     isQuoteExpired() {
-        return this._state === FromBTCSwapState.QUOTE_EXPIRED;
+        return this._state === FromBTCSwapState_js_1.FromBTCSwapState.QUOTE_EXPIRED;
     }
     /**
      * @inheritDoc
      */
     isQuoteSoftExpired() {
-        return this._state === FromBTCSwapState.QUOTE_EXPIRED || this._state === FromBTCSwapState.QUOTE_SOFT_EXPIRED;
+        return this._state === FromBTCSwapState_js_1.FromBTCSwapState.QUOTE_EXPIRED || this._state === FromBTCSwapState_js_1.FromBTCSwapState.QUOTE_SOFT_EXPIRED;
     }
     /**
      * @inheritDoc
      * @internal
      */
     canCommit(skipQuoteExpiryChecks) {
-        if (this._state !== FromBTCSwapState.PR_CREATED && (!skipQuoteExpiryChecks || this._state !== FromBTCSwapState.QUOTE_SOFT_EXPIRED))
+        if (this._state !== FromBTCSwapState_js_1.FromBTCSwapState.PR_CREATED && (!skipQuoteExpiryChecks || this._state !== FromBTCSwapState_js_1.FromBTCSwapState.QUOTE_SOFT_EXPIRED))
             return false;
         if (this.requiredConfirmations == null)
             return false;
@@ -412,7 +365,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
      * @throws {Error} if in invalid state (must be {@link FromBTCSwapState.CLAIM_COMMITED})
      */
     async waitForBitcoinTransaction(updateCallback, checkIntervalSeconds, abortSignal) {
-        if (this._state !== FromBTCSwapState.CLAIM_COMMITED && this._state !== FromBTCSwapState.EXPIRED)
+        if (this._state !== FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_COMMITED && this._state !== FromBTCSwapState_js_1.FromBTCSwapState.EXPIRED)
             throw new Error("Must be in COMMITED state!");
         const txoHashHint = this._data.getTxoHashHint();
         if (txoHashHint == null)
@@ -465,10 +418,10 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
         this.vout = result.vout;
         if (result.tx.inputAddresses != null)
             this.senderAddress = result.tx.inputAddresses[0];
-        if (this._state !== FromBTCSwapState.CLAIM_CLAIMED &&
-            this._state !== FromBTCSwapState.FAILED) {
+        if (this._state !== FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_CLAIMED &&
+            this._state !== FromBTCSwapState_js_1.FromBTCSwapState.FAILED) {
             this.btcTxConfirmedAt ??= Date.now();
-            this._state = FromBTCSwapState.BTC_TX_CONFIRMED;
+            this._state = FromBTCSwapState_js_1.FromBTCSwapState.BTC_TX_CONFIRMED;
         }
         await this._saveAndEmit();
         return result.tx.txid;
@@ -530,7 +483,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
      * @inheritDoc
      */
     getFundedPsbt(_bitcoinWallet, feeRate, additionalOutputs) {
-        if (this._state !== FromBTCSwapState.CLAIM_COMMITED)
+        if (this._state !== FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_COMMITED)
             throw new Error("Swap not committed yet, please initiate the swap first with commit() call!");
         if (this.txId != null)
             throw new Error("Bitcoin transaction already submitted for this swap!");
@@ -544,7 +497,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
      */
     async submitPsbt(_psbt) {
         const psbt = (0, BitcoinUtils_js_1.parsePsbtTransaction)(_psbt);
-        if (this._state !== FromBTCSwapState.CLAIM_COMMITED)
+        if (this._state !== FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_COMMITED)
             throw new Error("Swap not committed yet, please initiate the swap first with commit() call!");
         if (this.txId != null)
             throw new Error("Bitcoin transaction already submitted for this swap!");
@@ -584,7 +537,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
     async sendBitcoinTransaction(wallet, feeRate) {
         if (this.address == null || this.amount == null)
             throw new Error("Cannot send bitcoin transaction, because the address is not known! This can happen after a swap is recovered.");
-        if (this._state !== FromBTCSwapState.CLAIM_COMMITED)
+        if (this._state !== FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_COMMITED)
             throw new Error("Swap not committed yet, please initiate the swap first with commit() call!");
         if (this.txId != null)
             throw new Error("Bitcoin transaction already submitted for this swap!");
@@ -623,18 +576,18 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
      *  user, in case `false` is returned the user should call `swap.claim()` to settle the swap on the destination manually
      */
     async execute(dstSigner, wallet, callbacks, options) {
-        if (this._state === FromBTCSwapState.FAILED)
+        if (this._state === FromBTCSwapState_js_1.FromBTCSwapState.FAILED)
             throw new Error("Swap failed!");
-        if (this._state === FromBTCSwapState.EXPIRED)
+        if (this._state === FromBTCSwapState_js_1.FromBTCSwapState.EXPIRED)
             throw new Error("Swap address expired!");
-        if (this._state === FromBTCSwapState.QUOTE_EXPIRED || this._state === FromBTCSwapState.QUOTE_SOFT_EXPIRED)
+        if (this._state === FromBTCSwapState_js_1.FromBTCSwapState.QUOTE_EXPIRED || this._state === FromBTCSwapState_js_1.FromBTCSwapState.QUOTE_SOFT_EXPIRED)
             throw new Error("Swap quote expired!");
-        if (this._state === FromBTCSwapState.CLAIM_CLAIMED)
+        if (this._state === FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_CLAIMED)
             throw new Error("Swap already settled!");
-        if (this._state === FromBTCSwapState.PR_CREATED) {
+        if (this._state === FromBTCSwapState_js_1.FromBTCSwapState.PR_CREATED) {
             await this.commit(dstSigner, options?.abortSignal, undefined, callbacks?.onDestinationCommitSent);
         }
-        if (this._state === FromBTCSwapState.CLAIM_COMMITED) {
+        if (this._state === FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_COMMITED) {
             if (wallet != null) {
                 const bitcoinPaymentSent = await this.getBitcoinPayment();
                 if (bitcoinPaymentSent == null && this.txId == null) {
@@ -649,9 +602,9 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
                 callbacks.onSourceTransactionConfirmed(txId);
         }
         // @ts-ignore
-        if (this._state === FromBTCSwapState.CLAIM_CLAIMED)
+        if (this._state === FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_CLAIMED)
             return true;
-        if (this._state === FromBTCSwapState.BTC_TX_CONFIRMED) {
+        if (this._state === FromBTCSwapState_js_1.FromBTCSwapState.BTC_TX_CONFIRMED) {
             const success = await this.waitTillClaimed(options?.maxWaitTillAutomaticSettlementSeconds ?? 60, options?.abortSignal);
             if (success && callbacks?.onSwapSettled != null)
                 callbacks.onSwapSettled(this.getOutputTxId());
@@ -673,7 +626,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
         let destinationSettlementStatus = "inactive";
         let buildCurrentAction = async () => undefined;
         switch (state) {
-            case FromBTCSwapState.PR_CREATED: {
+            case FromBTCSwapState_js_1.FromBTCSwapState.PR_CREATED: {
                 const quoteValid = await this._verifyQuoteValid();
                 destinationSetupStatus = quoteValid && timeoutTime >= now ? "awaiting" : "soft_expired";
                 if (quoteValid && timeoutTime >= now) {
@@ -681,15 +634,15 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
                 }
                 break;
             }
-            case FromBTCSwapState.QUOTE_SOFT_EXPIRED:
+            case FromBTCSwapState_js_1.FromBTCSwapState.QUOTE_SOFT_EXPIRED:
                 destinationSetupStatus = "soft_expired";
                 break;
-            case FromBTCSwapState.QUOTE_EXPIRED:
+            case FromBTCSwapState_js_1.FromBTCSwapState.QUOTE_EXPIRED:
                 destinationSetupStatus = "expired";
                 break;
-            case FromBTCSwapState.CLAIM_COMMITED:
-            case FromBTCSwapState.EXPIRED:
-            case FromBTCSwapState.FAILED:
+            case FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_COMMITED:
+            case FromBTCSwapState_js_1.FromBTCSwapState.EXPIRED:
+            case FromBTCSwapState_js_1.FromBTCSwapState.FAILED:
                 const bitcoinPayment = this.address == null ? null : await this.getBitcoinPayment();
                 bitcoinTxId = bitcoinPayment?.txId;
                 let bitcoinConfirmationDelay;
@@ -703,18 +656,18 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
                 destinationSetupStatus = "completed";
                 if (bitcoinPayment == null) {
                     if (this.txId != null) {
-                        bitcoinPaymentStatus = state === FromBTCSwapState.FAILED ? "expired" : "received";
-                        if (state !== FromBTCSwapState.FAILED) {
+                        bitcoinPaymentStatus = state === FromBTCSwapState_js_1.FromBTCSwapState.FAILED ? "expired" : "received";
+                        if (state !== FromBTCSwapState_js_1.FromBTCSwapState.FAILED) {
                             buildCurrentAction = this._buildWaitBitcoinConfirmationsAction.bind(this, -1, "Wait for bitcoin transaction to be picked up by the RPC and confirmed.");
                         }
                     }
                     else {
                         bitcoinPaymentStatus = "awaiting";
-                        if (state === FromBTCSwapState.EXPIRED)
+                        if (state === FromBTCSwapState_js_1.FromBTCSwapState.EXPIRED)
                             bitcoinPaymentStatus = "soft_expired";
-                        if (state === FromBTCSwapState.FAILED)
+                        if (state === FromBTCSwapState_js_1.FromBTCSwapState.FAILED)
                             bitcoinPaymentStatus = "expired";
-                        if (state === FromBTCSwapState.CLAIM_COMMITED && timeoutTime >= now &&
+                        if (state === FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_COMMITED && timeoutTime >= now &&
                             this.address != null && this.amount != null) {
                             buildCurrentAction = this._buildSendToAddressOrSignPsbtAction.bind(this);
                         }
@@ -722,7 +675,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
                 }
                 else if (bitcoinPayment.confirmations >= bitcoinPayment.targetConfirmations) {
                     bitcoinPaymentStatus = "confirmed";
-                    if (state !== FromBTCSwapState.FAILED) {
+                    if (state !== FromBTCSwapState_js_1.FromBTCSwapState.FAILED) {
                         buildCurrentAction = this._buildWaitBitcoinConfirmationsAction.bind(this, bitcoinConfirmationDelay ?? -1, undefined);
                     }
                 }
@@ -733,13 +686,13 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
                         target: bitcoinPayment.targetConfirmations,
                         etaSeconds: bitcoinConfirmationDelay ?? -1
                     };
-                    if (state !== FromBTCSwapState.FAILED) {
+                    if (state !== FromBTCSwapState_js_1.FromBTCSwapState.FAILED) {
                         buildCurrentAction = this._buildWaitBitcoinConfirmationsAction.bind(this, bitcoinConfirmationDelay ?? -1, undefined);
                     }
                 }
-                destinationSettlementStatus = state === FromBTCSwapState.FAILED ? "expired" : "inactive";
+                destinationSettlementStatus = state === FromBTCSwapState_js_1.FromBTCSwapState.FAILED ? "expired" : "inactive";
                 break;
-            case FromBTCSwapState.BTC_TX_CONFIRMED:
+            case FromBTCSwapState_js_1.FromBTCSwapState.BTC_TX_CONFIRMED:
                 destinationSetupStatus = "completed";
                 bitcoinPaymentStatus = "confirmed";
                 if (this.btcTxConfirmedAt == null ||
@@ -753,7 +706,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
                     buildCurrentAction = this._buildWaitSettlementAction.bind(this, options?.maxWaitTillAutomaticSettlementSeconds);
                 }
                 break;
-            case FromBTCSwapState.CLAIM_CLAIMED:
+            case FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_CLAIMED:
                 destinationSetupStatus = "completed";
                 bitcoinPaymentStatus = "confirmed";
                 destinationSettlementStatus = "settled";
@@ -858,7 +811,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
         }
         if (requiredStates != null && !requiredStates.includes(this._state))
             throw new Error("Swap state has changed before transactions were submitted!");
-        if (this._state === FromBTCSwapState.CLAIM_COMMITED) {
+        if (this._state === FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_COMMITED) {
             let psbt;
             if (txs.length !== 1)
                 throw new Error("Need to submit exactly 1 signed PSBT!");
@@ -867,7 +820,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
             psbt = txs[0];
             return [await this.submitPsbt(psbt)];
         }
-        if (this._state === FromBTCSwapState.PR_CREATED || this._state === FromBTCSwapState.QUOTE_SOFT_EXPIRED) {
+        if (this._state === FromBTCSwapState_js_1.FromBTCSwapState.PR_CREATED || this._state === FromBTCSwapState_js_1.FromBTCSwapState.QUOTE_SOFT_EXPIRED) {
             if (!await this._verifyQuoteValid())
                 throw new Error("Quote is already expired!");
             if (this.getTimeoutTime() < Date.now())
@@ -880,7 +833,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
             await this.waitTillCommited(abortSignal);
             return txIds;
         }
-        if (this._state === FromBTCSwapState.BTC_TX_CONFIRMED) {
+        if (this._state === FromBTCSwapState_js_1.FromBTCSwapState.BTC_TX_CONFIRMED) {
             const parsedTxs = [];
             for (let tx of txs) {
                 parsedTxs.push(typeof (tx) === "string" ? await this.wrapper._chain.deserializeSignedTx(tx) : tx);
@@ -938,7 +891,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
                     type: "FUNDED_PSBT"
                 }],
             submitPsbt: async (signedPsbt, idempotent) => {
-                return this._submitExecutionTransactions(Array.isArray(signedPsbt) ? signedPsbt : [signedPsbt], undefined, [FromBTCSwapState.CLAIM_COMMITED], idempotent);
+                return this._submitExecutionTransactions(Array.isArray(signedPsbt) ? signedPsbt : [signedPsbt], undefined, [FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_COMMITED], idempotent);
             }
         };
     }
@@ -984,7 +937,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
             chain: this.chainIdentifier,
             txs: await this.prepareTransactions(this.txsCommit(actionOptions?.skipChecks)),
             submitTransactions: async (txs, abortSignal, idempotent) => {
-                return this._submitExecutionTransactions(txs, abortSignal, [FromBTCSwapState.PR_CREATED, FromBTCSwapState.QUOTE_SOFT_EXPIRED], idempotent);
+                return this._submitExecutionTransactions(txs, abortSignal, [FromBTCSwapState_js_1.FromBTCSwapState.PR_CREATED, FromBTCSwapState_js_1.FromBTCSwapState.QUOTE_SOFT_EXPIRED], idempotent);
             },
             requiredSigner: this._getInitiator()
         };
@@ -1002,7 +955,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
             chain: this.chainIdentifier,
             txs: await this.prepareTransactions(this.txsClaim(actionOptions?.manualSettlementSmartChainSigner)),
             submitTransactions: async (txs, abortSignal, idempotent) => {
-                return this._submitExecutionTransactions(txs, abortSignal, [FromBTCSwapState.BTC_TX_CONFIRMED], idempotent);
+                return this._submitExecutionTransactions(txs, abortSignal, [FromBTCSwapState_js_1.FromBTCSwapState.BTC_TX_CONFIRMED], idempotent);
             },
             requiredSigner: signerAddress ?? this._getInitiator()
         };
@@ -1060,8 +1013,8 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
             return Promise.resolve();
         });
         this._commitTxId = result[result.length - 1];
-        if (this._state === FromBTCSwapState.PR_CREATED || this._state === FromBTCSwapState.QUOTE_SOFT_EXPIRED || this._state === FromBTCSwapState.QUOTE_EXPIRED) {
-            await this._saveAndEmit(FromBTCSwapState.CLAIM_COMMITED);
+        if (this._state === FromBTCSwapState_js_1.FromBTCSwapState.PR_CREATED || this._state === FromBTCSwapState_js_1.FromBTCSwapState.QUOTE_SOFT_EXPIRED || this._state === FromBTCSwapState_js_1.FromBTCSwapState.QUOTE_EXPIRED) {
+            await this._saveAndEmit(FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_COMMITED);
         }
         return this._commitTxId;
     }
@@ -1069,14 +1022,14 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
      * @inheritDoc
      */
     async waitTillCommited(abortSignal) {
-        if (this._state === FromBTCSwapState.CLAIM_COMMITED || this._state === FromBTCSwapState.CLAIM_CLAIMED)
+        if (this._state === FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_COMMITED || this._state === FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_CLAIMED)
             return Promise.resolve();
-        if (this._state !== FromBTCSwapState.PR_CREATED && this._state !== FromBTCSwapState.QUOTE_SOFT_EXPIRED)
+        if (this._state !== FromBTCSwapState_js_1.FromBTCSwapState.PR_CREATED && this._state !== FromBTCSwapState_js_1.FromBTCSwapState.QUOTE_SOFT_EXPIRED)
             throw new Error("Invalid state");
         const abortController = (0, Utils_js_1.extendAbortController)(abortSignal);
         const result = await Promise.race([
             this.watchdogWaitTillCommited(undefined, abortController.signal),
-            this.waitTillState(FromBTCSwapState.CLAIM_COMMITED, "gte", abortController.signal).then(() => 0)
+            this.waitTillState(FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_COMMITED, "gte", abortController.signal).then(() => 0)
         ]);
         abortController.abort();
         if (result === 0) {
@@ -1087,15 +1040,15 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
         }
         if (result === null) {
             this.logger.debug("waitTillCommited(): Resolved from watchdog - signature expired");
-            if (this._state === FromBTCSwapState.PR_CREATED || this._state === FromBTCSwapState.QUOTE_SOFT_EXPIRED) {
-                await this._saveAndEmit(FromBTCSwapState.QUOTE_EXPIRED);
+            if (this._state === FromBTCSwapState_js_1.FromBTCSwapState.PR_CREATED || this._state === FromBTCSwapState_js_1.FromBTCSwapState.QUOTE_SOFT_EXPIRED) {
+                await this._saveAndEmit(FromBTCSwapState_js_1.FromBTCSwapState.QUOTE_EXPIRED);
             }
             return;
         }
-        if (this._state === FromBTCSwapState.PR_CREATED || this._state === FromBTCSwapState.QUOTE_SOFT_EXPIRED) {
+        if (this._state === FromBTCSwapState_js_1.FromBTCSwapState.PR_CREATED || this._state === FromBTCSwapState_js_1.FromBTCSwapState.QUOTE_SOFT_EXPIRED) {
             if (typeof (result) === "object" && result.getInitTxId != null && this._commitTxId == null)
                 this._commitTxId = await result.getInitTxId();
-            await this._saveAndEmit(FromBTCSwapState.CLAIM_COMMITED);
+            await this._saveAndEmit(FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_COMMITED);
         }
     }
     //////////////////////////////
@@ -1125,7 +1078,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
                 signer = await this.wrapper._chain.wrapSigner(_signer);
             }
         }
-        if (this._state !== FromBTCSwapState.BTC_TX_CONFIRMED)
+        if (this._state !== FromBTCSwapState_js_1.FromBTCSwapState.BTC_TX_CONFIRMED)
             throw new Error("Must be in BTC_TX_CONFIRMED state!");
         if (this.txId == null || this.vout == null)
             throw new Error("Bitcoin transaction ID not known!");
@@ -1173,7 +1126,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
         }
         catch (e) {
             this.logger.info("claim(): Failed to claim ourselves, checking swap claim state...");
-            if (this._state === FromBTCSwapState.CLAIM_CLAIMED) {
+            if (this._state === FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_CLAIMED) {
                 this.logger.info("claim(): Transaction state is CLAIM_CLAIMED, swap was successfully claimed by the watchtower");
                 return this._claimTxId;
             }
@@ -1184,15 +1137,15 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
                     this._claimTxId = await status.getClaimTxId();
                 const txId = buffer_1.Buffer.from(await status.getClaimResult(), "hex").reverse().toString("hex");
                 await this._setBitcoinTxId(txId);
-                await this._saveAndEmit(FromBTCSwapState.CLAIM_CLAIMED);
+                await this._saveAndEmit(FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_CLAIMED);
                 return this._claimTxId;
             }
             throw e;
         }
         this._claimTxId = txIds[txIds.length - 1];
-        if (this._state === FromBTCSwapState.CLAIM_COMMITED || this._state === FromBTCSwapState.BTC_TX_CONFIRMED ||
-            this._state === FromBTCSwapState.EXPIRED || this._state === FromBTCSwapState.FAILED) {
-            await this._saveAndEmit(FromBTCSwapState.CLAIM_CLAIMED);
+        if (this._state === FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_COMMITED || this._state === FromBTCSwapState_js_1.FromBTCSwapState.BTC_TX_CONFIRMED ||
+            this._state === FromBTCSwapState_js_1.FromBTCSwapState.EXPIRED || this._state === FromBTCSwapState_js_1.FromBTCSwapState.FAILED) {
+            await this._saveAndEmit(FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_CLAIMED);
         }
         return txIds[txIds.length - 1];
     }
@@ -1203,9 +1156,9 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
      * @throws {Error} If the LP refunded sooner than we were able to claim
      */
     async waitTillClaimed(maxWaitTimeSeconds, abortSignal, pollIntervalSeconds) {
-        if (this._state === FromBTCSwapState.CLAIM_CLAIMED)
+        if (this._state === FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_CLAIMED)
             return Promise.resolve(true);
-        if (this._state !== FromBTCSwapState.BTC_TX_CONFIRMED)
+        if (this._state !== FromBTCSwapState_js_1.FromBTCSwapState.BTC_TX_CONFIRMED)
             throw new Error("Invalid state (not BTC_TX_CONFIRMED)");
         const abortController = (0, Utils_js_1.extendAbortController)(abortSignal);
         let timedOut = false;
@@ -1220,8 +1173,8 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
         try {
             res = await Promise.race([
                 this.watchdogWaitTillResult(pollIntervalSeconds, abortController.signal),
-                this.waitTillState(FromBTCSwapState.CLAIM_CLAIMED, "eq", abortController.signal).then(() => 0),
-                this.waitTillState(FromBTCSwapState.FAILED, "eq", abortController.signal).then(() => 1),
+                this.waitTillState(FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_CLAIMED, "eq", abortController.signal).then(() => 0),
+                this.waitTillState(FromBTCSwapState_js_1.FromBTCSwapState.FAILED, "eq", abortController.signal).then(() => 1),
             ]);
             abortController.abort();
         }
@@ -1241,20 +1194,20 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
         }
         this.logger.debug("waitTillClaimed(): Resolved from watchdog");
         if (res?.type === base_1.SwapCommitStateType.PAID) {
-            if (this._state !== FromBTCSwapState.CLAIM_CLAIMED) {
+            if (this._state !== FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_CLAIMED) {
                 if (this._claimTxId == null)
                     this._claimTxId = await res.getClaimTxId();
                 const txId = buffer_1.Buffer.from(await res.getClaimResult(), "hex").reverse().toString("hex");
                 await this._setBitcoinTxId(txId);
-                await this._saveAndEmit(FromBTCSwapState.CLAIM_CLAIMED);
+                await this._saveAndEmit(FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_CLAIMED);
             }
         }
         if (res?.type === base_1.SwapCommitStateType.NOT_COMMITED || res?.type === base_1.SwapCommitStateType.EXPIRED) {
-            if (this._state !== FromBTCSwapState.CLAIM_CLAIMED &&
-                this._state !== FromBTCSwapState.FAILED) {
+            if (this._state !== FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_CLAIMED &&
+                this._state !== FromBTCSwapState_js_1.FromBTCSwapState.FAILED) {
                 if (res.getRefundTxId != null)
                     this._refundTxId = await res.getRefundTxId();
-                await this._saveAndEmit(FromBTCSwapState.FAILED);
+                await this._saveAndEmit(FromBTCSwapState_js_1.FromBTCSwapState.FAILED);
             }
             throw new Error("Swap expired while waiting for claim!");
         }
@@ -1286,21 +1239,21 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
      * @private
      */
     async syncStateFromChain(quoteDefinitelyExpired, commitStatus) {
-        if (this._state === FromBTCSwapState.PR_CREATED ||
-            this._state === FromBTCSwapState.QUOTE_SOFT_EXPIRED ||
-            this._state === FromBTCSwapState.CLAIM_COMMITED ||
-            this._state === FromBTCSwapState.BTC_TX_CONFIRMED ||
-            this._state === FromBTCSwapState.EXPIRED) {
+        if (this._state === FromBTCSwapState_js_1.FromBTCSwapState.PR_CREATED ||
+            this._state === FromBTCSwapState_js_1.FromBTCSwapState.QUOTE_SOFT_EXPIRED ||
+            this._state === FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_COMMITED ||
+            this._state === FromBTCSwapState_js_1.FromBTCSwapState.BTC_TX_CONFIRMED ||
+            this._state === FromBTCSwapState_js_1.FromBTCSwapState.EXPIRED) {
             let quoteExpired = false;
-            if (this._state === FromBTCSwapState.PR_CREATED || this._state === FromBTCSwapState.QUOTE_SOFT_EXPIRED) {
+            if (this._state === FromBTCSwapState_js_1.FromBTCSwapState.PR_CREATED || this._state === FromBTCSwapState_js_1.FromBTCSwapState.QUOTE_SOFT_EXPIRED) {
                 quoteExpired = quoteDefinitelyExpired ?? await this._verifyQuoteDefinitelyExpired(); //Make sure we check for expiry here, to prevent race conditions
             }
             const status = commitStatus ?? await this._contract.getCommitStatus(this._getInitiator(), this._data);
             if (status != null && await this._forciblySetOnchainState(status))
                 return true;
-            if (this._state === FromBTCSwapState.PR_CREATED || this._state === FromBTCSwapState.QUOTE_SOFT_EXPIRED) {
+            if (this._state === FromBTCSwapState_js_1.FromBTCSwapState.PR_CREATED || this._state === FromBTCSwapState_js_1.FromBTCSwapState.QUOTE_SOFT_EXPIRED) {
                 if (quoteExpired) {
-                    this._state = FromBTCSwapState.QUOTE_EXPIRED;
+                    this._state = FromBTCSwapState_js_1.FromBTCSwapState.QUOTE_EXPIRED;
                     return true;
                 }
             }
@@ -1312,16 +1265,16 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
      * @internal
      */
     _shouldFetchOnchainState() {
-        return this._state === FromBTCSwapState.PR_CREATED || this._state === FromBTCSwapState.QUOTE_SOFT_EXPIRED ||
-            this._state === FromBTCSwapState.CLAIM_COMMITED || this._state === FromBTCSwapState.BTC_TX_CONFIRMED ||
-            this._state === FromBTCSwapState.EXPIRED;
+        return this._state === FromBTCSwapState_js_1.FromBTCSwapState.PR_CREATED || this._state === FromBTCSwapState_js_1.FromBTCSwapState.QUOTE_SOFT_EXPIRED ||
+            this._state === FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_COMMITED || this._state === FromBTCSwapState_js_1.FromBTCSwapState.BTC_TX_CONFIRMED ||
+            this._state === FromBTCSwapState_js_1.FromBTCSwapState.EXPIRED;
     }
     /**
      * @inheritDoc
      * @internal
      */
     _shouldFetchExpiryStatus() {
-        return this._state === FromBTCSwapState.PR_CREATED || this._state === FromBTCSwapState.QUOTE_SOFT_EXPIRED;
+        return this._state === FromBTCSwapState_js_1.FromBTCSwapState.PR_CREATED || this._state === FromBTCSwapState_js_1.FromBTCSwapState.QUOTE_SOFT_EXPIRED;
     }
     /**
      * @inheritDoc
@@ -1346,7 +1299,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
                     this._claimTxId = await status.getClaimTxId();
                 const txId = buffer_1.Buffer.from(await status.getClaimResult(), "hex").reverse().toString("hex");
                 await this._setBitcoinTxId(txId);
-                this._state = FromBTCSwapState.CLAIM_CLAIMED;
+                this._state = FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_CLAIMED;
                 return true;
             case base_1.SwapCommitStateType.NOT_COMMITED:
                 let changed = false;
@@ -1359,7 +1312,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
                     changed = true;
                 }
                 if (this._refundTxId != null) {
-                    this._state = FromBTCSwapState.FAILED;
+                    this._state = FromBTCSwapState_js_1.FromBTCSwapState.FAILED;
                     changed = true;
                 }
                 return changed;
@@ -1368,7 +1321,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
                     this._commitTxId = await status.getInitTxId();
                 if (this._refundTxId == null && status.getRefundTxId)
                     this._refundTxId = await status.getRefundTxId();
-                this._state = this._refundTxId == null ? FromBTCSwapState.QUOTE_EXPIRED : FromBTCSwapState.FAILED;
+                this._state = this._refundTxId == null ? FromBTCSwapState_js_1.FromBTCSwapState.QUOTE_EXPIRED : FromBTCSwapState_js_1.FromBTCSwapState.FAILED;
                 return true;
             case base_1.SwapCommitStateType.COMMITED:
                 let save = false;
@@ -1376,8 +1329,8 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
                     this._commitTxId = await status.getInitTxId();
                     save = true;
                 }
-                if (this._state !== FromBTCSwapState.CLAIM_COMMITED && this._state !== FromBTCSwapState.BTC_TX_CONFIRMED && this._state !== FromBTCSwapState.EXPIRED) {
-                    this._state = FromBTCSwapState.CLAIM_COMMITED;
+                if (this._state !== FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_COMMITED && this._state !== FromBTCSwapState_js_1.FromBTCSwapState.BTC_TX_CONFIRMED && this._state !== FromBTCSwapState_js_1.FromBTCSwapState.EXPIRED) {
+                    this._state = FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_COMMITED;
                     save = true;
                 }
                 if (this.address == null)
@@ -1394,7 +1347,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
                     }
                     if (this.requiredConfirmations != null && res.confirmations >= this.requiredConfirmations) {
                         this.btcTxConfirmedAt ??= Date.now();
-                        this._state = FromBTCSwapState.BTC_TX_CONFIRMED;
+                        this._state = FromBTCSwapState_js_1.FromBTCSwapState.BTC_TX_CONFIRMED;
                         save = true;
                     }
                 }
@@ -1408,22 +1361,22 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
      */
     async _tick(save) {
         switch (this._state) {
-            case FromBTCSwapState.PR_CREATED:
+            case FromBTCSwapState_js_1.FromBTCSwapState.PR_CREATED:
                 if (this.expiry < Date.now()) {
-                    this._state = FromBTCSwapState.QUOTE_SOFT_EXPIRED;
+                    this._state = FromBTCSwapState_js_1.FromBTCSwapState.QUOTE_SOFT_EXPIRED;
                     if (save)
                         await this._saveAndEmit();
                     return true;
                 }
                 break;
-            case FromBTCSwapState.CLAIM_COMMITED:
+            case FromBTCSwapState_js_1.FromBTCSwapState.CLAIM_COMMITED:
                 if (this.getTimeoutTime() < Date.now()) {
-                    this._state = FromBTCSwapState.EXPIRED;
+                    this._state = FromBTCSwapState_js_1.FromBTCSwapState.EXPIRED;
                     if (save)
                         await this._saveAndEmit();
                     return true;
                 }
-            case FromBTCSwapState.EXPIRED:
+            case FromBTCSwapState_js_1.FromBTCSwapState.EXPIRED:
                 //Check if bitcoin payment was received at least every 2 minutes
                 if (this.btcTxLastChecked == null || Date.now() - this.btcTxLastChecked > 120000) {
                     if (this.address != null)
@@ -1441,7 +1394,7 @@ class FromBTCSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
                                 }
                                 if (this.requiredConfirmations != null && res.confirmations >= this.requiredConfirmations) {
                                     this.btcTxConfirmedAt ??= Date.now();
-                                    this._state = FromBTCSwapState.BTC_TX_CONFIRMED;
+                                    this._state = FromBTCSwapState_js_1.FromBTCSwapState.BTC_TX_CONFIRMED;
                                     if (save)
                                         await this._saveAndEmit();
                                     shouldSave = true;

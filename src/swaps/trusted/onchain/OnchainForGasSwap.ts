@@ -1,3 +1,4 @@
+import {OnchainForGasSwapState} from "./OnchainForGasSwapState.js";
 import {SwapType} from "../../../enums/SwapType.js";
 import {ChainType} from "@atomiqlabs/base";
 import {toBigInt} from "../../../utils/Utils.js";
@@ -24,37 +25,7 @@ import {getLogger, LoggerType} from "../../../utils/Logger.js";
 import {timeoutPromise} from "../../../utils/TimeoutUtils.js";
 import {toBitcoinWallet} from "../../../utils/BitcoinWalletUtils.js";
 
-/**
- * State enum for trusted on-chain gas swaps
- *
- * @category Swaps/Trusted Gas Swaps
- */
-export enum OnchainForGasSwapState {
-    /**
-     * The swap quote expired without user sending in the BTC
-     */
-    EXPIRED = -3,
-    /**
-     * The swap has failed after the intermediary already received the BTC on the source chain
-     */
-    FAILED = -2,
-    /**
-     * Swap was refunded and BTC returned to the user's refund address
-     */
-    REFUNDED = -1,
-    /**
-     * Swap was created, send the BTC to the swap address
-     */
-    PR_CREATED = 0,
-    /**
-     * The swap is finished after the intermediary sent funds on the destination chain
-     */
-    FINISHED = 1,
-    /**
-     * Swap is refundable because the intermediary cannot honor the swap request on the destination chain
-     */
-    REFUNDABLE = 2
-}
+export {OnchainForGasSwapState};
 
 const OnchainForGasSwapStateDescription: Record<OnchainForGasSwapState, string> = {
     [OnchainForGasSwapState.EXPIRED]:

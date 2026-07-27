@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isIFromBTCSelfInitSwap = exports.IFromBTCSelfInitSwap = void 0;
-const SwapType_js_1 = require("../../../enums/SwapType.js");
+exports.IFromBTCSelfInitSwap = void 0;
 const base_1 = require("@atomiqlabs/base");
 const IEscrowSelfInitSwap_js_1 = require("../IEscrowSelfInitSwap.js");
 const FeeType_js_1 = require("../../../enums/FeeType.js");
@@ -189,27 +188,3 @@ class IFromBTCSelfInitSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap 
     }
 }
 exports.IFromBTCSelfInitSwap = IFromBTCSelfInitSwap;
-/**
- * Type guard narrowing an {@link ISwap} to the {@link IFromBTCSelfInitSwap} family
- * (self-initiated escrow swaps from Bitcoin: FROM_BTC, FROM_BTCLN).
- *
- * @category Swaps/Abstract
- */
-function isIFromBTCSelfInitSwap(swap) {
-    const type = swap.getType();
-    switch (type) {
-        case SwapType_js_1.SwapType.FROM_BTC:
-        case SwapType_js_1.SwapType.FROM_BTCLN: return true;
-        case SwapType_js_1.SwapType.TO_BTC:
-        case SwapType_js_1.SwapType.TO_BTCLN:
-        case SwapType_js_1.SwapType.TRUSTED_FROM_BTC:
-        case SwapType_js_1.SwapType.TRUSTED_FROM_BTCLN:
-        case SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC:
-        case SwapType_js_1.SwapType.FROM_BTCLN_AUTO: return false;
-        default: {
-            const _exhaustive = type;
-            return false;
-        }
-    }
-}
-exports.isIFromBTCSelfInitSwap = isIFromBTCSelfInitSwap;

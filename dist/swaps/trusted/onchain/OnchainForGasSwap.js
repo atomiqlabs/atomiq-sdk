@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isOnchainForGasSwap = exports.OnchainForGasSwap = exports.isOnchainForGasSwapInit = exports.OnchainForGasSwapState = void 0;
+exports.OnchainForGasSwap = exports.isOnchainForGasSwapInit = exports.OnchainForGasSwapState = void 0;
 const SwapType_js_1 = require("../../../enums/SwapType.js");
 const Utils_js_1 = require("../../../utils/Utils.js");
 const BitcoinUtils_js_1 = require("../../../utils/BitcoinUtils.js");
@@ -696,13 +696,3 @@ class OnchainForGasSwap extends ISwap_js_1.ISwap {
     }
 }
 exports.OnchainForGasSwap = OnchainForGasSwap;
-/**
- * Type guard narrowing an {@link ISwap} to an {@link OnchainForGasSwap} (a trusted on-chain
- * Bitcoin -> smart chain gas top-up swap, {@link SwapType.TRUSTED_FROM_BTC}).
- *
- * @category Swaps/Trusted Gas Swaps
- */
-function isOnchainForGasSwap(swap) {
-    return swap.getType() === SwapType_js_1.SwapType.TRUSTED_FROM_BTC;
-}
-exports.isOnchainForGasSwap = isOnchainForGasSwap;

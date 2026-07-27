@@ -1,5 +1,4 @@
 import { IEscrowSwap, isIEscrowSwapInit } from "./IEscrowSwap.js";
-import { SwapType } from "../../enums/SwapType.js";
 import { SignatureVerificationError } from "@atomiqlabs/base";
 import { toTokenAmount } from "../../types/TokenAmount.js";
 import { timeoutPromise } from "../../utils/TimeoutUtils.js";
@@ -119,27 +118,4 @@ export class IEscrowSelfInitSwap extends IEscrowSwap {
         };
     }
     ;
-}
-/**
- * Type guard narrowing an {@link ISwap} to the {@link IEscrowSelfInitSwap} family
- * (escrow swaps the user must initiate on the smart chain: FROM_BTC, FROM_BTCLN, TO_BTC, TO_BTCLN).
- *
- * @category Swaps/Abstract
- */
-export function isIEscrowSelfInitSwap(swap) {
-    const type = swap.getType();
-    switch (type) {
-        case SwapType.FROM_BTC:
-        case SwapType.FROM_BTCLN:
-        case SwapType.TO_BTC:
-        case SwapType.TO_BTCLN: return true;
-        case SwapType.TRUSTED_FROM_BTC:
-        case SwapType.TRUSTED_FROM_BTCLN:
-        case SwapType.SPV_VAULT_FROM_BTC:
-        case SwapType.FROM_BTCLN_AUTO: return false;
-        default: {
-            const _exhaustive = type;
-            return false;
-        }
-    }
 }

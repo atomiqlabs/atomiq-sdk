@@ -148,12 +148,3 @@ export class ToBTCSwap extends IToBTCSwap {
         };
     }
 }
-/**
- * Type guard narrowing an {@link ISwap} to a {@link ToBTCSwap} (an on-chain
- * smart chain -> Bitcoin escrow swap, {@link SwapType.TO_BTC}).
- *
- * @category Swaps/Smart chain → Bitcoin
- */
-export function isToBTCSwap(swap) {
-    return swap.getType() === SwapType.TO_BTC;
-}

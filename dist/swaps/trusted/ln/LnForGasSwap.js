@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isLnForGasSwap = exports.LnForGasSwap = exports.isLnForGasSwapInit = exports.LnForGasSwapState = void 0;
+exports.LnForGasSwap = exports.isLnForGasSwapInit = exports.LnForGasSwapState = void 0;
 const bolt11_1 = require("@atomiqlabs/bolt11");
 const SwapType_js_1 = require("../../../enums/SwapType.js");
 const Utils_js_1 = require("../../../utils/Utils.js");
@@ -623,13 +623,3 @@ class LnForGasSwap extends ISwap_js_1.ISwap {
     }
 }
 exports.LnForGasSwap = LnForGasSwap;
-/**
- * Type guard narrowing an {@link ISwap} to a {@link LnForGasSwap} (a trusted Lightning
- * Bitcoin -> smart chain gas top-up swap, {@link SwapType.TRUSTED_FROM_BTCLN}).
- *
- * @category Swaps/Trusted Gas Swaps
- */
-function isLnForGasSwap(swap) {
-    return swap.getType() === SwapType_js_1.SwapType.TRUSTED_FROM_BTCLN;
-}
-exports.isLnForGasSwap = isLnForGasSwap;

@@ -3,7 +3,6 @@
 import { ToBTCLNDefinition, ToBTCLNWrapper } from "./ToBTCLNWrapper.js";
 import { IToBTCSwap, IToBTCSwapInit } from "../IToBTCSwap.js";
 import { SwapType } from "../../../../enums/SwapType.js";
-import { ISwap } from "../../../ISwap.js";
 import { ChainType, SwapData } from "@atomiqlabs/base";
 import { Buffer } from "buffer";
 import { LNURLPaySuccessAction } from "../../../../lnurl/LNURL.js";
@@ -135,10 +134,3 @@ export declare class ToBTCLNSwap<T extends ChainType = ChainType> extends IToBTC
      */
     serialize(): any;
 }
-/**
- * Type guard narrowing an {@link ISwap} to a {@link ToBTCLNSwap} (a Lightning
- * smart chain -> Bitcoin escrow swap, {@link SwapType.TO_BTCLN}).
- *
- * @category Swaps/Smart chain → Lightning
- */
-export declare function isToBTCLNSwap<T extends ChainType = ChainType>(swap: ISwap<T>): swap is ToBTCLNSwap<T>;

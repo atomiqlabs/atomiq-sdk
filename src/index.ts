@@ -79,33 +79,33 @@ export * from "./swapper/SwapperUtils.js";
 export * from "./swapper/SwapperWithChain.js";
 export * from "./swapper/SwapperWithSigner.js";
 
-export {FromBTCLNSwap, FromBTCLNSwapState, isFromBTCLNSwap} from "./swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap.js";
+export {FromBTCLNSwap, FromBTCLNSwapState } from "./swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap.js";
 export {FromBTCLNWrapper} from "./swaps/escrow_swaps/frombtc/ln/FromBTCLNWrapper.js";
-export {FromBTCLNAutoSwap, FromBTCLNAutoSwapState, isFromBTCLNAutoSwap} from "./swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap.js";
+export {FromBTCLNAutoSwap, FromBTCLNAutoSwapState} from "./swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap.js";
 export {FromBTCLNAutoWrapper} from "./swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoWrapper.js";
-export {FromBTCSwap, FromBTCSwapState, isFromBTCSwap} from "./swaps/escrow_swaps/frombtc/onchain/FromBTCSwap.js";
+export {FromBTCSwap, FromBTCSwapState} from "./swaps/escrow_swaps/frombtc/onchain/FromBTCSwap.js";
 export {FromBTCWrapper} from "./swaps/escrow_swaps/frombtc/onchain/FromBTCWrapper.js";
 export {IFromBTCLNWrapper} from "./swaps/escrow_swaps/frombtc/IFromBTCLNWrapper.js";
-export {IFromBTCSelfInitSwap, isIFromBTCSelfInitSwap} from "./swaps/escrow_swaps/frombtc/IFromBTCSelfInitSwap.js";
+export {IFromBTCSelfInitSwap} from "./swaps/escrow_swaps/frombtc/IFromBTCSelfInitSwap.js";
 export {IFromBTCWrapper} from "./swaps/escrow_swaps/frombtc/IFromBTCWrapper.js";
 
-export {ToBTCLNSwap, isToBTCLNSwap} from "./swaps/escrow_swaps/tobtc/ln/ToBTCLNSwap.js";
+export {ToBTCLNSwap} from "./swaps/escrow_swaps/tobtc/ln/ToBTCLNSwap.js";
 export {ToBTCLNWrapper} from "./swaps/escrow_swaps/tobtc/ln/ToBTCLNWrapper.js";
-export {ToBTCSwap, isToBTCSwap} from "./swaps/escrow_swaps/tobtc/onchain/ToBTCSwap.js";
+export {ToBTCSwap} from "./swaps/escrow_swaps/tobtc/onchain/ToBTCSwap.js";
 export {ToBTCWrapper} from "./swaps/escrow_swaps/tobtc/onchain/ToBTCWrapper.js";
-export {IToBTCSwap, ToBTCSwapState, isIToBTCSwap} from "./swaps/escrow_swaps/tobtc/IToBTCSwap.js";
+export {IToBTCSwap, ToBTCSwapState} from "./swaps/escrow_swaps/tobtc/IToBTCSwap.js";
 export {IToBTCWrapper} from "./swaps/escrow_swaps/tobtc/IToBTCWrapper.js";
 
-export {IEscrowSelfInitSwap, isIEscrowSelfInitSwap} from "./swaps/escrow_swaps/IEscrowSelfInitSwap.js";
+export {IEscrowSelfInitSwap} from "./swaps/escrow_swaps/IEscrowSelfInitSwap.js";
 export {IEscrowSwap} from "./swaps/escrow_swaps/IEscrowSwap.js";
 export {IEscrowSwapWrapper} from "./swaps/escrow_swaps/IEscrowSwapWrapper.js";
 
-export {SpvFromBTCSwap, SpvFromBTCSwapState, isSpvFromBTCSwap} from "./swaps/spv_swaps/SpvFromBTCSwap.js";
+export {SpvFromBTCSwap, SpvFromBTCSwapState} from "./swaps/spv_swaps/SpvFromBTCSwap.js";
 export {SpvFromBTCWrapper} from "./swaps/spv_swaps/SpvFromBTCWrapper.js";
 
-export {LnForGasSwap, LnForGasSwapState, isLnForGasSwap} from "./swaps/trusted/ln/LnForGasSwap.js";
+export {LnForGasSwap, LnForGasSwapState} from "./swaps/trusted/ln/LnForGasSwap.js";
 export {LnForGasWrapper} from "./swaps/trusted/ln/LnForGasWrapper.js";
-export {OnchainForGasSwap, OnchainForGasSwapState, isOnchainForGasSwap} from "./swaps/trusted/onchain/OnchainForGasSwap.js";
+export {OnchainForGasSwap, OnchainForGasSwapState} from "./swaps/trusted/onchain/OnchainForGasSwap.js";
 export {OnchainForGasWrapper} from "./swaps/trusted/onchain/OnchainForGasWrapper.js";
 
 export * from "./swaps/IAddressSwap.js";
@@ -114,6 +114,7 @@ export * from "./swaps/IClaimableSwap.js";
 export * from "./swaps/IRefundableSwap.js";
 export * from "./swaps/IAddressSwap.js";
 export {ISwap} from "./swaps/ISwap.js";
+export * from "./swaps/typeguards.js";
 export * from "./swaps/ISwapWithGasDrop.js";
 export {ISwapWrapper} from "./swaps/ISwapWrapper.js";
 

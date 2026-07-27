@@ -1,6 +1,5 @@
 import { IFromBTCSelfInitSwap } from "../IFromBTCSelfInitSwap.js";
 import { SwapType } from "../../../../enums/SwapType.js";
-import { ISwap } from "../../../ISwap.js";
 import { FromBTCDefinition, FromBTCWrapper } from "./FromBTCWrapper.js";
 import { ChainType, SwapCommitState, SwapData } from "@atomiqlabs/base";
 import { IBitcoinWallet } from "../../../../bitcoin/wallet/IBitcoinWallet.js";
@@ -490,10 +489,3 @@ export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromB
      */
     _tick(save?: boolean): Promise<boolean>;
 }
-/**
- * Type guard narrowing an {@link ISwap} to a {@link FromBTCSwap} (a legacy on-chain
- * Bitcoin -> smart chain escrow swap, {@link SwapType.FROM_BTC}).
- *
- * @category Swaps/Legacy/Bitcoin → Smart chain
- */
-export declare function isFromBTCSwap<T extends ChainType = ChainType>(swap: ISwap<T>): swap is FromBTCSwap<T>;

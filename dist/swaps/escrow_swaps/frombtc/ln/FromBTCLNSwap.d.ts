@@ -3,7 +3,6 @@
 import { FromBTCLNDefinition, FromBTCLNWrapper } from "./FromBTCLNWrapper.js";
 import { IFromBTCSelfInitSwap } from "../IFromBTCSelfInitSwap.js";
 import { SwapType } from "../../../../enums/SwapType.js";
-import { ISwap } from "../../../ISwap.js";
 import { ChainType, SignatureData, SwapCommitState, SwapData } from "@atomiqlabs/base";
 import { Buffer } from "buffer";
 import { MinimalLightningNetworkWalletInterface } from "../../../../types/wallets/MinimalLightningNetworkWalletInterface.js";
@@ -546,10 +545,3 @@ export declare class FromBTCLNSwap<T extends ChainType = ChainType> extends IFro
      */
     _setSwapSecret(secret: string): void;
 }
-/**
- * Type guard narrowing an {@link ISwap} to a {@link FromBTCLNSwap} (a legacy Lightning
- * Bitcoin -> smart chain escrow swap, {@link SwapType.FROM_BTCLN}).
- *
- * @category Swaps/Legacy/Lightning → Smart chain
- */
-export declare function isFromBTCLNSwap<T extends ChainType = ChainType>(swap: ISwap<T>): swap is FromBTCLNSwap<T>;

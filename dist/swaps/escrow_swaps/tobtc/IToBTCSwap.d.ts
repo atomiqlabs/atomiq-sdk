@@ -1,5 +1,4 @@
 import { IToBTCDefinition, IToBTCWrapper } from "./IToBTCWrapper.js";
-import { ISwap } from "../../ISwap.js";
 import { ChainType, SignatureData, SwapCommitState, SwapData } from "@atomiqlabs/base";
 import { RefundAuthorizationResponse } from "../../../intermediaries/apis/IntermediaryAPI.js";
 import { Fee } from "../../../types/fees/Fee.js";
@@ -445,10 +444,3 @@ export declare abstract class IToBTCSwap<T extends ChainType = ChainType, D exte
      */
     _tick(save?: boolean): Promise<boolean>;
 }
-/**
- * Type guard narrowing an {@link ISwap} to the {@link IToBTCSwap} family
- * (escrow swaps sending to Bitcoin: TO_BTC, TO_BTCLN).
- *
- * @category Swaps/Smart chain → Bitcoin
- */
-export declare function isIToBTCSwap<T extends ChainType = ChainType>(swap: ISwap<T>): swap is IToBTCSwap<T>;

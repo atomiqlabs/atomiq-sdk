@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isToBTCSwap = exports.ToBTCSwap = exports.isToBTCSwapInit = void 0;
+exports.ToBTCSwap = exports.isToBTCSwapInit = void 0;
 const IToBTCSwap_js_1 = require("../IToBTCSwap.js");
 const SwapType_js_1 = require("../../../../enums/SwapType.js");
 const buffer_1 = require("buffer");
@@ -153,13 +153,3 @@ class ToBTCSwap extends IToBTCSwap_js_1.IToBTCSwap {
     }
 }
 exports.ToBTCSwap = ToBTCSwap;
-/**
- * Type guard narrowing an {@link ISwap} to a {@link ToBTCSwap} (an on-chain
- * smart chain -> Bitcoin escrow swap, {@link SwapType.TO_BTC}).
- *
- * @category Swaps/Smart chain → Bitcoin
- */
-function isToBTCSwap(swap) {
-    return swap.getType() === SwapType_js_1.SwapType.TO_BTC;
-}
-exports.isToBTCSwap = isToBTCSwap;

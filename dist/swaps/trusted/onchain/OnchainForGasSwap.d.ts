@@ -341,10 +341,3 @@ export declare class OnchainForGasSwap<T extends ChainType = ChainType> extends 
      */
     _tick(save?: boolean): Promise<boolean>;
 }
-/**
- * Type guard narrowing an {@link ISwap} to an {@link OnchainForGasSwap} (a trusted on-chain
- * Bitcoin -> smart chain gas top-up swap, {@link SwapType.TRUSTED_FROM_BTC}).
- *
- * @category Swaps/Trusted Gas Swaps
- */
-export declare function isOnchainForGasSwap<T extends ChainType = ChainType>(swap: ISwap<T>): swap is OnchainForGasSwap<T>;

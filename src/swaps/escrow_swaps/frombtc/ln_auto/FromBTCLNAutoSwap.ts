@@ -201,7 +201,7 @@ export class FromBTCLNAutoSwap<T extends ChainType = ChainType>
             if(initOrObject.initialSwapData==null) {
                 this.initialSwapData = this._data!;
             } else {
-                this.initialSwapData = SwapData.deserialize<T["Data"]>(initOrObject.initialSwapData);
+                this.initialSwapData = new (wrapper._swapDataDeserializer(this._contractVersion))(initOrObject.initialSwapData);
             }
 
             this.btcAmountSwap = toBigInt(initOrObject.btcAmountSwap);

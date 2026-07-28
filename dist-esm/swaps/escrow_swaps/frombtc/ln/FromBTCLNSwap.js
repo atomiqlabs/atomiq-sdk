@@ -2,7 +2,7 @@ import { FromBTCLNSwapState } from "./FromBTCLNSwapState.js";
 import { decode as bolt11Decode } from "@atomiqlabs/bolt11";
 import { IFromBTCSelfInitSwap } from "../IFromBTCSelfInitSwap.js";
 import { SwapType } from "../../../../enums/SwapType.js";
-import { ChainSwapType, isAbstractSigner, SwapCommitStateType, SwapData } from "@atomiqlabs/base";
+import { ChainSwapType, isAbstractSigner, SwapCommitStateType } from "@atomiqlabs/base";
 import { Buffer } from "buffer";
 import { LNURL } from "../../../../lnurl/LNURL.js";
 import { UserError } from "../../../../errors/UserError.js";
@@ -88,7 +88,7 @@ export class FromBTCLNSwap extends IFromBTCSelfInitSwap {
                 this.initialSwapData = this._data;
             }
             else {
-                this.initialSwapData = SwapData.deserialize(initOrObject.initialSwapData);
+                this.initialSwapData = new (wrapper._swapDataDeserializer(this._contractVersion))(initOrObject.initialSwapData);
             }
             this.lnurl = initOrObject.lnurl;
             this.lnurlK1 = initOrObject.lnurlK1;

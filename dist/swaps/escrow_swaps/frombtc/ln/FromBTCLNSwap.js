@@ -92,7 +92,7 @@ class FromBTCLNSwap extends IFromBTCSelfInitSwap_js_1.IFromBTCSelfInitSwap {
                 this.initialSwapData = this._data;
             }
             else {
-                this.initialSwapData = base_1.SwapData.deserialize(initOrObject.initialSwapData);
+                this.initialSwapData = new (wrapper._swapDataDeserializer(this._contractVersion))(initOrObject.initialSwapData);
             }
             this.lnurl = initOrObject.lnurl;
             this.lnurlK1 = initOrObject.lnurlK1;

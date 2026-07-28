@@ -421,8 +421,8 @@ class SwapperUtils {
         if (chainIdentifier === "BITCOIN") {
             // Return random p2wkh address
             return (0, btc_signer_1.Address)(this.bitcoinNetwork).encode({
-                type: "wpkh",
-                hash: (0, Utils_js_1.randomBytes)(20)
+                type: "wsh",
+                hash: (0, Utils_js_1.randomBytes)(32)
             });
         }
         if (this.root._chains[chainIdentifier] == null)

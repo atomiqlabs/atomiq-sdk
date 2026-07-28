@@ -501,8 +501,8 @@ export class SwapperUtils<T extends MultiChain> {
         if(chainIdentifier==="BITCOIN") {
             // Return random p2wkh address
             return Address(this.bitcoinNetwork).encode({
-                type: "wpkh",
-                hash: randomBytes(20)
+                type: "wsh",
+                hash: randomBytes(32)
             });
         }
         if(this.root._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);

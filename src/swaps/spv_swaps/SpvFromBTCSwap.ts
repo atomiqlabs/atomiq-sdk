@@ -224,7 +224,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
     private async setExternalDepositTxId(txId?: string): Promise<void> {
         if(txId == null || this.externalDepositTxId === txId) return;
         this.externalDepositTxId = txId;
-        if(this._persisted) await this._save();
+        if(this._persisted) await this._saveAndEmit();
     }
 
     /**
@@ -381,7 +381,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
             this.externalSwapModeInfo = null;
             this.externalDepositTxId = undefined;
         }
-        if(this._persisted) await this._save();
+        if(this._persisted) await this._saveAndEmit();
     }
 
     /**
@@ -394,7 +394,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
         if(this._state !== SpvFromBTCSwapState.CREATED) throw new Error("Cannot change swap mode outside of CREATED state!");
         if(this.externalSwapModeInfo==null) throw new Error("No 'intermediate_wallet' swap mode metadata found!");
         this.swapMode = "intermediate_wallet";
-        if(this._persisted) await this._save();
+        if(this._persisted) await this._saveAndEmit();
     }
 
     /**
@@ -505,7 +505,7 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
         this.swapMode = "intermediate_wallet";
         this.externalSwapModeInfo = fundingPlan;
         this.externalDepositTxId = undefined;
-        if(this._persisted) await this._save();
+        if(this._persisted) await this._saveAndEmit();
         return fundingPlan;
     }
 

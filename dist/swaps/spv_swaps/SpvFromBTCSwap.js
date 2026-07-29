@@ -53,7 +53,7 @@ class SpvFromBTCSwap extends SpvFromBTCSwapBase_1.SpvFromBTCSwapBase {
             return;
         this.externalDepositTxId = txId;
         if (this._persisted)
-            await this._save();
+            await this._saveAndEmit();
     }
     /**
      * Returns external mode metadata or throws a mode-specific error.
@@ -185,7 +185,7 @@ class SpvFromBTCSwap extends SpvFromBTCSwapBase_1.SpvFromBTCSwapBase {
             this.externalDepositTxId = undefined;
         }
         if (this._persisted)
-            await this._save();
+            await this._saveAndEmit();
     }
     /**
      * Returns back to the "intermediate_wallet" swap mode with the already saved and persisted mode metadata (selected
@@ -200,7 +200,7 @@ class SpvFromBTCSwap extends SpvFromBTCSwapBase_1.SpvFromBTCSwapBase {
             throw new Error("No 'intermediate_wallet' swap mode metadata found!");
         this.swapMode = "intermediate_wallet";
         if (this._persisted)
-            await this._save();
+            await this._saveAndEmit();
     }
     /**
      * Configures this SPV quote for an external intermediate-wallet deposit flow.
@@ -293,7 +293,7 @@ class SpvFromBTCSwap extends SpvFromBTCSwapBase_1.SpvFromBTCSwapBase {
         this.externalSwapModeInfo = fundingPlan;
         this.externalDepositTxId = undefined;
         if (this._persisted)
-            await this._save();
+            await this._saveAndEmit();
         return fundingPlan;
     }
     /**

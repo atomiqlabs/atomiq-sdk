@@ -876,6 +876,11 @@ export class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> i
             throw new Error("No external deposit required for this SPV swap");
         }
 
+        if(!this.initiated) {
+            this.initiated = true;
+            await this._saveAndEmit();
+        }
+
         const abortController = extendAbortController(
             abortSignal,
             maxWaitTimeSeconds,

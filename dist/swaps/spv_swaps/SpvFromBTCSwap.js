@@ -579,6 +579,10 @@ class SpvFromBTCSwap extends SpvFromBTCSwapBase_1.SpvFromBTCSwapBase {
         if (info.requiredDeposit == null) {
             throw new Error("No external deposit required for this SPV swap");
         }
+        if (!this.initiated) {
+            this.initiated = true;
+            await this._saveAndEmit();
+        }
         const abortController = (0, Utils_js_1.extendAbortController)(abortSignal, maxWaitTimeSeconds, "Timed out waiting for external Bitcoin deposit");
         const ignoredUtxoKeys = new Set();
         try {

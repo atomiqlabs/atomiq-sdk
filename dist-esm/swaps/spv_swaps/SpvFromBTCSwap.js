@@ -50,7 +50,7 @@ export class SpvFromBTCSwap extends SpvFromBTCSwapBase {
             return;
         this.externalDepositTxId = txId;
         if (this._persisted)
-            await this._save();
+            await this._saveAndEmit();
     }
     /**
      * Returns external mode metadata or throws a mode-specific error.
@@ -182,7 +182,7 @@ export class SpvFromBTCSwap extends SpvFromBTCSwapBase {
             this.externalDepositTxId = undefined;
         }
         if (this._persisted)
-            await this._save();
+            await this._saveAndEmit();
     }
     /**
      * Returns back to the "intermediate_wallet" swap mode with the already saved and persisted mode metadata (selected
@@ -197,7 +197,7 @@ export class SpvFromBTCSwap extends SpvFromBTCSwapBase {
             throw new Error("No 'intermediate_wallet' swap mode metadata found!");
         this.swapMode = "intermediate_wallet";
         if (this._persisted)
-            await this._save();
+            await this._saveAndEmit();
     }
     /**
      * Configures this SPV quote for an external intermediate-wallet deposit flow.
@@ -290,7 +290,7 @@ export class SpvFromBTCSwap extends SpvFromBTCSwapBase {
         this.externalSwapModeInfo = fundingPlan;
         this.externalDepositTxId = undefined;
         if (this._persisted)
-            await this._save();
+            await this._saveAndEmit();
         return fundingPlan;
     }
     /**
@@ -575,6 +575,10 @@ export class SpvFromBTCSwap extends SpvFromBTCSwapBase {
         const info = this.getIntermediateWalletSwapModeInfoOrThrow("waitForExternalDeposit()");
         if (info.requiredDeposit == null) {
             throw new Error("No external deposit required for this SPV swap");
+        }
+        if (!this.initiated) {
+            this.initiated = true;
+            await this._saveAndEmit();
         }
         const abortController = extendAbortController(abortSignal, maxWaitTimeSeconds, "Timed out waiting for external Bitcoin deposit");
         const ignoredUtxoKeys = new Set();

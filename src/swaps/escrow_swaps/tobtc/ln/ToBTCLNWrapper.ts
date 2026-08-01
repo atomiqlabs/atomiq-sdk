@@ -52,8 +52,8 @@ export type ToBTCLNOptions = {
      *  more payment routes can be considered (every hop in the lightning network payment adds additional fee
      *  requirements).
      *
-     * The fee is express as percentage of the swap value, uses `0.2` by default which means the maximum
-     *  routing fee is capped at 0.2% of the swap value.
+     * The fee is express as percentage of the swap value, uses `0.3` by default which means the maximum
+     *  routing fee is capped at 0.3% of the swap value.
      *
      * The full fee also contains the base component (set by `maxRoutingBaseFee` option), the resulting maximum routing
      *  fee rate is:
@@ -135,7 +135,7 @@ export class ToBTCLNWrapper<T extends ChainType> extends IToBTCWrapper<T, ToBTCL
                 paymentTimeoutSeconds: options?.paymentTimeoutSeconds ?? 5*24*60*60,
                 maxPaymentTimeoutSeconds: options?.maxPaymentTimeoutSeconds ?? 10*24*60*60,
                 lightningBaseFee: options?.lightningBaseFee ?? 10,
-                lightningFeePPM: options?.lightningFeePPM ?? 2000
+                lightningFeePPM: options?.lightningFeePPM ?? 3000
             },
             versionedContracts,
             events

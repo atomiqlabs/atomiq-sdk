@@ -244,7 +244,7 @@ export declare class SpvFromBTCWrapper<T extends ChainType> extends ISwapWrapper
      * @param abortSignal
      * @private
      */
-    private computeCallerFeeShare;
+    private computeCallerFee;
     /**
      * Verifies response returned from intermediary
      *
@@ -252,7 +252,7 @@ export declare class SpvFromBTCWrapper<T extends ChainType> extends ISwapWrapper
      * @param amountData
      * @param lp Intermediary
      * @param options Options as passed to the swap creation function
-     * @param callerFeeShare
+     * @param callerFee
      * @param maxBitcoinFeeRatePromise Maximum accepted fee rate from the LPs
      * @param bitcoinFeeRatePromise
      * @param abortSignal

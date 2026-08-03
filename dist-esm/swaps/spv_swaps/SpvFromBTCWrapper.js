@@ -4,7 +4,7 @@ import { SpvFromBTCSwap } from "./SpvFromBTCSwap.js";
 import { TEST_NETWORK } from "@scure/btc-signer/utils";
 import { SwapType } from "../../enums/SwapType.js";
 import { Intermediary } from "../../intermediaries/Intermediary.js";
-import { extendAbortController, mapArrayToObject, randomBytes, throwIfUndefined } from "../../utils/Utils.js";
+import { bigIntCeilDivision, extendAbortController, mapArrayToObject, randomBytes, throwIfUndefined } from "../../utils/Utils.js";
 import { fromOutputScript, getDummyOutputScript, toCoinselectAddressType, toOutputScript } from "../../utils/BitcoinUtils.js";
 import { OutOfBoundsError, RequestError } from "../../errors/RequestError.js";
 import { IntermediaryError } from "../../errors/IntermediaryError.js";
@@ -258,38 +258,51 @@ export class SpvFromBTCWrapper extends ISwapWrapper {
      * @param abortSignal
      * @private
      */
-    async computeCallerFeeShare(amountPrefetch, totalFeeInNativeTokenPrefetch, amountData, options, pricePrefetch, nativeTokenPricePrefetch, abortSignal) {
+    async computeCallerFee(amountPrefetch, totalFeeInNativeTokenPrefetch, amountData, options, pricePrefetch, nativeTokenPricePrefetch, abortSignal) {
         if (options.unsafeZeroWatchtowerFee)
-            return 0n;
+            return { callerFee: 0n, callerFeeShare: 0n };
         const amount = await throwIfUndefined(amountPrefetch, "Cannot get swap amount!");
-        if (amount === 0n)
-            return 0n;
         const totalFeeInNativeToken = await throwIfUndefined(totalFeeInNativeTokenPrefetch, "Cannot get total fee in native token!");
-        const nativeTokenPrice = await nativeTokenPricePrefetch;
+        const nativeTokenPrice = (await nativeTokenPricePrefetch) ??
+            await this._prices.preFetchPrice(this.chainIdentifier, this._chain.getNativeCurrencyAddress(), abortSignal);
+        let callerFee;
         let payoutAmount;
         if (amountData.exactIn) {
             //Convert input amount in BTC to
             const amountInNativeToken = await this._prices.getFromBtcSwapAmount(this.chainIdentifier, amount, this._chain.getNativeCurrencyAddress(), abortSignal, nativeTokenPrice);
             payoutAmount = amountInNativeToken - totalFeeInNativeToken;
+            callerFee = await this._prices.getToBtcSwapAmount(this.chainIdentifier, totalFeeInNativeToken, this._chain.getNativeCurrencyAddress(), abortSignal, nativeTokenPrice);
         }
         else {
             if (amountData.token === this._chain.getNativeCurrencyAddress()) {
                 //Both amounts in same currency
                 payoutAmount = amount;
+                callerFee = totalFeeInNativeToken;
             }
             else {
                 //Need to convert both to native currency
-                const btcAmount = await this._prices.getToBtcSwapAmount(this.chainIdentifier, amount, amountData.token, abortSignal, await pricePrefetch);
+                const price = (await pricePrefetch) ??
+                    await this._prices.preFetchPrice(this.chainIdentifier, amountData.token, abortSignal);
+                const btcAmount = await this._prices.getToBtcSwapAmount(this.chainIdentifier, amount, amountData.token, abortSignal, price);
                 payoutAmount = await this._prices.getFromBtcSwapAmount(this.chainIdentifier, btcAmount, this._chain.getNativeCurrencyAddress(), abortSignal, nativeTokenPrice);
+                const callerFeeBtc = await this._prices.getToBtcSwapAmount(this.chainIdentifier, totalFeeInNativeToken, this._chain.getNativeCurrencyAddress(), abortSignal, nativeTokenPrice);
+                callerFee = await this._prices.getFromBtcSwapAmount(this.chainIdentifier, callerFeeBtc, amountData.token, abortSignal, price);
             }
         }
-        this.logger.debug("computeCallerFeeShare(): Caller fee in native token: " + totalFeeInNativeToken.toString(10) + " total payout in native token: " + payoutAmount.toString(10));
-        const callerFeeShare = ((totalFeeInNativeToken * 100000n) + payoutAmount - 1n) / payoutAmount; //Make sure to round up here
+        this.logger.debug("computeCallerFee(): Caller fee in native token: " + totalFeeInNativeToken.toString(10)
+            + " total payout in native token: " + payoutAmount.toString(10)
+            + " caller fee in quote token: " + callerFee.toString(10));
+        let callerFeeShare = payoutAmount > 0
+            ? bigIntCeilDivision(totalFeeInNativeToken * 100000n, payoutAmount)
+            : 0n; //Make sure to round up here
         if (callerFeeShare < 0n)
-            return 0n;
+            callerFeeShare = 0n;
         if (callerFeeShare >= 2n ** 20n)
-            return 2n ** 20n - 1n;
-        return callerFeeShare;
+            callerFeeShare = 2n ** 20n - 1n;
+        return {
+            callerFee,
+            callerFeeShare
+        };
     }
     /**
      * Verifies response returned from intermediary
@@ -298,14 +311,14 @@ export class SpvFromBTCWrapper extends ISwapWrapper {
      * @param amountData
      * @param lp Intermediary
      * @param options Options as passed to the swap creation function
-     * @param callerFeeShare
+     * @param callerFee
      * @param maxBitcoinFeeRatePromise Maximum accepted fee rate from the LPs
      * @param bitcoinFeeRatePromise
      * @param abortSignal
      * @private
      * @throws {IntermediaryError} in case the response is invalid
      */
-    async verifyReturnedData(resp, amountData, lp, options, callerFeeShare, maxBitcoinFeeRatePromise, bitcoinFeeRatePromise, abortSignal) {
+    async verifyReturnedData(resp, amountData, lp, options, callerFee, maxBitcoinFeeRatePromise, bitcoinFeeRatePromise, abortSignal) {
         const btcFeeRate = await throwIfUndefined(maxBitcoinFeeRatePromise, "Bitcoin fee rate promise failed!");
         abortSignal.throwIfAborted();
         if (btcFeeRate != null && resp.btcFeeRate > btcFeeRate)
@@ -343,10 +356,26 @@ export class SpvFromBTCWrapper extends ISwapWrapper {
         if (resp.swapFeeBtc + resp.gasSwapFeeBtc !== resp.totalFeeBtc)
             throw new Error("Btc fee mismatch");
         //TODO: For now ensure fees are at 0
-        if (resp.callerFeeShare !== callerFeeShare ||
-            resp.frontingFeeShare !== 0n ||
+        if (resp.frontingFeeShare !== 0n ||
             resp.executionFeeShare !== 0n)
             throw new IntermediaryError("Invalid caller/fronting/execution fee returned");
+        if (resp.usedExactFeeCalculation) {
+            if (amountData.exactIn) {
+                //TODO: Assumes fronting and execution fees are 0!
+                const expectedCallerFeeShare = bigIntCeilDivision(callerFee.callerFee * 100000n, resp.btcAmount - callerFee.callerFee);
+                if (resp.callerFeeShare !== expectedCallerFeeShare)
+                    throw new IntermediaryError("Invalid caller fee returned (EXACT_IN mode)");
+            }
+            else {
+                const expectedCallerFeeShare = bigIntCeilDivision(callerFee.callerFee * 100000n, amountData.amount);
+                if (resp.callerFeeShare !== expectedCallerFeeShare)
+                    throw new IntermediaryError("Invalid caller fee returned (EXACT_OUT mode)");
+            }
+        }
+        else {
+            if (resp.callerFeeShare !== callerFee.callerFeeShare)
+                throw new IntermediaryError("Invalid caller fee returned");
+        }
         //Check expiry
         const timeNowSeconds = Math.floor(Date.now() / 1000);
         if (resp.expiry < timeNowSeconds)
@@ -695,7 +724,7 @@ export class SpvFromBTCWrapper extends ISwapWrapper {
                         throw new Error("LP service for processing spv vault swaps not found!");
                     const version = lp.getContractVersion(this.chainIdentifier);
                     const abortController = extendAbortController(_abortController.signal);
-                    const callerFeeRatePromise = this.computeCallerFeeShare(amountPromise, callerFeePrefetchPromise[version], amountData, _options, pricePrefetchPromise, gasTokenPricePrefetchPromise, abortController.signal);
+                    const callerFeePromise = this.computeCallerFee(amountPromise, callerFeePrefetchPromise[version], amountData, _options, pricePrefetchPromise, gasTokenPricePrefetchPromise, abortController.signal);
                     try {
                         const resp = await tryWithRetries(async (retryCount) => {
                             return await this._lpApi.prepareSpvFromBTC(this.chainIdentifier, lp.url, {
@@ -705,8 +734,10 @@ export class SpvFromBTCWrapper extends ISwapWrapper {
                                 exactOut: !amountData.exactIn,
                                 gasToken: nativeTokenAddress,
                                 gasAmount: _options.gasAmount,
-                                callerFeeRate: throwIfUndefined(callerFeeRatePromise, "Caller fee prefetch failed!"),
+                                callerFeeRate: callerFeePromise.then(val => val.callerFeeShare),
+                                callerFee: callerFeePromise.then(val => val.callerFee),
                                 frontingFeeRate: 0n,
+                                frontingFee: 0n,
                                 stickyAddress: options?.stickyAddress,
                                 amountUtxos: _options.sourceWalletUtxos != null
                                     ? (async () => {
@@ -736,12 +767,12 @@ export class SpvFromBTCWrapper extends ISwapWrapper {
                             }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined);
                         }, undefined, e => e instanceof RequestError, abortController.signal);
                         this.logger.debug("create(" + lp.url + "): LP response: ", resp);
-                        const callerFeeShare = await callerFeeRatePromise;
+                        const callerFee = await callerFeePromise;
                         const [pricingInfo, gasPricingInfo, { vault, vaultUtxoValue, utxoSelection }] = await Promise.all([
-                            this.verifyReturnedPrice(lp.services[SwapType.SPV_VAULT_FROM_BTC], false, resp.btcAmountSwap, resp.total * (100000n + callerFeeShare) / 100000n, amountData.token, { swapFeeBtc: resp.swapFeeBtc }, pricePrefetchPromise, usdPricePrefetchPromise, abortController.signal),
+                            this.verifyReturnedPrice(lp.services[SwapType.SPV_VAULT_FROM_BTC], false, resp.btcAmountSwap, resp.total * (100000n + resp.callerFeeShare) / 100000n, amountData.token, { swapFeeBtc: resp.swapFeeBtc }, pricePrefetchPromise, usdPricePrefetchPromise, abortController.signal),
                             _options.gasAmount === 0n ? Promise.resolve(undefined) : this.verifyReturnedPrice({ ...lp.services[SwapType.SPV_VAULT_FROM_BTC], swapBaseFee: 0 }, //Base fee should be charged only on the amount, not on gas
-                            false, resp.btcAmountGas, resp.totalGas * (100000n + callerFeeShare) / 100000n, nativeTokenAddress, { swapFeeBtc: resp.gasSwapFeeBtc }, gasTokenPricePrefetchPromise, usdPricePrefetchPromise, abortController.signal),
-                            this.verifyReturnedData(resp, amountData, lp, _options, callerFeeShare, maxBitcoinFeeRatePromise, bitcoinFeeRatePromise, abortController.signal)
+                            false, resp.btcAmountGas, resp.totalGas * (100000n + resp.callerFeeShare) / 100000n, nativeTokenAddress, { swapFeeBtc: resp.gasSwapFeeBtc }, gasTokenPricePrefetchPromise, usdPricePrefetchPromise, abortController.signal),
+                            this.verifyReturnedData(resp, amountData, lp, _options, callerFee, maxBitcoinFeeRatePromise, bitcoinFeeRatePromise, abortController.signal)
                         ]);
                         let minimumBtcFeeRate = resp.btcFeeRate;
                         if (bitcoinFeeRatePromise != null)

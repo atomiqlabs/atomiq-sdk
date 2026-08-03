@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.parseHashValueExact32Bytes = exports.toDecimal = exports.fromDecimal = exports.getTxoHash = exports.randomBytes = exports.toBigInt = exports.bigIntCompare = exports.bigIntMax = exports.bigIntMin = exports.extendAbortController = exports.mapToArray = exports.objectMap = exports.mapArrayToObject = exports.promiseAny = exports.throwIfUndefined = void 0;
+exports.bigIntCeilDivision = exports.parseHashValueExact32Bytes = exports.toDecimal = exports.fromDecimal = exports.getTxoHash = exports.randomBytes = exports.toBigInt = exports.bigIntCompare = exports.bigIntMax = exports.bigIntMin = exports.extendAbortController = exports.mapToArray = exports.objectMap = exports.mapArrayToObject = exports.promiseAny = exports.throwIfUndefined = void 0;
 const buffer_1 = require("buffer");
 const utils_1 = require("@noble/hashes/utils");
 const sha2_1 = require("@noble/hashes/sha2");
@@ -212,3 +212,11 @@ function parseHashValueExact32Bytes(value, variableName) {
     return hash;
 }
 exports.parseHashValueExact32Bytes = parseHashValueExact32Bytes;
+function bigIntCeilDivision(a, b) {
+    if (b <= 0)
+        throw new Error("Division by zero or negative value!");
+    if (a < 0)
+        throw new Error("a must be non-negative!");
+    return (a + b - 1n) / b;
+}
+exports.bigIntCeilDivision = bigIntCeilDivision;

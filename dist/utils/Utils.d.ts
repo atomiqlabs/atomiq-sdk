@@ -67,3 +67,4 @@ export declare function getTxoHash(outputScriptHex: string, value: number): Buff
 export declare function fromDecimal(amount: string, decimalCount: number): bigint;
 export declare function toDecimal(amount: bigint, decimalCount: number, cut?: boolean, displayDecimals?: number): string;
 export declare function parseHashValueExact32Bytes(value?: Buffer | string, variableName?: string): Buffer | undefined;
+export declare function bigIntCeilDivision(a: bigint, b: bigint): bigint;

@@ -236,6 +236,7 @@ declare const SpvFromBTCPrepareResponseSchema: {
     readonly frontingFeeShare: FieldTypeEnum.BigInt;
     readonly executionFeeShare: FieldTypeEnum.BigInt;
     readonly usedUtxoInputCalculation: FieldTypeEnum.BooleanOptional;
+    readonly usedExactFeeCalculation: FieldTypeEnum.BooleanOptional;
 };
 export type SpvFromBTCPrepareResponseType = RequestSchemaResult<typeof SpvFromBTCPrepareResponseSchema>;
 export type SpvFromBTCPrepare = SwapInit & {
@@ -245,7 +246,9 @@ export type SpvFromBTCPrepare = SwapInit & {
     gasToken: string;
     exactOut: boolean;
     callerFeeRate: Promise<bigint>;
+    callerFee: Promise<bigint>;
     frontingFeeRate: bigint;
+    frontingFee: bigint;
     stickyAddress?: boolean;
     amountUtxos?: Promise<{
         value: number;

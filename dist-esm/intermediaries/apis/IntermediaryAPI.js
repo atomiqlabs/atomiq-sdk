@@ -121,7 +121,8 @@ const SpvFromBTCPrepareResponseSchema = {
     callerFeeShare: FieldTypeEnum.BigInt,
     frontingFeeShare: FieldTypeEnum.BigInt,
     executionFeeShare: FieldTypeEnum.BigInt,
-    usedUtxoInputCalculation: FieldTypeEnum.BooleanOptional
+    usedUtxoInputCalculation: FieldTypeEnum.BooleanOptional,
+    usedExactFeeCalculation: FieldTypeEnum.BooleanOptional
 };
 const SpvFromBTCInitResponseSchema = {
     txId: FieldTypeEnum.String
@@ -602,6 +603,8 @@ export class IntermediaryAPI {
                 await init.amountChangeValue;
             if (init.amountChangeVSize != null)
                 await init.amountChangeVSize;
+            if (init.callerFee != null)
+                await init.callerFee;
             const amount = await init.amount;
             return amount.toString(10);
         })();
@@ -614,7 +617,9 @@ export class IntermediaryAPI {
             gasAmount: init.gasAmount.toString(10),
             gasToken: init.gasToken,
             frontingFeeRate: init.frontingFeeRate.toString(10),
+            frontingFee: init.frontingFee.toString(10),
             callerFeeRate: init.callerFeeRate.then(val => val.toString(10)),
+            callerFee: init.callerFee.then(val => val.toString(10)),
             stickyAddress: init.stickyAddress,
             amountUtxos: init.amountUtxos,
             amountFeeRate: init.amountFeeRate,

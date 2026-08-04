@@ -4,6 +4,9 @@ import {
     BtcRelay,
     ChainEvent,
     ChainType,
+    isSpvVaultClaimEvent,
+    isSpvVaultCloseEvent,
+    isSpvVaultFrontEvent,
     RelaySynchronizer,
     SpvVaultClaimEvent,
     SpvVaultCloseEvent, SpvVaultData,
@@ -323,21 +326,21 @@ export class SpvFromBTCWrapper<
         if(swap==null) return;
 
         let swapChanged: boolean = false;
-        if(event instanceof SpvVaultFrontEvent) {
+        if(isSpvVaultFrontEvent(event)) {
             swapChanged = await this.processEventFront(event, swap);
             if(event.meta?.txId!=null && swap._frontTxId!==event.meta.txId) {
                 swap._frontTxId = event.meta.txId;
                 swapChanged ||= true;
             }
         }
-        if(event instanceof SpvVaultClaimEvent) {
+        if(isSpvVaultClaimEvent(event)) {
             swapChanged = await this.processEventClaim(event, swap);
             if(event.meta?.txId!=null && swap._claimTxId!==event.meta.txId) {
                 swap._claimTxId = event.meta.txId;
                 swapChanged ||= true;
             }
         }
-        if(event instanceof SpvVaultCloseEvent) {
+        if(isSpvVaultCloseEvent(event)) {
             swapChanged = await this.processEventClose(event, swap);
         }
 

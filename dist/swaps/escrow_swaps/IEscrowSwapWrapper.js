@@ -89,21 +89,21 @@ class IEscrowSwapWrapper extends ISwapWrapper_js_1.ISwapWrapper {
         if (swap == null)
             return;
         let swapChanged = false;
-        if (event instanceof base_1.InitializeEvent) {
+        if ((0, base_1.isInitializeEvent)(event)) {
             swapChanged = await this.processEventInitialize(swap, event);
             if (event.meta?.txId != null && swap._commitTxId !== event.meta.txId) {
                 swap._commitTxId = event.meta.txId;
                 swapChanged ||= true;
             }
         }
-        if (event instanceof base_1.ClaimEvent) {
+        if ((0, base_1.isClaimEvent)(event)) {
             swapChanged = await this.processEventClaim(swap, event);
             if (event.meta?.txId != null && swap._claimTxId !== event.meta.txId) {
                 swap._claimTxId = event.meta.txId;
                 swapChanged ||= true;
             }
         }
-        if (event instanceof base_1.RefundEvent) {
+        if ((0, base_1.isRefundEvent)(event)) {
             swapChanged = await this.processEventRefund(swap, event);
             if (event.meta?.txId != null && swap._refundTxId !== event.meta.txId) {
                 swap._refundTxId = event.meta.txId;

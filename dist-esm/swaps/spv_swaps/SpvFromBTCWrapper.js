@@ -1,5 +1,5 @@
 import { ISwapWrapper } from "../ISwapWrapper.js";
-import { SpvVaultClaimEvent, SpvVaultCloseEvent, SpvVaultFrontEvent, SpvWithdrawalStateType } from "@atomiqlabs/base";
+import { isSpvVaultClaimEvent, isSpvVaultCloseEvent, isSpvVaultFrontEvent, SpvWithdrawalStateType } from "@atomiqlabs/base";
 import { SpvFromBTCSwap, SpvFromBTCSwapState } from "./SpvFromBTCSwap.js";
 import { TEST_NETWORK } from "@scure/btc-signer/utils";
 import { SwapType } from "../../enums/SwapType.js";
@@ -167,21 +167,21 @@ export class SpvFromBTCWrapper extends ISwapWrapper {
         if (swap == null)
             return;
         let swapChanged = false;
-        if (event instanceof SpvVaultFrontEvent) {
+        if (isSpvVaultFrontEvent(event)) {
             swapChanged = await this.processEventFront(event, swap);
             if (event.meta?.txId != null && swap._frontTxId !== event.meta.txId) {
                 swap._frontTxId = event.meta.txId;
                 swapChanged ||= true;
             }
         }
-        if (event instanceof SpvVaultClaimEvent) {
+        if (isSpvVaultClaimEvent(event)) {
             swapChanged = await this.processEventClaim(event, swap);
             if (event.meta?.txId != null && swap._claimTxId !== event.meta.txId) {
                 swap._claimTxId = event.meta.txId;
                 swapChanged ||= true;
             }
         }
-        if (event instanceof SpvVaultCloseEvent) {
+        if (isSpvVaultCloseEvent(event)) {
             swapChanged = await this.processEventClose(event, swap);
         }
         this.logger.info("processEvents(): " + event.constructor.name + " processed for " + swap.getId() + " swap: ", swap);

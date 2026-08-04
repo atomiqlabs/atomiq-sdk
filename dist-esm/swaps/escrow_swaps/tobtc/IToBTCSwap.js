@@ -1,5 +1,5 @@
 import { ToBTCSwapState } from "./ToBTCSwapState.js";
-import { isAbstractSigner, SignatureVerificationError, SwapCommitStateType } from "@atomiqlabs/base";
+import { isAbstractSigner, isSignatureVerificationError, SwapCommitStateType } from "@atomiqlabs/base";
 import { RefundAuthorizationResponseCodes } from "../../../intermediaries/apis/IntermediaryAPI.js";
 import { IntermediaryError } from "../../../errors/IntermediaryError.js";
 import { extendAbortController, toBigInt } from "../../../utils/Utils.js";
@@ -563,7 +563,7 @@ export class IToBTCSwap extends IEscrowSelfInitSwap {
             this.initiated = true;
             await this._saveAndEmit();
         }
-        return await this._contract.txsInit(this._getInitiator(), this._data, this.signatureData, skipChecks, this.feeRate).catch(e => Promise.reject(e instanceof SignatureVerificationError ? new Error("Request timed out") : e));
+        return await this._contract.txsInit(this._getInitiator(), this._data, this.signatureData, skipChecks, this.feeRate).catch(e => Promise.reject(isSignatureVerificationError(e) ? new Error("Request timed out") : e));
     }
     /**
      * @inheritDoc

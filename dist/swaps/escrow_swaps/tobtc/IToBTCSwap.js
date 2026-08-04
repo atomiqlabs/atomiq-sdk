@@ -567,7 +567,7 @@ class IToBTCSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
             this.initiated = true;
             await this._saveAndEmit();
         }
-        return await this._contract.txsInit(this._getInitiator(), this._data, this.signatureData, skipChecks, this.feeRate).catch(e => Promise.reject(e instanceof base_1.SignatureVerificationError ? new Error("Request timed out") : e));
+        return await this._contract.txsInit(this._getInitiator(), this._data, this.signatureData, skipChecks, this.feeRate).catch(e => Promise.reject((0, base_1.isSignatureVerificationError)(e) ? new Error("Request timed out") : e));
     }
     /**
      * @inheritDoc

@@ -1,4 +1,4 @@
-import { SignatureVerificationError, } from "@atomiqlabs/base";
+import { isSignatureVerificationError } from "@atomiqlabs/base";
 import { IEscrowSelfInitSwap } from "../IEscrowSelfInitSwap.js";
 import { FeeType } from "../../../enums/FeeType.js";
 import { ppmToPercentage } from "../../../types/fees/PercentagePPM.js";
@@ -171,7 +171,7 @@ export class IFromBTCSelfInitSwap extends IEscrowSelfInitSwap {
             this.initiated = true;
             await this._saveAndEmit();
         }
-        return await this._contract.txsInit(this._getInitiator(), this._data, this.signatureData, skipChecks, this.feeRate).catch(e => Promise.reject(e instanceof SignatureVerificationError ? new Error("Request timed out") : e));
+        return await this._contract.txsInit(this._getInitiator(), this._data, this.signatureData, skipChecks, this.feeRate).catch(e => Promise.reject(isSignatureVerificationError(e) ? new Error("Request timed out") : e));
     }
     //////////////////////////////
     //// Claim

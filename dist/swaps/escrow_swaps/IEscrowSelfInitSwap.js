@@ -103,7 +103,7 @@ class IEscrowSelfInitSwap extends IEscrowSwap_js_1.IEscrowSwap {
             return true;
         }
         catch (e) {
-            if (e instanceof base_1.SignatureVerificationError) {
+            if ((0, base_1.isSignatureVerificationError)(e)) {
                 return false;
             }
             throw e;

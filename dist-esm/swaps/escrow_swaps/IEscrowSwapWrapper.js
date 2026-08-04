@@ -1,5 +1,5 @@
 import { ISwapWrapper } from "../ISwapWrapper.js";
-import { ClaimEvent, InitializeEvent, RefundEvent } from "@atomiqlabs/base";
+import { isClaimEvent, isInitializeEvent, isRefundEvent } from "@atomiqlabs/base";
 /**
  * Base class for wrappers of escrow-based swaps (i.e. swaps utilizing PrTLC and HTLC primitives)
  *
@@ -86,21 +86,21 @@ export class IEscrowSwapWrapper extends ISwapWrapper {
         if (swap == null)
             return;
         let swapChanged = false;
-        if (event instanceof InitializeEvent) {
+        if (isInitializeEvent(event)) {
             swapChanged = await this.processEventInitialize(swap, event);
             if (event.meta?.txId != null && swap._commitTxId !== event.meta.txId) {
                 swap._commitTxId = event.meta.txId;
                 swapChanged ||= true;
             }
         }
-        if (event instanceof ClaimEvent) {
+        if (isClaimEvent(event)) {
             swapChanged = await this.processEventClaim(swap, event);
             if (event.meta?.txId != null && swap._claimTxId !== event.meta.txId) {
                 swap._claimTxId = event.meta.txId;
                 swapChanged ||= true;
             }
         }
-        if (event instanceof RefundEvent) {
+        if (isRefundEvent(event)) {
             swapChanged = await this.processEventRefund(swap, event);
             if (event.meta?.txId != null && swap._refundTxId !== event.meta.txId) {
                 swap._refundTxId = event.meta.txId;

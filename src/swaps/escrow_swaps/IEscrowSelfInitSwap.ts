@@ -1,7 +1,7 @@
 import {IEscrowSwap, IEscrowSwapInit, isIEscrowSwapInit} from "./IEscrowSwap.js";
 import {ISwap} from "../ISwap.js";
 import {SwapType} from "../../enums/SwapType.js";
-import {ChainType, SignatureData, SignatureVerificationError, SwapData} from "@atomiqlabs/base";
+import {ChainType, isSignatureVerificationError, SignatureData, SwapData} from "@atomiqlabs/base";
 import {IEscrowSwapDefinition, IEscrowSwapWrapper} from "./IEscrowSwapWrapper.js";
 import {SwapTypeDefinition} from "../ISwapWrapper.js";
 import {TokenAmount, toTokenAmount} from "../../types/TokenAmount.js";
@@ -197,7 +197,7 @@ export abstract class IEscrowSelfInitSwap<
             );
             return true;
         } catch (e) {
-            if(e instanceof SignatureVerificationError) {
+            if(isSignatureVerificationError(e)) {
                 return false;
             }
             throw e;
@@ -218,4 +218,3 @@ export abstract class IEscrowSelfInitSwap<
     };
 
 }
-

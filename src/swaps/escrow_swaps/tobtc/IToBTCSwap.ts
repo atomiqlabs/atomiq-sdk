@@ -5,8 +5,8 @@ import {SwapType} from "../../../enums/SwapType.js";
 import {
     ChainType,
     isAbstractSigner,
+    isSignatureVerificationError,
     SignatureData,
-    SignatureVerificationError,
     SwapCommitState,
     SwapCommitStateType,
     SwapData
@@ -770,7 +770,7 @@ export abstract class IToBTCSwap<
 
         return await this._contract.txsInit(
             this._getInitiator(), this._data, this.signatureData, skipChecks, this.feeRate
-        ).catch(e => Promise.reject(e instanceof SignatureVerificationError ? new Error("Request timed out") : e));
+        ).catch(e => Promise.reject(isSignatureVerificationError(e) ? new Error("Request timed out") : e));
     }
 
     /**
@@ -1283,4 +1283,3 @@ export abstract class IToBTCSwap<
         return false;
     }
 }
-

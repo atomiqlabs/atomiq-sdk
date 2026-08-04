@@ -3,6 +3,9 @@ import {
     ChainType,
     ClaimEvent,
     InitializeEvent,
+    isClaimEvent,
+    isInitializeEvent,
+    isRefundEvent,
     RefundEvent,
     SignatureData,
     SwapCommitState,
@@ -173,21 +176,21 @@ export abstract class IEscrowSwapWrapper<
         if(swap==null) return;
 
         let swapChanged: boolean = false;
-        if(event instanceof InitializeEvent) {
+        if(isInitializeEvent<T["Data"]>(event)) {
             swapChanged = await this.processEventInitialize(swap, event);
             if(event.meta?.txId!=null && swap._commitTxId!==event.meta.txId) {
                 swap._commitTxId = event.meta.txId;
                 swapChanged ||= true;
             }
         }
-        if(event instanceof ClaimEvent) {
+        if(isClaimEvent<T["Data"]>(event)) {
             swapChanged = await this.processEventClaim(swap, event);
             if(event.meta?.txId!=null && swap._claimTxId!==event.meta.txId) {
                 swap._claimTxId = event.meta.txId;
                 swapChanged ||= true;
             }
         }
-        if(event instanceof RefundEvent) {
+        if(isRefundEvent<T["Data"]>(event)) {
             swapChanged = await this.processEventRefund(swap, event);
             if(event.meta?.txId!=null && swap._refundTxId!==event.meta.txId) {
                 swap._refundTxId = event.meta.txId;

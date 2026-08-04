@@ -1,5 +1,5 @@
 import { IEscrowSwap, isIEscrowSwapInit } from "./IEscrowSwap.js";
-import { SignatureVerificationError } from "@atomiqlabs/base";
+import { isSignatureVerificationError } from "@atomiqlabs/base";
 import { toTokenAmount } from "../../types/TokenAmount.js";
 import { timeoutPromise } from "../../utils/TimeoutUtils.js";
 export function isIEscrowSelfInitSwapInit(obj) {
@@ -99,7 +99,7 @@ export class IEscrowSelfInitSwap extends IEscrowSwap {
             return true;
         }
         catch (e) {
-            if (e instanceof SignatureVerificationError) {
+            if (isSignatureVerificationError(e)) {
                 return false;
             }
             throw e;

@@ -170,21 +170,21 @@ class SpvFromBTCWrapper extends ISwapWrapper_js_1.ISwapWrapper {
         if (swap == null)
             return;
         let swapChanged = false;
-        if (event instanceof base_1.SpvVaultFrontEvent) {
+        if ((0, base_1.isSpvVaultFrontEvent)(event)) {
             swapChanged = await this.processEventFront(event, swap);
             if (event.meta?.txId != null && swap._frontTxId !== event.meta.txId) {
                 swap._frontTxId = event.meta.txId;
                 swapChanged ||= true;
             }
         }
-        if (event instanceof base_1.SpvVaultClaimEvent) {
+        if ((0, base_1.isSpvVaultClaimEvent)(event)) {
             swapChanged = await this.processEventClaim(event, swap);
             if (event.meta?.txId != null && swap._claimTxId !== event.meta.txId) {
                 swap._claimTxId = event.meta.txId;
                 swapChanged ||= true;
             }
         }
-        if (event instanceof base_1.SpvVaultCloseEvent) {
+        if ((0, base_1.isSpvVaultCloseEvent)(event)) {
             swapChanged = await this.processEventClose(event, swap);
         }
         this.logger.info("processEvents(): " + event.constructor.name + " processed for " + swap.getId() + " swap: ", swap);

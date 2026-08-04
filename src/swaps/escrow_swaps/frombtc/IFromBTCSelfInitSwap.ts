@@ -1,7 +1,7 @@
 import {IFromBTCWrapper} from "./IFromBTCWrapper.js";
 import {ISwap} from "../../ISwap.js";
 import {SwapType} from "../../../enums/SwapType.js";
-import {ChainType, SignatureVerificationError,} from "@atomiqlabs/base";
+import {ChainType, isSignatureVerificationError} from "@atomiqlabs/base";
 import {Fee} from "../../../types/fees/Fee.js";
 import {IAddressSwap} from "../../IAddressSwap.js";
 import {IEscrowSelfInitSwap, IEscrowSelfInitSwapDefinition, IEscrowSelfInitSwapInit} from "../IEscrowSelfInitSwap.js";
@@ -251,7 +251,7 @@ export abstract class IFromBTCSelfInitSwap<
 
         return await this._contract.txsInit(
             this._getInitiator(), this._data, this.signatureData, skipChecks, this.feeRate
-        ).catch(e => Promise.reject(e instanceof SignatureVerificationError ? new Error("Request timed out") : e));
+        ).catch(e => Promise.reject(isSignatureVerificationError(e) ? new Error("Request timed out") : e));
     }
 
     /**
@@ -300,4 +300,3 @@ export abstract class IFromBTCSelfInitSwap<
     abstract waitTillClaimed(maxWaitTimeSeconds?: number, abortSignal?: AbortSignal): Promise<boolean>;
 
 }
-

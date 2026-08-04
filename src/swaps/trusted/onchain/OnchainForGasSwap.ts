@@ -472,7 +472,7 @@ export class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T,
             allowLegacyWitnessUtxo: true
         });
         basePsbt.addOutput({
-            amount: this.outputAmount,
+            amount: this.inputAmount,
             script: toOutputScript(this.wrapper._options.bitcoinNetwork, this.address)
         });
         if(additionalOutputs!=null) additionalOutputs.forEach(output => {
@@ -511,8 +511,8 @@ export class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T,
         }
 
         const output0 = psbt.getOutput(0);
-        if(output0.amount!==this.outputAmount)
-            throw new Error("PSBT output amount invalid, expected: "+this.outputAmount+" got: "+output0.amount);
+        if(output0.amount!==this.inputAmount)
+            throw new Error("PSBT output amount invalid, expected: "+this.inputAmount+" got: "+output0.amount);
         const expectedOutputScript = toOutputScript(this.wrapper._options.bitcoinNetwork, this.address);
         if(output0.script==null || !expectedOutputScript.equals(output0.script))
             throw new Error("PSBT output script invalid!");

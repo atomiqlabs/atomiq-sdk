@@ -33,8 +33,8 @@ import {LightningInvoiceCreateService} from "../types/wallets/LightningInvoiceCr
 import {Messenger} from "@atomiqlabs/base";
 import {Intermediary} from "../intermediaries/Intermediary.js";
 import {SwapTypeMapping} from "../utils/SwapUtils.js";
-import {IBitcoinWallet} from "../bitcoin/wallet/IBitcoinWallet";
-import {MinimalBitcoinWalletInterface} from "../types/wallets/MinimalBitcoinWalletInterface";
+import {IBitcoinWallet} from "../bitcoin/wallet/IBitcoinWallet.js";
+import {MinimalBitcoinWalletInterface} from "../types/wallets/MinimalBitcoinWalletInterface.js";
 import {SwapSide} from "../enums/SwapSide.js";
 
 /**

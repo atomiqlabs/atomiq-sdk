@@ -34,9 +34,9 @@ import {timeoutPromise} from "../../utils/TimeoutUtils.js";
 import {
     SwapExecutionActionSendToAddress,
     SwapExecutionActionSignPSBT,
-} from "../../types/SwapExecutionAction";
-import {SwapExecutionStepPayment, SwapExecutionStepSettlement} from "../../types/SwapExecutionStep";
-import {CoinselectAddressTypes, CoinselectTxInput, CoinselectTxOutput, utils} from "../../bitcoin/coinselect2/utils";
+} from "../../types/SwapExecutionAction.js";
+import {SwapExecutionStepPayment, SwapExecutionStepSettlement} from "../../types/SwapExecutionStep.js";
+import {CoinselectAddressTypes, CoinselectTxInput, CoinselectTxOutput, utils} from "../../bitcoin/coinselect2/utils.js";
 import {
     isSpvFromBTCSwapInit,
     SpvFromBTCSwapBase,
@@ -44,11 +44,11 @@ import {
     SpvFromBTCSwapBaseExecuteOptions,
     SpvFromBTCSwapInit,
     SpvFromBTCSwapState
-} from "./SpvFromBTCSwapBase";
-import {Fee} from "../../types/fees/Fee";
-import {toBitcoinWallet} from "../../utils/BitcoinWalletUtils";
-import {identifyAddressType} from "../../bitcoin/wallet/BitcoinWallet";
-import {InvalidBitcoinDepositError} from "../../errors/InvalidBitcoinDepositError";
+} from "./SpvFromBTCSwapBase.js";
+import {Fee} from "../../types/fees/Fee.js";
+import {toBitcoinWallet} from "../../utils/BitcoinWalletUtils.js";
+import {identifyAddressType} from "../../bitcoin/wallet/BitcoinWallet.js";
+import {InvalidBitcoinDepositError} from "../../errors/InvalidBitcoinDepositError.js";
 
 /**
  * An external intermediate-wallet deposit that cannot fund the quoted SPV swap.

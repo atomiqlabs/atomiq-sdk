@@ -52,7 +52,7 @@ import {BitcoinWalletUtxo, BitcoinWalletUtxoBase, IBitcoinWallet} from "../../bi
 import {utils} from "../../bitcoin/coinselect2/utils.js";
 import {BitcoinWallet} from "../../bitcoin/wallet/BitcoinWallet.js";
 import {SpvFromBTCSwapInit, SpvFromBTCSwapState} from "./SpvFromBTCSwapBase.js";
-import {MinimalBitcoinWalletInterface} from "../../types/wallets/MinimalBitcoinWalletInterface";
+import {MinimalBitcoinWalletInterface} from "../../types/wallets/MinimalBitcoinWalletInterface.js";
 
 export type SpvFromBTCOptions = {
     /**

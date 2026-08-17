@@ -1,4 +1,4 @@
-import {SpvFromBTCExternalDepositInvalidUtxo} from "../swaps/spv_swaps/SpvFromBTCSwap";
+import {SpvFromBTCExternalDepositInvalidUtxo} from "../swaps/spv_swaps/SpvFromBTCSwap.js";
 
 /**
  * Thrown when using {@link SpvFromBTCSwap} in the "intermediate_wallet" mode and an invalid UTXO is deposited to the

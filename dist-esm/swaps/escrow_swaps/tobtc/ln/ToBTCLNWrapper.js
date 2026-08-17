@@ -24,7 +24,7 @@ export class ToBTCLNWrapper extends IToBTCWrapper {
             paymentTimeoutSeconds: options?.paymentTimeoutSeconds ?? 5 * 24 * 60 * 60,
             maxPaymentTimeoutSeconds: options?.maxPaymentTimeoutSeconds ?? 10 * 24 * 60 * 60,
             lightningBaseFee: options?.lightningBaseFee ?? 10,
-            lightningFeePPM: options?.lightningFeePPM ?? 2000
+            lightningFeePPM: options?.lightningFeePPM ?? 3000
         }, versionedContracts, events);
         this.TYPE = SwapType.TO_BTCLN;
         /**

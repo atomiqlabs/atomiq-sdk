@@ -21,6 +21,12 @@ const SNOWFLAKE_LIST = new Set([
     "038f8f113c580048d847d6949371726653e02b928196bad310e3eda39ff61723f6",
     "03a6ce61fcaacd38d31d4e3ce2d506602818e3856b4b44faff1dde9642ba705976"
 ]);
+//Lightning network nodes that occur in the routing hints but are not implying a non-custodial wallet
+const NOT_NON_CUSTODIAL_NODES = new Set([
+    //Spark
+    "02a98e8c590a1b5602049d6b21d8f4c8861970aa310762f42eae1b2be88372e924",
+    "039174f846626c6053ba80f5443d0db33da384f1dde135bf7080ba1eec465019c3"
+]);
 /**
  * Escrow based (HTLC) swap for Smart chains -> Bitcoin lightning
  *
@@ -162,6 +168,11 @@ export class ToBTCLNSwap extends IToBTCSwap {
             return false;
         const parsedRequest = bolt11Decode(this.pr);
         if (parsedRequest.tagsObject.routing_info != null) {
+            for (let route of parsedRequest.tagsObject.routing_info) {
+                if (NOT_NON_CUSTODIAL_NODES.has(route.pubkey)) {
+                    return false;
+                }
+            }
             return parsedRequest.tagsObject.routing_info.length > 0;
         }
         return false;

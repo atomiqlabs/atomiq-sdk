@@ -1,4 +1,5 @@
 import {
+    EventListener,
     ChainEvent,
     ChainSwapType,
     ChainType,
@@ -10,7 +11,6 @@ import {
     isSwapEvent
 } from "@atomiqlabs/base";
 import {ISwap} from "../swaps/ISwap.js";
-import {EventListener} from "@atomiqlabs/base/src/events/ChainEvents";
 import {SwapType} from "../enums/SwapType.js";
 import {UnifiedSwapStorage} from "../storage/UnifiedSwapStorage.js";
 

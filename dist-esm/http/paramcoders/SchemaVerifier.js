@@ -22,7 +22,7 @@ export var FieldTypeEnum;
     FieldTypeEnum[FieldTypeEnum["NumberOptional"] = 102] = "NumberOptional";
     FieldTypeEnum[FieldTypeEnum["BigIntOptional"] = 103] = "BigIntOptional";
     FieldTypeEnum[FieldTypeEnum["AnyOptional"] = 104] = "AnyOptional";
-})(FieldTypeEnum || (FieldTypeEnum = {}));
+})(FieldTypeEnum = FieldTypeEnum || (FieldTypeEnum = {}));
 function isAllOptional(schema) {
     for (let key in schema) {
         if (!isOptionalField(schema[key]))

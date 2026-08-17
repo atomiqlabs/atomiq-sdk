@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SwapperWithSigner = void 0;
-const SwapWithSigner_1 = require("../types/SwapWithSigner");
+const SwapWithSigner_js_1 = require("../types/SwapWithSigner.js");
 /**
  * Chain and signer-specific wrapper for automatic signer injection into swap methods
  * @category Core
@@ -57,7 +57,7 @@ class SwapperWithSigner {
      */
     createToBTCSwap(tokenAddress, address, amount, exactIn, additionalParams, options) {
         return this.swapper.createToBTCSwap(this.signer.getAddress(), tokenAddress, address, amount, exactIn, additionalParams, options)
-            .then(swap => (0, SwapWithSigner_1.wrapSwapWithSigner)(swap, this.signer));
+            .then(swap => (0, SwapWithSigner_js_1.wrapSwapWithSigner)(swap, this.signer));
     }
     /**
      * Creates Smart chain -> Bitcoin Lightning ({@link SwapType.TO_BTCLN}) swap
@@ -70,7 +70,7 @@ class SwapperWithSigner {
      */
     createToBTCLNSwap(tokenAddress, paymentRequest, additionalParams, options) {
         return this.swapper.createToBTCLNSwap(this.signer.getAddress(), tokenAddress, paymentRequest, additionalParams, options)
-            .then(swap => (0, SwapWithSigner_1.wrapSwapWithSigner)(swap, this.signer));
+            .then(swap => (0, SwapWithSigner_js_1.wrapSwapWithSigner)(swap, this.signer));
     }
     /**
      * Creates Smart chain -> Bitcoin Lightning ({@link SwapType.TO_BTCLN}) swap via LNURL-pay link
@@ -84,7 +84,7 @@ class SwapperWithSigner {
      */
     createToBTCLNSwapViaLNURL(tokenAddress, lnurlPay, amount, exactIn, additionalParams, options) {
         return this.swapper.createToBTCLNSwapViaLNURL(this.signer.getAddress(), tokenAddress, lnurlPay, amount, exactIn, additionalParams, options)
-            .then(swap => (0, SwapWithSigner_1.wrapSwapWithSigner)(swap, this.signer));
+            .then(swap => (0, SwapWithSigner_js_1.wrapSwapWithSigner)(swap, this.signer));
     }
     /**
      * Creates Smart chain -> Bitcoin Lightning ({@link SwapType.TO_BTCLN}) swap via {@link LightningInvoiceCreateService}
@@ -98,7 +98,7 @@ class SwapperWithSigner {
      */
     createToBTCLNSwapViaInvoiceCreateService(tokenAddress, service, amount, exactIn, additionalParams, options) {
         return this.swapper.createToBTCLNSwapViaInvoiceCreateService(this.signer.getAddress(), tokenAddress, service, amount, exactIn, additionalParams, options)
-            .then(swap => (0, SwapWithSigner_1.wrapSwapWithSigner)(swap, this.signer));
+            .then(swap => (0, SwapWithSigner_js_1.wrapSwapWithSigner)(swap, this.signer));
     }
     /**
      * Creates Bitcoin -> Smart chain ({@link SwapType.SPV_VAULT_FROM_BTC}) swap
@@ -111,7 +111,7 @@ class SwapperWithSigner {
      */
     createFromBTCSwapNew(tokenAddress, amount, exactOut, additionalParams, options) {
         return this.swapper.createFromBTCSwapNew(this.signer.getAddress(), tokenAddress, amount, exactOut, additionalParams, options)
-            .then(swap => (0, SwapWithSigner_1.wrapSwapWithSigner)(swap, this.signer));
+            .then(swap => (0, SwapWithSigner_js_1.wrapSwapWithSigner)(swap, this.signer));
     }
     /**
      * Creates LEGACY Bitcoin -> Smart chain ({@link SwapType.FROM_BTC}) swap
@@ -124,7 +124,7 @@ class SwapperWithSigner {
      */
     createFromBTCSwap(tokenAddress, amount, exactOut, additionalParams, options) {
         return this.swapper.createFromBTCSwap(this.signer.getAddress(), tokenAddress, amount, exactOut, additionalParams, options)
-            .then(swap => (0, SwapWithSigner_1.wrapSwapWithSigner)(swap, this.signer));
+            .then(swap => (0, SwapWithSigner_js_1.wrapSwapWithSigner)(swap, this.signer));
     }
     /**
      * Creates LEGACY Bitcoin Lightning -> Smart chain ({@link SwapType.FROM_BTCLN}) swap
@@ -137,7 +137,7 @@ class SwapperWithSigner {
      */
     createFromBTCLNSwap(tokenAddress, amount, exactOut, additionalParams, options) {
         return this.swapper.createFromBTCLNSwap(this.signer.getAddress(), tokenAddress, amount, exactOut, additionalParams, options)
-            .then(swap => (0, SwapWithSigner_1.wrapSwapWithSigner)(swap, this.signer));
+            .then(swap => (0, SwapWithSigner_js_1.wrapSwapWithSigner)(swap, this.signer));
     }
     /**
      * Creates LEGACY Bitcoin Lightning -> Smart chain ({@link SwapType.FROM_BTCLN}) swap, withdrawing from
@@ -151,7 +151,7 @@ class SwapperWithSigner {
      */
     createFromBTCLNSwapViaLNURL(tokenAddress, lnurl, amount, exactOut, additionalParams) {
         return this.swapper.createFromBTCLNSwapViaLNURL(this.signer.getAddress(), tokenAddress, lnurl, amount, exactOut, additionalParams)
-            .then(swap => (0, SwapWithSigner_1.wrapSwapWithSigner)(swap, this.signer));
+            .then(swap => (0, SwapWithSigner_js_1.wrapSwapWithSigner)(swap, this.signer));
     }
     /**
      * Creates Bitcoin Lightning -> Smart chain ({@link SwapType.FROM_BTCLN_AUTO}) swap
@@ -164,7 +164,7 @@ class SwapperWithSigner {
      */
     createFromBTCLNSwapNew(tokenAddress, amount, exactOut, additionalParams, options) {
         return this.swapper.createFromBTCLNSwapNew(this.signer.getAddress(), tokenAddress, amount, exactOut, additionalParams, options)
-            .then(swap => (0, SwapWithSigner_1.wrapSwapWithSigner)(swap, this.signer));
+            .then(swap => (0, SwapWithSigner_js_1.wrapSwapWithSigner)(swap, this.signer));
     }
     /**
      * Creates Bitcoin Lightning -> Smart chain ({@link SwapType.FROM_BTCLN_AUTO}) swap, withdrawing from
@@ -179,7 +179,7 @@ class SwapperWithSigner {
      */
     createFromBTCLNSwapNewViaLNURL(tokenAddress, lnurl, amount, exactOut, additionalParams, options) {
         return this.swapper.createFromBTCLNSwapNewViaLNURL(this.signer.getAddress(), tokenAddress, lnurl, amount, exactOut, additionalParams, options)
-            .then(swap => (0, SwapWithSigner_1.wrapSwapWithSigner)(swap, this.signer));
+            .then(swap => (0, SwapWithSigner_js_1.wrapSwapWithSigner)(swap, this.signer));
     }
     /**
      * Creates a trusted Bitcoin Lightning -> Smart chain ({@link SwapType.TRUSTED_FROM_BTCLN}) gas swap
@@ -216,7 +216,7 @@ class SwapperWithSigner {
      */
     create(srcToken, dstToken, amount, exactIn, addressLnurlLightningInvoice) {
         return this.swapper.create(this.signer.getAddress(), srcToken, dstToken, amount, exactIn, addressLnurlLightningInvoice)
-            .then(swap => (0, SwapWithSigner_1.wrapSwapWithSigner)(swap, this.signer));
+            .then(swap => (0, SwapWithSigner_js_1.wrapSwapWithSigner)(swap, this.signer));
     }
     /**
      * Returns swaps that are in-progress and are claimable for the specific chain, optionally also for a specific signer's address

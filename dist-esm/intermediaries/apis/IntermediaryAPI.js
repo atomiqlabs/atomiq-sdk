@@ -11,7 +11,7 @@ export var RefundAuthorizationResponseCodes;
     RefundAuthorizationResponseCodes[RefundAuthorizationResponseCodes["NOT_FOUND"] = 20007] = "NOT_FOUND";
     RefundAuthorizationResponseCodes[RefundAuthorizationResponseCodes["PENDING"] = 20008] = "PENDING";
     RefundAuthorizationResponseCodes[RefundAuthorizationResponseCodes["PAID"] = 20006] = "PAID";
-})(RefundAuthorizationResponseCodes || (RefundAuthorizationResponseCodes = {}));
+})(RefundAuthorizationResponseCodes = RefundAuthorizationResponseCodes || (RefundAuthorizationResponseCodes = {}));
 export var PaymentAuthorizationResponseCodes;
 (function (PaymentAuthorizationResponseCodes) {
     PaymentAuthorizationResponseCodes[PaymentAuthorizationResponseCodes["AUTH_DATA"] = 10000] = "AUTH_DATA";
@@ -19,14 +19,14 @@ export var PaymentAuthorizationResponseCodes;
     PaymentAuthorizationResponseCodes[PaymentAuthorizationResponseCodes["PAID"] = 10002] = "PAID";
     PaymentAuthorizationResponseCodes[PaymentAuthorizationResponseCodes["PENDING"] = 10003] = "PENDING";
     PaymentAuthorizationResponseCodes[PaymentAuthorizationResponseCodes["ALREADY_COMMITTED"] = 10004] = "ALREADY_COMMITTED";
-})(PaymentAuthorizationResponseCodes || (PaymentAuthorizationResponseCodes = {}));
+})(PaymentAuthorizationResponseCodes = PaymentAuthorizationResponseCodes || (PaymentAuthorizationResponseCodes = {}));
 export var InvoiceStatusResponseCodes;
 (function (InvoiceStatusResponseCodes) {
     InvoiceStatusResponseCodes[InvoiceStatusResponseCodes["PAID"] = 10000] = "PAID";
     InvoiceStatusResponseCodes[InvoiceStatusResponseCodes["EXPIRED"] = 10001] = "EXPIRED";
     InvoiceStatusResponseCodes[InvoiceStatusResponseCodes["SETTLED"] = 10002] = "SETTLED";
     InvoiceStatusResponseCodes[InvoiceStatusResponseCodes["PENDING"] = 10003] = "PENDING";
-})(InvoiceStatusResponseCodes || (InvoiceStatusResponseCodes = {}));
+})(InvoiceStatusResponseCodes = InvoiceStatusResponseCodes || (InvoiceStatusResponseCodes = {}));
 const SwapResponseSchema = {
     data: FieldTypeEnum.Any,
     prefix: FieldTypeEnum.String,
@@ -136,7 +136,7 @@ export var TrustedInvoiceStatusResponseCodes;
     TrustedInvoiceStatusResponseCodes[TrustedInvoiceStatusResponseCodes["AWAIT_PAYMENT"] = 10010] = "AWAIT_PAYMENT";
     TrustedInvoiceStatusResponseCodes[TrustedInvoiceStatusResponseCodes["PENDING"] = 10011] = "PENDING";
     TrustedInvoiceStatusResponseCodes[TrustedInvoiceStatusResponseCodes["TX_SENT"] = 10012] = "TX_SENT";
-})(TrustedInvoiceStatusResponseCodes || (TrustedInvoiceStatusResponseCodes = {}));
+})(TrustedInvoiceStatusResponseCodes = TrustedInvoiceStatusResponseCodes || (TrustedInvoiceStatusResponseCodes = {}));
 const TrustedFromBTCLNResponseSchema = {
     pr: FieldTypeEnum.String,
     swapFee: FieldTypeEnum.BigInt,
@@ -156,7 +156,7 @@ export var TrustedAddressStatusResponseCodes;
     TrustedAddressStatusResponseCodes[TrustedAddressStatusResponseCodes["REFUNDED"] = 10014] = "REFUNDED";
     TrustedAddressStatusResponseCodes[TrustedAddressStatusResponseCodes["DOUBLE_SPENT"] = 10015] = "DOUBLE_SPENT";
     TrustedAddressStatusResponseCodes[TrustedAddressStatusResponseCodes["REFUNDABLE"] = 10016] = "REFUNDABLE";
-})(TrustedAddressStatusResponseCodes || (TrustedAddressStatusResponseCodes = {}));
+})(TrustedAddressStatusResponseCodes = TrustedAddressStatusResponseCodes || (TrustedAddressStatusResponseCodes = {}));
 const TrustedFromBTCResponseSchema = {
     paymentHash: FieldTypeEnum.String,
     sequence: FieldTypeEnum.BigInt,

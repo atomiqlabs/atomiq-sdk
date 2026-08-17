@@ -1,0 +1,445 @@
+import { FromBTCSwapState } from "./FromBTCSwapState.js";
+import { IFromBTCSelfInitSwap } from "../IFromBTCSelfInitSwap.js";
+import { SwapType } from "../../../../enums/SwapType.js";
+import { FromBTCDefinition, FromBTCWrapper } from "./FromBTCWrapper.js";
+import { ChainType, SwapCommitState, SwapData } from "@atomiqlabs/base";
+import { IBitcoinWallet } from "../../../../bitcoin/wallet/IBitcoinWallet.js";
+import { IBTCWalletSwap } from "../../../IBTCWalletSwap.js";
+import { Transaction } from "@scure/btc-signer";
+import { MinimalBitcoinWalletInterface, MinimalBitcoinWalletInterfaceWithSigner } from "../../../../types/wallets/MinimalBitcoinWalletInterface.js";
+import { IClaimableSwap } from "../../../IClaimableSwap.js";
+import { IEscrowSelfInitSwapInit } from "../../IEscrowSelfInitSwap.js";
+import { IAddressSwap } from "../../../IAddressSwap.js";
+import { TokenAmount } from "../../../../types/TokenAmount.js";
+import { BtcToken, SCToken } from "../../../../types/Token.js";
+import { LoggerType } from "../../../../utils/Logger.js";
+import { SwapExecutionActionSendToAddress, SwapExecutionActionSignPSBT, SwapExecutionActionSignSmartChainTx, SwapExecutionActionWait } from "../../../../types/SwapExecutionAction.js";
+import { SwapExecutionStepPayment, SwapExecutionStepSettlement, SwapExecutionStepSetup } from "../../../../types/SwapExecutionStep.js";
+import { SwapStateInfo } from "../../../../types/SwapStateInfo.js";
+export { FromBTCSwapState };
+export type FromBTCSwapInit<T extends SwapData> = IEscrowSelfInitSwapInit<T> & {
+    data: T;
+    address?: string;
+    amount?: bigint;
+    requiredConfirmations?: number;
+};
+export declare function isFromBTCSwapInit<T extends SwapData>(obj: any): obj is FromBTCSwapInit<T>;
+/**
+ * Legacy escrow (PrTLC) based swap for Bitcoin -> Smart chains, requires manual initiation
+ *  of the swap escrow on the destination chain.
+ *
+ * @category Swaps/Legacy/Bitcoin → Smart chain
+ */
+export declare class FromBTCSwap<T extends ChainType = ChainType> extends IFromBTCSelfInitSwap<T, FromBTCDefinition<T>, FromBTCSwapState> implements IBTCWalletSwap, IClaimableSwap<T, FromBTCDefinition<T>, FromBTCSwapState>, IAddressSwap {
+    protected readonly TYPE: SwapType.FROM_BTC;
+    /**
+     * @internal
+     */
+    protected readonly swapStateName: (state: number) => string;
+    /**
+     * @internal
+     */
+    protected readonly swapStateDescription: {
+        [-4]: string;
+        [-3]: string;
+        [-2]: string;
+        [-1]: string;
+        0: string;
+        1: string;
+        2: string;
+        3: string;
+    };
+    /**
+     * @internal
+     */
+    protected readonly logger: LoggerType;
+    /**
+     * @internal
+     */
+    protected readonly inputToken: BtcToken<false>;
+    /**
+     * @internal
+     */
+    protected readonly feeRate: string;
+    /**
+     * @internal
+     */
+    readonly _data: T["Data"];
+    private address?;
+    private amount?;
+    private requiredConfirmations?;
+    private senderAddress?;
+    private txId?;
+    private vout?;
+    private btcTxConfirmedAt?;
+    constructor(wrapper: FromBTCWrapper<T>, init: FromBTCSwapInit<T["Data"]>);
+    constructor(wrapper: FromBTCWrapper<T>, obj: any);
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    protected getSwapData(): T["Data"];
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    protected upgradeVersion(): void;
+    /**
+     * Returns bitcoin address where the on-chain BTC should be sent to
+     */
+    getAddress(): string;
+    /**
+     * Unsafe bitcoin hyperlink getter, returns the address even before the swap is committed!
+     *
+     * @private
+     */
+    private _getHyperlink;
+    /**
+     * @inheritDoc
+     */
+    getHyperlink(): string;
+    /**
+     * @inheritDoc
+     */
+    getInputAddress(): string | null;
+    /**
+     * @inheritDoc
+     */
+    getInputTxId(): string | null;
+    private _setSubmittedBitcoinTx;
+    /**
+     * Returns timeout time (in UNIX milliseconds) when the on-chain address will expire and no funds should be sent
+     *  to that address anymore
+     */
+    getTimeoutTime(): number;
+    /**
+     * @inheritDoc
+     */
+    requiresAction(): boolean;
+    /**
+     * @inheritDoc
+     */
+    isFinished(): boolean;
+    /**
+     * @inheritDoc
+     */
+    isClaimable(): boolean;
+    /**
+     * @inheritDoc
+     */
+    isSuccessful(): boolean;
+    /**
+     * @inheritDoc
+     */
+    isFailed(): boolean;
+    /**
+     * @inheritDoc
+     */
+    isInProgress(): boolean;
+    /**
+     * @inheritDoc
+     */
+    isQuoteExpired(): boolean;
+    /**
+     * @inheritDoc
+     */
+    isQuoteSoftExpired(): boolean;
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    protected canCommit(skipQuoteExpiryChecks?: boolean): boolean;
+    /**
+     * @inheritDoc
+     */
+    getInputToken(): BtcToken<false>;
+    /**
+     * @inheritDoc
+     */
+    getInput(): TokenAmount<BtcToken<false>>;
+    /**
+     * Returns claimer bounty, acting as a reward for watchtowers to claim the swap automatically,
+     *  this amount is pre-funded by the user on the destination chain when the swap escrow
+     *  is initiated. For total pre-funded deposit amount see {@link getTotalDeposit}.
+     */
+    getClaimerBounty(): TokenAmount<SCToken<T["ChainId"]>, true>;
+    /**
+     * If the required number of confirmations is not known, this function tries to infer it by looping through
+     *  possible confirmation targets and comparing the claim hashes
+     *
+     * @param btcTx Bitcoin transaction
+     * @param vout Output index of the desired output in the bitcoin transaction
+     *
+     * @private
+     */
+    private inferRequiredConfirmationsCount;
+    /**
+     * @inheritDoc
+     */
+    getRequiredConfirmationsCount(): number;
+    /**
+     * Checks whether a bitcoin payment was already made, returns the payment or `null` when no payment has been made.
+     *
+     * @internal
+     */
+    protected getBitcoinPayment(): Promise<{
+        txId: string;
+        vout: number;
+        confirmations: number;
+        targetConfirmations: number;
+        inputAddresses?: string[];
+    } | null>;
+    /**
+     * Used to set the txId of the bitcoin payment from the on-chain events listener
+     *
+     * @param txId Transaction ID that settled the swap on the smart chain
+     *
+     * @internal
+     */
+    _setBitcoinTxId(txId: string): Promise<void>;
+    /**
+     * @inheritDoc
+     *
+     * @throws {Error} if in invalid state (must be {@link FromBTCSwapState.CLAIM_COMMITED})
+     */
+    waitForBitcoinTransaction(updateCallback?: (txId?: string, confirmations?: number, targetConfirmations?: number, txEtaMs?: number) => void, checkIntervalSeconds?: number, abortSignal?: AbortSignal): Promise<string>;
+    /**
+     * Private getter of the funded PSBT that doesn't check current state
+     *
+     * @param _bitcoinWallet Bitcoin wallet to fund the PSBT with
+     * @param feeRate Optional bitcoin fee rate in sats/vB
+     * @param additionalOutputs Optional additional outputs that should also be included in the generated PSBT
+     *
+     * @private
+     */
+    private _getFundedPsbt;
+    /**
+     * @inheritDoc
+     */
+    getFundedPsbt(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number, additionalOutputs?: ({
+        amount: bigint;
+        outputScript: Uint8Array;
+    } | {
+        amount: bigint;
+        address: string;
+    })[]): Promise<{
+        psbt: Transaction;
+        psbtHex: string;
+        psbtBase64: string;
+        signInputs: number[];
+        feeRate: number;
+    }>;
+    /**
+     * @inheritDoc
+     *
+     * @throws {Error} if the swap is in invalid state (not in {@link FromBTCSwapState.CLAIM_COMMITED}), or if
+     *  the swap bitcoin address already expired.
+     */
+    submitPsbt(_psbt: Transaction | string): Promise<string>;
+    /**
+     * @inheritDoc
+     */
+    estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<BtcToken<false>, true> | null>;
+    /**
+     * @inheritDoc
+     */
+    sendBitcoinTransaction(wallet: IBitcoinWallet | MinimalBitcoinWalletInterfaceWithSigner, feeRate?: number): Promise<string>;
+    /**
+     * Executes the swap with the provided bitcoin wallet,
+     *
+     * @param dstSigner Signer on the destination network, needs to have the same address as the one specified when
+     *  quote was created, this is required for legacy swaps because the destination wallet needs to actively open
+     *  a bitcoin swap address to which the BTC is then sent, this means that the address also needs to have enough
+     *  native tokens to pay for gas on the destination network
+     * @param wallet Bitcoin wallet to use to sign the bitcoin transaction, can also be null - then the execution waits
+     *  till a transaction is received from an external wallet
+     * @param callbacks Callbacks to track the progress of the swap
+     * @param options Optional options for the swap like feeRate, AbortSignal, and timeouts/intervals
+     *
+     * @returns {boolean} Whether a swap was settled automatically by swap watchtowers or requires manual claim by the
+     *  user, in case `false` is returned the user should call `swap.claim()` to settle the swap on the destination manually
+     */
+    execute(dstSigner: T["Signer"] | T["NativeSigner"], wallet?: IBitcoinWallet | MinimalBitcoinWalletInterfaceWithSigner | null | undefined, callbacks?: {
+        onDestinationCommitSent?: (destinationCommitTxId: string) => void;
+        onSourceTransactionSent?: (sourceTxId: string) => void;
+        onSourceTransactionConfirmationStatus?: (sourceTxId?: string, confirmations?: number, targetConfirations?: number, etaMs?: number) => void;
+        onSourceTransactionConfirmed?: (sourceTxId: string) => void;
+        onSwapSettled?: (destinationTxId: string) => void;
+    }, options?: {
+        feeRate?: number;
+        abortSignal?: AbortSignal;
+        btcTxCheckIntervalSeconds?: number;
+        maxWaitTillAutomaticSettlementSeconds?: number;
+    }): Promise<boolean>;
+    /**
+     * @internal
+     */
+    protected _getExecutionStatus(options?: {
+        maxWaitTillAutomaticSettlementSeconds?: number;
+    }): Promise<{
+        steps: [SwapExecutionStepSetup<T["ChainId"]>, SwapExecutionStepPayment<"BITCOIN">, SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">];
+        buildCurrentAction: (actionOptions?: {
+            bitcoinFeeRate?: number;
+            bitcoinWallet?: MinimalBitcoinWalletInterface;
+            skipChecks?: boolean;
+            manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
+        }) => Promise<SwapExecutionActionSendToAddress<false> | SwapExecutionActionSignPSBT<"FUNDED_PSBT"> | SwapExecutionActionWait<"BITCOIN_CONFS" | "SETTLEMENT"> | SwapExecutionActionSignSmartChainTx<T> | undefined>;
+        state: FromBTCSwapState;
+    }>;
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    _submitExecutionTransactions(txs: (T["SignedTXType"] | Transaction | string)[], abortSignal?: AbortSignal, requiredStates?: FromBTCSwapState[], idempotent?: boolean): Promise<string[]>;
+    /**
+     * @internal
+     */
+    private _buildSendToAddressOrSignPsbtAction;
+    /**
+     * @internal
+     */
+    private _buildWaitBitcoinConfirmationsAction;
+    /**
+     * @internal
+     */
+    private _buildWaitSettlementAction;
+    /**
+     * @internal
+     */
+    private _buildInitSmartChainTxAction;
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    private _buildClaimSmartChainTxAction;
+    /**
+     * @inheritDoc
+     *
+     * @param options.bitcoinFeeRate Optional fee rate to use for the created Bitcoin transaction
+     * @param options.bitcoinWallet Bitcoin wallet to use, when provided the function returns a funded
+     *  psbt (`"FUNDED_PSBT"`), if not passed just a bitcoin receive address is returned (`"ADDRESS"`)
+     * @param options.skipChecks Skip checks like making sure init signature is still valid and swap
+     *  wasn't commited yet (this is handled on swap creation, if you commit right after quoting, you
+     *  can use `skipChecks=true`)
+     * @param options.manualSettlementSmartChainSigner Optional smart chain signer to create a manual claim (settlement) transaction
+     * @param options.maxWaitTillAutomaticSettlementSeconds Maximum time to wait for an automatic settlement after
+     *  the bitcoin transaction is confirmed (defaults to 60 seconds)
+     */
+    getExecutionAction(options?: {
+        bitcoinFeeRate?: number;
+        bitcoinWallet?: MinimalBitcoinWalletInterface;
+        skipChecks?: boolean;
+        manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
+        maxWaitTillAutomaticSettlementSeconds?: number;
+    }): Promise<SwapExecutionActionSendToAddress<false> | SwapExecutionActionSignPSBT<"FUNDED_PSBT"> | SwapExecutionActionWait<"BITCOIN_CONFS" | "SETTLEMENT"> | SwapExecutionActionSignSmartChainTx<T> | undefined>;
+    /**
+     * @inheritDoc
+     */
+    getExecutionStatus(options?: {
+        skipBuildingAction?: boolean;
+        bitcoinFeeRate?: number;
+        bitcoinWallet?: MinimalBitcoinWalletInterface;
+        skipChecks?: boolean;
+        manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
+        maxWaitTillAutomaticSettlementSeconds?: number;
+    }): Promise<{
+        steps: [
+            SwapExecutionStepSetup<T["ChainId"]>,
+            SwapExecutionStepPayment<"BITCOIN">,
+            SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
+        ];
+        currentAction: SwapExecutionActionSendToAddress<false> | SwapExecutionActionSignPSBT<"FUNDED_PSBT"> | SwapExecutionActionWait<"BITCOIN_CONFS" | "SETTLEMENT"> | SwapExecutionActionSignSmartChainTx<T> | undefined;
+        stateInfo: SwapStateInfo<FromBTCSwapState>;
+    }>;
+    /**
+     * @inheritDoc
+     */
+    getExecutionSteps(options?: {
+        maxWaitTillAutomaticSettlementSeconds?: number;
+    }): Promise<[
+        SwapExecutionStepSetup<T["ChainId"]>,
+        SwapExecutionStepPayment<"BITCOIN">,
+        SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
+    ]>;
+    /**
+     * @inheritDoc
+     *
+     * @throws {Error} If invalid signer is provided that doesn't match the swap data
+     */
+    commit(_signer: T["Signer"] | T["NativeSigner"], abortSignal?: AbortSignal, skipChecks?: boolean, onBeforeTxSent?: (txId: string) => void): Promise<string>;
+    /**
+     * @inheritDoc
+     */
+    waitTillCommited(abortSignal?: AbortSignal): Promise<void>;
+    /**
+     * Returns transactions for settling (claiming) the swap if the swap requires manual settlement, you can check so
+     *  with isClaimable. After sending the transaction manually be sure to call the waitTillClaimed function to wait
+     *  till the claim transaction is observed, processed by the SDK and state of the swap properly updated.
+     *
+     * @remarks
+     * Might also return transactions necessary to sync the bitcoin light client.
+     *
+     * @param _signer Address of the signer to create the claim transactions for
+     *
+     * @throws {Error} If the swap is in invalid state (must be {@link FromBTCSwapState.BTC_TX_CONFIRMED})
+     */
+    txsClaim(_signer?: string | T["Signer"] | T["NativeSigner"]): Promise<T["TX"][]>;
+    /**
+     * Settles the swap by claiming the funds on the destination chain if the swap requires manual settlement, you can
+     *  check so with isClaimable.
+     *
+     * @remarks
+     * Might also sync the bitcoin light client during the process.
+     *
+     * @param _signer Signer to use for signing the settlement transactions, can also be different to the recipient
+     * @param abortSignal Abort signal
+     * @param onBeforeTxSent Optional callback triggered before the claim transaction is broadcasted
+     *
+     * @returns Transaction ID of the settlement (claim) transaction on the destination smart chain
+     */
+    claim(_signer: T["Signer"] | T["NativeSigner"], abortSignal?: AbortSignal, onBeforeTxSent?: (txId: string) => void): Promise<string>;
+    /**
+     * @inheritDoc
+     *
+     * @throws {Error} If swap is in invalid state (must be {@link FromBTCSwapState.BTC_TX_CONFIRMED})
+     * @throws {Error} If the LP refunded sooner than we were able to claim
+     */
+    waitTillClaimed(maxWaitTimeSeconds?: number, abortSignal?: AbortSignal, pollIntervalSeconds?: number): Promise<boolean>;
+    /**
+     * @inheritDoc
+     */
+    serialize(): any;
+    /**
+     * Checks the swap's state on-chain and compares it to its internal state, updates/changes it according to on-chain
+     *  data
+     *
+     * @private
+     */
+    private syncStateFromChain;
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    _shouldFetchOnchainState(): boolean;
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    _shouldFetchExpiryStatus(): boolean;
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    _sync(save?: boolean, quoteDefinitelyExpired?: boolean, commitStatus?: SwapCommitState): Promise<boolean>;
+    private btcTxLastChecked?;
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    _forciblySetOnchainState(status: SwapCommitState): Promise<boolean>;
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    _tick(save?: boolean): Promise<boolean>;
+}

@@ -13,4 +13,4 @@ export var SwapDirection;
      * Swaps from smart chains (Solana, Starknet, EVM, etc.) to bitcoin
      */
     SwapDirection[SwapDirection["TO_BTC"] = 1] = "TO_BTC";
-})(SwapDirection || (SwapDirection = {}));
+})(SwapDirection = SwapDirection || (SwapDirection = {}));

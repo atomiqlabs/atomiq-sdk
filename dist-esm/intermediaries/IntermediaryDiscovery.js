@@ -21,7 +21,7 @@ export var SwapHandlerType;
     SwapHandlerType["FROM_BTCLN_TRUSTED"] = "FROM_BTCLN_TRUSTED";
     SwapHandlerType["FROM_BTC_SPV"] = "FROM_BTC_SPV";
     SwapHandlerType["FROM_BTCLN_AUTO"] = "FROM_BTCLN_AUTO";
-})(SwapHandlerType || (SwapHandlerType = {}));
+})(SwapHandlerType = SwapHandlerType || (SwapHandlerType = {}));
 /**
  * Converts SwapHandlerType (represented as string & used in REST API communication with intermediaries) to regular
  *  {@link SwapType}

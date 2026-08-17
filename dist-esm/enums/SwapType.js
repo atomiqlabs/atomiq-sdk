@@ -73,4 +73,4 @@ export var SwapType;
      * Used on all the supported chains except Solana!
      */
     SwapType[SwapType["FROM_BTCLN_AUTO"] = 7] = "FROM_BTCLN_AUTO";
-})(SwapType || (SwapType = {}));
+})(SwapType = SwapType || (SwapType = {}));

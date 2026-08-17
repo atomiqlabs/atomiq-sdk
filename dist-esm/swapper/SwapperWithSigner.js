@@ -1,4 +1,4 @@
-import { wrapSwapWithSigner } from "../types/SwapWithSigner";
+import { wrapSwapWithSigner } from "../types/SwapWithSigner.js";
 /**
  * Chain and signer-specific wrapper for automatic signer injection into swap methods
  * @category Core

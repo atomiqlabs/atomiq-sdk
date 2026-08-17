@@ -1,0 +1,7 @@
+import { CoinselectAddressTypes, CoinselectTxInput, CoinselectTxOutput } from "./utils.js";
+export declare function accumulative(utxos: CoinselectTxInput[], outputs: CoinselectTxOutput[], feeRate: number, type: CoinselectAddressTypes, requiredInputs?: CoinselectTxInput[]): {
+    inputs?: CoinselectTxInput[];
+    outputs?: CoinselectTxOutput[];
+    effectiveFeeRate?: number;
+    fee: number;
+};

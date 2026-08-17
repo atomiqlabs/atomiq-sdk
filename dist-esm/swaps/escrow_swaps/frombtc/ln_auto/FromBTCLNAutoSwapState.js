@@ -52,4 +52,4 @@ export var FromBTCLNAutoSwapState;
      * Swap successfully settled and funds received on the destination chain
      */
     FromBTCLNAutoSwapState[FromBTCLNAutoSwapState["CLAIM_CLAIMED"] = 3] = "CLAIM_CLAIMED";
-})(FromBTCLNAutoSwapState || (FromBTCLNAutoSwapState = {}));
+})(FromBTCLNAutoSwapState = FromBTCLNAutoSwapState || (FromBTCLNAutoSwapState = {}));

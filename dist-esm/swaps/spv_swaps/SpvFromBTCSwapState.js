@@ -73,4 +73,4 @@ export var SpvFromBTCSwapState;
      * Swap settled on the smart chain and funds received
      */
     SpvFromBTCSwapState[SpvFromBTCSwapState["CLAIMED"] = 6] = "CLAIMED";
-})(SpvFromBTCSwapState || (SpvFromBTCSwapState = {}));
+})(SpvFromBTCSwapState = SpvFromBTCSwapState || (SpvFromBTCSwapState = {}));

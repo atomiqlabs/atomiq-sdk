@@ -52,4 +52,4 @@ export var FromBTCLNSwapState;
      * Swap successfully settled and funds received on the destination chain
      */
     FromBTCLNSwapState[FromBTCLNSwapState["CLAIM_CLAIMED"] = 3] = "CLAIM_CLAIMED";
-})(FromBTCLNSwapState || (FromBTCLNSwapState = {}));
+})(FromBTCLNSwapState = FromBTCLNSwapState || (FromBTCLNSwapState = {}));

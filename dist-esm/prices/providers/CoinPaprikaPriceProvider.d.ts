@@ -1,0 +1,25 @@
+import { CoinType, CtorCoinTypes } from "../abstract/IPriceProvider.js";
+import { HttpPriceProvider } from "./abstract/HttpPriceProvider.js";
+import { MultiChain } from "../../swapper/Swapper.js";
+export type CoinPaprikaResponse<Currency extends string> = {
+    quotes: {
+        [curr in Currency]: {
+            price: number;
+        };
+    };
+};
+/**
+ * Price provider using CoinPaprika API
+ * @category Pricing
+ */
+export declare class CoinPaprikaPriceProvider<T extends MultiChain> extends HttpPriceProvider<T> {
+    constructor(coinsMap: CtorCoinTypes<T>, url?: string, httpRequestTimeout?: number);
+    /**
+     * @inheritDoc
+     */
+    fetchPrice(token: CoinType, abortSignal?: AbortSignal): Promise<bigint>;
+    /**
+     * @inheritDoc
+     */
+    protected fetchUsdPrice(abortSignal?: AbortSignal): Promise<number>;
+}

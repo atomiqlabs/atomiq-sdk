@@ -13,4 +13,4 @@ export var SwapAmountType;
      * Swap amount specified in the output token
      */
     SwapAmountType[SwapAmountType["EXACT_OUT"] = 0] = "EXACT_OUT";
-})(SwapAmountType || (SwapAmountType = {}));
+})(SwapAmountType = SwapAmountType || (SwapAmountType = {}));

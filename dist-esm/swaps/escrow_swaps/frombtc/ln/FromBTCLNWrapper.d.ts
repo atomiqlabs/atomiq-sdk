@@ -1,0 +1,192 @@
+/// <reference types="node" resolution-mode="require"/>
+/// <reference types="node" resolution-mode="require"/>
+/// <reference types="node" resolution-mode="require"/>
+import { FromBTCLNSwap, FromBTCLNSwapState } from "./FromBTCLNSwap.js";
+import { ChainType, ClaimEvent, InitializeEvent, LightningNetworkApi, RefundEvent, SwapCommitState } from "@atomiqlabs/base";
+import { Intermediary } from "../../../../intermediaries/Intermediary.js";
+import { Buffer } from "buffer";
+import { SwapType } from "../../../../enums/SwapType.js";
+import { IntermediaryAPI } from "../../../../intermediaries/apis/IntermediaryAPI.js";
+import { ISwapPrice } from "../../../../prices/abstract/ISwapPrice.js";
+import { EventEmitter } from "events";
+import { ISwapWrapperOptions, WrapperCtorTokens } from "../../../ISwapWrapper.js";
+import { UnifiedSwapEventListener } from "../../../../events/UnifiedSwapEventListener.js";
+import { UnifiedSwapStorage } from "../../../../storage/UnifiedSwapStorage.js";
+import { ISwap } from "../../../ISwap.js";
+import { IFromBTCLNDefinition, IFromBTCLNWrapper } from "../IFromBTCLNWrapper.js";
+import { IClaimableSwapWrapper } from "../../../IClaimableSwapWrapper.js";
+import { AmountData } from "../../../../types/AmountData.js";
+import { LNURLWithdrawParamsWithUrl } from "../../../../types/lnurl/LNURLWithdraw.js";
+import { AllOptional } from "../../../../utils/TypeUtils.js";
+export type FromBTCLNOptions = {
+    /**
+     * Instead of letting the SDK generate the preimage/paymentHash pair internally you can pass your computed
+     *  paymentHash here, this will create the swap with the provided payment hash. Note that you would then
+     *  have to reveal the preimage by passing it to the {@link FromBTCLNSwap.claim} or {@link FromBTCLNSwap.txsClaim}
+     *  functions
+     *
+     * Accepts both, a {@link Buffer} and a hexadecimal `string`
+     */
+    paymentHash?: Buffer | string;
+    /**
+     * Optional description to use for the swap lightning network invoice, keep the invoice length below 500 characters
+     */
+    description?: string;
+    /**
+     * Optional description hash to use for the lightning network invoice, useful when returning the invoice as part of
+     *  an LNURL-pay service endpoint.
+     *
+     * Accepts both, a {@link Buffer} and a hexadecimal `string`
+     */
+    descriptionHash?: Buffer | string;
+    /**
+     * A flag to skip checking whether the lightning network node of the LP has enough channel liquidity to facilitate
+     *  the swap.
+     */
+    unsafeSkipLnNodeCheck?: boolean;
+};
+export type FromBTCLNWrapperOptions = ISwapWrapperOptions & {
+    unsafeSkipLnNodeCheck: boolean;
+    safetyFactor: number;
+    bitcoinBlocktime: number;
+};
+export type FromBTCLNDefinition<T extends ChainType> = IFromBTCLNDefinition<T, FromBTCLNWrapper<T>, FromBTCLNSwap<T>>;
+/**
+ * Legacy escrow (HTLC) based swap for Bitcoin Lightning -> Smart chains, requires manual settlement
+ *  of the swap on the destination network once the lightning network payment is received by the LP.
+ *
+ * @category Swaps/Legacy/Lightning → Smart chain
+ */
+export declare class FromBTCLNWrapper<T extends ChainType> extends IFromBTCLNWrapper<T, FromBTCLNDefinition<T>, FromBTCLNWrapperOptions> implements IClaimableSwapWrapper<FromBTCLNSwap<T>> {
+    readonly TYPE: SwapType.FROM_BTCLN;
+    /**
+     * @internal
+     */
+    protected readonly tickSwapState: FromBTCLNSwapState[];
+    /**
+     * @internal
+     */
+    readonly _pendingSwapStates: FromBTCLNSwapState[];
+    /**
+     * @internal
+     */
+    readonly _claimableSwapStates: FromBTCLNSwapState[];
+    /**
+     * @internal
+     */
+    readonly _swapDeserializer: typeof FromBTCLNSwap;
+    /**
+     * @param chainIdentifier
+     * @param unifiedStorage Storage interface for the current environment
+     * @param unifiedChainEvents On-chain event listener
+     * @param chain
+     * @param prices Swap pricing handler
+     * @param tokens
+     * @param versionedContracts
+     * @param lnApi
+     * @param lpApi
+     * @param options
+     * @param events Instance to use for emitting events
+     */
+    constructor(chainIdentifier: string, unifiedStorage: UnifiedSwapStorage<T>, unifiedChainEvents: UnifiedSwapEventListener<T>, chain: T["ChainInterface"], prices: ISwapPrice, tokens: WrapperCtorTokens, versionedContracts: {
+        [version: string]: {
+            swapContract: T["Contract"];
+            swapDataConstructor: new (data: any) => T["Data"];
+        };
+    }, lnApi: LightningNetworkApi, lpApi: IntermediaryAPI, options?: AllOptional<FromBTCLNWrapperOptions>, events?: EventEmitter<{
+        swapState: [ISwap];
+    }>);
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    protected processEventInitialize(swap: FromBTCLNSwap<T>, event: InitializeEvent<T["Data"]>): Promise<boolean>;
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    protected processEventClaim(swap: FromBTCLNSwap<T>, event: ClaimEvent<T["Data"]>): Promise<boolean>;
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    protected processEventRefund(swap: FromBTCLNSwap<T>, event: RefundEvent<T["Data"]>): Promise<boolean>;
+    /**
+     * Verifies response returned from intermediary
+     *
+     * @param resp Response as returned by the intermediary
+     * @param amountData
+     * @param lp Intermediary
+     * @param options Options as passed to the swap creation function
+     * @param decodedPr Decoded bolt11 lightning network invoice
+     * @param paymentHash Expected payment hash of the bolt11 lightning network invoice
+     *
+     * @throws {IntermediaryError} in case the response is invalid
+     *
+     * @private
+     */
+    private verifyReturnedData;
+    /**
+     * Returns a newly created legacy Lightning -> Smart chain swap using the HTLC based escrow swap protocol,
+     *  where the user needs to manually settle swap on the destination smart chain. The user has to pay
+     *  a bolt11 invoice on the input lightning network side.
+     *
+     * @param recipient Smart chain signer's address on the destination chain, that will have to manually
+     *  settle the swap.
+     * @param amountData Amount, token and exact input/output data for to swap
+     * @param lps An array of intermediaries (LPs) to get the quotes from
+     * @param options Optional additional quote options
+     * @param additionalParams Optional additional parameters sent to the LP when creating the swap
+     * @param abortSignal Abort signal
+     * @param preFetches Optional pre-fetches for speeding up the quoting process (mainly used internally)
+     */
+    create(recipient: string, amountData: AmountData, lps: Intermediary[], options?: FromBTCLNOptions, additionalParams?: Record<string, any>, abortSignal?: AbortSignal, preFetches?: {
+        usdPricePrefetchPromise: Promise<number | undefined>;
+        pricePrefetchPromise: Promise<bigint | undefined>;
+        feeRatePromise: {
+            [contractVersion: string]: Promise<string | undefined>;
+        };
+    }): {
+        quote: Promise<FromBTCLNSwap<T>>;
+        intermediary: Intermediary;
+    }[];
+    /**
+     * Returns a newly created legacy Lightning -> Smart chain swap using the HTLC based escrow swap protocol,
+     *  where the user needs to manually settle swap on the destination smart chain. The swap is created
+     *  with an LNURL-withdraw link which will be used to pay the generated bolt11 invoice automatically
+     *  when {@link FromBTCLNSwap.waitForPayment} is called on the swap.
+     *
+     * @param recipient Smart chain signer's address on the destination chain, that will have to manually
+     *  settle the swap.
+     * @param lnurl LNURL-withdraw link to pull the funds from
+     * @param amountData Amount, token and exact input/output data for to swap
+     * @param lps An array of intermediaries (LPs) to get the quotes from
+     * @param options Optional additional quote options
+     * @param additionalParams Optional additional parameters sent to the LP when creating the swap
+     * @param abortSignal Abort signal
+     */
+    createViaLNURL(recipient: string, lnurl: string | LNURLWithdrawParamsWithUrl, amountData: AmountData, lps: Intermediary[], options?: FromBTCLNOptions, additionalParams?: Record<string, any>, abortSignal?: AbortSignal): Promise<{
+        quote: Promise<FromBTCLNSwap<T>>;
+        intermediary: Intermediary;
+    }[]>;
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    protected _checkPastSwaps(pastSwaps: FromBTCLNSwap<T>[]): Promise<{
+        changedSwaps: FromBTCLNSwap<T>[];
+        removeSwaps: FromBTCLNSwap<T>[];
+    }>;
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    recoverFromSwapDataAndState(init: {
+        data: T["Data"];
+        getInitTxId: () => Promise<string>;
+        getTxBlock: () => Promise<{
+            blockTime: number;
+            blockHeight: number;
+        }>;
+    }, state: SwapCommitState, contractVersion: string, lp?: Intermediary): Promise<FromBTCLNSwap<T> | null>;
+}

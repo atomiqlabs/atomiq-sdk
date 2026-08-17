@@ -1,0 +1,314 @@
+import { OnchainForGasSwapState } from "./OnchainForGasSwapState.js";
+import { SwapType } from "../../../enums/SwapType.js";
+import { ChainType } from "@atomiqlabs/base";
+import { ISwap, ISwapInit } from "../../ISwap.js";
+import { OnchainForGasSwapTypeDefinition, OnchainForGasWrapper } from "./OnchainForGasWrapper.js";
+import { Fee } from "../../../types/fees/Fee.js";
+import { IBitcoinWallet } from "../../../bitcoin/wallet/IBitcoinWallet.js";
+import { IAddressSwap } from "../../IAddressSwap.js";
+import { IBTCWalletSwap } from "../../IBTCWalletSwap.js";
+import { Transaction } from "@scure/btc-signer";
+import { MinimalBitcoinWalletInterface, MinimalBitcoinWalletInterfaceWithSigner } from "../../../types/wallets/MinimalBitcoinWalletInterface.js";
+import { FeeType } from "../../../enums/FeeType.js";
+import { TokenAmount } from "../../../types/TokenAmount.js";
+import { BtcToken, SCToken } from "../../../types/Token.js";
+import { LoggerType } from "../../../utils/Logger.js";
+export { OnchainForGasSwapState };
+export type OnchainForGasSwapInit = ISwapInit & {
+    paymentHash: string;
+    sequence: bigint;
+    address: string;
+    inputAmount: bigint;
+    outputAmount: bigint;
+    recipient: string;
+    token: string;
+    refundAddress?: string;
+};
+export declare function isOnchainForGasSwapInit(obj: any): obj is OnchainForGasSwapInit;
+/**
+ * Trusted swap for Bitcoin -> Smart chains, to be used for minor amounts to get gas tokens on the
+ *  destination chain, which is only needed for Solana, which still uses legacy swaps
+ *
+ * @category Swaps/Trusted Gas Swaps
+ */
+export declare class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T, OnchainForGasSwapTypeDefinition<T>, OnchainForGasSwapState> implements IAddressSwap, IBTCWalletSwap {
+    protected readonly TYPE: SwapType.TRUSTED_FROM_BTC;
+    /**
+     * @internal
+     */
+    protected readonly swapStateDescription: Record<OnchainForGasSwapState, string>;
+    /**
+     * @internal
+     */
+    protected readonly swapStateName: (state: number) => string;
+    /**
+     * @internal
+     */
+    protected readonly logger: LoggerType;
+    private readonly paymentHash;
+    private readonly sequence;
+    private readonly address;
+    private readonly recipient;
+    private readonly token;
+    private inputAmount;
+    private outputAmount;
+    private refundAddress?;
+    /**
+     * Destination transaction ID on the smart chain side
+     * @private
+     */
+    private scTxId?;
+    /**
+     * Source transaction ID on the source (bitcoin) side
+     * @private
+     */
+    private txId?;
+    /**
+     * Transaction ID on the source (bitcoin) side used for refunding the funds back to the user
+     * @private
+     */
+    private refundTxId?;
+    /**
+     * @internal
+     */
+    protected readonly wrapper: OnchainForGasWrapper<T>;
+    constructor(wrapper: OnchainForGasWrapper<T>, init: OnchainForGasSwapInit);
+    constructor(wrapper: OnchainForGasWrapper<T>, obj: any);
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    protected upgradeVersion(): void;
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    protected tryRecomputeSwapPrice(): void;
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    _getEscrowHash(): string;
+    /**
+     * @inheritDoc
+     */
+    getOutputAddress(): string | null;
+    /**
+     * @inheritDoc
+     */
+    getInputAddress(): string | null;
+    /**
+     * @inheritDoc
+     */
+    getInputTxId(): string | null;
+    /**
+     * @inheritDoc
+     */
+    getOutputTxId(): string | null;
+    /**
+     * @inheritDoc
+     */
+    getId(): string;
+    /**
+     * @inheritDoc
+     */
+    getAddress(): string;
+    /**
+     * @inheritDoc
+     */
+    getHyperlink(): string;
+    /**
+     * @inheritDoc
+     */
+    requiresAction(): boolean;
+    /**
+     * @inheritDoc
+     */
+    isFinished(): boolean;
+    /**
+     * @inheritDoc
+     */
+    isQuoteExpired(): boolean;
+    /**
+     * @inheritDoc
+     */
+    isQuoteSoftExpired(): boolean;
+    /**
+     * @inheritDoc
+     */
+    isFailed(): boolean;
+    /**
+     * @inheritDoc
+     */
+    isSuccessful(): boolean;
+    /**
+     * @inheritDoc
+     */
+    isInProgress(): boolean;
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    _verifyQuoteDefinitelyExpired(): Promise<boolean>;
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    _verifyQuoteValid(): Promise<boolean>;
+    /**
+     * Returns an output amount in base units without a swap fee included, hence this value
+     *  is larger than the actual output amount
+     *
+     * @internal
+     */
+    protected getOutAmountWithoutFee(): bigint;
+    /**
+     * @inheritDoc
+     */
+    getOutputToken(): SCToken<T["ChainId"]>;
+    /**
+     * @inheritDoc
+     */
+    getOutput(): TokenAmount<SCToken<T["ChainId"]>, true>;
+    /**
+     * @inheritDoc
+     */
+    getInputToken(): BtcToken<false>;
+    /**
+     * @inheritDoc
+     */
+    getInput(): TokenAmount<BtcToken<false>, true>;
+    /**
+     * @inheritDoc
+     */
+    getInputWithoutFee(): TokenAmount<BtcToken<false>, true>;
+    /**
+     * Returns the swap fee charged by the intermediary (LP) on this swap
+     *
+     * @internal
+     */
+    protected getSwapFee(): Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>;
+    /**
+     * @inheritDoc
+     */
+    getFee(): Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>;
+    /**
+     * @inheritDoc
+     */
+    getFeeBreakdown(): [{
+        type: FeeType.SWAP;
+        fee: Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>;
+    }];
+    /**
+     * @inheritDoc
+     */
+    getRequiredConfirmationsCount(): number;
+    /**
+     * @inheritDoc
+     */
+    getFundedPsbt(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number, additionalOutputs?: ({
+        amount: bigint;
+        outputScript: Uint8Array;
+    } | {
+        amount: bigint;
+        address: string;
+    })[]): Promise<{
+        psbt: Transaction;
+        psbtHex: string;
+        psbtBase64: string;
+        signInputs: number[];
+    }>;
+    /**
+     * @inheritDoc
+     */
+    submitPsbt(_psbt: Transaction | string): Promise<string>;
+    /**
+     * @inheritDoc
+     */
+    estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<BtcToken<false>, true> | null>;
+    /**
+     * @inheritDoc
+     */
+    sendBitcoinTransaction(wallet: IBitcoinWallet | MinimalBitcoinWalletInterfaceWithSigner, feeRate?: number): Promise<string>;
+    /**
+     * @inheritDoc
+     *
+     * @param options.bitcoinWallet Optional bitcoin wallet address specification to return a funded PSBT,
+     *  if not provided an address is returned instead.
+     */
+    getExecutionAction(options?: {
+        bitcoinWallet?: MinimalBitcoinWalletInterface;
+    }): Promise<never>;
+    /**
+     * @inheritDoc
+     */
+    getExecutionSteps(): Promise<never>;
+    /**
+     * @inheritDoc
+     */
+    getExecutionStatus(): Promise<never>;
+    /**
+     * @internal
+     * @inheritDoc
+     */
+    _submitExecutionTransactions(): Promise<string[]>;
+    /**
+     * @remarks Not supported
+     */
+    execute(): Promise<boolean>;
+    /**
+     * Queries the intermediary (LP) node for the state of the swap
+     *
+     * @param save Whether the save the result or not
+     *
+     * @returns Whether the swap was successful as `boolean` or `null` if the swap is still pending
+     * @internal
+     */
+    protected checkAddress(save?: boolean): Promise<boolean | null>;
+    /**
+     * Sets the bitcoin address used for possible refunds in case something goes wrong with the swap
+     *
+     * @param refundAddress Bitcoin address to receive the refund to
+     * @internal
+     */
+    protected setRefundAddress(refundAddress: string): Promise<void>;
+    /**
+     * @inheritDoc
+     */
+    waitForBitcoinTransaction(updateCallback?: (txId?: string, confirmations?: number, targetConfirmations?: number, txEtaMs?: number) => void, checkIntervalSeconds?: number, abortSignal?: AbortSignal): Promise<string>;
+    /**
+     * Waits till the LP processes a refund for a failed swap. The swap must be in
+     *  {@link OnchainForGasSwapState.REFUNDABLE} state
+     *
+     * @param checkIntervalSeconds How often to check (default 5 seconds)
+     * @param abortSignal Abort signal
+     */
+    waitTillRefunded(checkIntervalSeconds?: number, abortSignal?: AbortSignal): Promise<void>;
+    /**
+     * Requests a refund after the swap failed, this also waits till the refund is actually sent by the
+     *  intermediary (LP). The swap must be in {@link OnchainForGasSwapState.REFUNDABLE} state
+     *
+     * @param refundAddress Bitcoin address to receive the refund to
+     * @param abortSignal Abort signal
+     */
+    requestRefund(refundAddress?: string, abortSignal?: AbortSignal): Promise<void>;
+    /**
+     * @inheritDoc
+     */
+    serialize(): any;
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    _getInitiator(): string;
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    _sync(save?: boolean): Promise<boolean>;
+    /**
+     * @inheritDoc
+     * @internal
+     */
+    _tick(save?: boolean): Promise<boolean>;
+}

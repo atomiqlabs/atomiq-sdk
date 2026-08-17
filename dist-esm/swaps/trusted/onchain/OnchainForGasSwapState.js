@@ -36,4 +36,4 @@ export var OnchainForGasSwapState;
      * Swap is refundable because the intermediary cannot honor the swap request on the destination chain
      */
     OnchainForGasSwapState[OnchainForGasSwapState["REFUNDABLE"] = 2] = "REFUNDABLE";
-})(OnchainForGasSwapState || (OnchainForGasSwapState = {}));
+})(OnchainForGasSwapState = OnchainForGasSwapState || (OnchainForGasSwapState = {}));

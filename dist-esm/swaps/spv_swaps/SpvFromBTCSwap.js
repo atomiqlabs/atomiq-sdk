@@ -6,11 +6,11 @@ import { FeeType } from "../../enums/FeeType.js";
 import { toTokenAmount } from "../../types/TokenAmount.js";
 import { BitcoinTokens } from "../../types/Token.js";
 import { timeoutPromise } from "../../utils/TimeoutUtils.js";
-import { utils } from "../../bitcoin/coinselect2/utils";
-import { isSpvFromBTCSwapInit, SpvFromBTCSwapBase, SpvFromBTCSwapState } from "./SpvFromBTCSwapBase";
-import { toBitcoinWallet } from "../../utils/BitcoinWalletUtils";
-import { identifyAddressType } from "../../bitcoin/wallet/BitcoinWallet";
-import { InvalidBitcoinDepositError } from "../../errors/InvalidBitcoinDepositError";
+import { utils } from "../../bitcoin/coinselect2/utils.js";
+import { isSpvFromBTCSwapInit, SpvFromBTCSwapBase, SpvFromBTCSwapState } from "./SpvFromBTCSwapBase.js";
+import { toBitcoinWallet } from "../../utils/BitcoinWalletUtils.js";
+import { identifyAddressType } from "../../bitcoin/wallet/BitcoinWallet.js";
+import { InvalidBitcoinDepositError } from "../../errors/InvalidBitcoinDepositError.js";
 /**
  * Public SPV vault BTC -> smart-chain swap class.
  *

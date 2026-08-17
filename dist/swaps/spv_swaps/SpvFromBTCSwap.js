@@ -9,11 +9,11 @@ const FeeType_js_1 = require("../../enums/FeeType.js");
 const TokenAmount_js_1 = require("../../types/TokenAmount.js");
 const Token_js_1 = require("../../types/Token.js");
 const TimeoutUtils_js_1 = require("../../utils/TimeoutUtils.js");
-const utils_1 = require("../../bitcoin/coinselect2/utils");
-const SpvFromBTCSwapBase_1 = require("./SpvFromBTCSwapBase");
-const BitcoinWalletUtils_1 = require("../../utils/BitcoinWalletUtils");
-const BitcoinWallet_1 = require("../../bitcoin/wallet/BitcoinWallet");
-const InvalidBitcoinDepositError_1 = require("../../errors/InvalidBitcoinDepositError");
+const utils_js_1 = require("../../bitcoin/coinselect2/utils.js");
+const SpvFromBTCSwapBase_js_1 = require("./SpvFromBTCSwapBase.js");
+const BitcoinWalletUtils_js_1 = require("../../utils/BitcoinWalletUtils.js");
+const BitcoinWallet_js_1 = require("../../bitcoin/wallet/BitcoinWallet.js");
+const InvalidBitcoinDepositError_js_1 = require("../../errors/InvalidBitcoinDepositError.js");
 /**
  * Public SPV vault BTC -> smart-chain swap class.
  *
@@ -23,12 +23,12 @@ const InvalidBitcoinDepositError_1 = require("../../errors/InvalidBitcoinDeposit
  *
  * @category Swaps/Bitcoin → Smart chain
  */
-class SpvFromBTCSwap extends SpvFromBTCSwapBase_1.SpvFromBTCSwapBase {
+class SpvFromBTCSwap extends SpvFromBTCSwapBase_js_1.SpvFromBTCSwapBase {
     constructor(wrapper, initOrObject) {
         super(wrapper, initOrObject);
         this.swapMode = "psbt";
         this.externalSwapModeInfo = null;
-        if (!(0, SpvFromBTCSwapBase_1.isSpvFromBTCSwapInit)(initOrObject)) {
+        if (!(0, SpvFromBTCSwapBase_js_1.isSpvFromBTCSwapInit)(initOrObject)) {
             this.swapMode = initOrObject.swapMode ?? "psbt";
             this.externalDepositTxId = initOrObject.externalDepositTxId;
             const info = initOrObject.externalSwapModeInfo;
@@ -95,7 +95,7 @@ class SpvFromBTCSwap extends SpvFromBTCSwapBase_1.SpvFromBTCSwapBase {
     }
     getFinalizedCoinselect(inputs, outputs, feeRate = this.minimumBtcFeeRate, changeType = null) {
         const txDetails = this.getTransactionDetails();
-        return utils_1.utils.finalize([
+        return utils_js_1.utils.finalize([
             {
                 value: Number(txDetails.vaultAmount),
                 type: SpvFromBTCWrapper_js_1.REQUIRED_SPV_SWAP_VAULT_ADDRESS_TYPE
@@ -177,7 +177,7 @@ class SpvFromBTCSwap extends SpvFromBTCSwapBase_1.SpvFromBTCSwapBase {
      *  swap mode by calling {@link returnToIntermediateWalletSwapMode}
      */
     async setSwapModePsbt(clearMetadata = true) {
-        if (this._state !== SpvFromBTCSwapBase_1.SpvFromBTCSwapState.CREATED)
+        if (this._state !== SpvFromBTCSwapBase_js_1.SpvFromBTCSwapState.CREATED)
             throw new Error("Cannot change swap mode outside of CREATED state!");
         this.swapMode = "psbt";
         if (clearMetadata) {
@@ -194,7 +194,7 @@ class SpvFromBTCSwap extends SpvFromBTCSwapBase_1.SpvFromBTCSwapBase {
      *  `clearMetadata=false`, which retains the swap mode metadata.
      */
     async returnToIntermediateWalletSwapMode() {
-        if (this._state !== SpvFromBTCSwapBase_1.SpvFromBTCSwapState.CREATED)
+        if (this._state !== SpvFromBTCSwapBase_js_1.SpvFromBTCSwapState.CREATED)
             throw new Error("Cannot change swap mode outside of CREATED state!");
         if (this.externalSwapModeInfo == null)
             throw new Error("No 'intermediate_wallet' swap mode metadata found!");
@@ -214,9 +214,9 @@ class SpvFromBTCSwap extends SpvFromBTCSwapBase_1.SpvFromBTCSwapBase {
      * @throws {Error} if the wallet cannot expose the information required for its funding plan or the fee rate is invalid
      */
     async setSwapModeIntermediateWallet(intermediateWallet, existingUtxos, feeRate, cpfpAssumptions) {
-        if (this._state !== SpvFromBTCSwapBase_1.SpvFromBTCSwapState.CREATED)
+        if (this._state !== SpvFromBTCSwapBase_js_1.SpvFromBTCSwapState.CREATED)
             throw new Error("Cannot change swap mode outside of CREATED state!");
-        const wallet = (0, BitcoinWalletUtils_1.toBitcoinWallet)(intermediateWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
+        const wallet = (0, BitcoinWalletUtils_js_1.toBitcoinWallet)(intermediateWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
         const walletAddressInfo = wallet.getAddressInfo(false);
         const walletAddressType = (0, BitcoinUtils_js_1.toCoinselectAddressType)(this.wrapper._options.bitcoinNetwork, walletAddressInfo.address);
         (0, SpvFromBTCWrapper_js_1.assertSupportedSpvFundingType)(walletAddressType);
@@ -254,7 +254,7 @@ class SpvFromBTCSwap extends SpvFromBTCSwapBase_1.SpvFromBTCSwapBase {
             //Calculate additional external funding required
             requiredDepositAmount = super.getInput().rawAmount + BigInt(expectedFee) - existingUtxoBalance;
             //Check sub-dust
-            const dustThreshold = BigInt(utils_1.utils.dustThreshold({ type: walletAddressType }));
+            const dustThreshold = BigInt(utils_js_1.utils.dustThreshold({ type: walletAddressType }));
             if (requiredDepositAmount < dustThreshold) {
                 requiredDepositAmount = dustThreshold;
             }
@@ -285,7 +285,7 @@ class SpvFromBTCSwap extends SpvFromBTCSwapBase_1.SpvFromBTCSwapBase {
      * @internal
      */
     async _setSwapModeIntermediateWallet(fundingPlan) {
-        if (this._state !== SpvFromBTCSwapBase_1.SpvFromBTCSwapState.CREATED)
+        if (this._state !== SpvFromBTCSwapBase_js_1.SpvFromBTCSwapState.CREATED)
             throw new Error("Cannot change swap mode outside of CREATED state!");
         (0, SpvFromBTCWrapper_js_1.assertSupportedSpvFundingType)(fundingPlan.walletAddressType);
         fundingPlan.selectedExistingUtxos.forEach(utxo => (0, SpvFromBTCWrapper_js_1.assertSupportedSpvFundingType)(utxo.type));
@@ -492,7 +492,7 @@ class SpvFromBTCSwap extends SpvFromBTCSwapBase_1.SpvFromBTCSwapBase {
      */
     async getIntermediateWalletUtxos(_intermediateWallet) {
         if (_intermediateWallet != null) {
-            const intermediateWallet = (0, BitcoinWalletUtils_1.toBitcoinWallet)(_intermediateWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
+            const intermediateWallet = (0, BitcoinWalletUtils_js_1.toBitcoinWallet)(_intermediateWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
             return await intermediateWallet.getUtxoPool();
         }
         const info = this.getIntermediateWalletSwapModeInfoOrThrow("getIntermediateWalletUtxos()");
@@ -521,7 +521,7 @@ class SpvFromBTCSwap extends SpvFromBTCSwapBase_1.SpvFromBTCSwapBase {
             throw new Error("Additional outputs are not supported in the intermediate wallet mode!");
         if (spendFully != null)
             throw new Error("Spend fully flag is not supported in the intermediate wallet mode!");
-        const bitcoinWallet = (0, BitcoinWalletUtils_1.toBitcoinWallet)(_bitcoinWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
+        const bitcoinWallet = (0, BitcoinWalletUtils_js_1.toBitcoinWallet)(_bitcoinWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
         const rehydratedWalletUtxos = utxos ?? await bitcoinWallet.getUtxoPool();
         const selectedRehydratedUtxos = this.getRehydratedSelectedExistingUtxos(rehydratedWalletUtxos);
         //Add external funding if required
@@ -540,7 +540,7 @@ class SpvFromBTCSwap extends SpvFromBTCSwapBase_1.SpvFromBTCSwapBase {
             if (bitcoinWallet.getChangeAddress == null)
                 throw new Error("Intermediate bitcoin wallet has to support getChangeAddress() fn!");
             const changeAddress = bitcoinWallet.getChangeAddress();
-            if (this.externalSwapModeInfo.walletAddressType !== (0, BitcoinWallet_1.identifyAddressType)(changeAddress, this.wrapper._options.bitcoinNetwork))
+            if (this.externalSwapModeInfo.walletAddressType !== (0, BitcoinWallet_js_1.identifyAddressType)(changeAddress, this.wrapper._options.bitcoinNetwork))
                 throw new Error(`Wallet returned an invalid change address type, expected: ${this.externalSwapModeInfo.walletAddressType}`);
             psbt.addOutput({
                 amount: this.externalSwapModeInfo.changeAmount,
@@ -586,7 +586,7 @@ class SpvFromBTCSwap extends SpvFromBTCSwapBase_1.SpvFromBTCSwapBase {
         const abortController = (0, Utils_js_1.extendAbortController)(abortSignal, maxWaitTimeSeconds, "Timed out waiting for external Bitcoin deposit");
         const ignoredUtxoKeys = new Set();
         try {
-            while (this._state !== SpvFromBTCSwapBase_1.SpvFromBTCSwapState.QUOTE_EXPIRED && await this._verifyQuoteValid()) {
+            while (this._state !== SpvFromBTCSwapBase_js_1.SpvFromBTCSwapState.QUOTE_EXPIRED && await this._verifyQuoteValid()) {
                 const walletUtxos = await this.getIntermediateWalletUtxos(_intermediateWallet);
                 const rehydratedUtxos = this.getRehydratedSelectedExistingUtxos(walletUtxos);
                 const matchResult = this.getMatchingExternalDepositUtxo(walletUtxos, ignoredUtxoKeys);
@@ -599,7 +599,7 @@ class SpvFromBTCSwap extends SpvFromBTCSwapBase_1.SpvFromBTCSwapBase {
                 }
                 if (matchResult.invalidUtxos.length > 0) {
                     if (onInvalidDeposit == null || !await onInvalidDeposit(matchResult.invalidUtxos))
-                        throw new InvalidBitcoinDepositError_1.InvalidBitcoinDepositError(matchResult.invalidUtxos);
+                        throw new InvalidBitcoinDepositError_js_1.InvalidBitcoinDepositError(matchResult.invalidUtxos);
                     matchResult.invalidUtxos.forEach(invalidUtxo => {
                         if (invalidUtxo.reason !== "deposit_fee_too_low")
                             ignoredUtxoKeys.add(invalidUtxo.key);
@@ -664,7 +664,7 @@ class SpvFromBTCSwap extends SpvFromBTCSwapBase_1.SpvFromBTCSwapBase {
                 throw new Error("Manual UTXO selection is not supported in the intermediate wallet mode!");
             if (options?.spendFully !== undefined)
                 throw new Error("Spend fully flag is not supported in the intermediate wallet mode!");
-            if (this._state === SpvFromBTCSwapBase_1.SpvFromBTCSwapState.CREATED && this.externalSwapModeInfo?.requiredDeposit != null) {
+            if (this._state === SpvFromBTCSwapBase_js_1.SpvFromBTCSwapState.CREATED && this.externalSwapModeInfo?.requiredDeposit != null) {
                 const result = await this._waitForExternalDeposit(wallet, options?.maxWaitForExternalDepositSeconds, options?.externalDepositCheckIntervalSeconds, callbacks?.onInvalidExternalDeposit, options?.abortSignal);
                 callbacks?.onExternalDepositReceived?.(result.newlyDepositedUtxo.txId);
                 baseOptions = {
@@ -713,7 +713,7 @@ class SpvFromBTCSwap extends SpvFromBTCSwapBase_1.SpvFromBTCSwapBase {
         const _bitcoinWallet = options?.bitcoinWallet ?? bitcoinWallet;
         if (_bitcoinWallet == null)
             throw new Error("Bitcoin wallet is required to construct a swap PSBT!");
-        const resolvedBtcWallet = (0, BitcoinWalletUtils_1.toBitcoinWallet)(_bitcoinWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
+        const resolvedBtcWallet = (0, BitcoinWalletUtils_js_1.toBitcoinWallet)(_bitcoinWallet, this.wrapper._btcRpc, this.wrapper._options.bitcoinNetwork);
         return {
             type: "SignPSBT",
             name: "Deposit on Bitcoin",
@@ -724,7 +724,7 @@ class SpvFromBTCSwap extends SpvFromBTCSwapBase_1.SpvFromBTCSwapBase {
                     type: "FUNDED_PSBT"
                 }],
             submitPsbt: async (signedPsbt, idempotent) => {
-                return this._submitExecutionTransactions(Array.isArray(signedPsbt) ? signedPsbt : [signedPsbt], undefined, [SpvFromBTCSwapBase_1.SpvFromBTCSwapState.CREATED, SpvFromBTCSwapBase_1.SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED], idempotent);
+                return this._submitExecutionTransactions(Array.isArray(signedPsbt) ? signedPsbt : [signedPsbt], undefined, [SpvFromBTCSwapBase_js_1.SpvFromBTCSwapState.CREATED, SpvFromBTCSwapBase_js_1.SpvFromBTCSwapState.QUOTE_SOFT_EXPIRED], idempotent);
             }
         };
     }
@@ -741,7 +741,7 @@ class SpvFromBTCSwap extends SpvFromBTCSwapBase_1.SpvFromBTCSwapBase {
             return executionStatus;
         let buildCurrentAction = executionStatus.buildCurrentAction;
         let matchedNewUtxo;
-        if (executionStatus.state === SpvFromBTCSwapBase_1.SpvFromBTCSwapState.CREATED &&
+        if (executionStatus.state === SpvFromBTCSwapBase_js_1.SpvFromBTCSwapState.CREATED &&
             await this._verifyQuoteValid()) {
             const rehydratedWalletUtxos = await this.getIntermediateWalletUtxos(options?.bitcoinWallet);
             this.getRehydratedSelectedExistingUtxos(rehydratedWalletUtxos);

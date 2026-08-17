@@ -32,4 +32,4 @@ export var LnForGasSwapState;
      * The swap is finished after the destination payout succeeded and the held Lightning invoice was settled
      */
     LnForGasSwapState[LnForGasSwapState["FINISHED"] = 2] = "FINISHED";
-})(LnForGasSwapState || (LnForGasSwapState = {}));
+})(LnForGasSwapState = LnForGasSwapState || (LnForGasSwapState = {}));

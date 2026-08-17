@@ -10,11 +10,11 @@ import { MinimalBitcoinWalletInterface, MinimalBitcoinWalletInterfaceWithSigner 
 import { FeeType } from "../../enums/FeeType.js";
 import { TokenAmount } from "../../types/TokenAmount.js";
 import { BtcToken, SCToken } from "../../types/Token.js";
-import { SwapExecutionActionSendToAddress, SwapExecutionActionSignPSBT } from "../../types/SwapExecutionAction";
-import { SwapExecutionStepPayment, SwapExecutionStepSettlement } from "../../types/SwapExecutionStep";
-import { CoinselectAddressTypes } from "../../bitcoin/coinselect2/utils";
-import { SpvFromBTCSwapBase, SpvFromBTCSwapBaseExecuteCallbacks, SpvFromBTCSwapBaseExecuteOptions, SpvFromBTCSwapInit } from "./SpvFromBTCSwapBase";
-import { Fee } from "../../types/fees/Fee";
+import { SwapExecutionActionSendToAddress, SwapExecutionActionSignPSBT } from "../../types/SwapExecutionAction.js";
+import { SwapExecutionStepPayment, SwapExecutionStepSettlement } from "../../types/SwapExecutionStep.js";
+import { CoinselectAddressTypes } from "../../bitcoin/coinselect2/utils.js";
+import { SpvFromBTCSwapBase, SpvFromBTCSwapBaseExecuteCallbacks, SpvFromBTCSwapBaseExecuteOptions, SpvFromBTCSwapInit } from "./SpvFromBTCSwapBase.js";
+import { Fee } from "../../types/fees/Fee.js";
 /**
  * An external intermediate-wallet deposit that cannot fund the quoted SPV swap.
  *
@@ -405,7 +405,7 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapB
             bitcoinWallet?: IBitcoinWallet | MinimalBitcoinWalletInterface | undefined;
             manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"] | undefined;
             maxWaitTillAutomaticSettlementSeconds?: number | undefined;
-        } | undefined) => Promise<SwapExecutionActionSignPSBT<"FUNDED_PSBT" | "RAW_PSBT"> | SwapExecutionActionSendToAddress<false> | import("../../types/SwapExecutionAction").SwapExecutionActionWait<"SETTLEMENT" | "BITCOIN_CONFS"> | import("../../types/SwapExecutionAction").SwapExecutionActionSignSmartChainTx<T> | undefined>;
+        } | undefined) => Promise<SwapExecutionActionSignPSBT<"FUNDED_PSBT" | "RAW_PSBT"> | SwapExecutionActionSendToAddress<false> | import("../../types/SwapExecutionAction.js").SwapExecutionActionWait<"SETTLEMENT" | "BITCOIN_CONFS"> | import("../../types/SwapExecutionAction.js").SwapExecutionActionSignSmartChainTx<T> | undefined>;
         state: number;
     }>;
     /**

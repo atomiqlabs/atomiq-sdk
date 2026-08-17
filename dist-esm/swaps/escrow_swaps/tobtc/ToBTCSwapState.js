@@ -51,4 +51,4 @@ export var ToBTCSwapState;
      *  is refundable, call {@link IToBTCSwap.refund} or {@link IToBTCSwap.txsRefund} to refund
      */
     ToBTCSwapState[ToBTCSwapState["REFUNDABLE"] = 4] = "REFUNDABLE";
-})(ToBTCSwapState || (ToBTCSwapState = {}));
+})(ToBTCSwapState = ToBTCSwapState || (ToBTCSwapState = {}));

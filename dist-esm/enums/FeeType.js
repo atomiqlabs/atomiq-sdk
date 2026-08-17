@@ -17,4 +17,4 @@ export var FeeType;
      * Bitcoin input-side network fee paid by externally funded SPV swaps
      */
     FeeType[FeeType["NETWORK_INPUT"] = 2] = "NETWORK_INPUT";
-})(FeeType || (FeeType = {}));
+})(FeeType = FeeType || (FeeType = {}));

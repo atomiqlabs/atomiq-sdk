@@ -13,4 +13,4 @@ export var SwapSide;
      * Represents output / destination side of the swap
      */
     SwapSide[SwapSide["OUTPUT"] = 0] = "OUTPUT";
-})(SwapSide || (SwapSide = {}));
+})(SwapSide = SwapSide || (SwapSide = {}));

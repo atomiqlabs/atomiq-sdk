@@ -1,10 +1,10 @@
-import {isOptionalField, RequestSchema, RequestSchemaResultPromise, verifyField} from "../SchemaVerifier";
-import {RequestError} from "../../../errors/RequestError";
-import {extendAbortController, objectMap} from "../../../utils/Utils";
-import {StreamParamEncoder} from "./StreamParamEncoder";
-import {ResponseParamDecoder} from "./ResponseParamDecoder";
-import {getLogger} from "../../../utils/Logger";
-import {timeoutSignal} from "../../../utils/TimeoutUtils";
+import {isOptionalField, RequestSchema, RequestSchemaResultPromise, verifyField} from "../SchemaVerifier.js";
+import {RequestError} from "../../../errors/RequestError.js";
+import {extendAbortController, objectMap} from "../../../utils/Utils.js";
+import {StreamParamEncoder} from "./StreamParamEncoder.js";
+import {ResponseParamDecoder} from "./ResponseParamDecoder.js";
+import {getLogger} from "../../../utils/Logger.js";
+import {timeoutSignal} from "../../../utils/TimeoutUtils.js";
 
 
 export type RequestBody = {

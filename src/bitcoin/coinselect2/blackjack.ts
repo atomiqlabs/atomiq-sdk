@@ -1,4 +1,4 @@
-import {CoinselectAddressTypes, CoinselectTxInput, CoinselectTxOutput, utils} from "./utils";
+import {CoinselectAddressTypes, CoinselectTxInput, CoinselectTxOutput, utils} from "./utils.js";
 
 // add inputs until we reach or surpass the target value (or deplete)
 // worst-case: O(n)

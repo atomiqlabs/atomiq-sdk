@@ -1,20 +1,20 @@
 /// <reference types="node" />
-import { ToBTCLNSwap } from "./ToBTCLNSwap";
-import { IToBTCDefinition, IToBTCWrapper } from "../IToBTCWrapper";
+import { ToBTCLNSwap } from "./ToBTCLNSwap.js";
+import { IToBTCDefinition, IToBTCWrapper } from "../IToBTCWrapper.js";
 import { ChainType, SwapCommitState } from "@atomiqlabs/base";
-import { Intermediary } from "../../../../intermediaries/Intermediary";
-import { ISwapWrapperOptions, WrapperCtorTokens } from "../../../ISwapWrapper";
-import { ISwapPrice } from "../../../../prices/abstract/ISwapPrice";
+import { Intermediary } from "../../../../intermediaries/Intermediary.js";
+import { ISwapWrapperOptions, WrapperCtorTokens } from "../../../ISwapWrapper.js";
+import { ISwapPrice } from "../../../../prices/abstract/ISwapPrice.js";
 import { EventEmitter } from "events";
-import { SwapType } from "../../../../enums/SwapType";
-import { IntermediaryAPI } from "../../../../intermediaries/apis/IntermediaryAPI";
-import { UnifiedSwapEventListener } from "../../../../events/UnifiedSwapEventListener";
-import { UnifiedSwapStorage } from "../../../../storage/UnifiedSwapStorage";
-import { ISwap } from "../../../ISwap";
-import { AmountData } from "../../../../types/AmountData";
-import { LNURLPayParamsWithUrl } from "../../../../types/lnurl/LNURLPay";
-import { AllOptional } from "../../../../utils/TypeUtils";
-import { LightningInvoiceCreateService } from "../../../../types/wallets/LightningInvoiceCreateService";
+import { SwapType } from "../../../../enums/SwapType.js";
+import { IntermediaryAPI } from "../../../../intermediaries/apis/IntermediaryAPI.js";
+import { UnifiedSwapEventListener } from "../../../../events/UnifiedSwapEventListener.js";
+import { UnifiedSwapStorage } from "../../../../storage/UnifiedSwapStorage.js";
+import { ISwap } from "../../../ISwap.js";
+import { AmountData } from "../../../../types/AmountData.js";
+import { LNURLPayParamsWithUrl } from "../../../../types/lnurl/LNURLPay.js";
+import { AllOptional } from "../../../../utils/TypeUtils.js";
+import { LightningInvoiceCreateService } from "../../../../types/wallets/LightningInvoiceCreateService.js";
 export type ToBTCLNOptions = {
     /**
      * HTLC expiration timeout in seconds to use when offering the HTLC to the LP. Larger expirations mean that more

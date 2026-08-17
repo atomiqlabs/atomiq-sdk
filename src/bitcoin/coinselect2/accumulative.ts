@@ -1,6 +1,6 @@
-import {CoinselectAddressTypes, CoinselectTxInput, CoinselectTxOutput, utils} from "./utils";
+import {CoinselectAddressTypes, CoinselectTxInput, CoinselectTxOutput, utils} from "./utils.js";
 
-import {getLogger} from "../../utils/Logger";
+import {getLogger} from "../../utils/Logger.js";
 
 const logger = getLogger("CoinSelect: ");
 

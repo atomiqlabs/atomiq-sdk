@@ -4,7 +4,7 @@ exports.getSenderAddress = exports.getVoutIndex = exports.parsePsbtTransaction =
 const utils_1 = require("@scure/btc-signer/utils");
 const buffer_1 = require("buffer");
 const btc_signer_1 = require("@scure/btc-signer");
-const Utils_1 = require("./Utils");
+const Utils_js_1 = require("./Utils.js");
 function fromOutputScript(network, outputScriptHex) {
     return (0, btc_signer_1.Address)(network).encode(btc_signer_1.OutScript.decode(buffer_1.Buffer.from(outputScriptHex, "hex")));
 }
@@ -77,22 +77,22 @@ function getDummySpec(type) {
         case "p2pkh":
             return {
                 type: "pkh",
-                hash: (0, Utils_1.randomBytes)(20)
+                hash: (0, Utils_js_1.randomBytes)(20)
             };
         case "p2sh-p2wpkh":
             return {
                 type: "sh",
-                hash: (0, Utils_1.randomBytes)(20)
+                hash: (0, Utils_js_1.randomBytes)(20)
             };
         case "p2wpkh":
             return {
                 type: "wpkh",
-                hash: (0, Utils_1.randomBytes)(20)
+                hash: (0, Utils_js_1.randomBytes)(20)
             };
         case "p2wsh":
             return {
                 type: "wsh",
-                hash: (0, Utils_1.randomBytes)(32)
+                hash: (0, Utils_js_1.randomBytes)(32)
             };
         case "p2tr":
             return {

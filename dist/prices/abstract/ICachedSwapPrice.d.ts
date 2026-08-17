@@ -1,5 +1,5 @@
-import { ISwapPrice } from "./ISwapPrice";
-import { ChainIds, MultiChain } from "../../swapper/Swapper";
+import { ISwapPrice } from "./ISwapPrice.js";
+import { ChainIds, MultiChain } from "../../swapper/Swapper.js";
 export declare abstract class ICachedSwapPrice<T extends MultiChain> extends ISwapPrice<T> {
     cache: {
         [chainIdentifier in keyof T]?: {

@@ -1,8 +1,8 @@
-import { IUnifiedStorage, QueryParams, UnifiedStorageCompositeIndexes, UnifiedStoredObject } from "../storage/IUnifiedStorage";
-import { ISwap } from "../swaps/ISwap";
-import { SwapType } from "../enums/SwapType";
-import { UnifiedSwapStorageIndexes } from "../storage/UnifiedSwapStorage";
-import { LoggerType } from "../utils/Logger";
+import { IUnifiedStorage, QueryParams, UnifiedStorageCompositeIndexes, UnifiedStoredObject } from "../storage/IUnifiedStorage.js";
+import { ISwap } from "../swaps/ISwap.js";
+import { SwapType } from "../enums/SwapType.js";
+import { UnifiedSwapStorageIndexes } from "../storage/UnifiedSwapStorage.js";
+import { LoggerType } from "../utils/Logger.js";
 export type QuerySetCondition = {
     key: string;
     values: Set<any>;

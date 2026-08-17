@@ -1,8 +1,8 @@
 import {BTC_NETWORK, isBytes, PubT, validatePubkey} from "@scure/btc-signer/utils";
 import {Buffer} from "buffer";
 import {Address, OutScript, Transaction} from "@scure/btc-signer";
-import {CoinselectAddressTypes} from "../bitcoin/coinselect2";
-import { randomBytes } from "./Utils";
+import {CoinselectAddressTypes} from "../bitcoin/coinselect2/index.js";
+import { randomBytes } from "./Utils.js";
 
 
 export function fromOutputScript(network: BTC_NETWORK, outputScriptHex: string): string {

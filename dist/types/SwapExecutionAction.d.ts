@@ -1,7 +1,7 @@
 import { ChainType } from "@atomiqlabs/base";
 import { Transaction } from "@scure/btc-signer";
-import { TokenAmount } from "./TokenAmount";
-import { BtcToken } from "./Token";
+import { TokenAmount } from "./TokenAmount.js";
+import { BtcToken } from "./Token.js";
 /**
  * Swap execution action requiring the user to send assets to a specific LIGHTNING invoice or BITCOIN
  *  on-chain address

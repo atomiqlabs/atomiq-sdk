@@ -1,9 +1,9 @@
 /// <reference types="node" />
-import { Intermediary } from "./Intermediary";
-import { SwapType } from "../enums/SwapType";
+import { Intermediary } from "./Intermediary.js";
+import { SwapType } from "../enums/SwapType.js";
 import { SpvVaultContract, SwapContract } from "@atomiqlabs/base";
 import { EventEmitter } from "events";
-import { IntermediaryAPI } from "./apis/IntermediaryAPI";
+import { IntermediaryAPI } from "./apis/IntermediaryAPI.js";
 /**
  * Swap handler type mapping for intermediary communication
  *

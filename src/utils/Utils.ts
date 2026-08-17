@@ -2,8 +2,8 @@ import {Buffer} from "buffer";
 import {randomBytes as randomBytesNoble} from "@noble/hashes/utils";
 import {sha256} from "@noble/hashes/sha2";
 import {BigIntBufferUtils, ChainType} from "@atomiqlabs/base";
-import {IFromBTCLNWrapper} from "../swaps/escrow_swaps/frombtc/IFromBTCLNWrapper";
-import {UserError} from "../errors/UserError";
+import {IFromBTCLNWrapper} from "../swaps/escrow_swaps/frombtc/IFromBTCLNWrapper.js";
+import {UserError} from "../errors/UserError.js";
 
 /**
  * Returns a promise that rejects if the passed promise resolves to `undefined` or `null`

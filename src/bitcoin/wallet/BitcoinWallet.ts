@@ -1,14 +1,14 @@
-import {coinSelect, maxSendable, CoinselectAddressTypes, CoinselectTxInput} from "../coinselect2";
+import {coinSelect, maxSendable, CoinselectAddressTypes, CoinselectTxInput} from "../coinselect2/index.js";
 import {BTC_NETWORK, NETWORK, TEST_NETWORK} from "@scure/btc-signer/utils"
 import {p2wpkh, OutScript, Transaction, p2tr, Address} from "@scure/btc-signer";
-import {BitcoinWalletUtxo, BitcoinWalletUtxoBase, IBitcoinWallet} from "./IBitcoinWallet";
+import {BitcoinWalletUtxo, BitcoinWalletUtxoBase, IBitcoinWallet} from "./IBitcoinWallet.js";
 import {Buffer} from "buffer";
-import {randomBytes} from "../../utils/Utils";
-import {getDummyOutputScript, toCoinselectAddressType, toOutputScript} from "../../utils/BitcoinUtils";
+import {randomBytes} from "../../utils/Utils.js";
+import {getDummyOutputScript, toCoinselectAddressType, toOutputScript} from "../../utils/BitcoinUtils.js";
 import {TransactionInputUpdate} from "@scure/btc-signer/psbt";
-import {getLogger} from "../../utils/Logger";
+import {getLogger} from "../../utils/Logger.js";
 import {BitcoinNetwork, BitcoinRpcWithAddressIndex} from "@atomiqlabs/base";
-import {utils} from "../coinselect2/utils";
+import {utils} from "../coinselect2/utils.js";
 
 /**
  * Identifies the address type of a Bitcoin address

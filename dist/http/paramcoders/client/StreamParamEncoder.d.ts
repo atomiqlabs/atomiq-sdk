@@ -1,6 +1,6 @@
 /// <reference types="node" />
 /// <reference types="node" />
-import { ParamEncoder } from "../ParamEncoder";
+import { ParamEncoder } from "../ParamEncoder.js";
 import { Buffer } from "buffer";
 export declare class StreamParamEncoder extends ParamEncoder {
     private readonly stream;

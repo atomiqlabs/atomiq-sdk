@@ -2,42 +2,42 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Swapper = void 0;
 const base_1 = require("@atomiqlabs/base");
-const ToBTCLNWrapper_1 = require("../swaps/escrow_swaps/tobtc/ln/ToBTCLNWrapper");
-const ToBTCWrapper_1 = require("../swaps/escrow_swaps/tobtc/onchain/ToBTCWrapper");
-const FromBTCLNWrapper_1 = require("../swaps/escrow_swaps/frombtc/ln/FromBTCLNWrapper");
-const FromBTCWrapper_1 = require("../swaps/escrow_swaps/frombtc/onchain/FromBTCWrapper");
-const IntermediaryDiscovery_1 = require("../intermediaries/IntermediaryDiscovery");
+const ToBTCLNWrapper_js_1 = require("../swaps/escrow_swaps/tobtc/ln/ToBTCLNWrapper.js");
+const ToBTCWrapper_js_1 = require("../swaps/escrow_swaps/tobtc/onchain/ToBTCWrapper.js");
+const FromBTCLNWrapper_js_1 = require("../swaps/escrow_swaps/frombtc/ln/FromBTCLNWrapper.js");
+const FromBTCWrapper_js_1 = require("../swaps/escrow_swaps/frombtc/onchain/FromBTCWrapper.js");
+const IntermediaryDiscovery_js_1 = require("../intermediaries/IntermediaryDiscovery.js");
 const bolt11_1 = require("@atomiqlabs/bolt11");
-const IntermediaryError_1 = require("../errors/IntermediaryError");
-const SwapType_1 = require("../enums/SwapType");
-const LnForGasWrapper_1 = require("../swaps/trusted/ln/LnForGasWrapper");
+const IntermediaryError_js_1 = require("../errors/IntermediaryError.js");
+const SwapType_js_1 = require("../enums/SwapType.js");
+const LnForGasWrapper_js_1 = require("../swaps/trusted/ln/LnForGasWrapper.js");
 const events_1 = require("events");
-const Utils_1 = require("../utils/Utils");
-const RequestError_1 = require("../errors/RequestError");
-const SwapperWithChain_1 = require("./SwapperWithChain");
-const OnchainForGasWrapper_1 = require("../swaps/trusted/onchain/OnchainForGasWrapper");
+const Utils_js_1 = require("../utils/Utils.js");
+const RequestError_js_1 = require("../errors/RequestError.js");
+const SwapperWithChain_js_1 = require("./SwapperWithChain.js");
+const OnchainForGasWrapper_js_1 = require("../swaps/trusted/onchain/OnchainForGasWrapper.js");
 const utils_1 = require("@scure/btc-signer/utils");
-const UnifiedSwapStorage_1 = require("../storage/UnifiedSwapStorage");
-const UnifiedSwapEventListener_1 = require("../events/UnifiedSwapEventListener");
-const SpvFromBTCWrapper_1 = require("../swaps/spv_swaps/SpvFromBTCWrapper");
-const SpvFromBTCSwap_1 = require("../swaps/spv_swaps/SpvFromBTCSwap");
-const SwapperUtils_1 = require("./SwapperUtils");
-const FromBTCLNAutoWrapper_1 = require("../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoWrapper");
-const UserError_1 = require("../errors/UserError");
-const AutomaticClockDriftCorrection_1 = require("../utils/AutomaticClockDriftCorrection");
-const SwapUtils_1 = require("../utils/SwapUtils");
-const IndexedDBUnifiedStorage_1 = require("../storage-browser/IndexedDBUnifiedStorage");
-const TokenAmount_1 = require("../types/TokenAmount");
-const Token_1 = require("../types/Token");
-const Logger_1 = require("../utils/Logger");
-const LNURLWithdraw_1 = require("../types/lnurl/LNURLWithdraw");
-const LNURLPay_1 = require("../types/lnurl/LNURLPay");
-const RetryUtils_1 = require("../utils/RetryUtils");
-const IEscrowSwap_1 = require("../swaps/escrow_swaps/IEscrowSwap");
-const LightningInvoiceCreateService_1 = require("../types/wallets/LightningInvoiceCreateService");
-const IntermediaryAPI_1 = require("../intermediaries/apis/IntermediaryAPI");
-const BitcoinWalletUtils_1 = require("../utils/BitcoinWalletUtils");
-const SignedKeyBasedAuth_1 = require("../intermediaries/auth/SignedKeyBasedAuth");
+const UnifiedSwapStorage_js_1 = require("../storage/UnifiedSwapStorage.js");
+const UnifiedSwapEventListener_js_1 = require("../events/UnifiedSwapEventListener.js");
+const SpvFromBTCWrapper_js_1 = require("../swaps/spv_swaps/SpvFromBTCWrapper.js");
+const SpvFromBTCSwap_js_1 = require("../swaps/spv_swaps/SpvFromBTCSwap.js");
+const SwapperUtils_js_1 = require("./SwapperUtils.js");
+const FromBTCLNAutoWrapper_js_1 = require("../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoWrapper.js");
+const UserError_js_1 = require("../errors/UserError.js");
+const AutomaticClockDriftCorrection_js_1 = require("../utils/AutomaticClockDriftCorrection.js");
+const SwapUtils_js_1 = require("../utils/SwapUtils.js");
+const IndexedDBUnifiedStorage_js_1 = require("../storage-browser/IndexedDBUnifiedStorage.js");
+const TokenAmount_js_1 = require("../types/TokenAmount.js");
+const Token_js_1 = require("../types/Token.js");
+const Logger_js_1 = require("../utils/Logger.js");
+const LNURLWithdraw_js_1 = require("../types/lnurl/LNURLWithdraw.js");
+const LNURLPay_js_1 = require("../types/lnurl/LNURLPay.js");
+const RetryUtils_js_1 = require("../utils/RetryUtils.js");
+const IEscrowSwap_js_1 = require("../swaps/escrow_swaps/IEscrowSwap.js");
+const LightningInvoiceCreateService_js_1 = require("../types/wallets/LightningInvoiceCreateService.js");
+const IntermediaryAPI_js_1 = require("../intermediaries/apis/IntermediaryAPI.js");
+const BitcoinWalletUtils_js_1 = require("../utils/BitcoinWalletUtils.js");
+const SignedKeyBasedAuth_js_1 = require("../intermediaries/auth/SignedKeyBasedAuth.js");
 /**
  * Core orchestrator for all atomiq swap operations
  *
@@ -49,7 +49,7 @@ class Swapper extends events_1.EventEmitter {
      */
     constructor(bitcoinRpc, lightningApi, bitcoinSynchronizer, chainsData, pricing, tokens, messenger, options) {
         super();
-        this.logger = (0, Logger_1.getLogger)(this.constructor.name + ": ");
+        this.logger = (0, Logger_js_1.getLogger)(this.constructor.name + ": ");
         this.initialized = false;
         /**
          * Helper information about various swap protocol and their features:
@@ -63,12 +63,12 @@ class Swapper extends events_1.EventEmitter {
          * Uses a `Record` type here, use the {@link SwapProtocolInfo} import for a literal readonly type, with
          *  pre-filled exact values in the type.
          */
-        this.SwapTypeInfo = SwapUtils_1.SwapProtocolInfo;
+        this.SwapTypeInfo = SwapUtils_js_1.SwapProtocolInfo;
         const storagePrefix = options?.storagePrefix ?? "atomiq-";
         options ??= {};
         options.saveUninitializedSwaps ??= true;
         options.bitcoinNetwork = options.bitcoinNetwork == null ? base_1.BitcoinNetwork.TESTNET : options.bitcoinNetwork;
-        const swapStorage = options.swapStorage ??= (name) => new IndexedDBUnifiedStorage_1.IndexedDBUnifiedStorage(name);
+        const swapStorage = options.swapStorage ??= (name) => new IndexedDBUnifiedStorage_js_1.IndexedDBUnifiedStorage(name);
         this.options = options;
         this.bitcoinNetwork = options.bitcoinNetwork;
         this._btcNetwork = options.bitcoinNetwork === base_1.BitcoinNetwork.MAINNET ? utils_1.NETWORK :
@@ -78,7 +78,7 @@ class Swapper extends events_1.EventEmitter {
                 scriptHash: 196,
                 wif: 239
             };
-        this.Utils = new SwapperUtils_1.SwapperUtils(this);
+        this.Utils = new SwapperUtils_js_1.SwapperUtils(this);
         this.prices = pricing;
         this._bitcoinRpc = bitcoinRpc;
         this.messenger = messenger;
@@ -90,14 +90,14 @@ class Swapper extends events_1.EventEmitter {
             this._tokensByTicker[chainId] ??= {};
             this._tokens[chainId][tokenData.address] = this._tokensByTicker[chainId][tokenData.ticker] = tokenData;
         }
-        const lpApi = new IntermediaryAPI_1.IntermediaryAPI(this.options.signedKeyBasedAuth != null
-            ? (0, SignedKeyBasedAuth_1.getSignedKeyBasedAuthHandler)(this.options.signedKeyBasedAuth.certificate, this.options.signedKeyBasedAuth.privateKey)
+        const lpApi = new IntermediaryAPI_js_1.IntermediaryAPI(this.options.signedKeyBasedAuth != null
+            ? (0, SignedKeyBasedAuth_js_1.getSignedKeyBasedAuthHandler)(this.options.signedKeyBasedAuth.certificate, this.options.signedKeyBasedAuth.privateKey)
             : undefined);
         this.lpApi = lpApi;
         this.swapStateListener = (swap) => {
             this.emit("swapState", swap);
         };
-        this._chains = (0, Utils_1.objectMap)(chainsData, (chainData, key) => {
+        this._chains = (0, Utils_js_1.objectMap)(chainsData, (chainData, key) => {
             let { chainInterface, chainEvents, chainId, btcRelay, swapContract, swapDataConstructor, spvVaultContract, spvVaultWithdrawalDataConstructor, spvVaultDataConstructor, defaultVersion, versions } = chainData;
             defaultVersion ??= "v1";
             if (versions == null) {
@@ -112,7 +112,7 @@ class Swapper extends events_1.EventEmitter {
                     }
                 };
             }
-            const versionedContracts = (0, Utils_1.objectMap)(versions, (value, key) => {
+            const versionedContracts = (0, Utils_js_1.objectMap)(versions, (value, key) => {
                 return {
                     swapContract: value.swapContract,
                     spvVaultContract: value.spvVaultContract,
@@ -121,38 +121,38 @@ class Swapper extends events_1.EventEmitter {
                 };
             });
             const storageHandler = swapStorage(storagePrefix + chainId);
-            const unifiedSwapStorage = new UnifiedSwapStorage_1.UnifiedSwapStorage(storageHandler, this.options.noSwapCache);
-            const unifiedChainEvents = new UnifiedSwapEventListener_1.UnifiedSwapEventListener(unifiedSwapStorage, chainEvents);
+            const unifiedSwapStorage = new UnifiedSwapStorage_js_1.UnifiedSwapStorage(storageHandler, this.options.noSwapCache);
+            const unifiedChainEvents = new UnifiedSwapEventListener_js_1.UnifiedSwapEventListener(unifiedSwapStorage, chainEvents);
             const wrappers = {};
-            wrappers[SwapType_1.SwapType.TO_BTCLN] = new ToBTCLNWrapper_1.ToBTCLNWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, lpApi, {
+            wrappers[SwapType_js_1.SwapType.TO_BTCLN] = new ToBTCLNWrapper_js_1.ToBTCLNWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, lpApi, {
                 getRequestTimeout: this.options.getRequestTimeout,
                 postRequestTimeout: this.options.postRequestTimeout,
                 saveUninitializedSwaps: this.options.saveUninitializedSwaps,
             });
-            wrappers[SwapType_1.SwapType.TO_BTC] = new ToBTCWrapper_1.ToBTCWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, this._bitcoinRpc, lpApi, {
+            wrappers[SwapType_js_1.SwapType.TO_BTC] = new ToBTCWrapper_js_1.ToBTCWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, this._bitcoinRpc, lpApi, {
                 getRequestTimeout: this.options.getRequestTimeout,
                 postRequestTimeout: this.options.postRequestTimeout,
                 saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                 bitcoinNetwork: this._btcNetwork
             });
-            wrappers[SwapType_1.SwapType.FROM_BTCLN] = new FromBTCLNWrapper_1.FromBTCLNWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, lightningApi, lpApi, {
+            wrappers[SwapType_js_1.SwapType.FROM_BTCLN] = new FromBTCLNWrapper_js_1.FromBTCLNWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, lightningApi, lpApi, {
                 getRequestTimeout: this.options.getRequestTimeout,
                 postRequestTimeout: this.options.postRequestTimeout,
                 saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                 unsafeSkipLnNodeCheck: this.bitcoinNetwork === base_1.BitcoinNetwork.TESTNET4 || this.bitcoinNetwork === base_1.BitcoinNetwork.REGTEST
             });
-            wrappers[SwapType_1.SwapType.FROM_BTC] = new FromBTCWrapper_1.FromBTCWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, versionedContracts, this._bitcoinRpc, lpApi, {
+            wrappers[SwapType_js_1.SwapType.FROM_BTC] = new FromBTCWrapper_js_1.FromBTCWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, versionedContracts, this._bitcoinRpc, lpApi, {
                 getRequestTimeout: this.options.getRequestTimeout,
                 postRequestTimeout: this.options.postRequestTimeout,
                 saveUninitializedSwaps: this.options.saveUninitializedSwaps,
                 bitcoinNetwork: this._btcNetwork
             });
-            wrappers[SwapType_1.SwapType.TRUSTED_FROM_BTCLN] = new LnForGasWrapper_1.LnForGasWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], lpApi, {
+            wrappers[SwapType_js_1.SwapType.TRUSTED_FROM_BTCLN] = new LnForGasWrapper_js_1.LnForGasWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], lpApi, {
                 getRequestTimeout: this.options.getRequestTimeout,
                 postRequestTimeout: this.options.postRequestTimeout,
                 saveUninitializedSwaps: this.options.saveUninitializedSwaps,
             });
-            wrappers[SwapType_1.SwapType.TRUSTED_FROM_BTC] = new OnchainForGasWrapper_1.OnchainForGasWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], bitcoinRpc, lpApi, {
+            wrappers[SwapType_js_1.SwapType.TRUSTED_FROM_BTC] = new OnchainForGasWrapper_js_1.OnchainForGasWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], bitcoinRpc, lpApi, {
                 getRequestTimeout: this.options.getRequestTimeout,
                 postRequestTimeout: this.options.postRequestTimeout,
                 saveUninitializedSwaps: this.options.saveUninitializedSwaps,
@@ -160,7 +160,7 @@ class Swapper extends events_1.EventEmitter {
             });
             // This is gated on the default version of the contracts
             if (spvVaultContract != null) {
-                wrappers[SwapType_1.SwapType.SPV_VAULT_FROM_BTC] = new SpvFromBTCWrapper_1.SpvFromBTCWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, versionedContracts, bitcoinRpc, lpApi, {
+                wrappers[SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC] = new SpvFromBTCWrapper_js_1.SpvFromBTCWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, versionedContracts, bitcoinRpc, lpApi, {
                     getRequestTimeout: this.options.getRequestTimeout,
                     postRequestTimeout: this.options.postRequestTimeout,
                     saveUninitializedSwaps: this.options.saveUninitializedSwaps,
@@ -169,7 +169,7 @@ class Swapper extends events_1.EventEmitter {
             }
             // This is gated on the default version of the contracts
             if (swapContract.supportsInitWithoutClaimer) {
-                wrappers[SwapType_1.SwapType.FROM_BTCLN_AUTO] = new FromBTCLNAutoWrapper_1.FromBTCLNAutoWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, lightningApi, this.messenger, lpApi, {
+                wrappers[SwapType_js_1.SwapType.FROM_BTCLN_AUTO] = new FromBTCLNAutoWrapper_js_1.FromBTCLNAutoWrapper(key, unifiedSwapStorage, unifiedChainEvents, chainInterface, pricing, this._tokens[chainId], versions, lightningApi, this.messenger, lpApi, {
                     getRequestTimeout: this.options.getRequestTimeout,
                     postRequestTimeout: this.options.postRequestTimeout,
                     saveUninitializedSwaps: this.options.saveUninitializedSwaps,
@@ -194,12 +194,12 @@ class Swapper extends events_1.EventEmitter {
                 versionedContracts
             };
         });
-        const contracts = (0, Utils_1.objectMap)(chainsData, (data) => data.versions ?? { [data.defaultVersion ?? "v1"]: { swapContract: data.swapContract, spvVaultContract: data.spvVaultContract } });
+        const contracts = (0, Utils_js_1.objectMap)(chainsData, (data) => data.versions ?? { [data.defaultVersion ?? "v1"]: { swapContract: data.swapContract, spvVaultContract: data.spvVaultContract } });
         if (options.intermediaryUrl != null) {
-            this.intermediaryDiscovery = new IntermediaryDiscovery_1.IntermediaryDiscovery(contracts, lpApi, options.registryUrl, Array.isArray(options.intermediaryUrl) ? options.intermediaryUrl : [options.intermediaryUrl], options.getRequestTimeout);
+            this.intermediaryDiscovery = new IntermediaryDiscovery_js_1.IntermediaryDiscovery(contracts, lpApi, options.registryUrl, Array.isArray(options.intermediaryUrl) ? options.intermediaryUrl : [options.intermediaryUrl], options.getRequestTimeout);
         }
         else {
-            this.intermediaryDiscovery = new IntermediaryDiscovery_1.IntermediaryDiscovery(contracts, lpApi, options.registryUrl, undefined, options.getRequestTimeout);
+            this.intermediaryDiscovery = new IntermediaryDiscovery_js_1.IntermediaryDiscovery(contracts, lpApi, options.registryUrl, undefined, options.getRequestTimeout);
         }
         this.intermediaryDiscovery.on("removed", (intermediaries) => {
             this.emit("lpsRemoved", intermediaries);
@@ -214,7 +214,7 @@ class Swapper extends events_1.EventEmitter {
         const promises = [];
         let automaticClockDriftCorrectionPromise = undefined;
         if (this.options.automaticClockDriftCorrection) {
-            promises.push(automaticClockDriftCorrectionPromise = (0, RetryUtils_1.tryWithRetries)(AutomaticClockDriftCorrection_1.correctClock, undefined, undefined, abortController.signal).catch((err) => {
+            promises.push(automaticClockDriftCorrectionPromise = (0, RetryUtils_js_1.tryWithRetries)(AutomaticClockDriftCorrection_js_1.correctClock, undefined, undefined, abortController.signal).catch((err) => {
                 abortController.abort(err);
             }));
         }
@@ -256,21 +256,21 @@ class Swapper extends events_1.EventEmitter {
                         this.logger.debug("init(): Intialized swap contract: " + chainIdentifier + ` version: ${contractVersion}`);
                     }
                     await unifiedSwapStorage.init();
-                    if (unifiedSwapStorage.storage instanceof IndexedDBUnifiedStorage_1.IndexedDBUnifiedStorage) {
+                    if (unifiedSwapStorage.storage instanceof IndexedDBUnifiedStorage_js_1.IndexedDBUnifiedStorage) {
                         //Try to migrate the data here
                         const storagePrefix = chainIdentifier === "SOLANA" ?
                             "SOLv4-" + this.bitcoinNetwork + "-Swaps-" :
                             "atomiqsdk-" + this.bitcoinNetwork + chainIdentifier + "-Swaps-";
                         await unifiedSwapStorage.storage.tryMigrate([
-                            [storagePrefix + "FromBTC", SwapType_1.SwapType.FROM_BTC],
-                            [storagePrefix + "FromBTCLN", SwapType_1.SwapType.FROM_BTCLN],
-                            [storagePrefix + "ToBTC", SwapType_1.SwapType.TO_BTC],
-                            [storagePrefix + "ToBTCLN", SwapType_1.SwapType.TO_BTCLN]
+                            [storagePrefix + "FromBTC", SwapType_js_1.SwapType.FROM_BTC],
+                            [storagePrefix + "FromBTCLN", SwapType_js_1.SwapType.FROM_BTCLN],
+                            [storagePrefix + "ToBTC", SwapType_js_1.SwapType.TO_BTC],
+                            [storagePrefix + "ToBTCLN", SwapType_js_1.SwapType.TO_BTCLN]
                         ], (obj) => {
                             const swap = reviver(obj);
                             if (swap._randomNonce == null) {
                                 const oldIdentifierHash = swap.getId();
-                                swap._randomNonce = (0, Utils_1.randomBytes)(16).toString("hex");
+                                swap._randomNonce = (0, Utils_js_1.randomBytes)(16).toString("hex");
                                 const newIdentifierHash = swap.getId();
                                 this.logger.info("init(): Found older swap version without randomNonce, replacing, old hash: " + oldIdentifierHash +
                                     " new hash: " + newIdentifierHash);
@@ -363,7 +363,7 @@ class Swapper extends events_1.EventEmitter {
         if (this._chains[chainIdentifier] == null)
             throw new Error("Invalid chain identifier! Unknown chain: " + chainIdentifier);
         let candidates;
-        const inBtc = swapType === SwapType_1.SwapType.TO_BTCLN || swapType === SwapType_1.SwapType.TO_BTC ? !amountData.exactIn : amountData.exactIn;
+        const inBtc = swapType === SwapType_js_1.SwapType.TO_BTCLN || swapType === SwapType_js_1.SwapType.TO_BTC ? !amountData.exactIn : amountData.exactIn;
         if (!inBtc || amountData.amount == null) {
             //Get candidates not based on the amount
             candidates = this.intermediaryDiscovery.getSwapCandidates(chainIdentifier, swapType, amountData.token);
@@ -387,9 +387,9 @@ class Swapper extends events_1.EventEmitter {
                     const max = this.intermediaryDiscovery.getSwapMaximum(chainIdentifier, swapType, amountData.token);
                     if (min != null && max != null) {
                         if (amountData.amount < BigInt(min))
-                            throw new RequestError_1.OutOfBoundsError("Swap amount too low! Try swapping a higher amount.", 200, BigInt(min), BigInt(max));
+                            throw new RequestError_js_1.OutOfBoundsError("Swap amount too low! Try swapping a higher amount.", 200, BigInt(min), BigInt(max));
                         if (amountData.amount > BigInt(max))
-                            throw new RequestError_1.OutOfBoundsError("Swap amount too high! Try swapping a lower amount.", 200, BigInt(min), BigInt(max));
+                            throw new RequestError_js_1.OutOfBoundsError("Swap amount too high! Try swapping a lower amount.", 200, BigInt(min), BigInt(max));
                     }
                 }
             }
@@ -426,19 +426,19 @@ class Swapper extends events_1.EventEmitter {
                     }
                 }).catch(e => {
                     numResolved++;
-                    if (e instanceof IntermediaryError_1.IntermediaryError) {
+                    if (e instanceof IntermediaryError_js_1.IntermediaryError) {
                         //Blacklist that node
                         this.intermediaryDiscovery.removeIntermediary(data.intermediary);
                         swapLimitsChanged = true;
                     }
-                    else if (e instanceof RequestError_1.OutOfBoundsError) {
+                    else if (e instanceof RequestError_js_1.OutOfBoundsError) {
                         if (min == null || max == null) {
                             min = e.min;
                             max = e.max;
                         }
                         else {
-                            min = (0, Utils_1.bigIntMin)(min, e.min);
-                            max = (0, Utils_1.bigIntMax)(max, e.max);
+                            min = (0, Utils_js_1.bigIntMin)(min, e.min);
+                            max = (0, Utils_js_1.bigIntMax)(max, e.max);
                         }
                         data.intermediary.swapBounds[swapType] ??= {};
                         data.intermediary.swapBounds[swapType][chainIdentifier] ??= {};
@@ -468,7 +468,7 @@ class Swapper extends events_1.EventEmitter {
                                 if (max < amountData.amount)
                                     msg = "Swap amount too high! Try swapping a lower amount.";
                             }
-                            reject(new RequestError_1.OutOfBoundsError(msg, 400, min, max));
+                            reject(new RequestError_js_1.OutOfBoundsError(msg, 400, min, max));
                             return;
                         }
                         reject(error);
@@ -482,11 +482,11 @@ class Swapper extends events_1.EventEmitter {
             quotes.sort((a, b) => {
                 if (amountData.exactIn) {
                     //Compare outputs
-                    return (0, Utils_1.bigIntCompare)(b.quote.getOutput().rawAmount, a.quote.getOutput().rawAmount);
+                    return (0, Utils_js_1.bigIntCompare)(b.quote.getOutput().rawAmount, a.quote.getOutput().rawAmount);
                 }
                 else {
                     //Compare inputs
-                    return (0, Utils_1.bigIntCompare)(a.quote.getInput().rawAmount, b.quote.getInput().rawAmount);
+                    return (0, Utils_js_1.bigIntCompare)(a.quote.getInput().rawAmount, b.quote.getInput().rawAmount);
                 }
             });
             this.logger.debug("createSwap(): Sorted quotes, best price to worst: ", quotes);
@@ -530,7 +530,7 @@ class Swapper extends events_1.EventEmitter {
             token: tokenAddress,
             exactIn
         };
-        return this.createSwap(chainIdentifier, (candidates, abortSignal, chain) => Promise.resolve(chain.wrappers[SwapType_1.SwapType.TO_BTC].create(signer, address, amountData, candidates, options, additionalParams, abortSignal)), amountData, SwapType_1.SwapType.TO_BTC);
+        return this.createSwap(chainIdentifier, (candidates, abortSignal, chain) => Promise.resolve(chain.wrappers[SwapType_js_1.SwapType.TO_BTC].create(signer, address, amountData, candidates, options, additionalParams, abortSignal)), amountData, SwapType_js_1.SwapType.TO_BTC);
     }
     /**
      * Creates Smart chain -> Bitcoin Lightning ({@link SwapType.TO_BTCLN}) swap
@@ -561,7 +561,7 @@ class Swapper extends events_1.EventEmitter {
             token: tokenAddress,
             exactIn: false
         };
-        return this.createSwap(chainIdentifier, (candidates, abortSignal, chain) => chain.wrappers[SwapType_1.SwapType.TO_BTCLN].create(signer, paymentRequest, amountData, candidates, options, additionalParams, abortSignal), amountData, SwapType_1.SwapType.TO_BTCLN);
+        return this.createSwap(chainIdentifier, (candidates, abortSignal, chain) => chain.wrappers[SwapType_js_1.SwapType.TO_BTCLN].create(signer, paymentRequest, amountData, candidates, options, additionalParams, abortSignal), amountData, SwapType_js_1.SwapType.TO_BTCLN);
     }
     /**
      * Creates Smart chain -> Bitcoin Lightning ({@link SwapType.TO_BTCLN}) swap via LNURL-pay link
@@ -588,7 +588,7 @@ class Swapper extends events_1.EventEmitter {
             token: tokenAddress,
             exactIn
         };
-        return this.createSwap(chainIdentifier, (candidates, abortSignal, chain) => chain.wrappers[SwapType_1.SwapType.TO_BTCLN].createViaLNURL(signer, typeof (lnurlPay) === "string" ? (lnurlPay.startsWith("lightning:") ? lnurlPay.substring(10) : lnurlPay) : lnurlPay.params, amountData, candidates, options, additionalParams, abortSignal), amountData, SwapType_1.SwapType.TO_BTCLN);
+        return this.createSwap(chainIdentifier, (candidates, abortSignal, chain) => chain.wrappers[SwapType_js_1.SwapType.TO_BTCLN].createViaLNURL(signer, typeof (lnurlPay) === "string" ? (lnurlPay.startsWith("lightning:") ? lnurlPay.substring(10) : lnurlPay) : lnurlPay.params, amountData, candidates, options, additionalParams, abortSignal), amountData, SwapType_js_1.SwapType.TO_BTCLN);
     }
     /**
      * Creates Smart chain -> Bitcoin Lightning ({@link SwapType.TO_BTCLN}) swap via {@link LightningInvoiceCreateService}
@@ -613,7 +613,7 @@ class Swapper extends events_1.EventEmitter {
             token: tokenAddress,
             exactIn
         };
-        return this.createSwap(chainIdentifier, (candidates, abortSignal, chain) => chain.wrappers[SwapType_1.SwapType.TO_BTCLN].createViaInvoiceCreateService(signer, Promise.resolve(service), amountData, candidates, options, additionalParams, abortSignal), amountData, SwapType_1.SwapType.TO_BTCLN);
+        return this.createSwap(chainIdentifier, (candidates, abortSignal, chain) => chain.wrappers[SwapType_js_1.SwapType.TO_BTCLN].createViaInvoiceCreateService(signer, Promise.resolve(service), amountData, candidates, options, additionalParams, abortSignal), amountData, SwapType_js_1.SwapType.TO_BTCLN);
     }
     /**
      * Creates Bitcoin -> Smart chain ({@link SwapType.SPV_VAULT_FROM_BTC}) swap
@@ -629,7 +629,7 @@ class Swapper extends events_1.EventEmitter {
     async createFromBTCSwapNew(chainIdentifier, recipient, tokenAddress, amount, exactOut = false, additionalParams = this.options.defaultAdditionalParameters, options) {
         if (this._chains[chainIdentifier] == null)
             throw new Error("Invalid chain identifier! Unknown chain: " + chainIdentifier);
-        if (this._chains[chainIdentifier].wrappers[SwapType_1.SwapType.SPV_VAULT_FROM_BTC] == null)
+        if (this._chains[chainIdentifier].wrappers[SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC] == null)
             throw new Error("Chain " + chainIdentifier + " doesn't support new BTC swap protocol (spv vault swaps)!");
         if (!this._chains[chainIdentifier].chainInterface.isValidAddress(recipient, true))
             throw new Error("Invalid " + chainIdentifier + " address");
@@ -639,7 +639,7 @@ class Swapper extends events_1.EventEmitter {
             token: tokenAddress,
             exactIn: !exactOut
         };
-        return this.createSwap(chainIdentifier, (candidates, abortSignal, chain) => Promise.resolve(chain.wrappers[SwapType_1.SwapType.SPV_VAULT_FROM_BTC].create(recipient, amountData, candidates, options, additionalParams, abortSignal)), amountData, SwapType_1.SwapType.SPV_VAULT_FROM_BTC);
+        return this.createSwap(chainIdentifier, (candidates, abortSignal, chain) => Promise.resolve(chain.wrappers[SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC].create(recipient, amountData, candidates, options, additionalParams, abortSignal)), amountData, SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC);
     }
     /**
      * Creates LEGACY Bitcoin -> Smart chain ({@link SwapType.FROM_BTC}) swap
@@ -663,7 +663,7 @@ class Swapper extends events_1.EventEmitter {
             token: tokenAddress,
             exactIn: !exactOut
         };
-        return this.createSwap(chainIdentifier, (candidates, abortSignal, chain) => Promise.resolve(chain.wrappers[SwapType_1.SwapType.FROM_BTC].create(recipient, amountData, candidates, options, additionalParams, abortSignal)), amountData, SwapType_1.SwapType.FROM_BTC);
+        return this.createSwap(chainIdentifier, (candidates, abortSignal, chain) => Promise.resolve(chain.wrappers[SwapType_js_1.SwapType.FROM_BTC].create(recipient, amountData, candidates, options, additionalParams, abortSignal)), amountData, SwapType_js_1.SwapType.FROM_BTC);
     }
     /**
      * Creates LEGACY Bitcoin Lightning -> Smart chain ({@link SwapType.FROM_BTCLN}) swap
@@ -687,7 +687,7 @@ class Swapper extends events_1.EventEmitter {
             token: tokenAddress,
             exactIn: !exactOut
         };
-        return this.createSwap(chainIdentifier, (candidates, abortSignal, chain) => Promise.resolve(chain.wrappers[SwapType_1.SwapType.FROM_BTCLN].create(recipient, amountData, candidates, options, additionalParams, abortSignal)), amountData, SwapType_1.SwapType.FROM_BTCLN);
+        return this.createSwap(chainIdentifier, (candidates, abortSignal, chain) => Promise.resolve(chain.wrappers[SwapType_js_1.SwapType.FROM_BTCLN].create(recipient, amountData, candidates, options, additionalParams, abortSignal)), amountData, SwapType_js_1.SwapType.FROM_BTCLN);
     }
     /**
      * Creates LEGACY Bitcoin Lightning -> Smart chain ({@link SwapType.FROM_BTCLN}) swap, withdrawing from
@@ -715,7 +715,7 @@ class Swapper extends events_1.EventEmitter {
             token: tokenAddress,
             exactIn: !exactOut
         };
-        return this.createSwap(chainIdentifier, (candidates, abortSignal, chain) => chain.wrappers[SwapType_1.SwapType.FROM_BTCLN].createViaLNURL(recipient, typeof (lnurl) === "string" ? (lnurl.startsWith("lightning:") ? lnurl.substring(10) : lnurl) : lnurl.params, amountData, candidates, options, additionalParams, abortSignal), amountData, SwapType_1.SwapType.FROM_BTCLN);
+        return this.createSwap(chainIdentifier, (candidates, abortSignal, chain) => chain.wrappers[SwapType_js_1.SwapType.FROM_BTCLN].createViaLNURL(recipient, typeof (lnurl) === "string" ? (lnurl.startsWith("lightning:") ? lnurl.substring(10) : lnurl) : lnurl.params, amountData, candidates, options, additionalParams, abortSignal), amountData, SwapType_js_1.SwapType.FROM_BTCLN);
     }
     /**
      * Creates Bitcoin Lightning -> Smart chain ({@link SwapType.FROM_BTCLN_AUTO}) swap
@@ -731,7 +731,7 @@ class Swapper extends events_1.EventEmitter {
     async createFromBTCLNSwapNew(chainIdentifier, recipient, tokenAddress, amount, exactOut = false, additionalParams = this.options.defaultAdditionalParameters, options) {
         if (this._chains[chainIdentifier] == null)
             throw new Error("Invalid chain identifier! Unknown chain: " + chainIdentifier);
-        if (this._chains[chainIdentifier].wrappers[SwapType_1.SwapType.FROM_BTCLN_AUTO] == null)
+        if (this._chains[chainIdentifier].wrappers[SwapType_js_1.SwapType.FROM_BTCLN_AUTO] == null)
             throw new Error("Chain " + chainIdentifier + " doesn't support new lightning swap protocol (from btcln auto)!");
         if (!this._chains[chainIdentifier].chainInterface.isValidAddress(recipient, true))
             throw new Error("Invalid " + chainIdentifier + " address");
@@ -741,7 +741,7 @@ class Swapper extends events_1.EventEmitter {
             token: tokenAddress,
             exactIn: !exactOut
         };
-        return this.createSwap(chainIdentifier, (candidates, abortSignal, chain) => Promise.resolve(chain.wrappers[SwapType_1.SwapType.FROM_BTCLN_AUTO].create(recipient, amountData, candidates, options, additionalParams, abortSignal)), amountData, SwapType_1.SwapType.FROM_BTCLN_AUTO);
+        return this.createSwap(chainIdentifier, (candidates, abortSignal, chain) => Promise.resolve(chain.wrappers[SwapType_js_1.SwapType.FROM_BTCLN_AUTO].create(recipient, amountData, candidates, options, additionalParams, abortSignal)), amountData, SwapType_js_1.SwapType.FROM_BTCLN_AUTO);
     }
     /**
      * Creates Bitcoin Lightning -> Smart chain ({@link SwapType.FROM_BTCLN_AUTO}) swap, withdrawing from
@@ -759,7 +759,7 @@ class Swapper extends events_1.EventEmitter {
     async createFromBTCLNSwapNewViaLNURL(chainIdentifier, recipient, tokenAddress, lnurl, amount, exactOut = false, additionalParams = this.options.defaultAdditionalParameters, options) {
         if (this._chains[chainIdentifier] == null)
             throw new Error("Invalid chain identifier! Unknown chain: " + chainIdentifier);
-        if (this._chains[chainIdentifier].wrappers[SwapType_1.SwapType.FROM_BTCLN_AUTO] == null)
+        if (this._chains[chainIdentifier].wrappers[SwapType_js_1.SwapType.FROM_BTCLN_AUTO] == null)
             throw new Error("Chain " + chainIdentifier + " doesn't support new lightning swap protocol (from btcln auto)!");
         if (typeof (lnurl) === "string" && !this.Utils.isValidLNURL(lnurl))
             throw new Error("Invalid LNURL-withdraw link");
@@ -771,7 +771,7 @@ class Swapper extends events_1.EventEmitter {
             token: tokenAddress,
             exactIn: !exactOut
         };
-        return this.createSwap(chainIdentifier, (candidates, abortSignal, chain) => chain.wrappers[SwapType_1.SwapType.FROM_BTCLN_AUTO].createViaLNURL(recipient, typeof (lnurl) === "string" ? (lnurl.startsWith("lightning:") ? lnurl.substring(10) : lnurl) : lnurl.params, amountData, candidates, options, additionalParams, abortSignal), amountData, SwapType_1.SwapType.FROM_BTCLN_AUTO);
+        return this.createSwap(chainIdentifier, (candidates, abortSignal, chain) => chain.wrappers[SwapType_js_1.SwapType.FROM_BTCLN_AUTO].createViaLNURL(recipient, typeof (lnurl) === "string" ? (lnurl.startsWith("lightning:") ? lnurl.substring(10) : lnurl) : lnurl.params, amountData, candidates, options, additionalParams, abortSignal), amountData, SwapType_js_1.SwapType.FROM_BTCLN_AUTO);
     }
     /**
      * Creates a trusted Bitcoin Lightning -> Smart chain ({@link SwapType.TRUSTED_FROM_BTCLN}) gas swap
@@ -791,7 +791,7 @@ class Swapper extends events_1.EventEmitter {
         const useUrl = trustedIntermediaryOrUrl ?? this.defaultTrustedIntermediary ?? this.options.defaultTrustedIntermediaryUrl;
         if (useUrl == null)
             throw new Error("No trusted intermediary specified!");
-        const swap = await this._chains[chainIdentifier].wrappers[SwapType_1.SwapType.TRUSTED_FROM_BTCLN].create(recipient, amount, useUrl);
+        const swap = await this._chains[chainIdentifier].wrappers[SwapType_js_1.SwapType.TRUSTED_FROM_BTCLN].create(recipient, amount, useUrl);
         await swap._save();
         return swap;
     }
@@ -814,7 +814,7 @@ class Swapper extends events_1.EventEmitter {
         const useUrl = trustedIntermediaryOrUrl ?? this.defaultTrustedIntermediary ?? this.options.defaultTrustedIntermediaryUrl;
         if (useUrl == null)
             throw new Error("No trusted intermediary specified!");
-        const swap = await this._chains[chainIdentifier].wrappers[SwapType_1.SwapType.TRUSTED_FROM_BTC].create(recipient, amount, useUrl, refundAddress);
+        const swap = await this._chains[chainIdentifier].wrappers[SwapType_js_1.SwapType.TRUSTED_FROM_BTC].create(recipient, amount, useUrl, refundAddress);
         await swap._save();
         return swap;
     }
@@ -860,9 +860,9 @@ class Swapper extends events_1.EventEmitter {
             dst = this.Utils.stripAddress(dst);
         const srcToken = typeof (_srcToken) === "string" ? this.getToken(_srcToken) : _srcToken;
         const dstToken = typeof (_dstToken) === "string" ? this.getToken(_dstToken) : _dstToken;
-        const amount = _amount == null ? null : (typeof (_amount) === "bigint" ? _amount : (0, Utils_1.fromDecimal)(_amount, exactIn ? srcToken.decimals : dstToken.decimals));
-        if ((0, Token_1.isBtcToken)(srcToken)) {
-            if ((0, Token_1.isSCToken)(dstToken)) {
+        const amount = _amount == null ? null : (typeof (_amount) === "bigint" ? _amount : (0, Utils_js_1.fromDecimal)(_amount, exactIn ? srcToken.decimals : dstToken.decimals));
+        if ((0, Token_js_1.isBtcToken)(srcToken)) {
+            if ((0, Token_js_1.isSCToken)(dstToken)) {
                 if (typeof (dst) !== "string")
                     throw new Error("Destination for BTC/BTC-LN -> smart chain swaps must be a smart chain address!");
                 if (amount == null)
@@ -870,21 +870,21 @@ class Swapper extends events_1.EventEmitter {
                 if (srcToken.lightning) {
                     //FROM_BTCLN
                     if (src != null) {
-                        if (typeof (src) !== "string" && !(0, LNURLWithdraw_1.isLNURLWithdraw)(src))
+                        if (typeof (src) !== "string" && !(0, LNURLWithdraw_js_1.isLNURLWithdraw)(src))
                             throw new Error("LNURL must be a string or LNURLWithdraw object!");
-                        return this.supportsSwapType(dstToken.chainId, SwapType_1.SwapType.FROM_BTCLN_AUTO) ?
+                        return this.supportsSwapType(dstToken.chainId, SwapType_js_1.SwapType.FROM_BTCLN_AUTO) ?
                             this.createFromBTCLNSwapNewViaLNURL(dstToken.chainId, dst, dstToken.address, src, amount, !exactIn, undefined, options) :
                             this.createFromBTCLNSwapViaLNURL(dstToken.chainId, dst, dstToken.address, src, amount, !exactIn, undefined, options);
                     }
                     else {
-                        return this.supportsSwapType(dstToken.chainId, SwapType_1.SwapType.FROM_BTCLN_AUTO) ?
+                        return this.supportsSwapType(dstToken.chainId, SwapType_js_1.SwapType.FROM_BTCLN_AUTO) ?
                             this.createFromBTCLNSwapNew(dstToken.chainId, dst, dstToken.address, amount, !exactIn, undefined, options) :
                             this.createFromBTCLNSwap(dstToken.chainId, dst, dstToken.address, amount, !exactIn, undefined, options);
                     }
                 }
                 else {
                     //FROM_BTC
-                    if (this.supportsSwapType(dstToken.chainId, SwapType_1.SwapType.SPV_VAULT_FROM_BTC)) {
+                    if (this.supportsSwapType(dstToken.chainId, SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC)) {
                         return this.createFromBTCSwapNew(dstToken.chainId, dst, dstToken.address, amount, !exactIn, undefined, options);
                     }
                     else {
@@ -893,20 +893,20 @@ class Swapper extends events_1.EventEmitter {
                 }
             }
         }
-        else if ((0, Token_1.isSCToken)(srcToken)) {
-            if ((0, Token_1.isBtcToken)(dstToken)) {
+        else if ((0, Token_js_1.isSCToken)(srcToken)) {
+            if ((0, Token_js_1.isBtcToken)(dstToken)) {
                 if (typeof (src) !== "string")
                     throw new Error("Source address for BTC/BTC-LN -> smart chain swaps must be a smart chain address!");
                 if (dstToken.lightning) {
                     //TO_BTCLN
-                    if (typeof (dst) !== "string" && !(0, LNURLPay_1.isLNURLPay)(dst))
+                    if (typeof (dst) !== "string" && !(0, LNURLPay_js_1.isLNURLPay)(dst))
                         throw new Error("Destination LNURL link/lightning invoice must be a string or LNURLPay object!");
-                    if ((0, LNURLPay_1.isLNURLPay)(dst) || this.Utils.isValidLNURL(dst)) {
+                    if ((0, LNURLPay_js_1.isLNURLPay)(dst) || this.Utils.isValidLNURL(dst)) {
                         if (amount == null)
                             throw new Error("Amount cannot be null for to btcln swaps via LNURL-pay!");
                         return this.createToBTCLNSwapViaLNURL(srcToken.chainId, src, srcToken.address, dst, amount, !!exactIn, undefined, options);
                     }
-                    else if ((0, LightningInvoiceCreateService_1.isLightningInvoiceCreateService)(dst)) {
+                    else if ((0, LightningInvoiceCreateService_js_1.isLightningInvoiceCreateService)(dst)) {
                         if (amount == null)
                             throw new Error("Amount cannot be null for to btcln swaps via InvoiceCreateService!");
                         return this.createToBTCLNSwapViaInvoiceCreateService(srcToken.chainId, src, srcToken.address, dst, amount, !!exactIn, undefined, options);
@@ -969,9 +969,9 @@ class Swapper extends events_1.EventEmitter {
      */
     async sweepBitcoinWallet(srcWallet, _dstToken, dstAddress, options) {
         const dstToken = typeof (_dstToken) === "string" ? this.getToken(_dstToken) : _dstToken;
-        if (!(0, Token_1.isSCToken)(dstToken))
+        if (!(0, Token_js_1.isSCToken)(dstToken))
             throw new Error("Destination token must be a smart chain token!");
-        const wallet = (0, BitcoinWalletUtils_1.toBitcoinWallet)(srcWallet, this._bitcoinRpc, this.bitcoinNetwork);
+        const wallet = (0, BitcoinWalletUtils_js_1.toBitcoinWallet)(srcWallet, this._bitcoinRpc, this.bitcoinNetwork);
         if (wallet.getUtxoPool == null)
             throw new Error("Wallet needs to support the `getUtxoPool()` function!");
         const walletUtxosPromise = wallet.getUtxoPool();
@@ -1047,7 +1047,7 @@ class Swapper extends events_1.EventEmitter {
             const res = await Promise.all(Object.keys(this._chains).map((chainId) => {
                 const { unifiedSwapStorage, reviver, wrappers } = this._chains[chainId];
                 const queryParams = [];
-                for (let wrapper of [wrappers[SwapType_1.SwapType.TO_BTCLN], wrappers[SwapType_1.SwapType.TO_BTC]]) {
+                for (let wrapper of [wrappers[SwapType_js_1.SwapType.TO_BTCLN], wrappers[SwapType_js_1.SwapType.TO_BTC]]) {
                     const swapTypeQueryParams = [{ key: "type", value: wrapper.TYPE }];
                     if (signer != null)
                         swapTypeQueryParams.push({ key: "initiator", value: signer });
@@ -1061,7 +1061,7 @@ class Swapper extends events_1.EventEmitter {
         else {
             const { unifiedSwapStorage, reviver, wrappers } = this._chains[chainId];
             const queryParams = [];
-            for (let wrapper of [wrappers[SwapType_1.SwapType.TO_BTCLN], wrappers[SwapType_1.SwapType.TO_BTC]]) {
+            for (let wrapper of [wrappers[SwapType_js_1.SwapType.TO_BTCLN], wrappers[SwapType_js_1.SwapType.TO_BTC]]) {
                 const swapTypeQueryParams = [{ key: "type", value: wrapper.TYPE }];
                 if (signer != null)
                     swapTypeQueryParams.push({ key: "initiator", value: signer });
@@ -1077,7 +1077,7 @@ class Swapper extends events_1.EventEmitter {
             const res = await Promise.all(Object.keys(this._chains).map((chainId) => {
                 const { unifiedSwapStorage, reviver, wrappers } = this._chains[chainId];
                 const queryParams = [];
-                for (let wrapper of [wrappers[SwapType_1.SwapType.FROM_BTC], wrappers[SwapType_1.SwapType.FROM_BTCLN], wrappers[SwapType_1.SwapType.SPV_VAULT_FROM_BTC], wrappers[SwapType_1.SwapType.FROM_BTCLN_AUTO]]) {
+                for (let wrapper of [wrappers[SwapType_js_1.SwapType.FROM_BTC], wrappers[SwapType_js_1.SwapType.FROM_BTCLN], wrappers[SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC], wrappers[SwapType_js_1.SwapType.FROM_BTCLN_AUTO]]) {
                     if (wrapper == null)
                         continue;
                     const swapTypeQueryParams = [{ key: "type", value: wrapper.TYPE }];
@@ -1093,7 +1093,7 @@ class Swapper extends events_1.EventEmitter {
         else {
             const { unifiedSwapStorage, reviver, wrappers } = this._chains[chainId];
             const queryParams = [];
-            for (let wrapper of [wrappers[SwapType_1.SwapType.FROM_BTC], wrappers[SwapType_1.SwapType.FROM_BTCLN], wrappers[SwapType_1.SwapType.SPV_VAULT_FROM_BTC], wrappers[SwapType_1.SwapType.FROM_BTCLN_AUTO]]) {
+            for (let wrapper of [wrappers[SwapType_js_1.SwapType.FROM_BTC], wrappers[SwapType_js_1.SwapType.FROM_BTCLN], wrappers[SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC], wrappers[SwapType_js_1.SwapType.FROM_BTCLN_AUTO]]) {
                 if (wrapper == null)
                     continue;
                 const swapTypeQueryParams = [{ key: "type", value: wrapper.TYPE }];
@@ -1166,10 +1166,10 @@ class Swapper extends events_1.EventEmitter {
      */
     async getTypedSwapById(id, chainId, swapType, signer) {
         let _swapType = swapType;
-        if (swapType === SwapType_1.SwapType.FROM_BTC && this.supportsSwapType(chainId, SwapType_1.SwapType.SPV_VAULT_FROM_BTC))
-            _swapType = SwapType_1.SwapType.SPV_VAULT_FROM_BTC;
-        if (swapType === SwapType_1.SwapType.FROM_BTCLN && this.supportsSwapType(chainId, SwapType_1.SwapType.FROM_BTCLN_AUTO))
-            _swapType = SwapType_1.SwapType.FROM_BTCLN_AUTO;
+        if (swapType === SwapType_js_1.SwapType.FROM_BTC && this.supportsSwapType(chainId, SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC))
+            _swapType = SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC;
+        if (swapType === SwapType_js_1.SwapType.FROM_BTCLN && this.supportsSwapType(chainId, SwapType_js_1.SwapType.FROM_BTCLN_AUTO))
+            _swapType = SwapType_js_1.SwapType.FROM_BTCLN_AUTO;
         const wrapper = this._chains[chainId].wrappers[_swapType];
         if (wrapper == null)
             return;
@@ -1189,7 +1189,7 @@ class Swapper extends events_1.EventEmitter {
         queryParams.push({ key: "id", value: id });
         const { unifiedSwapStorage, reviver } = this._chains[chainId];
         const swap = (await unifiedSwapStorage.query([queryParams], reviver))[0];
-        if ((0, SwapUtils_1.isSwapType)(swap, swapType))
+        if ((0, SwapUtils_js_1.isSwapType)(swap, swapType))
             return swap;
     }
     async syncSwapsForChain(chainId, signer) {
@@ -1317,7 +1317,7 @@ class Swapper extends events_1.EventEmitter {
             }
             someVersionSupportsRecovery = true;
             const { swaps } = await swapContract.getHistoricalSwaps(signer, startBlockheight);
-            const spvVaultData = wrappers[SwapType_1.SwapType.SPV_VAULT_FROM_BTC] == null
+            const spvVaultData = wrappers[SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC] == null
                 ? undefined
                 : await spvVaultContract?.getHistoricalWithdrawalStates(signer, startBlockheight);
             for (let key in swaps)
@@ -1351,7 +1351,7 @@ class Swapper extends events_1.EventEmitter {
                     continue;
                 }
             }
-            else if (knownSwap instanceof IEscrowSwap_1.IEscrowSwap) {
+            else if (knownSwap instanceof IEscrowSwap_js_1.IEscrowSwap) {
                 this.logger.debug(`recoverSwaps(escrow): Forcibly updating ${escrowHash} swap: swap already known and in local storage!`);
                 if ((knownSwap._contractVersion ?? "v1") !== contractVersion) {
                     this.logger.debug(`recoverSwaps(escrow): Skipping ${escrowHash} swap: swap uses contract version ${knownSwap._contractVersion ?? "v1"}, but state comes from ${contractVersion}!`);
@@ -1375,17 +1375,17 @@ class Swapper extends events_1.EventEmitter {
                     //To BTCLN
                     typeIdentified = true;
                     const lp = this.intermediaryDiscovery.intermediaries.find(val => val.supportsChain(chainId) && data.isClaimer(val.getAddress(chainId)));
-                    swap = await wrappers[SwapType_1.SwapType.TO_BTCLN].recoverFromSwapDataAndState(init, state, contractVersion, lp);
+                    swap = await wrappers[SwapType_js_1.SwapType.TO_BTCLN].recoverFromSwapDataAndState(init, state, contractVersion, lp);
                 }
                 else if (data.isClaimer(signer)) {
                     //From BTCLN
                     typeIdentified = true;
                     const lp = this.intermediaryDiscovery.intermediaries.find(val => val.supportsChain(chainId) && data.isOfferer(val.getAddress(chainId)));
-                    if (swapContract.supportsInitWithoutClaimer && wrappers[SwapType_1.SwapType.FROM_BTCLN_AUTO] != null) {
-                        swap = await wrappers[SwapType_1.SwapType.FROM_BTCLN_AUTO].recoverFromSwapDataAndState(init, state, contractVersion, lp);
+                    if (swapContract.supportsInitWithoutClaimer && wrappers[SwapType_js_1.SwapType.FROM_BTCLN_AUTO] != null) {
+                        swap = await wrappers[SwapType_js_1.SwapType.FROM_BTCLN_AUTO].recoverFromSwapDataAndState(init, state, contractVersion, lp);
                     }
                     else {
-                        swap = await wrappers[SwapType_1.SwapType.FROM_BTCLN].recoverFromSwapDataAndState(init, state, contractVersion, lp);
+                        swap = await wrappers[SwapType_js_1.SwapType.FROM_BTCLN].recoverFromSwapDataAndState(init, state, contractVersion, lp);
                     }
                 }
             }
@@ -1393,13 +1393,13 @@ class Swapper extends events_1.EventEmitter {
                 //To BTC
                 typeIdentified = true;
                 const lp = this.intermediaryDiscovery.intermediaries.find(val => val.supportsChain(chainId) && data.isClaimer(val.getAddress(chainId)));
-                swap = await wrappers[SwapType_1.SwapType.TO_BTC].recoverFromSwapDataAndState(init, state, contractVersion, lp);
+                swap = await wrappers[SwapType_js_1.SwapType.TO_BTC].recoverFromSwapDataAndState(init, state, contractVersion, lp);
             }
             else if (data.getType() === base_1.ChainSwapType.CHAIN) {
                 //From BTC
                 typeIdentified = true;
                 const lp = this.intermediaryDiscovery.intermediaries.find(val => val.supportsChain(chainId) && data.isOfferer(val.getAddress(chainId)));
-                swap = await wrappers[SwapType_1.SwapType.FROM_BTC].recoverFromSwapDataAndState(init, state, contractVersion, lp);
+                swap = await wrappers[SwapType_js_1.SwapType.FROM_BTC].recoverFromSwapDataAndState(init, state, contractVersion, lp);
             }
             if (swap != null) {
                 recoveredSwaps.push(swap);
@@ -1421,7 +1421,7 @@ class Swapper extends events_1.EventEmitter {
                 const state = spvVaultData[btcTxId];
                 const knownSwap = knownSwaps[btcTxId];
                 if (knownSwap != null) {
-                    if (knownSwap instanceof SpvFromBTCSwap_1.SpvFromBTCSwap) {
+                    if (knownSwap instanceof SpvFromBTCSwap_js_1.SpvFromBTCSwap) {
                         this.logger.debug(`recoverSwaps(spv_vault): Forcibly updating ${btcTxId} swap: swap already known and in local storage!`);
                         //TODO: Forcibly set on-chain state to the swap
                         // if(await knownSwap._forciblySetOnchainState(state)) {
@@ -1435,7 +1435,7 @@ class Swapper extends events_1.EventEmitter {
                     }
                 }
                 const lp = this.intermediaryDiscovery.intermediaries.find(val => val.supportsChain(chainId) && state.owner.toLowerCase() === val.getAddress(chainId).toLowerCase());
-                const swap = await wrappers[SwapType_1.SwapType.SPV_VAULT_FROM_BTC].recoverFromState(state, contractVersion, vaultsData[state.owner]?.[state.vaultId.toString(10)], lp);
+                const swap = await wrappers[SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC].recoverFromState(state, contractVersion, vaultsData[state.owner]?.[state.vaultId.toString(10)], lp);
                 if (swap != null) {
                     recoveredSwaps.push(swap);
                 }
@@ -1458,15 +1458,15 @@ class Swapper extends events_1.EventEmitter {
     getToken(tickerOrAddress) {
         //Btc tokens - BTC, BTCLN, BTC-LN
         if (tickerOrAddress === "BTC" || tickerOrAddress === "BITCOIN-BTC")
-            return Token_1.BitcoinTokens.BTC;
+            return Token_js_1.BitcoinTokens.BTC;
         if (tickerOrAddress === "BTCLN" || tickerOrAddress === "BTC-LN" || tickerOrAddress === "LIGHTNING-BTC")
-            return Token_1.BitcoinTokens.BTCLN;
+            return Token_js_1.BitcoinTokens.BTCLN;
         //Check if the ticker is in format <chainId>-<ticker>, i.e. SOLANA-USDC, STARKNET-WBTC
         if (tickerOrAddress.includes("-")) {
             const [chainId, ticker] = tickerOrAddress.split("-");
             const token = this._tokensByTicker[chainId]?.[ticker];
             if (token == null)
-                throw new UserError_1.UserError(`Not found ticker: ${ticker} for chainId: ${chainId}`);
+                throw new UserError_js_1.UserError(`Not found ticker: ${ticker} for chainId: ${chainId}`);
             return token;
         }
         const possibleTokens = [];
@@ -1486,10 +1486,10 @@ class Swapper extends events_1.EventEmitter {
             }
         }
         if (possibleTokens.length === 0)
-            throw new UserError_1.UserError(`Specified token address or ticker ${tickerOrAddress} not found!`);
+            throw new UserError_js_1.UserError(`Specified token address or ticker ${tickerOrAddress} not found!`);
         //In case we've found the token in multiple chains
         if (possibleTokens.length > 1)
-            throw new UserError_1.UserError(`A ticker ${tickerOrAddress} has been found in multiple chains, narrow it down by using <chainId>-${tickerOrAddress} notation`);
+            throw new UserError_js_1.UserError(`A ticker ${tickerOrAddress} has been found in multiple chains, narrow it down by using <chainId>-${tickerOrAddress} notation`);
         return possibleTokens[0];
     }
     /**
@@ -1500,7 +1500,7 @@ class Swapper extends events_1.EventEmitter {
     withChain(chainIdentifier) {
         if (this._chains[chainIdentifier] == null)
             throw new Error("Invalid chain identifier! Unknown chain: " + chainIdentifier);
-        return new SwapperWithChain_1.SwapperWithChain(this, chainIdentifier);
+        return new SwapperWithChain_js_1.SwapperWithChain(this, chainIdentifier);
     }
     /**
      * Returns an array of all the supported smart chains
@@ -1524,33 +1524,33 @@ class Swapper extends events_1.EventEmitter {
      * @param dstToken Destination token
      */
     getSwapType(srcToken, dstToken) {
-        if ((0, Token_1.isSCToken)(srcToken)) {
-            if (!(0, Token_1.isBtcToken)(dstToken))
+        if ((0, Token_js_1.isSCToken)(srcToken)) {
+            if (!(0, Token_js_1.isBtcToken)(dstToken))
                 throw new Error("Swap not supported");
             if (dstToken.lightning) {
-                return SwapType_1.SwapType.TO_BTCLN;
+                return SwapType_js_1.SwapType.TO_BTCLN;
             }
             else {
-                return SwapType_1.SwapType.TO_BTC;
+                return SwapType_js_1.SwapType.TO_BTC;
             }
         }
-        else if ((0, Token_1.isBtcToken)(srcToken)) {
-            if (!(0, Token_1.isSCToken)(dstToken))
+        else if ((0, Token_js_1.isBtcToken)(srcToken)) {
+            if (!(0, Token_js_1.isSCToken)(dstToken))
                 throw new Error("Swap not supported");
             if (srcToken.lightning) {
-                if (this.supportsSwapType(dstToken.chainId, SwapType_1.SwapType.FROM_BTCLN_AUTO)) {
-                    return SwapType_1.SwapType.FROM_BTCLN_AUTO;
+                if (this.supportsSwapType(dstToken.chainId, SwapType_js_1.SwapType.FROM_BTCLN_AUTO)) {
+                    return SwapType_js_1.SwapType.FROM_BTCLN_AUTO;
                 }
                 else {
-                    return SwapType_1.SwapType.FROM_BTCLN;
+                    return SwapType_js_1.SwapType.FROM_BTCLN;
                 }
             }
             else {
-                if (this.supportsSwapType(dstToken.chainId, SwapType_1.SwapType.SPV_VAULT_FROM_BTC)) {
-                    return SwapType_1.SwapType.SPV_VAULT_FROM_BTC;
+                if (this.supportsSwapType(dstToken.chainId, SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC)) {
+                    return SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC;
                 }
                 else {
-                    return SwapType_1.SwapType.FROM_BTC;
+                    return SwapType_js_1.SwapType.FROM_BTC;
                 }
             }
         }
@@ -1564,7 +1564,7 @@ class Swapper extends events_1.EventEmitter {
      */
     getSwapLimits(srcToken, dstToken) {
         const swapType = this.getSwapType(srcToken, dstToken);
-        const scToken = (0, Token_1.isSCToken)(srcToken) ? srcToken : (0, Token_1.isSCToken)(dstToken) ? dstToken : null;
+        const scToken = (0, Token_js_1.isSCToken)(srcToken) ? srcToken : (0, Token_js_1.isSCToken)(dstToken) ? dstToken : null;
         if (scToken == null)
             throw new Error("At least one token needs to be a smart chain token!");
         const result = {
@@ -1575,19 +1575,19 @@ class Swapper extends events_1.EventEmitter {
             const lpMinMax = lp.getSwapLimits(swapType, scToken.chainId, scToken.address);
             if (lpMinMax == null)
                 continue;
-            result.input.min = result.input.min == null ? lpMinMax.input.min : (0, Utils_1.bigIntMin)(result.input.min, lpMinMax.input.min);
-            result.input.max = result.input.max == null ? lpMinMax.input.max : (0, Utils_1.bigIntMax)(result.input.max, lpMinMax.input.max);
-            result.output.min = result.output.min == null ? lpMinMax.output.min : (0, Utils_1.bigIntMin)(result.output.min, lpMinMax.output.min);
-            result.output.max = result.output.max == null ? lpMinMax.output.max : (0, Utils_1.bigIntMax)(result.output.max, lpMinMax.output.max);
+            result.input.min = result.input.min == null ? lpMinMax.input.min : (0, Utils_js_1.bigIntMin)(result.input.min, lpMinMax.input.min);
+            result.input.max = result.input.max == null ? lpMinMax.input.max : (0, Utils_js_1.bigIntMax)(result.input.max, lpMinMax.input.max);
+            result.output.min = result.output.min == null ? lpMinMax.output.min : (0, Utils_js_1.bigIntMin)(result.output.min, lpMinMax.output.min);
+            result.output.max = result.output.max == null ? lpMinMax.output.max : (0, Utils_js_1.bigIntMax)(result.output.max, lpMinMax.output.max);
         }
         return {
             input: {
-                min: (0, TokenAmount_1.toTokenAmount)(result.input.min ?? 1n, srcToken, this.prices),
-                max: result.input.max == null ? undefined : (0, TokenAmount_1.toTokenAmount)(result.input.max, srcToken, this.prices),
+                min: (0, TokenAmount_js_1.toTokenAmount)(result.input.min ?? 1n, srcToken, this.prices),
+                max: result.input.max == null ? undefined : (0, TokenAmount_js_1.toTokenAmount)(result.input.max, srcToken, this.prices),
             },
             output: {
-                min: (0, TokenAmount_1.toTokenAmount)(result.output.min ?? 1n, dstToken, this.prices),
-                max: result.output.max == null ? undefined : (0, TokenAmount_1.toTokenAmount)(result.output.max, dstToken, this.prices),
+                min: (0, TokenAmount_js_1.toTokenAmount)(result.output.min ?? 1n, dstToken, this.prices),
+                max: result.output.max == null ? undefined : (0, TokenAmount_js_1.toTokenAmount)(result.output.max, dstToken, this.prices),
             }
         };
     }
@@ -1601,39 +1601,39 @@ class Swapper extends events_1.EventEmitter {
         let lightning = false;
         let btc = false;
         this.intermediaryDiscovery.intermediaries.forEach(lp => {
-            for (let swapType of [SwapType_1.SwapType.TO_BTC, SwapType_1.SwapType.TO_BTCLN, SwapType_1.SwapType.FROM_BTC, SwapType_1.SwapType.FROM_BTCLN, SwapType_1.SwapType.SPV_VAULT_FROM_BTC, SwapType_1.SwapType.FROM_BTCLN_AUTO]) {
+            for (let swapType of [SwapType_js_1.SwapType.TO_BTC, SwapType_js_1.SwapType.TO_BTCLN, SwapType_js_1.SwapType.FROM_BTC, SwapType_js_1.SwapType.FROM_BTCLN, SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC, SwapType_js_1.SwapType.FROM_BTCLN_AUTO]) {
                 if (lp.services[swapType]?.chainTokens == null)
                     continue;
                 for (let chainId of this.getSmartChains()) {
-                    if (this.supportsSwapType(chainId, SwapType_1.SwapType.SPV_VAULT_FROM_BTC) ? swapType === SwapType_1.SwapType.FROM_BTC : swapType === SwapType_1.SwapType.SPV_VAULT_FROM_BTC)
+                    if (this.supportsSwapType(chainId, SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC) ? swapType === SwapType_js_1.SwapType.FROM_BTC : swapType === SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC)
                         continue;
-                    if (this.supportsSwapType(chainId, SwapType_1.SwapType.FROM_BTCLN_AUTO) ? swapType === SwapType_1.SwapType.FROM_BTCLN : swapType === SwapType_1.SwapType.FROM_BTCLN_AUTO)
+                    if (this.supportsSwapType(chainId, SwapType_js_1.SwapType.FROM_BTCLN_AUTO) ? swapType === SwapType_js_1.SwapType.FROM_BTCLN : swapType === SwapType_js_1.SwapType.FROM_BTCLN_AUTO)
                         continue;
                     const chainTokens = lp.services[swapType]?.chainTokens?.[chainId];
                     if (chainTokens == null)
                         continue;
                     for (let tokenAddress of chainTokens) {
                         if (input) {
-                            if (swapType === SwapType_1.SwapType.TO_BTC || swapType === SwapType_1.SwapType.TO_BTCLN) {
+                            if (swapType === SwapType_js_1.SwapType.TO_BTC || swapType === SwapType_js_1.SwapType.TO_BTCLN) {
                                 tokens[chainId] ??= new Set();
                                 tokens[chainId].add(tokenAddress);
                             }
-                            if (swapType === SwapType_1.SwapType.FROM_BTCLN || swapType === SwapType_1.SwapType.FROM_BTCLN_AUTO) {
+                            if (swapType === SwapType_js_1.SwapType.FROM_BTCLN || swapType === SwapType_js_1.SwapType.FROM_BTCLN_AUTO) {
                                 lightning = true;
                             }
-                            if (swapType === SwapType_1.SwapType.FROM_BTC || swapType === SwapType_1.SwapType.SPV_VAULT_FROM_BTC) {
+                            if (swapType === SwapType_js_1.SwapType.FROM_BTC || swapType === SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC) {
                                 btc = true;
                             }
                         }
                         else {
-                            if (swapType === SwapType_1.SwapType.FROM_BTCLN || swapType === SwapType_1.SwapType.FROM_BTC || swapType === SwapType_1.SwapType.SPV_VAULT_FROM_BTC || swapType === SwapType_1.SwapType.FROM_BTCLN_AUTO) {
+                            if (swapType === SwapType_js_1.SwapType.FROM_BTCLN || swapType === SwapType_js_1.SwapType.FROM_BTC || swapType === SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC || swapType === SwapType_js_1.SwapType.FROM_BTCLN_AUTO) {
                                 tokens[chainId] ??= new Set();
                                 tokens[chainId].add(tokenAddress);
                             }
-                            if (swapType === SwapType_1.SwapType.TO_BTCLN) {
+                            if (swapType === SwapType_js_1.SwapType.TO_BTCLN) {
                                 lightning = true;
                             }
-                            if (swapType === SwapType_1.SwapType.TO_BTC) {
+                            if (swapType === SwapType_js_1.SwapType.TO_BTC) {
                                 btc = true;
                             }
                         }
@@ -1643,9 +1643,9 @@ class Swapper extends events_1.EventEmitter {
         });
         const output = [];
         if (lightning)
-            output.push(Token_1.BitcoinTokens.BTCLN);
+            output.push(Token_js_1.BitcoinTokens.BTCLN);
         if (btc)
-            output.push(Token_1.BitcoinTokens.BTC);
+            output.push(Token_js_1.BitcoinTokens.BTC);
         for (let chainId in tokens) {
             tokens[chainId].forEach(tokenAddress => {
                 const token = this._tokens?.[chainId]?.[tokenAddress];
@@ -1665,10 +1665,10 @@ class Swapper extends events_1.EventEmitter {
         this.intermediaryDiscovery.intermediaries.forEach(lp => {
             for (let chainId of this.getSmartChains()) {
                 let swapType = _swapType;
-                if (swapType === SwapType_1.SwapType.FROM_BTC && this.supportsSwapType(chainId, SwapType_1.SwapType.SPV_VAULT_FROM_BTC))
-                    swapType = SwapType_1.SwapType.SPV_VAULT_FROM_BTC;
-                if (swapType === SwapType_1.SwapType.FROM_BTCLN && this.supportsSwapType(chainId, SwapType_1.SwapType.FROM_BTCLN_AUTO))
-                    swapType = SwapType_1.SwapType.FROM_BTCLN_AUTO;
+                if (swapType === SwapType_js_1.SwapType.FROM_BTC && this.supportsSwapType(chainId, SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC))
+                    swapType = SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC;
+                if (swapType === SwapType_js_1.SwapType.FROM_BTCLN && this.supportsSwapType(chainId, SwapType_js_1.SwapType.FROM_BTCLN_AUTO))
+                    swapType = SwapType_js_1.SwapType.FROM_BTCLN_AUTO;
                 if (lp.services[swapType]?.chainTokens == null)
                     break;
                 const chainTokens = lp.services[swapType]?.chainTokens?.[chainId];
@@ -1711,26 +1711,26 @@ class Swapper extends events_1.EventEmitter {
      *  or tokens that you can swap from (if input=false) to a given token
      */
     getSwapCounterTokens(token, input) {
-        if ((0, Token_1.isSCToken)(token)) {
+        if ((0, Token_js_1.isSCToken)(token)) {
             const result = [];
             if (input) {
                 //TO_BTC or TO_BTCLN
-                if (this.getSupportedTokenAddresses(token.chainId, SwapType_1.SwapType.TO_BTCLN).has(token.address)) {
-                    result.push(Token_1.BitcoinTokens.BTCLN);
+                if (this.getSupportedTokenAddresses(token.chainId, SwapType_js_1.SwapType.TO_BTCLN).has(token.address)) {
+                    result.push(Token_js_1.BitcoinTokens.BTCLN);
                 }
-                if (this.getSupportedTokenAddresses(token.chainId, SwapType_1.SwapType.TO_BTC).has(token.address)) {
-                    result.push(Token_1.BitcoinTokens.BTC);
+                if (this.getSupportedTokenAddresses(token.chainId, SwapType_js_1.SwapType.TO_BTC).has(token.address)) {
+                    result.push(Token_js_1.BitcoinTokens.BTC);
                 }
             }
             else {
                 //FROM_BTC or FROM_BTCLN
-                const fromLightningSwapType = this.supportsSwapType(token.chainId, SwapType_1.SwapType.FROM_BTCLN_AUTO) ? SwapType_1.SwapType.FROM_BTCLN_AUTO : SwapType_1.SwapType.FROM_BTCLN;
+                const fromLightningSwapType = this.supportsSwapType(token.chainId, SwapType_js_1.SwapType.FROM_BTCLN_AUTO) ? SwapType_js_1.SwapType.FROM_BTCLN_AUTO : SwapType_js_1.SwapType.FROM_BTCLN;
                 if (this.getSupportedTokenAddresses(token.chainId, fromLightningSwapType).has(token.address)) {
-                    result.push(Token_1.BitcoinTokens.BTCLN);
+                    result.push(Token_js_1.BitcoinTokens.BTCLN);
                 }
-                const fromOnchainSwapType = this.supportsSwapType(token.chainId, SwapType_1.SwapType.SPV_VAULT_FROM_BTC) ? SwapType_1.SwapType.SPV_VAULT_FROM_BTC : SwapType_1.SwapType.FROM_BTC;
+                const fromOnchainSwapType = this.supportsSwapType(token.chainId, SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC) ? SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC : SwapType_js_1.SwapType.FROM_BTC;
                 if (this.getSupportedTokenAddresses(token.chainId, fromOnchainSwapType).has(token.address)) {
-                    result.push(Token_1.BitcoinTokens.BTC);
+                    result.push(Token_js_1.BitcoinTokens.BTC);
                 }
             }
             return result;
@@ -1738,18 +1738,18 @@ class Swapper extends events_1.EventEmitter {
         else {
             if (input) {
                 if (token.lightning) {
-                    return this.getSupportedTokensForSwapType(SwapType_1.SwapType.FROM_BTCLN);
+                    return this.getSupportedTokensForSwapType(SwapType_js_1.SwapType.FROM_BTCLN);
                 }
                 else {
-                    return this.getSupportedTokensForSwapType(SwapType_1.SwapType.FROM_BTC);
+                    return this.getSupportedTokensForSwapType(SwapType_js_1.SwapType.FROM_BTC);
                 }
             }
             else {
                 if (token.lightning) {
-                    return this.getSupportedTokensForSwapType(SwapType_1.SwapType.TO_BTCLN);
+                    return this.getSupportedTokensForSwapType(SwapType_js_1.SwapType.TO_BTCLN);
                 }
                 else {
-                    return this.getSupportedTokensForSwapType(SwapType_1.SwapType.TO_BTC);
+                    return this.getSupportedTokensForSwapType(SwapType_js_1.SwapType.TO_BTC);
                 }
             }
         }

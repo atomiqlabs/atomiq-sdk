@@ -4,7 +4,7 @@ exports.SingleAddressBitcoinWallet = void 0;
 const utils_1 = require("@scure/btc-signer/utils");
 const btc_signer_1 = require("@scure/btc-signer");
 const buffer_1 = require("buffer");
-const BitcoinWallet_1 = require("./BitcoinWallet");
+const BitcoinWallet_js_1 = require("./BitcoinWallet.js");
 const base_1 = require("@atomiqlabs/base");
 const bip32_1 = require("@scure/bip32");
 const bip39_1 = require("@scure/bip39");
@@ -16,11 +16,11 @@ const logger = (0, base_1.getLogger)("SingleAddressBitcoinWallet: ");
  *
  * @category Bitcoin
  */
-class SingleAddressBitcoinWallet extends BitcoinWallet_1.BitcoinWallet {
+class SingleAddressBitcoinWallet extends BitcoinWallet_js_1.BitcoinWallet {
     constructor(mempoolApi, _network, addressDataOrWIF, feeMultiplier = 1.25, feeOverride) {
         const network = typeof (_network) === "object"
             ? _network
-            : BitcoinWallet_1.BitcoinWallet.bitcoinNetworkToObject(_network);
+            : BitcoinWallet_js_1.BitcoinWallet.bitcoinNetworkToObject(_network);
         super(mempoolApi, network, feeMultiplier, feeOverride);
         if (typeof (addressDataOrWIF) === "string") {
             try {
@@ -34,11 +34,11 @@ class SingleAddressBitcoinWallet extends BitcoinWallet_1.BitcoinWallet {
             if (address == null)
                 throw new Error("Failed to generate p2wpkh address from the provided private key!");
             this.address = address;
-            this.addressType = (0, BitcoinWallet_1.identifyAddressType)(this.address, network);
+            this.addressType = (0, BitcoinWallet_js_1.identifyAddressType)(this.address, network);
         }
         else {
             this.address = addressDataOrWIF.address;
-            this.addressType = (0, BitcoinWallet_1.identifyAddressType)(this.address, network);
+            this.addressType = (0, BitcoinWallet_js_1.identifyAddressType)(this.address, network);
             this.pubkey = buffer_1.Buffer.from(addressDataOrWIF.publicKey, "hex");
             // Some wallets seem to be returning a full 33-byte compressed pubkey instead of a taproot
             //  32-byte long X-only key. Handle these cases here
@@ -150,7 +150,7 @@ class SingleAddressBitcoinWallet extends BitcoinWallet_1.BitcoinWallet {
     static generateRandomPrivateKey(network) {
         const networkObject = network == null || typeof (network) === "object"
             ? network
-            : BitcoinWallet_1.BitcoinWallet.bitcoinNetworkToObject(network);
+            : BitcoinWallet_js_1.BitcoinWallet.bitcoinNetworkToObject(network);
         return (0, btc_signer_1.WIF)(networkObject).encode((0, utils_1.randomPrivateKeyBytes)());
     }
     /**
@@ -181,7 +181,7 @@ class SingleAddressBitcoinWallet extends BitcoinWallet_1.BitcoinWallet {
     static async mnemonicToPrivateKey(mnemonic, network, derivationPath) {
         const networkObject = network == null || typeof (network) === "object"
             ? network
-            : BitcoinWallet_1.BitcoinWallet.bitcoinNetworkToObject(network);
+            : BitcoinWallet_js_1.BitcoinWallet.bitcoinNetworkToObject(network);
         derivationPath = networkObject == null || networkObject.bech32 === utils_1.NETWORK.bech32
             ? "m/84'/0'/0'/0/0" //Mainnet
             : "m/84'/1'/0'/0/0"; //Testnet

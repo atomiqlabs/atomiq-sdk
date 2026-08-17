@@ -1,19 +1,19 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.IFromBTCLNWrapper = void 0;
-const IFromBTCWrapper_1 = require("./IFromBTCWrapper");
+const IFromBTCWrapper_js_1 = require("./IFromBTCWrapper.js");
 const buffer_1 = require("buffer");
-const Utils_1 = require("../../../utils/Utils");
-const IntermediaryError_1 = require("../../../errors/IntermediaryError");
-const LNURL_1 = require("../../../lnurl/LNURL");
-const UserError_1 = require("../../../errors/UserError");
+const Utils_js_1 = require("../../../utils/Utils.js");
+const IntermediaryError_js_1 = require("../../../errors/IntermediaryError.js");
+const LNURL_js_1 = require("../../../lnurl/LNURL.js");
+const UserError_js_1 = require("../../../errors/UserError.js");
 const sha256_1 = require("@noble/hashes/sha256");
 /**
  * Base class for wrappers of escrow-based Lightning -> Smart chain swaps
  *
  * @category Swaps/Abstract
  */
-class IFromBTCLNWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
+class IFromBTCLNWrapper extends IFromBTCWrapper_js_1.IFromBTCWrapper {
     /**
      * @param chainIdentifier
      * @param unifiedStorage Storage interface for the current environment
@@ -39,7 +39,7 @@ class IFromBTCLNWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
      * @internal
      */
     getSecretAndHash() {
-        const secret = (0, Utils_1.randomBytes)(32);
+        const secret = (0, Utils_js_1.randomBytes)(32);
         const paymentHash = buffer_1.Buffer.from((0, sha256_1.sha256)(secret));
         return { secret, paymentHash };
     }
@@ -84,15 +84,15 @@ class IFromBTCLNWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
             throw new Error("Swap invoice doesn't contains msat amount field!");
         const _result = await lnCapacityPrefetchPromise ?? await this.lnApi.getLNNodeLiquidity(decodedPr.payeeNodeKey);
         if (_result === null)
-            throw new IntermediaryError_1.IntermediaryError("LP's lightning node not found in the lightning network graph!");
+            throw new IntermediaryError_js_1.IntermediaryError("LP's lightning node not found in the lightning network graph!");
         if (abortSignal != null)
             abortSignal.throwIfAborted();
         lp.lnData = _result;
         if (decodedPr.payeeNodeKey !== _result.publicKey)
-            throw new IntermediaryError_1.IntermediaryError("Invalid pr returned - payee pubkey");
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid pr returned - payee pubkey");
         const amountIn = (BigInt(decodedPr.millisatoshis) + 999n) / 1000n;
         if (_result.capacity < amountIn)
-            throw new IntermediaryError_1.IntermediaryError("LP's lightning node doesn't have enough inbound capacity for the swap!");
+            throw new IntermediaryError_js_1.IntermediaryError("LP's lightning node doesn't have enough inbound capacity for the swap!");
         if ((_result.capacity / 2n) < amountIn)
             throw new Error("LP's lightning node probably doesn't have enough inbound capacity for the swap!");
     }
@@ -109,11 +109,11 @@ class IFromBTCLNWrapper extends IFromBTCWrapper_1.IFromBTCWrapper {
     async getLNURLWithdraw(lnurl, abortSignal) {
         if (typeof (lnurl) !== "string")
             return lnurl;
-        const res = await LNURL_1.LNURL.getLNURL(lnurl, true, this._options.getRequestTimeout, abortSignal);
+        const res = await LNURL_js_1.LNURL.getLNURL(lnurl, true, this._options.getRequestTimeout, abortSignal);
         if (res == null)
-            throw new UserError_1.UserError("Invalid LNURL");
+            throw new UserError_js_1.UserError("Invalid LNURL");
         if (res.tag !== "withdrawRequest")
-            throw new UserError_1.UserError("Not a LNURL-withdrawal");
+            throw new UserError_js_1.UserError("Not a LNURL-withdrawal");
         return res;
     }
     /**

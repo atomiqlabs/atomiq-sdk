@@ -1,17 +1,17 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.LNURL = exports.isLNURLPaySuccessAction = void 0;
-const RequestError_1 = require("../errors/RequestError");
+const RequestError_js_1 = require("../errors/RequestError.js");
 const bolt11_1 = require("@atomiqlabs/bolt11");
-const UserError_1 = require("../errors/UserError");
+const UserError_js_1 = require("../errors/UserError.js");
 const base_1 = require("@scure/base");
 const aes_1 = require("@noble/ciphers/aes");
 const buffer_1 = require("buffer");
 const sha2_1 = require("@noble/hashes/sha2");
-const HttpUtils_1 = require("../http/HttpUtils");
-const LNURLWithdraw_1 = require("../types/lnurl/LNURLWithdraw");
-const LNURLPay_1 = require("../types/lnurl/LNURLPay");
-const RetryUtils_1 = require("../utils/RetryUtils");
+const HttpUtils_js_1 = require("../http/HttpUtils.js");
+const LNURLWithdraw_js_1 = require("../types/lnurl/LNURLWithdraw.js");
+const LNURLPay_js_1 = require("../types/lnurl/LNURLPay.js");
+const RetryUtils_js_1 = require("../utils/RetryUtils.js");
 function isLNURLError(obj) {
     return obj.status === "ERROR" &&
         (obj.reason == null || typeof obj.reason === "string");
@@ -137,9 +137,9 @@ class LNURL {
         const url = LNURL.extractCallUrl(str);
         if (url == null)
             return null;
-        const sendRequest = () => (0, HttpUtils_1.httpGet)(url, timeout, abortSignal, true);
+        const sendRequest = () => (0, HttpUtils_js_1.httpGet)(url, timeout, abortSignal, true);
         let response = shouldRetry ?
-            await (0, RetryUtils_1.tryWithRetries)(sendRequest, undefined, RequestError_1.RequestError, abortSignal) :
+            await (0, RetryUtils_js_1.tryWithRetries)(sendRequest, undefined, RequestError_js_1.RequestError, abortSignal) :
             await sendRequest();
         if (isLNURLError(response))
             return null;
@@ -150,7 +150,7 @@ class LNURL {
             catch (err) {
                 response.decodedMetadata = [];
             }
-        if (!(0, LNURLPay_1.isLNURLPayParams)(response) && !(0, LNURLWithdraw_1.isLNURLWithdrawParams)(response))
+        if (!(0, LNURLPay_js_1.isLNURLPayParams)(response) && !(0, LNURLWithdraw_js_1.isLNURLWithdrawParams)(response))
             return null;
         return {
             ...response,
@@ -226,21 +226,21 @@ class LNURL {
             params.push("comment=" + encodeURIComponent(comment));
         }
         const queryParams = (payRequest.callback.includes("?") ? "&" : "?") + params.join("&");
-        const response = await (0, RetryUtils_1.tryWithRetries)(() => (0, HttpUtils_1.httpGet)(payRequest.callback + queryParams, timeout, abortSignal, true), undefined, RequestError_1.RequestError, abortSignal);
+        const response = await (0, RetryUtils_js_1.tryWithRetries)(() => (0, HttpUtils_js_1.httpGet)(payRequest.callback + queryParams, timeout, abortSignal, true), undefined, RequestError_js_1.RequestError, abortSignal);
         if (isLNURLError(response))
-            throw new RequestError_1.RequestError("LNURL callback error: " + response.reason, 200);
+            throw new RequestError_js_1.RequestError("LNURL callback error: " + response.reason, 200);
         if (!isLNURLPayResult(response))
-            throw new RequestError_1.RequestError("Invalid LNURL response!", 200);
+            throw new RequestError_js_1.RequestError("Invalid LNURL response!", 200);
         const parsedPR = (0, bolt11_1.decode)(response.pr);
         const descHash = buffer_1.Buffer.from((0, sha2_1.sha256)(payRequest.metadata)).toString("hex");
         if (parsedPR.tagsObject.purpose_commit_hash !== descHash)
-            throw new RequestError_1.RequestError("Invalid invoice received (description hash)!", 200);
+            throw new RequestError_js_1.RequestError("Invalid invoice received (description hash)!", 200);
         const msats = parsedPR.millisatoshis;
         if (msats == null)
-            throw new RequestError_1.RequestError("Invalid invoice received (amount msats not defined)", 200);
+            throw new RequestError_js_1.RequestError("Invalid invoice received (amount msats not defined)", 200);
         const invoiceMSats = BigInt(msats);
         if (invoiceMSats !== (amount * 1000n))
-            throw new RequestError_1.RequestError("Invalid invoice received (amount)!", 200);
+            throw new RequestError_js_1.RequestError("Invalid invoice received (amount)!", 200);
         return {
             invoice: response.pr,
             parsedInvoice: parsedPR,
@@ -262,9 +262,9 @@ class LNURL {
             "k1=" + withdrawRequest.k1
         ];
         const queryParams = (withdrawRequest.callback.includes("?") ? "&" : "?") + params.join("&");
-        const response = await (0, RetryUtils_1.tryWithRetries)(() => (0, HttpUtils_1.httpGet)(withdrawRequest.callback + queryParams, undefined, undefined, true), undefined, RequestError_1.RequestError);
+        const response = await (0, RetryUtils_js_1.tryWithRetries)(() => (0, HttpUtils_js_1.httpGet)(withdrawRequest.callback + queryParams, undefined, undefined, true), undefined, RequestError_js_1.RequestError);
         if (isLNURLError(response))
-            throw new RequestError_1.RequestError("LNURL callback error: " + response.reason, 200);
+            throw new RequestError_js_1.RequestError("LNURL callback error: " + response.reason, 200);
     }
     /**
      * Uses a LNURL-withdraw request by submitting a lightning network invoice to it
@@ -280,12 +280,12 @@ class LNURL {
         const parsedPR = (0, bolt11_1.decode)(lnpr);
         const msats = parsedPR.millisatoshis;
         if (msats == null)
-            throw new UserError_1.UserError("Invoice without msats value field!");
+            throw new UserError_js_1.UserError("Invoice without msats value field!");
         const amount = (BigInt(msats) + 999n) / 1000n;
         if (amount < min)
-            throw new UserError_1.UserError("Invoice amount less than minimum LNURL-withdraw limit");
+            throw new UserError_js_1.UserError("Invoice amount less than minimum LNURL-withdraw limit");
         if (amount > max)
-            throw new UserError_1.UserError("Invoice amount more than maximum LNURL-withdraw limit");
+            throw new UserError_js_1.UserError("Invoice amount more than maximum LNURL-withdraw limit");
         return await LNURL.postInvoiceToLNURLWithdraw(withdrawRequest, lnpr);
     }
     static decodeSuccessAction(successAction, secret) {

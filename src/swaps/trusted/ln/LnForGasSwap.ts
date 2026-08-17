@@ -1,55 +1,30 @@
+import {LnForGasSwapState} from "./LnForGasSwapState.js";
 import {decode as bolt11Decode} from "@atomiqlabs/bolt11";
-import {SwapType} from "../../../enums/SwapType";
+import {SwapType} from "../../../enums/SwapType.js";
 import {ChainType} from "@atomiqlabs/base";
-import {LnForGasSwapTypeDefinition, LnForGasWrapper} from "./LnForGasWrapper";
-import {extendAbortController, toBigInt} from "../../../utils/Utils";
-import {isISwapInit, ISwap, ISwapInit} from "../../ISwap";
-import {TrustedInvoiceStatusResponseCodes} from "../../../intermediaries/apis/IntermediaryAPI";
-import {Fee} from "../../../types/fees/Fee";
-import {IAddressSwap} from "../../IAddressSwap";
-import {FeeType} from "../../../enums/FeeType";
-import {ppmToPercentage} from "../../../types/fees/PercentagePPM";
-import {TokenAmount, toTokenAmount} from "../../../types/TokenAmount";
-import {BitcoinTokens, BtcToken, SCToken} from "../../../types/Token";
-import {getLogger, LoggerType} from "../../../utils/Logger";
-import {timeoutPromise} from "../../../utils/TimeoutUtils";
+import {LnForGasSwapTypeDefinition, LnForGasWrapper} from "./LnForGasWrapper.js";
+import {extendAbortController, toBigInt} from "../../../utils/Utils.js";
+import {isISwapInit, ISwap, ISwapInit} from "../../ISwap.js";
+import {TrustedInvoiceStatusResponseCodes} from "../../../intermediaries/apis/IntermediaryAPI.js";
+import {Fee} from "../../../types/fees/Fee.js";
+import {IAddressSwap} from "../../IAddressSwap.js";
+import {FeeType} from "../../../enums/FeeType.js";
+import {ppmToPercentage} from "../../../types/fees/PercentagePPM.js";
+import {TokenAmount, toTokenAmount} from "../../../types/TokenAmount.js";
+import {BitcoinTokens, BtcToken, SCToken} from "../../../types/Token.js";
+import {getLogger, LoggerType} from "../../../utils/Logger.js";
+import {timeoutPromise} from "../../../utils/TimeoutUtils.js";
 import {
     SwapExecutionActionSendToAddress,
     SwapExecutionActionWait
-} from "../../../types/SwapExecutionAction";
+} from "../../../types/SwapExecutionAction.js";
 import {
     SwapExecutionStepPayment,
     SwapExecutionStepSettlement
-} from "../../../types/SwapExecutionStep";
-import {SwapStateInfo} from "../../../types/SwapStateInfo";
+} from "../../../types/SwapExecutionStep.js";
+import {SwapStateInfo} from "../../../types/SwapStateInfo.js";
 
-/**
- * State enum for trusted Lightning gas swaps
- *
- * @category Swaps/Trusted Gas Swaps
- */
-export enum LnForGasSwapState {
-    /**
-     * The swap quote expired before the user paid the Lightning invoice
-     */
-    EXPIRED = -2,
-    /**
-     * The swap has failed before the destination payout completed, and the held Lightning invoice was released
-     */
-    FAILED = -1,
-    /**
-     * Swap was created, pay the provided Lightning invoice which will remain held until destination payout succeeds
-     */
-    PR_CREATED = 0,
-    /**
-     * The Lightning invoice was paid and is currently held until the user receives the destination funds
-     */
-    PR_PAID = 1,
-    /**
-     * The swap is finished after the destination payout succeeded and the held Lightning invoice was settled
-     */
-    FINISHED = 2
-}
+export {LnForGasSwapState};
 
 const LnForGasSwapStateDescription = {
     [LnForGasSwapState.EXPIRED]:
@@ -751,3 +726,4 @@ export class LnForGasSwap<T extends ChainType = ChainType> extends ISwap<T, LnFo
     }
 
 }
+

@@ -1,0 +1,17 @@
+/**
+ * Type guard to check if an object implements {@link IBitcoinWallet}
+ *
+ * @category Bitcoin
+ */
+export function isIBitcoinWallet(val) {
+    return val !== null &&
+        typeof (val.sendTransaction) === "function" &&
+        typeof (val.fundPsbt) === "function" &&
+        typeof (val.signPsbt) === "function" &&
+        typeof (val.getFeeRate) === "function" &&
+        typeof (val.getTransactionFee) === "function" &&
+        typeof (val.getFundedPsbtFee) === "function" &&
+        typeof (val.getReceiveAddress) === "function" &&
+        typeof (val.getBalance) === "function" &&
+        typeof (val.getSpendableBalance) === "function";
+}

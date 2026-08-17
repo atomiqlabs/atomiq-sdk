@@ -1,7 +1,7 @@
 import { ChainEvent, ChainType } from "@atomiqlabs/base";
-import { ISwap } from "../swaps/ISwap";
-import { SwapType } from "../enums/SwapType";
-import { UnifiedSwapStorage } from "../storage/UnifiedSwapStorage";
+import { ISwap } from "../swaps/ISwap.js";
+import { SwapType } from "../enums/SwapType.js";
+import { UnifiedSwapStorage } from "../storage/UnifiedSwapStorage.js";
 export type SwapEventListener<T extends ChainType, S extends ISwap<T>> = (event: ChainEvent<T["Data"]>, swap: S) => Promise<void>;
 export declare class UnifiedSwapEventListener<T extends ChainType> {
     readonly storage: UnifiedSwapStorage<T>;

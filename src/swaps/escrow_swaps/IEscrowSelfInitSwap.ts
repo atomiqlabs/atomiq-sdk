@@ -1,10 +1,12 @@
-import {IEscrowSwap, IEscrowSwapInit, isIEscrowSwapInit} from "./IEscrowSwap";
-import {ChainType, SignatureData, SignatureVerificationError, SwapData} from "@atomiqlabs/base";
-import {IEscrowSwapDefinition, IEscrowSwapWrapper} from "./IEscrowSwapWrapper";
-import {SwapTypeDefinition} from "../ISwapWrapper";
-import {TokenAmount, toTokenAmount} from "../../types/TokenAmount";
-import {SCToken} from "../../types/Token";
-import {timeoutPromise} from "../../utils/TimeoutUtils";
+import {IEscrowSwap, IEscrowSwapInit, isIEscrowSwapInit} from "./IEscrowSwap.js";
+import {ISwap} from "../ISwap.js";
+import {SwapType} from "../../enums/SwapType.js";
+import {ChainType, isSignatureVerificationError, SignatureData, SwapData} from "@atomiqlabs/base";
+import {IEscrowSwapDefinition, IEscrowSwapWrapper} from "./IEscrowSwapWrapper.js";
+import {SwapTypeDefinition} from "../ISwapWrapper.js";
+import {TokenAmount, toTokenAmount} from "../../types/TokenAmount.js";
+import {SCToken} from "../../types/Token.js";
+import {timeoutPromise} from "../../utils/TimeoutUtils.js";
 
 export type IEscrowSelfInitSwapInit<T extends SwapData> = IEscrowSwapInit<T> & {
     feeRate: string,
@@ -195,7 +197,7 @@ export abstract class IEscrowSelfInitSwap<
             );
             return true;
         } catch (e) {
-            if(e instanceof SignatureVerificationError) {
+            if(isSignatureVerificationError(e)) {
                 return false;
             }
             throw e;

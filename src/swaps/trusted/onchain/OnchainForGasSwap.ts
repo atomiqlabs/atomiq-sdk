@@ -1,60 +1,31 @@
-import {SwapType} from "../../../enums/SwapType";
+import {OnchainForGasSwapState} from "./OnchainForGasSwapState.js";
+import {SwapType} from "../../../enums/SwapType.js";
 import {ChainType} from "@atomiqlabs/base";
-import {toBigInt} from "../../../utils/Utils";
-import {parsePsbtTransaction, toOutputScript} from "../../../utils/BitcoinUtils";
-import {isISwapInit, ISwap, ISwapInit} from "../../ISwap";
-import {TrustedAddressStatusResponseCodes} from "../../../intermediaries/apis/IntermediaryAPI";
-import {OnchainForGasSwapTypeDefinition, OnchainForGasWrapper} from "./OnchainForGasWrapper";
-import {Fee} from "../../../types/fees/Fee";
-import {IBitcoinWallet, isIBitcoinWallet} from "../../../bitcoin/wallet/IBitcoinWallet";
-import {IAddressSwap} from "../../IAddressSwap";
-import {IBTCWalletSwap} from "../../IBTCWalletSwap";
+import {toBigInt} from "../../../utils/Utils.js";
+import {parsePsbtTransaction, toOutputScript} from "../../../utils/BitcoinUtils.js";
+import {isISwapInit, ISwap, ISwapInit} from "../../ISwap.js";
+import {TrustedAddressStatusResponseCodes} from "../../../intermediaries/apis/IntermediaryAPI.js";
+import {OnchainForGasSwapTypeDefinition, OnchainForGasWrapper} from "./OnchainForGasWrapper.js";
+import {Fee} from "../../../types/fees/Fee.js";
+import {IBitcoinWallet, isIBitcoinWallet} from "../../../bitcoin/wallet/IBitcoinWallet.js";
+import {IAddressSwap} from "../../IAddressSwap.js";
+import {IBTCWalletSwap} from "../../IBTCWalletSwap.js";
 import {Transaction} from "@scure/btc-signer";
-import {SingleAddressBitcoinWallet} from "../../../bitcoin/wallet/SingleAddressBitcoinWallet";
+import {SingleAddressBitcoinWallet} from "../../../bitcoin/wallet/SingleAddressBitcoinWallet.js";
 import {Buffer} from "buffer";
 import {
     MinimalBitcoinWalletInterface,
     MinimalBitcoinWalletInterfaceWithSigner
-} from "../../../types/wallets/MinimalBitcoinWalletInterface";
-import {FeeType} from "../../../enums/FeeType";
-import {ppmToPercentage} from "../../../types/fees/PercentagePPM";
-import {TokenAmount, toTokenAmount} from "../../../types/TokenAmount";
-import {BitcoinTokens, BtcToken, SCToken} from "../../../types/Token";
-import {getLogger, LoggerType} from "../../../utils/Logger";
-import {timeoutPromise} from "../../../utils/TimeoutUtils";
-import {toBitcoinWallet} from "../../../utils/BitcoinWalletUtils";
+} from "../../../types/wallets/MinimalBitcoinWalletInterface.js";
+import {FeeType} from "../../../enums/FeeType.js";
+import {ppmToPercentage} from "../../../types/fees/PercentagePPM.js";
+import {TokenAmount, toTokenAmount} from "../../../types/TokenAmount.js";
+import {BitcoinTokens, BtcToken, SCToken} from "../../../types/Token.js";
+import {getLogger, LoggerType} from "../../../utils/Logger.js";
+import {timeoutPromise} from "../../../utils/TimeoutUtils.js";
+import {toBitcoinWallet} from "../../../utils/BitcoinWalletUtils.js";
 
-/**
- * State enum for trusted on-chain gas swaps
- *
- * @category Swaps/Trusted Gas Swaps
- */
-export enum OnchainForGasSwapState {
-    /**
-     * The swap quote expired without user sending in the BTC
-     */
-    EXPIRED = -3,
-    /**
-     * The swap has failed after the intermediary already received the BTC on the source chain
-     */
-    FAILED = -2,
-    /**
-     * Swap was refunded and BTC returned to the user's refund address
-     */
-    REFUNDED = -1,
-    /**
-     * Swap was created, send the BTC to the swap address
-     */
-    PR_CREATED = 0,
-    /**
-     * The swap is finished after the intermediary sent funds on the destination chain
-     */
-    FINISHED = 1,
-    /**
-     * Swap is refundable because the intermediary cannot honor the swap request on the destination chain
-     */
-    REFUNDABLE = 2
-}
+export {OnchainForGasSwapState};
 
 const OnchainForGasSwapStateDescription: Record<OnchainForGasSwapState, string> = {
     [OnchainForGasSwapState.EXPIRED]:
@@ -841,3 +812,4 @@ export class OnchainForGasSwap<T extends ChainType = ChainType> extends ISwap<T,
     }
 
 }
+

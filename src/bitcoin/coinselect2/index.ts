@@ -1,6 +1,6 @@
-import {accumulative} from "./accumulative"
-import {blackjack} from "./blackjack"
-import {CoinselectAddressTypes, CoinselectTxInput, CoinselectTxOutput, DUST_THRESHOLDS, utils} from "./utils"
+import {accumulative} from "./accumulative.js"
+import {blackjack} from "./blackjack.js"
+import {CoinselectAddressTypes, CoinselectTxInput, CoinselectTxOutput, DUST_THRESHOLDS, utils} from "./utils.js"
 
 // order by descending value, minus the inputs approximate fee
 function utxoScore (x: CoinselectTxInput, feeRate: number) {

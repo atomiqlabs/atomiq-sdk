@@ -1,6 +1,6 @@
 /// <reference types="node" />
 /// <reference types="node" />
-import { IParamReader } from "./IParamReader";
+import { IParamReader } from "./IParamReader.js";
 import { Buffer } from "buffer";
 export declare class ParamDecoder implements IParamReader {
     frameHeader?: Buffer;

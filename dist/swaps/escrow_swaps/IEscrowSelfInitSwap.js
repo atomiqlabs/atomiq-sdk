@@ -1,10 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.IEscrowSelfInitSwap = exports.isIEscrowSelfInitSwapInit = void 0;
-const IEscrowSwap_1 = require("./IEscrowSwap");
+const IEscrowSwap_js_1 = require("./IEscrowSwap.js");
 const base_1 = require("@atomiqlabs/base");
-const TokenAmount_1 = require("../../types/TokenAmount");
-const TimeoutUtils_1 = require("../../utils/TimeoutUtils");
+const TokenAmount_js_1 = require("../../types/TokenAmount.js");
+const TimeoutUtils_js_1 = require("../../utils/TimeoutUtils.js");
 function isIEscrowSelfInitSwapInit(obj) {
     return typeof obj === "object" &&
         typeof (obj.feeRate) === "string" &&
@@ -12,7 +12,7 @@ function isIEscrowSelfInitSwapInit(obj) {
             typeof (obj.signatureData.prefix) === "string" &&
             typeof (obj.signatureData.timeout) === "string" &&
             typeof (obj.signatureData.signature) === "string")) &&
-        (0, IEscrowSwap_1.isIEscrowSwapInit)(obj);
+        (0, IEscrowSwap_js_1.isIEscrowSwapInit)(obj);
 }
 exports.isIEscrowSelfInitSwapInit = isIEscrowSelfInitSwapInit;
 /**
@@ -21,7 +21,7 @@ exports.isIEscrowSelfInitSwapInit = isIEscrowSelfInitSwapInit;
  *
  * @category Swaps/Abstract
  */
-class IEscrowSelfInitSwap extends IEscrowSwap_1.IEscrowSwap {
+class IEscrowSelfInitSwap extends IEscrowSwap_js_1.IEscrowSwap {
     constructor(wrapper, swapInitOrObj) {
         super(wrapper, swapInitOrObj);
         if (isIEscrowSelfInitSwapInit(swapInitOrObj)) {
@@ -53,7 +53,7 @@ class IEscrowSelfInitSwap extends IEscrowSwap_1.IEscrowSwap {
         intervalSeconds ??= 5;
         let expired = false;
         while (!expired) {
-            await (0, TimeoutUtils_1.timeoutPromise)(intervalSeconds * 1000, abortSignal);
+            await (0, TimeoutUtils_js_1.timeoutPromise)(intervalSeconds * 1000, abortSignal);
             try {
                 expired = await this._contract.isInitAuthorizationExpired(this._data, this.signatureData);
             }
@@ -78,7 +78,7 @@ class IEscrowSelfInitSwap extends IEscrowSwap_1.IEscrowSwap {
      */
     async getSmartChainNetworkFee() {
         const swapContract = this._contract;
-        return (0, TokenAmount_1.toTokenAmount)(await (swapContract.getRawCommitFee != null ?
+        return (0, TokenAmount_js_1.toTokenAmount)(await (swapContract.getRawCommitFee != null ?
             swapContract.getRawCommitFee(this._getInitiator(), this.getSwapData(), this.feeRate) :
             swapContract.getCommitFee(this._getInitiator(), this.getSwapData(), this.feeRate)), this.wrapper._getNativeToken(), this.wrapper._prices);
     }
@@ -103,7 +103,7 @@ class IEscrowSelfInitSwap extends IEscrowSwap_1.IEscrowSwap {
             return true;
         }
         catch (e) {
-            if (e instanceof base_1.SignatureVerificationError) {
+            if ((0, base_1.isSignatureVerificationError)(e)) {
                 return false;
             }
             throw e;

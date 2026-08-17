@@ -1,4 +1,4 @@
-import { ParamDecoder } from "../ParamDecoder";
+import { ParamDecoder } from "../ParamDecoder.js";
 export declare class ResponseParamDecoder extends ParamDecoder {
     private readonly reader?;
     private readonly abortSignal?;

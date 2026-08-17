@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.IndexedDBUnifiedStorage = void 0;
-const Logger_1 = require("../utils/Logger");
+const Logger_js_1 = require("../utils/Logger.js");
 function toCompositeIndex(values) {
     if (values.length === 0)
         return [];
@@ -53,7 +53,7 @@ const indexes = {
 class IndexedDBUnifiedStorage {
     constructor(storageKey) {
         this.storageKey = storageKey;
-        this.logger = (0, Logger_1.getLogger)("IndexedDBUnifiedStorage(" + this.storageKey + "): ");
+        this.logger = (0, Logger_js_1.getLogger)("IndexedDBUnifiedStorage(" + this.storageKey + "): ");
     }
     //Reviver also needs to update the swap to the latest version
     async tryMigrateLocalStorage(storageKey, swapType, reviver) {

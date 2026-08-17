@@ -1,6 +1,6 @@
 import {ChainType} from "@atomiqlabs/base";
-import {TokenAmount} from "../types/TokenAmount";
-import {SCToken} from "../types/Token";
+import {TokenAmount} from "../types/TokenAmount.js";
+import {SCToken} from "../types/Token.js";
 
 /**
  * Type guard to check if a swap has gas drop functionality

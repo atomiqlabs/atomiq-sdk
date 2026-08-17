@@ -1,11 +1,11 @@
-import {IToBTCSwap, ToBTCSwapState} from "./IToBTCSwap";
+import {IToBTCSwap, ToBTCSwapState} from "./IToBTCSwap.js";
 import {ChainType, ClaimEvent, InitializeEvent, RefundEvent} from "@atomiqlabs/base";
-import {ISwapWrapperOptions, SwapTypeDefinition} from "../../ISwapWrapper";
-import {Intermediary, SingleChainReputationType} from "../../../intermediaries/Intermediary";
-import {IntermediaryError} from "../../../errors/IntermediaryError";
-import {IEscrowSwapWrapper} from "../IEscrowSwapWrapper";
-import {AmountData} from "../../../types/AmountData";
-import {mapArrayToObject} from "../../../utils/Utils";
+import {ISwapWrapperOptions, SwapTypeDefinition} from "../../ISwapWrapper.js";
+import {Intermediary, SingleChainReputationType} from "../../../intermediaries/Intermediary.js";
+import {IntermediaryError} from "../../../errors/IntermediaryError.js";
+import {IEscrowSwapWrapper} from "../IEscrowSwapWrapper.js";
+import {AmountData} from "../../../types/AmountData.js";
+import {mapArrayToObject} from "../../../utils/Utils.js";
 
 export type IToBTCDefinition<T extends ChainType, W extends IToBTCWrapper<T, any>, S extends IToBTCSwap<T>> = SwapTypeDefinition<T, W, S>;
 

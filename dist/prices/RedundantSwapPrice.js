@@ -1,24 +1,24 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RedundantSwapPrice = void 0;
-const BinancePriceProvider_1 = require("./providers/BinancePriceProvider");
-const OKXPriceProvider_1 = require("./providers/OKXPriceProvider");
-const CoinGeckoPriceProvider_1 = require("./providers/CoinGeckoPriceProvider");
-const CoinPaprikaPriceProvider_1 = require("./providers/CoinPaprikaPriceProvider");
-const Utils_1 = require("../utils/Utils");
-const ICachedSwapPrice_1 = require("./abstract/ICachedSwapPrice");
-const RequestError_1 = require("../errors/RequestError");
-const KrakenPriceProvider_1 = require("./providers/KrakenPriceProvider");
-const Logger_1 = require("../utils/Logger");
-const RetryUtils_1 = require("../utils/RetryUtils");
-const logger = (0, Logger_1.getLogger)("RedundantSwapPrice: ");
+const BinancePriceProvider_js_1 = require("./providers/BinancePriceProvider.js");
+const OKXPriceProvider_js_1 = require("./providers/OKXPriceProvider.js");
+const CoinGeckoPriceProvider_js_1 = require("./providers/CoinGeckoPriceProvider.js");
+const CoinPaprikaPriceProvider_js_1 = require("./providers/CoinPaprikaPriceProvider.js");
+const Utils_js_1 = require("../utils/Utils.js");
+const ICachedSwapPrice_js_1 = require("./abstract/ICachedSwapPrice.js");
+const RequestError_js_1 = require("../errors/RequestError.js");
+const KrakenPriceProvider_js_1 = require("./providers/KrakenPriceProvider.js");
+const Logger_js_1 = require("../utils/Logger.js");
+const RetryUtils_js_1 = require("../utils/RetryUtils.js");
+const logger = (0, Logger_js_1.getLogger)("RedundantSwapPrice: ");
 /**
  * Swap price API using multiple price sources, handles errors on the APIs and automatically switches between them, such
  *  that there always is a functional API
  *
  * @category Pricing
  */
-class RedundantSwapPrice extends ICachedSwapPrice_1.ICachedSwapPrice {
+class RedundantSwapPrice extends ICachedSwapPrice_js_1.ICachedSwapPrice {
     /**
      * Creates a new {@link RedundantSwapPrice} instance from an asset list and other data, using all
      *  the available price providers: {@link BinancePriceProvider}, {@link OKXPriceProvider},
@@ -30,31 +30,31 @@ class RedundantSwapPrice extends ICachedSwapPrice_1.ICachedSwapPrice {
      */
     static createFromTokenMap(maxAllowedFeeDiffPPM, assets, cacheTimeout) {
         const priceApis = [
-            new BinancePriceProvider_1.BinancePriceProvider(assets.map(coinData => {
+            new BinancePriceProvider_js_1.BinancePriceProvider(assets.map(coinData => {
                 return {
                     coinId: coinData.binancePair,
                     chains: coinData.chains
                 };
             })),
-            new OKXPriceProvider_1.OKXPriceProvider(assets.map(coinData => {
+            new OKXPriceProvider_js_1.OKXPriceProvider(assets.map(coinData => {
                 return {
                     coinId: coinData.okxPair,
                     chains: coinData.chains
                 };
             })),
-            new CoinGeckoPriceProvider_1.CoinGeckoPriceProvider(assets.map(coinData => {
+            new CoinGeckoPriceProvider_js_1.CoinGeckoPriceProvider(assets.map(coinData => {
                 return {
                     coinId: coinData.coinGeckoCoinId,
                     chains: coinData.chains
                 };
             })),
-            new CoinPaprikaPriceProvider_1.CoinPaprikaPriceProvider(assets.map(coinData => {
+            new CoinPaprikaPriceProvider_js_1.CoinPaprikaPriceProvider(assets.map(coinData => {
                 return {
                     coinId: coinData.coinPaprikaCoinId,
                     chains: coinData.chains
                 };
             })),
-            new KrakenPriceProvider_1.KrakenPriceProvider(assets.map(coinData => {
+            new KrakenPriceProvider_js_1.KrakenPriceProvider(assets.map(coinData => {
                 return {
                     coinId: coinData.krakenPair,
                     chains: coinData.chains
@@ -111,7 +111,7 @@ class RedundantSwapPrice extends ICachedSwapPrice_1.ICachedSwapPrice {
      */
     async fetchPriceFromMaybeOperationalPriceApis(chainIdentifier, token, abortSignal) {
         try {
-            return await (0, Utils_1.promiseAny)(this.getMaybeOperationalPriceApis().map(obj => (async () => {
+            return await (0, Utils_js_1.promiseAny)(this.getMaybeOperationalPriceApis().map(obj => (async () => {
                 try {
                     const price = await obj.priceApi.getPrice(chainIdentifier, token, abortSignal);
                     logger.debug("fetchPrice(): Price from " + obj.priceApi.constructor.name + ": ", price.toString(10));
@@ -130,7 +130,7 @@ class RedundantSwapPrice extends ICachedSwapPrice_1.ICachedSwapPrice {
             const e = _e;
             if (abortSignal != null)
                 abortSignal.throwIfAborted();
-            throw e.find(err => !(err instanceof RequestError_1.RequestError)) || e[0];
+            throw e.find(err => !(err instanceof RequestError_js_1.RequestError)) || e[0];
         }
     }
     /**
@@ -143,7 +143,7 @@ class RedundantSwapPrice extends ICachedSwapPrice_1.ICachedSwapPrice {
      * @protected
      */
     fetchPrice(chainIdentifier, token, abortSignal) {
-        return (0, RetryUtils_1.tryWithRetries)(async () => {
+        return (0, RetryUtils_js_1.tryWithRetries)(async () => {
             const operationalPriceApi = this.getOperationalPriceApi();
             if (operationalPriceApi != null) {
                 try {
@@ -157,7 +157,7 @@ class RedundantSwapPrice extends ICachedSwapPrice_1.ICachedSwapPrice {
                 }
             }
             return await this.fetchPriceFromMaybeOperationalPriceApis(chainIdentifier, token, abortSignal);
-        }, undefined, RequestError_1.RequestError, abortSignal);
+        }, undefined, RequestError_js_1.RequestError, abortSignal);
     }
     /**
      * @inheritDoc
@@ -175,7 +175,7 @@ class RedundantSwapPrice extends ICachedSwapPrice_1.ICachedSwapPrice {
      */
     async fetchUsdPriceFromMaybeOperationalPriceApis(abortSignal) {
         try {
-            return await (0, Utils_1.promiseAny)(this.getMaybeOperationalPriceApis().map(obj => (async () => {
+            return await (0, Utils_js_1.promiseAny)(this.getMaybeOperationalPriceApis().map(obj => (async () => {
                 try {
                     const price = await obj.priceApi.getUsdPrice(abortSignal);
                     logger.debug("fetchPrice(): USD price from " + obj.priceApi.constructor.name + ": ", price.toString(10));
@@ -194,7 +194,7 @@ class RedundantSwapPrice extends ICachedSwapPrice_1.ICachedSwapPrice {
             const e = _e;
             if (abortSignal != null)
                 abortSignal.throwIfAborted();
-            throw e.find(err => !(err instanceof RequestError_1.RequestError)) || e[0];
+            throw e.find(err => !(err instanceof RequestError_js_1.RequestError)) || e[0];
         }
     }
     /**
@@ -205,7 +205,7 @@ class RedundantSwapPrice extends ICachedSwapPrice_1.ICachedSwapPrice {
      * @protected
      */
     fetchUsdPrice(abortSignal) {
-        return (0, RetryUtils_1.tryWithRetries)(() => {
+        return (0, RetryUtils_js_1.tryWithRetries)(() => {
             const operationalPriceApi = this.getOperationalPriceApi();
             if (operationalPriceApi != null) {
                 return operationalPriceApi.priceApi.getUsdPrice(abortSignal).catch(err => {
@@ -216,7 +216,7 @@ class RedundantSwapPrice extends ICachedSwapPrice_1.ICachedSwapPrice {
                 });
             }
             return this.fetchUsdPriceFromMaybeOperationalPriceApis(abortSignal);
-        }, undefined, RequestError_1.RequestError, abortSignal);
+        }, undefined, RequestError_js_1.RequestError, abortSignal);
     }
 }
 exports.RedundantSwapPrice = RedundantSwapPrice;

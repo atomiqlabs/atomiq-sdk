@@ -1,48 +1,19 @@
-import { SwapType } from "../../../enums/SwapType";
+import { OnchainForGasSwapState } from "./OnchainForGasSwapState.js";
+import { SwapType } from "../../../enums/SwapType.js";
 import { ChainType } from "@atomiqlabs/base";
-import { ISwap, ISwapInit } from "../../ISwap";
-import { OnchainForGasSwapTypeDefinition, OnchainForGasWrapper } from "./OnchainForGasWrapper";
-import { Fee } from "../../../types/fees/Fee";
-import { IBitcoinWallet } from "../../../bitcoin/wallet/IBitcoinWallet";
-import { IAddressSwap } from "../../IAddressSwap";
-import { IBTCWalletSwap } from "../../IBTCWalletSwap";
+import { ISwap, ISwapInit } from "../../ISwap.js";
+import { OnchainForGasSwapTypeDefinition, OnchainForGasWrapper } from "./OnchainForGasWrapper.js";
+import { Fee } from "../../../types/fees/Fee.js";
+import { IBitcoinWallet } from "../../../bitcoin/wallet/IBitcoinWallet.js";
+import { IAddressSwap } from "../../IAddressSwap.js";
+import { IBTCWalletSwap } from "../../IBTCWalletSwap.js";
 import { Transaction } from "@scure/btc-signer";
-import { MinimalBitcoinWalletInterface, MinimalBitcoinWalletInterfaceWithSigner } from "../../../types/wallets/MinimalBitcoinWalletInterface";
-import { FeeType } from "../../../enums/FeeType";
-import { TokenAmount } from "../../../types/TokenAmount";
-import { BtcToken, SCToken } from "../../../types/Token";
-import { LoggerType } from "../../../utils/Logger";
-/**
- * State enum for trusted on-chain gas swaps
- *
- * @category Swaps/Trusted Gas Swaps
- */
-export declare enum OnchainForGasSwapState {
-    /**
-     * The swap quote expired without user sending in the BTC
-     */
-    EXPIRED = -3,
-    /**
-     * The swap has failed after the intermediary already received the BTC on the source chain
-     */
-    FAILED = -2,
-    /**
-     * Swap was refunded and BTC returned to the user's refund address
-     */
-    REFUNDED = -1,
-    /**
-     * Swap was created, send the BTC to the swap address
-     */
-    PR_CREATED = 0,
-    /**
-     * The swap is finished after the intermediary sent funds on the destination chain
-     */
-    FINISHED = 1,
-    /**
-     * Swap is refundable because the intermediary cannot honor the swap request on the destination chain
-     */
-    REFUNDABLE = 2
-}
+import { MinimalBitcoinWalletInterface, MinimalBitcoinWalletInterfaceWithSigner } from "../../../types/wallets/MinimalBitcoinWalletInterface.js";
+import { FeeType } from "../../../enums/FeeType.js";
+import { TokenAmount } from "../../../types/TokenAmount.js";
+import { BtcToken, SCToken } from "../../../types/Token.js";
+import { LoggerType } from "../../../utils/Logger.js";
+export { OnchainForGasSwapState };
 export type OnchainForGasSwapInit = ISwapInit & {
     paymentHash: string;
     sequence: bigint;

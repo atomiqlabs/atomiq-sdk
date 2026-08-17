@@ -1,11 +1,11 @@
-import {ISwapWrapperOptions} from "../../ISwapWrapper";
-import {Intermediary} from "../../../intermediaries/Intermediary";
-import {IntermediaryError} from "../../../errors/IntermediaryError";
-import {mapArrayToObject, randomBytes} from "../../../utils/Utils";
+import {ISwapWrapperOptions} from "../../ISwapWrapper.js";
+import {Intermediary} from "../../../intermediaries/Intermediary.js";
+import {IntermediaryError} from "../../../errors/IntermediaryError.js";
+import {mapArrayToObject, randomBytes} from "../../../utils/Utils.js";
 import {BigIntBufferUtils, ChainType} from "@atomiqlabs/base";
-import {IEscrowSwapDefinition, IEscrowSwapWrapper} from "../IEscrowSwapWrapper";
-import {IEscrowSwap} from "../IEscrowSwap";
-import {AmountData} from "../../../types/AmountData";
+import {IEscrowSwapDefinition, IEscrowSwapWrapper} from "../IEscrowSwapWrapper.js";
+import {IEscrowSwap} from "../IEscrowSwap.js";
+import {AmountData} from "../../../types/AmountData.js";
 
 export type IFromBTCDefinition<T extends ChainType, W extends IFromBTCWrapper<T, any>, S extends IEscrowSwap<T>> = IEscrowSwapDefinition<T, W, S>;
 

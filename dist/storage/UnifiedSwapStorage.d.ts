@@ -1,6 +1,6 @@
 import { ChainType } from "@atomiqlabs/base";
-import { IUnifiedStorage, QueryParams } from "./IUnifiedStorage";
-import { ISwap } from "../swaps/ISwap";
+import { IUnifiedStorage, QueryParams } from "./IUnifiedStorage.js";
+import { ISwap } from "../swaps/ISwap.js";
 declare const indexes: readonly [{
     readonly key: "id";
     readonly type: "string";

@@ -1,4 +1,4 @@
-import { ChainIds, MultiChain } from "../../swapper/Swapper";
+import { ChainIds, MultiChain } from "../../swapper/Swapper.js";
 /**
  * Coin type definition for price providers
  * @category Pricing

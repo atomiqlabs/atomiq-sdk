@@ -1,7 +1,7 @@
 /// <reference types="node" />
 /// <reference types="node" />
 import { Transaction } from "@scure/btc-signer";
-import { CoinselectAddressTypes } from "../coinselect2";
+import { CoinselectAddressTypes } from "../coinselect2/index.js";
 /**
  * UTXO data structure for Bitcoin wallets
  *

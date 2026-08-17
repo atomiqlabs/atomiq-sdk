@@ -1,8 +1,8 @@
 /// <reference types="node" />
 /// <reference types="node" />
-import { ISwap, ISwapInit } from "../ISwap";
+import { ISwap, ISwapInit } from "../ISwap.js";
 import { ChainType, SwapCommitState, SwapData, SwapExpiredState, SwapNotCommitedState, SwapPaidState } from "@atomiqlabs/base";
-import { IEscrowSwapDefinition, IEscrowSwapWrapper } from "./IEscrowSwapWrapper";
+import { IEscrowSwapDefinition, IEscrowSwapWrapper } from "./IEscrowSwapWrapper.js";
 import { Buffer } from "buffer";
 export type IEscrowSwapInit<T extends SwapData> = ISwapInit & {
     data?: T;

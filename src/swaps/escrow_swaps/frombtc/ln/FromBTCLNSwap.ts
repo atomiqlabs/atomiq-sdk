@@ -1,7 +1,9 @@
+import {FromBTCLNSwapState} from "./FromBTCLNSwapState.js";
 import {decode as bolt11Decode} from "@atomiqlabs/bolt11";
-import {FromBTCLNDefinition, FromBTCLNWrapper} from "./FromBTCLNWrapper";
-import {IFromBTCSelfInitSwap} from "../IFromBTCSelfInitSwap";
-import {SwapType} from "../../../../enums/SwapType";
+import {FromBTCLNDefinition, FromBTCLNWrapper} from "./FromBTCLNWrapper.js";
+import {IFromBTCSelfInitSwap} from "../IFromBTCSelfInitSwap.js";
+import {SwapType} from "../../../../enums/SwapType.js";
+import {ISwap} from "../../../ISwap.js";
 import {
     ChainSwapType,
     ChainType, isAbstractSigner,
@@ -12,82 +14,36 @@ import {
     SignatureVerificationError
 } from "@atomiqlabs/base";
 import {Buffer} from "buffer";
-import {LNURL} from "../../../../lnurl/LNURL";
-import {UserError} from "../../../../errors/UserError";
+import {LNURL} from "../../../../lnurl/LNURL.js";
+import {UserError} from "../../../../errors/UserError.js";
 import {
     IntermediaryAPI,
     PaymentAuthorizationResponse,
     PaymentAuthorizationResponseCodes
-} from "../../../../intermediaries/apis/IntermediaryAPI";
-import {IntermediaryError} from "../../../../errors/IntermediaryError";
-import {extendAbortController} from "../../../../utils/Utils";
-import {MinimalLightningNetworkWalletInterface} from "../../../../types/wallets/MinimalLightningNetworkWalletInterface";
-import {IClaimableSwap} from "../../../IClaimableSwap";
-import {IAddressSwap} from "../../../IAddressSwap";
-import {IEscrowSelfInitSwapInit, isIEscrowSelfInitSwapInit} from "../../IEscrowSelfInitSwap";
-import {TokenAmount, toTokenAmount} from "../../../../types/TokenAmount";
-import {BitcoinTokens, BtcToken, SCToken} from "../../../../types/Token";
-import {getLogger, LoggerType} from "../../../../utils/Logger";
-import {timeoutPromise} from "../../../../utils/TimeoutUtils";
-import {isLNURLWithdraw, LNURLWithdraw, LNURLWithdrawParamsWithUrl} from "../../../../types/lnurl/LNURLWithdraw";
+} from "../../../../intermediaries/apis/IntermediaryAPI.js";
+import {IntermediaryError} from "../../../../errors/IntermediaryError.js";
+import {extendAbortController} from "../../../../utils/Utils.js";
+import {MinimalLightningNetworkWalletInterface} from "../../../../types/wallets/MinimalLightningNetworkWalletInterface.js";
+import {IClaimableSwap} from "../../../IClaimableSwap.js";
+import {IAddressSwap} from "../../../IAddressSwap.js";
+import {IEscrowSelfInitSwapInit, isIEscrowSelfInitSwapInit} from "../../IEscrowSelfInitSwap.js";
+import {TokenAmount, toTokenAmount} from "../../../../types/TokenAmount.js";
+import {BitcoinTokens, BtcToken, SCToken} from "../../../../types/Token.js";
+import {getLogger, LoggerType} from "../../../../utils/Logger.js";
+import {timeoutPromise} from "../../../../utils/TimeoutUtils.js";
+import {isLNURLWithdraw, LNURLWithdraw, LNURLWithdrawParamsWithUrl} from "../../../../types/lnurl/LNURLWithdraw.js";
 import {sha256} from "@noble/hashes/sha2";
 import {
     SwapExecutionActionSendToAddress,
     SwapExecutionActionSignSmartChainTx
-} from "../../../../types/SwapExecutionAction";
+} from "../../../../types/SwapExecutionAction.js";
 import {
     SwapExecutionStepPayment,
     SwapExecutionStepSettlement
-} from "../../../../types/SwapExecutionStep";
-import {SwapStateInfo} from "../../../../types/SwapStateInfo";
+} from "../../../../types/SwapExecutionStep.js";
+import {SwapStateInfo} from "../../../../types/SwapStateInfo.js";
 
-/**
- * State enum for legacy Lightning -> Smart chain swaps
- * @category Swaps/Legacy/Lightning → Smart chain
- */
-export enum FromBTCLNSwapState {
-    /**
-     * Swap has failed as the user didn't settle the HTLC on the destination before expiration
-     */
-    FAILED = -4,
-    /**
-     * Swap has expired for good and there is no way how it can be executed anymore
-     */
-    QUOTE_EXPIRED = -3,
-    /**
-     * A swap is almost expired, and it should be presented to the user as expired, though
-     *  there is still a chance that it will be processed
-     */
-    QUOTE_SOFT_EXPIRED = -2,
-    /**
-     * Swap HTLC on the destination chain has expired, it is not safe anymore to settle (claim) the
-     *  swap on the destination smart chain.
-     */
-    EXPIRED = -1,
-    /**
-     * Swap quote was created, use {@link FromBTCLNSwap.getAddress} or {@link FromBTCLNSwap.getHyperlink}
-     *  to get the bolt11 lightning network invoice to pay to initiate the swap, then use the
-     *  {@link FromBTCLNSwap.waitForPayment} to wait till the lightning network payment is received
-     *  by the intermediary (LP)
-     */
-    PR_CREATED = 0,
-    /**
-     * Lightning network payment has been received by the intermediary (LP), the user can now settle
-     *  the swap on the destination smart chain side with {@link FromBTCLNSwap.commitAndClaim} (if
-     *  the underlying chain supports it - check with {@link FromBTCLNSwap.canCommitAndClaimInOneShot}),
-     *  or by calling {@link FromBTCLNSwap.commit} and {@link FromBTCLNSwap.claim} separately.
-     */
-    PR_PAID = 1,
-    /**
-     * Swap escrow HTLC has been created on the destination chain. Continue by claiming it with the
-     *  {@link FromBTCLNSwap.claim} or {@link FromBTCLNSwap.txsClaim} function.
-     */
-    CLAIM_COMMITED = 2,
-    /**
-     * Swap successfully settled and funds received on the destination chain
-     */
-    CLAIM_CLAIMED = 3
-}
+export {FromBTCLNSwapState};
 
 const FromBTCLNSwapStateDescription = {
     [FromBTCLNSwapState.FAILED]: "Swap has failed as the user didn't settle the HTLC on the destination before expiration",
@@ -199,7 +155,7 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
             if(initOrObject.initialSwapData==null) {
                 this.initialSwapData = this._data!;
             } else {
-                this.initialSwapData = SwapData.deserialize<T["Data"]>(initOrObject.initialSwapData);
+                this.initialSwapData = new (wrapper._swapDataDeserializer(this._contractVersion))(initOrObject.initialSwapData);
             }
 
             this.lnurl = initOrObject.lnurl;
@@ -1668,3 +1624,4 @@ export class FromBTCLNSwap<T extends ChainType = ChainType>
     }
 
 }
+

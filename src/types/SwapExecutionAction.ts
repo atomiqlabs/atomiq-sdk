@@ -1,7 +1,7 @@
 import {ChainType} from "@atomiqlabs/base";
 import {Transaction} from "@scure/btc-signer";
-import {isTokenAmount, TokenAmount} from "./TokenAmount";
-import {BitcoinTokens, BtcToken, isBtcToken} from "./Token";
+import {isTokenAmount, TokenAmount} from "./TokenAmount.js";
+import {BitcoinTokens, BtcToken, isBtcToken} from "./Token.js";
 
 const swapExecutionActionWaitNames = {
     LP: "Awaiting LP payout",

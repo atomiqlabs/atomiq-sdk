@@ -1,8 +1,8 @@
-import { Token } from "../types/Token";
-import { TokenAmount } from "../types/TokenAmount";
-import { LNURLPay, LNURLPayParamsWithUrl } from "../types/lnurl/LNURLPay";
-import { LNURLWithdraw, LNURLWithdrawParamsWithUrl } from "../types/lnurl/LNURLWithdraw";
-import { Swapper } from "../swapper/Swapper";
+import { Token } from "../types/Token.js";
+import { TokenAmount } from "../types/TokenAmount.js";
+import { LNURLPay, LNURLPayParamsWithUrl } from "../types/lnurl/LNURLPay.js";
+import { LNURLWithdraw, LNURLWithdrawParamsWithUrl } from "../types/lnurl/LNURLWithdraw.js";
+import { Swapper } from "../swapper/Swapper.js";
 /**
  * Unified amount type for all API responses
  *

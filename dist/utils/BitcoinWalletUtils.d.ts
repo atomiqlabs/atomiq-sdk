@@ -1,4 +1,4 @@
-import { IBitcoinWallet } from "../bitcoin/wallet/IBitcoinWallet";
+import { IBitcoinWallet } from "../bitcoin/wallet/IBitcoinWallet.js";
 import { BTC_NETWORK } from "@scure/btc-signer/utils";
 import { BitcoinNetwork, BitcoinRpcWithAddressIndex } from "@atomiqlabs/base";
 export declare function toBitcoinWallet(_bitcoinWallet: IBitcoinWallet | {

@@ -1,4 +1,4 @@
-import { RequestSchema, RequestSchemaResultPromise } from "../SchemaVerifier";
+import { RequestSchema, RequestSchemaResultPromise } from "../SchemaVerifier.js";
 export type RequestBody = {
     [key: string]: Promise<any> | any;
 };

@@ -1,7 +1,7 @@
-import { CoinselectAddressTypes } from "../coinselect2";
+import { CoinselectAddressTypes } from "../coinselect2/index.js";
 import { BTC_NETWORK } from "@scure/btc-signer/utils";
 import { Transaction } from "@scure/btc-signer";
-import { BitcoinWalletUtxo, BitcoinWalletUtxoBase, IBitcoinWallet } from "./IBitcoinWallet";
+import { BitcoinWalletUtxo, BitcoinWalletUtxoBase, IBitcoinWallet } from "./IBitcoinWallet.js";
 import { BitcoinNetwork, BitcoinRpcWithAddressIndex } from "@atomiqlabs/base";
 /**
  * Identifies the address type of a Bitcoin address

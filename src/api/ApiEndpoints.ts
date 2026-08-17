@@ -1,8 +1,8 @@
-import {SwapExecutionStep} from "../types/SwapExecutionStep";
-import {SerializedAction} from "./SerializedAction";
-import {SwapExecutionAction} from "../types/SwapExecutionAction";
-import {ApiAmount, ApiLNURL, ApiToken} from "./ApiTypes";
-import {LNURLDecodedSuccessAction} from "../types/lnurl/LNURLPay";
+import {SwapExecutionStep} from "../types/SwapExecutionStep.js";
+import {SerializedAction} from "./SerializedAction.js";
+import {SwapExecutionAction} from "../types/SwapExecutionAction.js";
+import {ApiAmount, ApiLNURL, ApiToken} from "./ApiTypes.js";
+import {LNURLDecodedSuccessAction} from "../types/lnurl/LNURLPay.js";
 
 /**
  * Base serialized swap data returned by API endpoints that expose swap details.

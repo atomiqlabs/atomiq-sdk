@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.httpPost = exports.httpGet = exports.fetchWithTimeout = void 0;
-const RequestError_1 = require("../errors/RequestError");
-const TimeoutUtils_1 = require("../utils/TimeoutUtils");
+const RequestError_js_1 = require("../errors/RequestError.js");
+const TimeoutUtils_js_1 = require("../utils/TimeoutUtils.js");
 /**
  * Mimics fetch API byt adds a timeout to the request
  *
@@ -13,7 +13,7 @@ function fetchWithTimeout(input, init) {
     if (init == null)
         init = {};
     if (init.timeout != null)
-        init.signal = (0, TimeoutUtils_1.timeoutSignal)(init.timeout, new Error("Network request timed out"), init.signal ?? undefined);
+        init.signal = (0, TimeoutUtils_js_1.timeoutSignal)(init.timeout, new Error("Network request timed out"), init.signal ?? undefined);
     return fetch(input, init).catch(e => {
         if (e.name === "AbortError" && init.signal != null) {
             throw init.signal.reason;
@@ -47,7 +47,7 @@ async function httpGet(url, timeout, abortSignal, allowNon200 = false, headers =
             resp = await response.text();
         }
         catch (e) {
-            throw new RequestError_1.RequestError(response.statusText, response.status);
+            throw new RequestError_js_1.RequestError(response.statusText, response.status);
         }
         if (allowNon200) {
             try {
@@ -56,7 +56,7 @@ async function httpGet(url, timeout, abortSignal, allowNon200 = false, headers =
             catch (e) {
             }
         }
-        throw RequestError_1.RequestError.parse(resp, response.status);
+        throw RequestError_js_1.RequestError.parse(resp, response.status);
     }
     return await response.json();
 }
@@ -88,9 +88,9 @@ async function httpPost(url, body, timeout, abortSignal, headers = {}) {
             resp = await response.text();
         }
         catch (e) {
-            throw new RequestError_1.RequestError(response.statusText, response.status);
+            throw new RequestError_js_1.RequestError(response.statusText, response.status);
         }
-        throw RequestError_1.RequestError.parse(resp, response.status);
+        throw RequestError_js_1.RequestError.parse(resp, response.status);
     }
     return await response.json();
 }

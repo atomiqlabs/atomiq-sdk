@@ -1,14 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.IntermediaryDiscovery = exports.SwapHandlerType = void 0;
-const Intermediary_1 = require("./Intermediary");
-const SwapType_1 = require("../enums/SwapType");
+const Intermediary_js_1 = require("./Intermediary.js");
+const SwapType_js_1 = require("../enums/SwapType.js");
 const events_1 = require("events");
 const buffer_1 = require("buffer");
-const Utils_1 = require("../utils/Utils");
-const Logger_1 = require("../utils/Logger");
-const HttpUtils_1 = require("../http/HttpUtils");
-const RetryUtils_1 = require("../utils/RetryUtils");
+const Utils_js_1 = require("../utils/Utils.js");
+const Logger_js_1 = require("../utils/Logger.js");
+const HttpUtils_js_1 = require("../http/HttpUtils.js");
+const RetryUtils_js_1 = require("../utils/RetryUtils.js");
 /**
  * Swap handler type mapping for intermediary communication
  *
@@ -34,23 +34,23 @@ var SwapHandlerType;
 function swapHandlerTypeToSwapType(swapHandlerType) {
     switch (swapHandlerType) {
         case SwapHandlerType.FROM_BTC:
-            return SwapType_1.SwapType.FROM_BTC;
+            return SwapType_js_1.SwapType.FROM_BTC;
         case SwapHandlerType.TO_BTC:
-            return SwapType_1.SwapType.TO_BTC;
+            return SwapType_js_1.SwapType.TO_BTC;
         case SwapHandlerType.FROM_BTCLN:
-            return SwapType_1.SwapType.FROM_BTCLN;
+            return SwapType_js_1.SwapType.FROM_BTCLN;
         case SwapHandlerType.TO_BTCLN:
-            return SwapType_1.SwapType.TO_BTCLN;
+            return SwapType_js_1.SwapType.TO_BTCLN;
         case SwapHandlerType.FROM_BTC_TRUSTED:
-            return SwapType_1.SwapType.TRUSTED_FROM_BTC;
+            return SwapType_js_1.SwapType.TRUSTED_FROM_BTC;
         case SwapHandlerType.FROM_BTCLN_TRUSTED:
-            return SwapType_1.SwapType.TRUSTED_FROM_BTCLN;
+            return SwapType_js_1.SwapType.TRUSTED_FROM_BTCLN;
         case SwapHandlerType.FROM_BTC_SPV:
-            return SwapType_1.SwapType.SPV_VAULT_FROM_BTC;
+            return SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC;
         case SwapHandlerType.FROM_BTCLN_AUTO:
-            return SwapType_1.SwapType.FROM_BTCLN_AUTO;
+            return SwapType_js_1.SwapType.FROM_BTCLN_AUTO;
         default:
-            return SwapType_1.SwapType.TRUSTED_FROM_BTCLN;
+            return SwapType_js_1.SwapType.TRUSTED_FROM_BTCLN;
     }
 }
 /**
@@ -61,7 +61,7 @@ function swapHandlerTypeToSwapType(swapHandlerType) {
  * @param swapAmount
  */
 function getIntermediaryComparator(swapType, tokenAddress, swapAmount) {
-    if (swapType === SwapType_1.SwapType.TO_BTC) {
+    if (swapType === SwapType_js_1.SwapType.TO_BTC) {
         //TODO: Also take reputation into account
     }
     return (a, b) => {
@@ -83,7 +83,7 @@ function getIntermediaryComparator(swapType, tokenAddress, swapAmount) {
         }
     };
 }
-const logger = (0, Logger_1.getLogger)("IntermediaryDiscovery: ");
+const logger = (0, Logger_js_1.getLogger)("IntermediaryDiscovery: ");
 const REGISTRY_URL = "https://api.github.com/repos/adambor/SolLightning-registry/contents/registry.json?ref=main";
 //To allow for legacy responses from not-yet updated LPs
 const DEFAULT_CHAIN = "SOLANA";
@@ -115,7 +115,7 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
         if (this.overrideNodeUrls != null && this.overrideNodeUrls.length > 0) {
             return this.overrideNodeUrls;
         }
-        const response = await (0, RetryUtils_1.tryWithRetries)(() => (0, HttpUtils_1.httpGet)(this.registryUrl, this.httpRequestTimeout, abortSignal), { maxRetries: 3, delay: 100, exponential: true });
+        const response = await (0, RetryUtils_js_1.tryWithRetries)(() => (0, HttpUtils_js_1.httpGet)(this.registryUrl, this.httpRequestTimeout, abortSignal), { maxRetries: 3, delay: 100, exponential: true });
         const content = response.content.replace(new RegExp("\\n", "g"), "");
         return JSON.parse(buffer_1.Buffer.from(content, "base64").toString());
     }
@@ -129,7 +129,7 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
      * @param abortSignal
      */
     async getNodeInfo(url, abortSignal) {
-        const response = await (0, RetryUtils_1.tryWithRetries)(() => this.lpApi.getIntermediaryInfo(url, this.httpRequestTimeout, abortSignal), { maxRetries: 3, delay: 100, exponential: true }, undefined, abortSignal, "debug");
+        const response = await (0, RetryUtils_js_1.tryWithRetries)(() => this.lpApi.getIntermediaryInfo(url, this.httpRequestTimeout, abortSignal), { maxRetries: 3, delay: 100, exponential: true }, undefined, abortSignal, "debug");
         abortSignal?.throwIfAborted();
         const promises = [];
         const addresses = {};
@@ -197,7 +197,7 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
             for (let key in nodeInfo.info.services) {
                 services[swapHandlerTypeToSwapType(key)] = nodeInfo.info.services[key];
             }
-            return new Intermediary_1.Intermediary(url, nodeInfo.addresses, services, undefined, nodeInfo.contractVersions);
+            return new Intermediary_js_1.Intermediary(url, nodeInfo.addresses, services, undefined, nodeInfo.contractVersions);
         }
         catch (e) {
             logger.warn("fetchIntermediaries(): Intermediary " + url + ` is unreachable due to ${e.name ?? e.message} error, skipping...`);
@@ -230,7 +230,7 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
         //Get LP urls
         const urls = await this.getIntermediaryUrls(abortSignal);
         logger.debug("reloadIntermediaries(): Pinging intermediaries: ", urls.join());
-        const abortController = (0, Utils_1.extendAbortController)(abortSignal);
+        const abortController = (0, Utils_js_1.extendAbortController)(abortSignal);
         let timer;
         const intermediaries = await Promise.all(urls.map(url => this.loadIntermediary(url, abortController.signal).then(lp => {
             if (lp != null && timer == null)
@@ -280,8 +280,8 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
                             };
                         }
                         else {
-                            tokenMinMax.min = (0, Utils_1.bigIntMin)(tokenMinMax.min, BigInt(swapService.min));
-                            tokenMinMax.max = (0, Utils_1.bigIntMax)(tokenMinMax.max, BigInt(swapService.max));
+                            tokenMinMax.min = (0, Utils_js_1.bigIntMin)(tokenMinMax.min, BigInt(swapService.min));
+                            tokenMinMax.max = (0, Utils_js_1.bigIntMax)(tokenMinMax.max, BigInt(swapService.max));
                         }
                     }
                 }
@@ -309,8 +309,8 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
                             };
                         }
                         else {
-                            tokenMinMax.min = (0, Utils_1.bigIntMin)(tokenMinMax.min, BigInt(swapService.min));
-                            tokenMinMax.max = (0, Utils_1.bigIntMax)(tokenMinMax.max, BigInt(swapService.max));
+                            tokenMinMax.min = (0, Utils_js_1.bigIntMin)(tokenMinMax.min, BigInt(swapService.min));
+                            tokenMinMax.max = (0, Utils_js_1.bigIntMax)(tokenMinMax.max, BigInt(swapService.max));
                         }
                     }
                 }
@@ -391,9 +391,9 @@ class IntermediaryDiscovery extends events_1.EventEmitter {
             const contracts = this.swapContracts[chainIdentifier][e.getContractVersion(chainIdentifier) ?? "v1"];
             if (contracts == null)
                 return false;
-            if (swapType === SwapType_1.SwapType.FROM_BTCLN_AUTO && !contracts.swapContract?.supportsInitWithoutClaimer)
+            if (swapType === SwapType_js_1.SwapType.FROM_BTCLN_AUTO && !contracts.swapContract?.supportsInitWithoutClaimer)
                 return false;
-            if (swapType === SwapType_1.SwapType.SPV_VAULT_FROM_BTC && contracts.spvVaultContract == null)
+            if (swapType === SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC && contracts.spvVaultContract == null)
                 return false;
             return true;
         });

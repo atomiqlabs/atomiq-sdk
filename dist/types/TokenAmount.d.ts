@@ -1,6 +1,6 @@
-import { ISwapPrice } from "../prices/abstract/ISwapPrice";
-import { Token } from "./Token";
-import { PriceInfoType } from "./PriceInfoType";
+import { ISwapPrice } from "../prices/abstract/ISwapPrice.js";
+import { Token } from "./Token.js";
+import { PriceInfoType } from "./PriceInfoType.js";
 /**
  * Represents a token amount along with its formatted values and USD valuation helpers
  *

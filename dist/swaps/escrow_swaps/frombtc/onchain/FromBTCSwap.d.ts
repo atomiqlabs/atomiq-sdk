@@ -1,68 +1,22 @@
-import { IFromBTCSelfInitSwap } from "../IFromBTCSelfInitSwap";
-import { SwapType } from "../../../../enums/SwapType";
-import { FromBTCDefinition, FromBTCWrapper } from "./FromBTCWrapper";
+import { FromBTCSwapState } from "./FromBTCSwapState.js";
+import { IFromBTCSelfInitSwap } from "../IFromBTCSelfInitSwap.js";
+import { SwapType } from "../../../../enums/SwapType.js";
+import { FromBTCDefinition, FromBTCWrapper } from "./FromBTCWrapper.js";
 import { ChainType, SwapCommitState, SwapData } from "@atomiqlabs/base";
-import { IBitcoinWallet } from "../../../../bitcoin/wallet/IBitcoinWallet";
-import { IBTCWalletSwap } from "../../../IBTCWalletSwap";
+import { IBitcoinWallet } from "../../../../bitcoin/wallet/IBitcoinWallet.js";
+import { IBTCWalletSwap } from "../../../IBTCWalletSwap.js";
 import { Transaction } from "@scure/btc-signer";
-import { MinimalBitcoinWalletInterface, MinimalBitcoinWalletInterfaceWithSigner } from "../../../../types/wallets/MinimalBitcoinWalletInterface";
-import { IClaimableSwap } from "../../../IClaimableSwap";
-import { IEscrowSelfInitSwapInit } from "../../IEscrowSelfInitSwap";
-import { IAddressSwap } from "../../../IAddressSwap";
-import { TokenAmount } from "../../../../types/TokenAmount";
-import { BtcToken, SCToken } from "../../../../types/Token";
-import { LoggerType } from "../../../../utils/Logger";
-import { SwapExecutionActionSendToAddress, SwapExecutionActionSignPSBT, SwapExecutionActionSignSmartChainTx, SwapExecutionActionWait } from "../../../../types/SwapExecutionAction";
-import { SwapExecutionStepPayment, SwapExecutionStepSettlement, SwapExecutionStepSetup } from "../../../../types/SwapExecutionStep";
-import { SwapStateInfo } from "../../../../types/SwapStateInfo";
-/**
- * State enum for legacy escrow based Bitcoin -> Smart chain swaps.
- *
- * @category Swaps/Legacy/Bitcoin → Smart chain
- */
-export declare enum FromBTCSwapState {
-    /**
-     * Bitcoin swap address has expired and the intermediary (LP) has already refunded
-     *  its funds. No BTC should be sent anymore!
-     */
-    FAILED = -4,
-    /**
-     * Bitcoin swap address has expired, user should not send any BTC anymore! Though
-     *  the intermediary (LP) hasn't refunded yet. So if there is a transaction already
-     *  in-flight the swap might still succeed.
-     */
-    EXPIRED = -3,
-    /**
-     * Swap has expired for good and there is no way how it can be executed anymore
-     */
-    QUOTE_EXPIRED = -2,
-    /**
-     * A swap is almost expired, and it should be presented to the user as expired, though
-     *  there is still a chance that it will be processed
-     */
-    QUOTE_SOFT_EXPIRED = -1,
-    /**
-     * Swap quote was created, use the {@link FromBTCSwap.commit} or {@link FromBTCSwap.txsCommit} functions
-     *  to initiate it by creating the swap escrow on the destination smart chain
-     */
-    PR_CREATED = 0,
-    /**
-     * Swap escrow was initiated (committed) on the destination chain, user can send the BTC to the
-     *  swap address with the {@link FromBTCSwap.getFundedPsbt}, {@link FromBTCSwap.getAddress} or
-     *  {@link FromBTCSwap.getHyperlink} functions.
-     */
-    CLAIM_COMMITED = 1,
-    /**
-     * Input bitcoin transaction was confirmed, wait for automatic settlement by the watchtowers
-     *  using the {@link FromBTCSwap.waitTillClaimed} function or settle manually using the {@link FromBTCSwap.claim}
-     *  or {@link FromBTCSwap.txsClaim} function.
-     */
-    BTC_TX_CONFIRMED = 2,
-    /**
-     * Swap successfully settled and funds received on the destination chain
-     */
-    CLAIM_CLAIMED = 3
-}
+import { MinimalBitcoinWalletInterface, MinimalBitcoinWalletInterfaceWithSigner } from "../../../../types/wallets/MinimalBitcoinWalletInterface.js";
+import { IClaimableSwap } from "../../../IClaimableSwap.js";
+import { IEscrowSelfInitSwapInit } from "../../IEscrowSelfInitSwap.js";
+import { IAddressSwap } from "../../../IAddressSwap.js";
+import { TokenAmount } from "../../../../types/TokenAmount.js";
+import { BtcToken, SCToken } from "../../../../types/Token.js";
+import { LoggerType } from "../../../../utils/Logger.js";
+import { SwapExecutionActionSendToAddress, SwapExecutionActionSignPSBT, SwapExecutionActionSignSmartChainTx, SwapExecutionActionWait } from "../../../../types/SwapExecutionAction.js";
+import { SwapExecutionStepPayment, SwapExecutionStepSettlement, SwapExecutionStepSetup } from "../../../../types/SwapExecutionStep.js";
+import { SwapStateInfo } from "../../../../types/SwapStateInfo.js";
+export { FromBTCSwapState };
 export type FromBTCSwapInit<T extends SwapData> = IEscrowSelfInitSwapInit<T> & {
     data: T;
     address?: string;

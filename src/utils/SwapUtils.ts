@@ -1,15 +1,15 @@
 import {ChainType} from "@atomiqlabs/base";
-import {SwapType} from "../enums/SwapType";
-import {SupportsSwapType} from "../swapper/Swapper";
-import {SpvFromBTCSwap} from "../swaps/spv_swaps/SpvFromBTCSwap";
-import {FromBTCSwap} from "../swaps/escrow_swaps/frombtc/onchain/FromBTCSwap";
-import {FromBTCLNSwap} from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap";
-import {ToBTCSwap} from "../swaps/escrow_swaps/tobtc/onchain/ToBTCSwap";
-import {FromBTCLNAutoSwap} from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap";
-import {ToBTCLNSwap} from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNSwap";
-import {OnchainForGasSwap} from "../swaps/trusted/onchain/OnchainForGasSwap";
-import {LnForGasSwap} from "../swaps/trusted/ln/LnForGasSwap";
-import {ISwap} from "../swaps/ISwap";
+import {SwapType} from "../enums/SwapType.js";
+import {SupportsSwapType} from "../swapper/Swapper.js";
+import {SpvFromBTCSwap} from "../swaps/spv_swaps/SpvFromBTCSwap.js";
+import {FromBTCSwap} from "../swaps/escrow_swaps/frombtc/onchain/FromBTCSwap.js";
+import {FromBTCLNSwap} from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap.js";
+import {ToBTCSwap} from "../swaps/escrow_swaps/tobtc/onchain/ToBTCSwap.js";
+import {FromBTCLNAutoSwap} from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap.js";
+import {ToBTCLNSwap} from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNSwap.js";
+import {OnchainForGasSwap} from "../swaps/trusted/onchain/OnchainForGasSwap.js";
+import {LnForGasSwap} from "../swaps/trusted/ln/LnForGasSwap.js";
+import {ISwap} from "../swaps/ISwap.js";
 
 /**
  * Type mapping from SwapType enum to specific swap class implementations, it is important

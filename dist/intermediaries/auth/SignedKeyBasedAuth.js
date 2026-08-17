@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getSignedKeyBasedAuthHandler = void 0;
 const secp256k1_1 = require("@noble/curves/secp256k1");
-const Utils_1 = require("../../utils/Utils");
+const Utils_js_1 = require("../../utils/Utils.js");
 function parsePrivateKey(value, name) {
     if (!/^[0-9a-fA-F]{64}$/.test(value))
         throw new Error(`${name} must be a 32-byte hex private key`);
@@ -53,7 +53,7 @@ function getSignedKeyBasedAuthHandler(certificate, privateKey) {
         const timestamp = Math.floor(Date.now() / 1000);
         const timestampBuffer = Buffer.alloc(4);
         timestampBuffer.writeUInt32BE(timestamp);
-        const requestUid = (0, Utils_1.randomBytes)(32);
+        const requestUid = (0, Utils_js_1.randomBytes)(32);
         const toSign = Buffer.concat([timestampBuffer, requestUid]);
         const signature = secp256k1_1.schnorr.sign(toSign, _privateKey);
         return {

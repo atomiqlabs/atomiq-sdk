@@ -1,0 +1,196 @@
+import { Buffer } from "buffer";
+import { randomBytes as randomBytesNoble } from "@noble/hashes/utils";
+import { sha256 } from "@noble/hashes/sha2";
+import { BigIntBufferUtils } from "@atomiqlabs/base";
+import { UserError } from "../errors/UserError.js";
+/**
+ * Returns a promise that rejects if the passed promise resolves to `undefined` or `null`
+ *
+ * @param promise Promise to check resolve value of
+ * @param msg Optional message to pass to the thrown `Error`
+ * @category Utilities
+ */
+export function throwIfUndefined(promise, msg) {
+    return promise.then(val => {
+        if (val == undefined)
+            throw new Error(msg ?? "Promise value is undefined!");
+        return val;
+    });
+}
+/**
+ * Returns a promise that resolves when any of the passed promises resolves, and rejects if all the underlying
+ *  promises fail with an array of errors returned by the respective promises
+ *
+ * @param promises A list of promises
+ * @category Utilities
+ */
+export function promiseAny(promises) {
+    return new Promise((resolve, reject) => {
+        let numRejected = 0;
+        const rejectReasons = Array(promises.length);
+        promises.forEach((promise, index) => {
+            promise.then((val) => {
+                if (resolve != null)
+                    resolve(val);
+                resolve = null;
+            }).catch(err => {
+                rejectReasons[index] = err;
+                numRejected++;
+                if (numRejected === promises.length) {
+                    reject(rejectReasons);
+                }
+            });
+        });
+    });
+}
+/**
+ * Maps an array to object properties using the translation function
+ *
+ * @param array
+ * @param translator
+ */
+export function mapArrayToObject(array, translator) {
+    const obj = {};
+    array.forEach((item) => {
+        obj[item] = translator(item);
+    });
+    return obj;
+}
+/**
+ * Maps a JS object to another JS object based on the translation function, the translation function is called for every
+ *  property (value/key) of the old object and returns the new value of for this property
+ *
+ * @param obj
+ * @param translator
+ */
+export function objectMap(obj, translator) {
+    const resp = {};
+    for (let key in obj) {
+        resp[key] = translator(obj[key], key);
+    }
+    return resp;
+}
+/**
+ * Maps the entries from the map to the array using the translator function
+ *
+ * @param map
+ * @param translator
+ */
+export function mapToArray(map, translator) {
+    const arr = Array(map.size);
+    let pointer = 0;
+    for (let entry of map.entries()) {
+        arr[pointer++] = translator(entry[0], entry[1]);
+    }
+    return arr;
+}
+/**
+ * Creates a new abort controller that will abort if the passed abort signal aborts
+ *
+ * @param abortSignal
+ * @param timeoutSeconds
+ * @param timeoutMessage
+ */
+export function extendAbortController(abortSignal, timeoutSeconds, timeoutMessage) {
+    const _abortController = new AbortController();
+    if (abortSignal != null) {
+        abortSignal.throwIfAborted();
+        abortSignal.onabort = () => _abortController.abort(abortSignal.reason);
+    }
+    if (timeoutSeconds != null) {
+        const timeout = setTimeout(() => _abortController.abort(new Error(timeoutMessage ?? "Timed out")), timeoutSeconds * 1000);
+        _abortController.signal.addEventListener("abort", () => clearTimeout(timeout));
+    }
+    return _abortController;
+}
+export function bigIntMin(a, b) {
+    if (a == null)
+        return b;
+    if (b == null)
+        return a;
+    return a > b ? b : a;
+}
+export function bigIntMax(a, b) {
+    if (a == null)
+        return b;
+    if (b == null)
+        return a;
+    return b > a ? b : a;
+}
+export function bigIntCompare(a, b) {
+    return a > b ? 1 : a === b ? 0 : -1;
+}
+export function toBigInt(value) {
+    if (value == null)
+        return undefined;
+    return BigInt(value);
+}
+export function randomBytes(bytesLength) {
+    return Buffer.from(randomBytesNoble(bytesLength));
+}
+export function getTxoHash(outputScriptHex, value) {
+    return Buffer.from(sha256(Buffer.concat([
+        BigIntBufferUtils.toBuffer(BigInt(value), "le", 8),
+        Buffer.from(outputScriptHex, "hex")
+    ])));
+}
+export function fromDecimal(amount, decimalCount) {
+    if (amount.includes(".")) {
+        const [before, after] = amount.split(".");
+        if (decimalCount < 0) {
+            return BigInt(before.substring(0, before.length + decimalCount));
+        }
+        if (after.length > decimalCount) {
+            //Cut the last digits
+            return BigInt((before === "0" ? "" : before) + after.substring(0, decimalCount));
+        }
+        return BigInt((before === "0" ? "" : before) + after.padEnd(decimalCount, "0"));
+    }
+    else {
+        if (decimalCount < 0) {
+            return BigInt(amount.substring(0, amount.length + decimalCount));
+        }
+        else {
+            return BigInt(amount + "0".repeat(decimalCount));
+        }
+    }
+}
+export function toDecimal(amount, decimalCount, cut, displayDecimals) {
+    if (decimalCount <= 0) {
+        return amount.toString(10) + "0".repeat(-decimalCount);
+    }
+    const amountStr = amount.toString(10).padStart(decimalCount + 1, "0");
+    const splitPoint = amountStr.length - decimalCount;
+    const decimalPart = amountStr.substring(splitPoint, amountStr.length);
+    let cutTo = decimalPart.length;
+    if (cut && cutTo > 0) {
+        for (let i = decimalPart.length - 1; i--; i >= 0) {
+            if (decimalPart.charAt(i) === "0") {
+                cutTo = i;
+            }
+            else
+                break;
+        }
+        if (cutTo === 0)
+            cutTo = 1;
+    }
+    if (displayDecimals === 0)
+        return amountStr.substring(0, splitPoint);
+    if (displayDecimals != null && cutTo > displayDecimals)
+        cutTo = displayDecimals;
+    return amountStr.substring(0, splitPoint) + "." + decimalPart.substring(0, cutTo);
+}
+export function parseHashValueExact32Bytes(value, variableName) {
+    let hash;
+    if (typeof (value) === "string") {
+        if (value.length !== 64)
+            throw new UserError(`Invalid ${variableName} length, must be exactly 64 hexadecimal characters!`);
+        hash = Buffer.from(value, "hex");
+    }
+    else {
+        hash = value;
+    }
+    if (hash != null && hash.length !== 32)
+        throw new UserError(`Invalid ${variableName} length, must be exactly 32 bytes!`);
+    return hash;
+}

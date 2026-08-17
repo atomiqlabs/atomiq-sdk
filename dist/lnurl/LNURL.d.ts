@@ -1,6 +1,6 @@
 import { PaymentRequestObject, TagsObject } from "@atomiqlabs/bolt11";
-import { LNURLWithdraw, LNURLWithdrawParamsWithUrl } from "../types/lnurl/LNURLWithdraw";
-import { LNURLDecodedSuccessAction, LNURLPay, LNURLPayParamsWithUrl } from "../types/lnurl/LNURLPay";
+import { LNURLWithdraw, LNURLWithdrawParamsWithUrl } from "../types/lnurl/LNURLWithdraw.js";
+import { LNURLDecodedSuccessAction, LNURLPay, LNURLPayParamsWithUrl } from "../types/lnurl/LNURLPay.js";
 export type LNURLPaySuccessAction = {
     tag: string;
     description: string | null;

@@ -1,26 +1,26 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SwapperApi = void 0;
-const ApiTypes_1 = require("./ApiTypes");
-const SerializedAction_1 = require("./SerializedAction");
-const FeeType_1 = require("../enums/FeeType");
-const SwapSide_1 = require("../enums/SwapSide");
-const SwapType_1 = require("../enums/SwapType");
-const FromBTCLNSwap_1 = require("../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap");
-const FromBTCLNAutoSwap_1 = require("../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap");
-const IEscrowSwap_1 = require("../swaps/escrow_swaps/IEscrowSwap");
-const ToBTCLNSwap_1 = require("../swaps/escrow_swaps/tobtc/ln/ToBTCLNSwap");
-const SwapUtils_1 = require("../utils/SwapUtils");
+const ApiTypes_js_1 = require("./ApiTypes.js");
+const SerializedAction_js_1 = require("./SerializedAction.js");
+const FeeType_js_1 = require("../enums/FeeType.js");
+const SwapSide_js_1 = require("../enums/SwapSide.js");
+const SwapType_js_1 = require("../enums/SwapType.js");
+const FromBTCLNSwap_js_1 = require("../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap.js");
+const FromBTCLNAutoSwap_js_1 = require("../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap.js");
+const IEscrowSwap_js_1 = require("../swaps/escrow_swaps/IEscrowSwap.js");
+const ToBTCLNSwap_js_1 = require("../swaps/escrow_swaps/tobtc/ln/ToBTCLNSwap.js");
+const SwapUtils_js_1 = require("../utils/SwapUtils.js");
 function requiresSecretRevealForApi(swap, state) {
-    if (swap instanceof FromBTCLNSwap_1.FromBTCLNSwap) {
+    if (swap instanceof FromBTCLNSwap_js_1.FromBTCLNSwap) {
         if (swap.hasSecretPreimage())
             return false;
-        return state === FromBTCLNSwap_1.FromBTCLNSwapState.PR_PAID || state === FromBTCLNSwap_1.FromBTCLNSwapState.CLAIM_COMMITED;
+        return state === FromBTCLNSwap_js_1.FromBTCLNSwapState.PR_PAID || state === FromBTCLNSwap_js_1.FromBTCLNSwapState.CLAIM_COMMITED;
     }
-    if (swap instanceof FromBTCLNAutoSwap_1.FromBTCLNAutoSwap) {
+    if (swap instanceof FromBTCLNAutoSwap_js_1.FromBTCLNAutoSwap) {
         if (swap.hasSecretPreimage())
             return false;
-        return state === FromBTCLNAutoSwap_1.FromBTCLNAutoSwapState.CLAIM_COMMITED;
+        return state === FromBTCLNAutoSwap_js_1.FromBTCLNAutoSwapState.CLAIM_COMMITED;
     }
 }
 function createSwapOutputBase(swap, steps, stateInfo) {
@@ -28,31 +28,31 @@ function createSwapOutputBase(swap, steps, stateInfo) {
     const output = swap.getOutput();
     const feeBreakdown = swap.getFeeBreakdown();
     // Build fees from breakdown
-    const swapFeeEntry = feeBreakdown.find(f => f.type === FeeType_1.FeeType.SWAP);
-    const networkFeeEntry = feeBreakdown.find(f => f.type === FeeType_1.FeeType.NETWORK_OUTPUT);
+    const swapFeeEntry = feeBreakdown.find(f => f.type === FeeType_js_1.FeeType.SWAP);
+    const networkFeeEntry = feeBreakdown.find(f => f.type === FeeType_js_1.FeeType.NETWORK_OUTPUT);
     const flags = {};
-    if ((0, SwapUtils_1.isSwapType)(swap, SwapType_1.SwapType.TO_BTCLN)) {
+    if ((0, SwapUtils_js_1.isSwapType)(swap, SwapType_js_1.SwapType.TO_BTCLN)) {
         flags.lightningRecipientIsNonCustodialWallet = swap.isPayingToNonCustodialWallet();
         flags.lightningPaymentWillLikelyFail = swap.willLikelyFail();
         flags.lightningPaymentWithLongHTLCExpiration = swap.hasLongExpiration();
     }
     return {
         swapId: swap.getId(),
-        swapType: SwapType_1.SwapType[swap.getType()],
+        swapType: SwapType_js_1.SwapType[swap.getType()],
         state: {
             number: stateInfo.state,
             name: stateInfo.name,
             description: stateInfo.description
         },
         quote: {
-            inputAmount: (0, ApiTypes_1.toApiAmount)(input),
-            outputAmount: (0, ApiTypes_1.toApiAmount)(output),
+            inputAmount: (0, ApiTypes_js_1.toApiAmount)(input),
+            outputAmount: (0, ApiTypes_js_1.toApiAmount)(output),
             fees: {
                 swap: swapFeeEntry
-                    ? (0, ApiTypes_1.toApiAmount)(swapFeeEntry.fee.amountInSrcToken)
+                    ? (0, ApiTypes_js_1.toApiAmount)(swapFeeEntry.fee.amountInSrcToken)
                     : { amount: "0", rawAmount: "0", decimals: 0, symbol: "", chain: "" },
                 ...(networkFeeEntry ? {
-                    networkOutput: (0, ApiTypes_1.toApiAmount)(networkFeeEntry.fee.amountInSrcToken)
+                    networkOutput: (0, ApiTypes_js_1.toApiAmount)(networkFeeEntry.fee.amountInSrcToken)
                 } : {})
             },
             expiry: swap.getQuoteExpiry(),
@@ -61,12 +61,12 @@ function createSwapOutputBase(swap, steps, stateInfo) {
         flags,
         createdAt: swap.createdAt,
         steps,
-        ...(swap instanceof ToBTCLNSwap_1.ToBTCLNSwap && swap.isLNURL() ? {
+        ...(swap instanceof ToBTCLNSwap_js_1.ToBTCLNSwap && swap.isLNURL() ? {
             lnurl: {
                 pay: swap.getLNURL(),
                 successAction: swap.getSuccessAction() ?? undefined
             }
-        } : (swap instanceof FromBTCLNSwap_1.FromBTCLNSwap || swap instanceof FromBTCLNAutoSwap_1.FromBTCLNAutoSwap) && swap.isLNURL() ? {
+        } : (swap instanceof FromBTCLNSwap_js_1.FromBTCLNSwap || swap instanceof FromBTCLNAutoSwap_js_1.FromBTCLNAutoSwap) && swap.isLNURL() ? {
             lnurl: {
                 withdraw: swap.getLNURL(),
             }
@@ -83,7 +83,7 @@ function createListSwapOutput(swap, steps, stateInfo) {
     };
 }
 function parseSwapSide(side) {
-    return side === "INPUT" ? SwapSide_1.SwapSide.INPUT : SwapSide_1.SwapSide.OUTPUT;
+    return side === "INPUT" ? SwapSide_js_1.SwapSide.INPUT : SwapSide_js_1.SwapSide.OUTPUT;
 }
 class SwapperApi {
     constructor(swapper, config) {
@@ -92,7 +92,7 @@ class SwapperApi {
         this.config ??= {};
         this.config.syncOnGetStatus ??= true;
         this.endpoints = {
-            createSwap: (0, ApiTypes_1.createApiEndpoint)("POST", "Create a new cross-chain atomic swap. Returns a swap object with swapId, swapType, state, createdAt, quote (with inputAmount and outputAmount as ApiAmount objects each having amount/rawAmount/decimals/symbol/chain, a fees breakdown {swap, networkOutput?} of ApiAmount values, expiry, and outputAddress), a steps array, and optional lnurl. After creation, poll getSwapStatus periodically to get the next required action.", this.createSwap.bind(this), {
+            createSwap: (0, ApiTypes_js_1.createApiEndpoint)("POST", "Create a new cross-chain atomic swap. Returns a swap object with swapId, swapType, state, createdAt, quote (with inputAmount and outputAmount as ApiAmount objects each having amount/rawAmount/decimals/symbol/chain, a fees breakdown {swap, networkOutput?} of ApiAmount values, expiry, and outputAddress), a steps array, and optional lnurl. After creation, poll getSwapStatus periodically to get the next required action.", this.createSwap.bind(this), {
                 srcToken: { type: "string", required: true, description: "Source token ticker (e.g. 'BITCOIN-BTC', 'LIGHTNING-BTC', 'STARKNET-STRK', 'SOLANA-SOL')" },
                 dstToken: { type: "string", required: true, description: "Destination token ticker" },
                 amount: { type: "bigint", required: true, description: "Amount in base units as an integer" },
@@ -106,15 +106,15 @@ class SwapperApi {
                 lightningPaymentHTLCTimeout: { type: "number", required: false, description: "Custom expiry time in seconds" },
                 lightningPaymentMaxHTLCTimeout: { type: "number", required: false, description: "Custom maximum expiry time in seconds" }
             }),
-            listSwaps: (0, ApiTypes_1.createApiEndpoint)("GET", "List all swaps for a given signer address. Returns an array of swap objects, each with swapId, swapType, state, quote, steps, and terminal state flags (isFinished, isSuccess, isFailed, isExpired). Optionally filter by smart chain.", this.listSwaps.bind(this), {
+            listSwaps: (0, ApiTypes_js_1.createApiEndpoint)("GET", "List all swaps for a given signer address. Returns an array of swap objects, each with swapId, swapType, state, quote, steps, and terminal state flags (isFinished, isSuccess, isFailed, isExpired). Optionally filter by smart chain.", this.listSwaps.bind(this), {
                 signer: { type: "string", required: true, description: "Smart chain signer address to filter swaps for" },
                 chainId: { type: "string", required: false, description: "Optional smart chain identifier to filter swaps" }
             }),
-            listPendingSwaps: (0, ApiTypes_1.createApiEndpoint)("GET", "List swaps that require user action for a given signer address. Returns an array of swap objects with the same structure as listSwaps.", this.listPendingSwaps.bind(this), {
+            listPendingSwaps: (0, ApiTypes_js_1.createApiEndpoint)("GET", "List swaps that require user action for a given signer address. Returns an array of swap objects with the same structure as listSwaps.", this.listPendingSwaps.bind(this), {
                 signer: { type: "string", required: true, description: "Smart chain signer address to filter pending swaps for" },
                 chainId: { type: "string", required: false, description: "Optional smart chain identifier to filter pending swaps" }
             }),
-            getSupportedTokens: (0, ApiTypes_1.createApiEndpoint)("GET", "List all tokens available as swap input or output. Returns an array of ApiToken objects, each with id (e.g. BITCOIN-BTC, LIGHTNING-BTC, STARKNET-STRK), chainId, ticker, name, decimals, and address.", this.getSupportedTokens.bind(this), {
+            getSupportedTokens: (0, ApiTypes_js_1.createApiEndpoint)("GET", "List all tokens available as swap input or output. Returns an array of ApiToken objects, each with id (e.g. BITCOIN-BTC, LIGHTNING-BTC, STARKNET-STRK), chainId, ticker, name, decimals, and address.", this.getSupportedTokens.bind(this), {
                 side: {
                     type: "string",
                     required: true,
@@ -122,7 +122,7 @@ class SwapperApi {
                     allowedValues: ["INPUT", "OUTPUT"]
                 }
             }),
-            getSwapCounterTokens: (0, ApiTypes_1.createApiEndpoint)("GET", "Get tokens that can be swapped against a given token. Returns an array of ApiToken objects (id, chainId, ticker, name, decimals, address). Use to discover valid trading pairs.", this.getSwapCounterTokens.bind(this), {
+            getSwapCounterTokens: (0, ApiTypes_js_1.createApiEndpoint)("GET", "Get tokens that can be swapped against a given token. Returns an array of ApiToken objects (id, chainId, ticker, name, decimals, address). Use to discover valid trading pairs.", this.getSwapCounterTokens.bind(this), {
                 token: {
                     type: "string",
                     required: true,
@@ -135,14 +135,14 @@ class SwapperApi {
                     allowedValues: ["INPUT", "OUTPUT"]
                 }
             }),
-            getSwapLimits: (0, ApiTypes_1.createApiEndpoint)("GET", "Get minimum and maximum swap amounts for a source/destination token pair. Returns {input: {min, max?}, output: {min, max?}} where each value is an ApiAmount object with amount (decimal string), rawAmount (base units string), decimals, symbol, and chain.", this.getSwapLimits.bind(this), {
+            getSwapLimits: (0, ApiTypes_js_1.createApiEndpoint)("GET", "Get minimum and maximum swap amounts for a source/destination token pair. Returns {input: {min, max?}, output: {min, max?}} where each value is an ApiAmount object with amount (decimal string), rawAmount (base units string), decimals, symbol, and chain.", this.getSwapLimits.bind(this), {
                 srcToken: { type: "string", required: true, description: "Source token identifier accepted by the API, e.g. BITCOIN-BTC, LIGHTNING-BTC, STARKNET-STRK" },
                 dstToken: { type: "string", required: true, description: "Destination token identifier accepted by the API, e.g. BITCOIN-BTC, LIGHTNING-BTC, STARKNET-STRK" }
             }),
-            parseAddress: (0, ApiTypes_1.createApiEndpoint)("GET", "Parse and validate an address, Lightning invoice, LNURL, or Bitcoin URI. Returns {address, type} and optionally lnurl (ApiLNURL with pay/withdraw details), min/max/amount (as ApiAmount objects).", this.parseAddress.bind(this), {
+            parseAddress: (0, ApiTypes_js_1.createApiEndpoint)("GET", "Parse and validate an address, Lightning invoice, LNURL, or Bitcoin URI. Returns {address, type} and optionally lnurl (ApiLNURL with pay/withdraw details), min/max/amount (as ApiAmount objects).", this.parseAddress.bind(this), {
                 address: { type: "string", required: true, description: "Address, invoice, LNURL, or URI string to parse" }
             }),
-            getSpendableBalance: (0, ApiTypes_1.createApiEndpoint)("GET", "Get the spendable balance for a wallet address and token, accounting for chain fees. Returns {balance: ApiAmount, feeRate?} where ApiAmount has amount (decimal string), rawAmount (base units string), decimals, symbol, and chain.", this.getSpendableBalance.bind(this), {
+            getSpendableBalance: (0, ApiTypes_js_1.createApiEndpoint)("GET", "Get the spendable balance for a wallet address and token, accounting for chain fees. Returns {balance: ApiAmount, feeRate?} where ApiAmount has amount (decimal string), rawAmount (base units string), decimals, symbol, and chain.", this.getSpendableBalance.bind(this), {
                 wallet: { type: "string", required: true, description: "Wallet address to query" },
                 token: { type: "string", required: true, description: "Token identifier accepted by the API, e.g. BITCOIN-BTC, STARKNET-STRK, or a token address" },
                 targetChain: { type: "string", required: false, description: "Destination smart chain for Bitcoin SPV-vault fee estimation" },
@@ -151,7 +151,7 @@ class SwapperApi {
                 minBitcoinFeeRate: { type: "number", required: false, description: "Minimum Bitcoin fee rate to enforce" },
                 feeMultiplier: { type: "number", required: false, description: "Multiplier applied to smart-chain native token commit fee estimate" }
             }),
-            getSwapStatus: (0, ApiTypes_1.createApiEndpoint)("GET", "Get the current status and next required action for a swap. Returns swap state, terminal flags (isFinished, isSuccess, isFailed, isExpired), and currentAction (an action object, or null when no action is currently required). For Lightning-to-smart-chain swaps it may also return requiresSecretReveal: true — when set, pass the secret parameter in subsequent getSwapStatus calls so the HTLC can be claimed. Handle each action type: SignPSBT — ask user to sign the Bitcoin PSBT with their wallet, then submit via submitTransaction. SignSmartChainTransaction — ask user to sign with their Solana/Starknet/EVM wallet, then submit via submitTransaction. SendToAddress — show the address and amount to the user, they pay externally, keep polling. Wait — poll again after pollTimeSeconds. Poll repeatedly until isFinished is true.", this.getSwapStatus.bind(this), {
+            getSwapStatus: (0, ApiTypes_js_1.createApiEndpoint)("GET", "Get the current status and next required action for a swap. Returns swap state, terminal flags (isFinished, isSuccess, isFailed, isExpired), and currentAction (an action object, or null when no action is currently required). For Lightning-to-smart-chain swaps it may also return requiresSecretReveal: true — when set, pass the secret parameter in subsequent getSwapStatus calls so the HTLC can be claimed. Handle each action type: SignPSBT — ask user to sign the Bitcoin PSBT with their wallet, then submit via submitTransaction. SignSmartChainTransaction — ask user to sign with their Solana/Starknet/EVM wallet, then submit via submitTransaction. SendToAddress — show the address and amount to the user, they pay externally, keep polling. Wait — poll again after pollTimeSeconds. Poll repeatedly until isFinished is true.", this.getSwapStatus.bind(this), {
                 swapId: { type: "string", required: true, description: "The swap identifier" },
                 secret: { type: "string", required: false, description: "Revealed swap secret pre-image (in hexadecimal format) for lightning network swaps" },
                 bitcoinAddress: { type: "string", required: false, description: "Bitcoin wallet address to obtain funded PSBT" },
@@ -159,7 +159,7 @@ class SwapperApi {
                 bitcoinFeeRate: { type: "number", required: false, description: "Fee rate to use when creating a funded PSBT" },
                 signer: { type: "string", required: false, description: "Alternative different smart chain signer to use for refunds and manual settlement" }
             }),
-            submitTransaction: (0, ApiTypes_1.createApiEndpoint)("POST", "Submit signed transaction(s) for a swap. Call this after the user has signed the transaction returned by getSwapStatus. Returns {txHashes: string[]} with the submitted transaction hashes. After submission, continue polling getSwapStatus.", this.submitTransaction.bind(this), {
+            submitTransaction: (0, ApiTypes_js_1.createApiEndpoint)("POST", "Submit signed transaction(s) for a swap. Call this after the user has signed the transaction returned by getSwapStatus. Returns {txHashes: string[]} with the submitted transaction hashes. After submission, continue polling getSwapStatus.", this.submitTransaction.bind(this), {
                 swapId: { type: "string", required: true, description: "The swap identifier" },
                 signedTxs: {
                     type: "array",
@@ -168,7 +168,7 @@ class SwapperApi {
                     items: { type: "string", required: true, description: "Single string-serialized & signed transaction" }
                 }
             }),
-            settleWithLnurl: (0, ApiTypes_1.createApiEndpoint)("POST", "Settle a Lightning Network swap using an LNURL-withdraw link. Returns {paymentHash: string} on success.", this.settleWithLnurl.bind(this), {
+            settleWithLnurl: (0, ApiTypes_js_1.createApiEndpoint)("POST", "Settle a Lightning Network swap using an LNURL-withdraw link. Returns {paymentHash: string} on success.", this.settleWithLnurl.bind(this), {
                 swapId: { type: "string", required: true, description: "The swap identifier" },
                 lnurlWithdraw: { type: "string", required: false, description: "LNURL-withdraw link to use to settle the Lightning network swap, if the swap was already created with the LNURL-withdraw link, this is optional" }
             })
@@ -230,7 +230,7 @@ class SwapperApi {
     }
     async createListedSwapOutputs(swaps) {
         return Promise.all(swaps
-            .filter(swap => swap.getType() !== SwapType_1.SwapType.TRUSTED_FROM_BTC)
+            .filter(swap => swap.getType() !== SwapType_js_1.SwapType.TRUSTED_FROM_BTC)
             .map(async (swap) => {
             const { steps, stateInfo } = await swap.getExecutionStatus({ skipBuildingAction: true });
             return createListSwapOutput(swap, steps, stateInfo);
@@ -247,11 +247,11 @@ class SwapperApi {
         return this.createListedSwapOutputs(swaps);
     }
     async getSupportedTokens(input) {
-        return this.swapper.getSupportedTokens(parseSwapSide(input.side)).map(ApiTypes_1.toApiToken);
+        return this.swapper.getSupportedTokens(parseSwapSide(input.side)).map(ApiTypes_js_1.toApiToken);
     }
     async getSwapCounterTokens(input) {
         const token = this.swapper.getToken(input.token);
-        return this.swapper.getSwapCounterTokens(token, parseSwapSide(input.side)).map(ApiTypes_1.toApiToken);
+        return this.swapper.getSwapCounterTokens(token, parseSwapSide(input.side)).map(ApiTypes_js_1.toApiToken);
     }
     async getSwapLimits(input) {
         const srcToken = this.swapper.getToken(input.srcToken);
@@ -269,12 +269,12 @@ class SwapperApi {
         }
         return {
             input: {
-                min: (0, ApiTypes_1.toApiAmount)(limits.input.min),
-                ...(limits.input.max != null ? { max: (0, ApiTypes_1.toApiAmount)(limits.input.max) } : {})
+                min: (0, ApiTypes_js_1.toApiAmount)(limits.input.min),
+                ...(limits.input.max != null ? { max: (0, ApiTypes_js_1.toApiAmount)(limits.input.max) } : {})
             },
             output: {
-                min: (0, ApiTypes_1.toApiAmount)(limits.output.min),
-                ...(limits.output.max != null ? { max: (0, ApiTypes_1.toApiAmount)(limits.output.max) } : {})
+                min: (0, ApiTypes_js_1.toApiAmount)(limits.output.min),
+                ...(limits.output.max != null ? { max: (0, ApiTypes_js_1.toApiAmount)(limits.output.max) } : {})
             }
         };
     }
@@ -285,10 +285,10 @@ class SwapperApi {
         return {
             address: result.address,
             type: result.type,
-            ...(result.lnurl != null ? { lnurl: (0, ApiTypes_1.toApiLNURL)(result.lnurl, this.swapper) } : {}),
-            ...(result.min != null ? { min: (0, ApiTypes_1.toApiAmount)(result.min) } : {}),
-            ...(result.max != null ? { max: (0, ApiTypes_1.toApiAmount)(result.max) } : {}),
-            ...(result.amount != null ? { amount: (0, ApiTypes_1.toApiAmount)(result.amount) } : {})
+            ...(result.lnurl != null ? { lnurl: (0, ApiTypes_js_1.toApiLNURL)(result.lnurl, this.swapper) } : {}),
+            ...(result.min != null ? { min: (0, ApiTypes_js_1.toApiAmount)(result.min) } : {}),
+            ...(result.max != null ? { max: (0, ApiTypes_js_1.toApiAmount)(result.max) } : {}),
+            ...(result.amount != null ? { amount: (0, ApiTypes_js_1.toApiAmount)(result.amount) } : {})
         };
     }
     async getSpendableBalance(input) {
@@ -319,7 +319,7 @@ class SwapperApi {
                 minFeeRate: input.minBitcoinFeeRate
             });
             return {
-                balance: (0, ApiTypes_1.toApiAmount)(balance),
+                balance: (0, ApiTypes_js_1.toApiAmount)(balance),
                 feeRate
             };
         }
@@ -334,7 +334,7 @@ class SwapperApi {
             feeRate: input.feeRate
         });
         return {
-            balance: (0, ApiTypes_1.toApiAmount)(balance)
+            balance: (0, ApiTypes_js_1.toApiAmount)(balance)
         };
     }
     async getSwapStatus(input) {
@@ -380,9 +380,9 @@ class SwapperApi {
         });
         return {
             ...createListSwapOutput(swap, steps, stateInfo),
-            currentAction: currentAction ? await (0, SerializedAction_1.serializeAction)(currentAction, this.txSerializer.bind(this)) : null,
+            currentAction: currentAction ? await (0, SerializedAction_js_1.serializeAction)(currentAction, this.txSerializer.bind(this)) : null,
             requiresSecretReveal: requiresSecretRevealForApi(swap, stateInfo.state),
-            escrow: swap instanceof IEscrowSwap_1.IEscrowSwap && swap._data != null ? {
+            escrow: swap instanceof IEscrowSwap_js_1.IEscrowSwap && swap._data != null ? {
                 data: swap._data.getEscrowStruct(),
                 initTxId: swap._commitTxId
             } : undefined
@@ -401,12 +401,12 @@ class SwapperApi {
         const swap = await this.swapper.getSwapById(input.swapId);
         if (swap == null)
             throw new Error("Swap not found: " + input.swapId);
-        if (swap instanceof FromBTCLNAutoSwap_1.FromBTCLNAutoSwap) {
-            if (swap._state !== FromBTCLNAutoSwap_1.FromBTCLNAutoSwapState.PR_CREATED)
+        if (swap instanceof FromBTCLNAutoSwap_js_1.FromBTCLNAutoSwap) {
+            if (swap._state !== FromBTCLNAutoSwap_js_1.FromBTCLNAutoSwapState.PR_CREATED)
                 throw new Error("Invalid swap state, must be in PR_CREATED state!");
         }
-        else if (swap instanceof FromBTCLNSwap_1.FromBTCLNSwap) {
-            if (swap._state !== FromBTCLNSwap_1.FromBTCLNSwapState.PR_CREATED)
+        else if (swap instanceof FromBTCLNSwap_js_1.FromBTCLNSwap) {
+            if (swap._state !== FromBTCLNSwap_js_1.FromBTCLNSwapState.PR_CREATED)
                 throw new Error("Invalid swap state, must be in PR_CREATED state!");
         }
         else {
@@ -424,7 +424,7 @@ class SwapperApi {
                 throw new Error("The swap is already configured with an LNURL link, don't pass the `lnurlWithdraw` parameter!");
         }
         let success;
-        if (swap instanceof FromBTCLNAutoSwap_1.FromBTCLNAutoSwap) {
+        if (swap instanceof FromBTCLNAutoSwap_js_1.FromBTCLNAutoSwap) {
             // For non-legacy swap, we don't need to wait till the swap advances all the way to committed state
             success = await swap._waitForLpPaymentReceived(2, abortSignal);
         }

@@ -1,15 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ToBTCSwap = exports.isToBTCSwapInit = void 0;
-const IToBTCSwap_1 = require("../IToBTCSwap");
-const SwapType_1 = require("../../../../enums/SwapType");
+const IToBTCSwap_js_1 = require("../IToBTCSwap.js");
+const SwapType_js_1 = require("../../../../enums/SwapType.js");
 const buffer_1 = require("buffer");
-const IntermediaryError_1 = require("../../../../errors/IntermediaryError");
-const Utils_1 = require("../../../../utils/Utils");
-const TokenAmount_1 = require("../../../../types/TokenAmount");
-const Token_1 = require("../../../../types/Token");
-const Logger_1 = require("../../../../utils/Logger");
-const BitcoinUtils_1 = require("../../../../utils/BitcoinUtils");
+const IntermediaryError_js_1 = require("../../../../errors/IntermediaryError.js");
+const Utils_js_1 = require("../../../../utils/Utils.js");
+const TokenAmount_js_1 = require("../../../../types/TokenAmount.js");
+const Token_js_1 = require("../../../../types/Token.js");
+const Logger_js_1 = require("../../../../utils/Logger.js");
+const BitcoinUtils_js_1 = require("../../../../utils/BitcoinUtils.js");
 function isToBTCSwapInit(obj) {
     return (obj.address == null || typeof (obj.address) === "string") &&
         (obj.amount == null || typeof (obj.amount) === "bigint") &&
@@ -17,7 +17,7 @@ function isToBTCSwapInit(obj) {
         typeof (obj.satsPerVByte) === "number" &&
         (obj.requiredConfirmations == null || typeof (obj.requiredConfirmations) === "number") &&
         (obj.nonce == null || typeof (obj.nonce) === "bigint") &&
-        (0, IToBTCSwap_1.isIToBTCSwapInit)(obj);
+        (0, IToBTCSwap_js_1.isIToBTCSwapInit)(obj);
 }
 exports.isToBTCSwapInit = isToBTCSwapInit;
 /**
@@ -25,16 +25,16 @@ exports.isToBTCSwapInit = isToBTCSwapInit;
  *
  * @category Swaps/Smart chain → Bitcoin
  */
-class ToBTCSwap extends IToBTCSwap_1.IToBTCSwap {
+class ToBTCSwap extends IToBTCSwap_js_1.IToBTCSwap {
     constructor(wrapper, initOrObject) {
         if (isToBTCSwapInit(initOrObject) && initOrObject.url != null)
             initOrObject.url += "/tobtc";
         super(wrapper, initOrObject);
-        this.TYPE = SwapType_1.SwapType.TO_BTC;
+        this.TYPE = SwapType_js_1.SwapType.TO_BTC;
         /**
          * @internal
          */
-        this.outputToken = Token_1.BitcoinTokens.BTC;
+        this.outputToken = Token_js_1.BitcoinTokens.BTC;
         if (isToBTCSwapInit(initOrObject)) {
             this.address = initOrObject.address;
             this.amount = initOrObject.amount;
@@ -45,14 +45,14 @@ class ToBTCSwap extends IToBTCSwap_1.IToBTCSwap {
         }
         else {
             this.address = initOrObject.address;
-            this.amount = (0, Utils_1.toBigInt)(initOrObject.amount);
+            this.amount = (0, Utils_js_1.toBigInt)(initOrObject.amount);
             this.confirmationTarget = initOrObject.confirmationTarget;
             this.satsPerVByte = initOrObject.satsPerVByte;
             this.txId = initOrObject.txId;
             this.requiredConfirmations = initOrObject.requiredConfirmations ?? this._data.getConfirmationsHint();
-            this.nonce = (0, Utils_1.toBigInt)(initOrObject.nonce) ?? this._data.getNonceHint();
+            this.nonce = (0, Utils_js_1.toBigInt)(initOrObject.nonce) ?? this._data.getNonceHint();
         }
-        this.logger = (0, Logger_1.getLogger)("ToBTC(" + this.getIdentifierHashString() + "): ");
+        this.logger = (0, Logger_js_1.getLogger)("ToBTC(" + this.getIdentifierHashString() + "): ");
         this.tryRecomputeSwapPrice();
     }
     /**
@@ -63,7 +63,7 @@ class ToBTCSwap extends IToBTCSwap_1.IToBTCSwap {
         if (result == null)
             return false;
         if (result.txId == null)
-            throw new IntermediaryError_1.IntermediaryError("No btc txId returned!");
+            throw new IntermediaryError_js_1.IntermediaryError("No btc txId returned!");
         if (check || this.address == null || this.amount == null || this.nonce == null || this.requiredConfirmations == null) {
             const btcTx = await this.wrapper._btcRpc.getTransaction(result.txId);
             if (btcTx == null)
@@ -88,13 +88,13 @@ class ToBTCSwap extends IToBTCSwap_1.IToBTCSwap {
                 this.logger.warn(`_setPaymentResult(): Tried to recover data from bitcoin transaction ${result.txId} data, but wasn't able to!`);
             if (foundVout != null) {
                 this.nonce = nonce;
-                this.address = (0, BitcoinUtils_1.fromOutputScript)(this.wrapper._options.bitcoinNetwork, foundVout.scriptPubKey.hex);
+                this.address = (0, BitcoinUtils_js_1.fromOutputScript)(this.wrapper._options.bitcoinNetwork, foundVout.scriptPubKey.hex);
                 this.amount = BigInt(foundVout.value);
                 this.requiredConfirmations = requiredConfirmations;
             }
             else {
                 if (check)
-                    throw new IntermediaryError_1.IntermediaryError("Invalid btc txId returned");
+                    throw new IntermediaryError_js_1.IntermediaryError("Invalid btc txId returned");
             }
         }
         this.txId = result.txId;
@@ -106,13 +106,13 @@ class ToBTCSwap extends IToBTCSwap_1.IToBTCSwap {
      * @inheritDoc
      */
     getOutputToken() {
-        return Token_1.BitcoinTokens.BTC;
+        return Token_js_1.BitcoinTokens.BTC;
     }
     /**
      * @inheritDoc
      */
     getOutput() {
-        return (0, TokenAmount_1.toTokenAmount)(this.amount ?? null, this.outputToken, this.wrapper._prices, this.pricingInfo);
+        return (0, TokenAmount_js_1.toTokenAmount)(this.amount ?? null, this.outputToken, this.wrapper._prices, this.pricingInfo);
     }
     //////////////////////////////
     //// Getters & utils

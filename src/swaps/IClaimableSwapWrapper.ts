@@ -1,5 +1,5 @@
-import {ISwap} from "./ISwap";
-import {IClaimableSwap} from "./IClaimableSwap";
+import {ISwap} from "./ISwap.js";
+import {IClaimableSwap} from "./IClaimableSwap.js";
 
 /**
  * Interface for a swap wrapper for swaps that can end up in a claimable state, requiring the user to claim the

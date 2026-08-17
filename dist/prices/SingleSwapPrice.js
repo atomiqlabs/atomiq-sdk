@@ -1,13 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SingleSwapPrice = void 0;
-const ICachedSwapPrice_1 = require("./abstract/ICachedSwapPrice");
+const ICachedSwapPrice_js_1 = require("./abstract/ICachedSwapPrice.js");
 /**
  * Swap price API using a single price source
  *
  * @category Pricing
  */
-class SingleSwapPrice extends ICachedSwapPrice_1.ICachedSwapPrice {
+class SingleSwapPrice extends ICachedSwapPrice_js_1.ICachedSwapPrice {
     constructor(maxAllowedFeeDiffPPM, priceProvider, cacheTimeout) {
         super(maxAllowedFeeDiffPPM, cacheTimeout);
         this.priceProvider = priceProvider;

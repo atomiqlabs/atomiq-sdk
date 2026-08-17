@@ -1,7 +1,7 @@
 /// <reference types="node" />
 /// <reference types="node" />
-import { FieldTypeEnum, RequestSchema, RequestSchemaResult, RequestSchemaResultPromise } from "../../http/paramcoders/SchemaVerifier";
-import { RequestBody } from "../../http/paramcoders/client/StreamingFetchPromise";
+import { FieldTypeEnum, RequestSchema, RequestSchemaResult, RequestSchemaResultPromise } from "../../http/paramcoders/SchemaVerifier.js";
+import { RequestBody } from "../../http/paramcoders/client/StreamingFetchPromise.js";
 export type InfoHandlerResponse = {
     envelope: string;
     chains: {

@@ -1,7 +1,7 @@
-import {ParamDecoder} from "../ParamDecoder";
+import {ParamDecoder} from "../ParamDecoder.js";
 import {Buffer} from "buffer";
 
-import {getLogger} from "../../../utils/Logger";
+import {getLogger} from "../../../utils/Logger.js";
 
 const logger = getLogger("ResponseParamDecoder: ");
 

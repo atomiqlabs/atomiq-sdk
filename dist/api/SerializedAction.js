@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.serializeAction = void 0;
-const ApiTypes_1 = require("./ApiTypes");
+const ApiTypes_js_1 = require("./ApiTypes.js");
 /**
  * Runtime serializer that strips non-serializable fields from a SwapExecutionAction.
  * Matches the compile-time SerializedAction<T> type.
@@ -23,7 +23,7 @@ async function serializeAction(action, txSerializer) {
                     type: tx.type,
                     address: tx.address,
                     hyperlink: tx.hyperlink,
-                    amount: (0, ApiTypes_1.toApiAmount)(tx.amount)
+                    amount: (0, ApiTypes_js_1.toApiAmount)(tx.amount)
                 }))
             };
         }

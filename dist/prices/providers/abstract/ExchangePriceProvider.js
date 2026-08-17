@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ExchangePriceProvider = void 0;
-const HttpPriceProvider_1 = require("./HttpPriceProvider");
-class ExchangePriceProvider extends HttpPriceProvider_1.HttpPriceProvider {
+const HttpPriceProvider_js_1 = require("./HttpPriceProvider.js");
+class ExchangePriceProvider extends HttpPriceProvider_js_1.HttpPriceProvider {
     /**
      * @inheritDoc
      */

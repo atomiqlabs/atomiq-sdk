@@ -1,4 +1,4 @@
-import {getLogger} from "../../utils/Logger";
+import {getLogger} from "../../utils/Logger.js";
 
 const logger = getLogger("CoinSelect: ");
 

@@ -1,19 +1,19 @@
 import {decode as bolt11Decode} from "@atomiqlabs/bolt11";
 import {Address, Transaction} from "@scure/btc-signer";
-import {LNURL} from "../lnurl/LNURL";
+import {LNURL} from "../lnurl/LNURL.js";
 import {BTC_NETWORK} from "@scure/btc-signer/utils";
-import {SwapType} from "../enums/SwapType";
-import {ChainIds, MultiChain, Swapper} from "./Swapper";
-import {IBitcoinWallet} from "../bitcoin/wallet/IBitcoinWallet";
-import {SingleAddressBitcoinWallet} from "../bitcoin/wallet/SingleAddressBitcoinWallet";
+import {SwapType} from "../enums/SwapType.js";
+import {ChainIds, MultiChain, Swapper} from "./Swapper.js";
+import {IBitcoinWallet} from "../bitcoin/wallet/IBitcoinWallet.js";
+import {SingleAddressBitcoinWallet} from "../bitcoin/wallet/SingleAddressBitcoinWallet.js";
 import {BigIntBufferUtils, ChainSwapType, isAbstractSigner} from "@atomiqlabs/base";
-import {bigIntMax, fromDecimal, randomBytes} from "../utils/Utils";
-import {MinimalBitcoinWalletInterface} from "../types/wallets/MinimalBitcoinWalletInterface";
-import {TokenAmount, toTokenAmount} from "../types/TokenAmount";
-import {BitcoinTokens, SCToken} from "../types/Token";
-import {isLNURLWithdraw, LNURLWithdraw} from "../types/lnurl/LNURLWithdraw";
-import {isLNURLPay, LNURLPay} from "../types/lnurl/LNURLPay";
-import {toBitcoinWallet} from "../utils/BitcoinWalletUtils";
+import {bigIntMax, fromDecimal, randomBytes} from "../utils/Utils.js";
+import {MinimalBitcoinWalletInterface} from "../types/wallets/MinimalBitcoinWalletInterface.js";
+import {TokenAmount, toTokenAmount} from "../types/TokenAmount.js";
+import {BitcoinTokens, SCToken} from "../types/Token.js";
+import {isLNURLWithdraw, LNURLWithdraw} from "../types/lnurl/LNURLWithdraw.js";
+import {isLNURLPay, LNURLPay} from "../types/lnurl/LNURLPay.js";
+import {toBitcoinWallet} from "../utils/BitcoinWalletUtils.js";
 
 /**
  * Utility class providing helper methods for address parsing, token balances, serialization
@@ -501,8 +501,8 @@ export class SwapperUtils<T extends MultiChain> {
         if(chainIdentifier==="BITCOIN") {
             // Return random p2wkh address
             return Address(this.bitcoinNetwork).encode({
-                type: "wpkh",
-                hash: randomBytes(20)
+                type: "wsh",
+                hash: randomBytes(32)
             });
         }
         if(this.root._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);

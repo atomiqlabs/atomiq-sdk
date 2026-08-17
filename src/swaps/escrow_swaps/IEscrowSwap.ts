@@ -1,4 +1,4 @@
-import {isISwapInit, ISwap, ISwapInit} from "../ISwap";
+import {isISwapInit, ISwap, ISwapInit} from "../ISwap.js";
 import {
     ChainType,
     SwapCommitState,
@@ -8,9 +8,9 @@ import {
     SwapNotCommitedState,
     SwapPaidState
 } from "@atomiqlabs/base";
-import {IEscrowSwapDefinition, IEscrowSwapWrapper} from "./IEscrowSwapWrapper";
+import {IEscrowSwapDefinition, IEscrowSwapWrapper} from "./IEscrowSwapWrapper.js";
 import {Buffer} from "buffer";
-import {timeoutPromise} from "../../utils/TimeoutUtils";
+import {timeoutPromise} from "../../utils/TimeoutUtils.js";
 
 export type IEscrowSwapInit<T extends SwapData> = ISwapInit & {
     data?: T,

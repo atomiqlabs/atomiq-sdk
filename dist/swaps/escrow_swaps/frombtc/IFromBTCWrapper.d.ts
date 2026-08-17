@@ -1,9 +1,9 @@
-import { ISwapWrapperOptions } from "../../ISwapWrapper";
-import { Intermediary } from "../../../intermediaries/Intermediary";
+import { ISwapWrapperOptions } from "../../ISwapWrapper.js";
+import { Intermediary } from "../../../intermediaries/Intermediary.js";
 import { ChainType } from "@atomiqlabs/base";
-import { IEscrowSwapDefinition, IEscrowSwapWrapper } from "../IEscrowSwapWrapper";
-import { IEscrowSwap } from "../IEscrowSwap";
-import { AmountData } from "../../../types/AmountData";
+import { IEscrowSwapDefinition, IEscrowSwapWrapper } from "../IEscrowSwapWrapper.js";
+import { IEscrowSwap } from "../IEscrowSwap.js";
+import { AmountData } from "../../../types/AmountData.js";
 export type IFromBTCDefinition<T extends ChainType, W extends IFromBTCWrapper<T, any>, S extends IEscrowSwap<T>> = IEscrowSwapDefinition<T, W, S>;
 /**
  * Base class for wrappers of escrow-based Bitcoin (on-chain & lightning) -> Smart chain swaps

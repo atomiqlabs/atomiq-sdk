@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deserializePriceInfoType = exports.serializePriceInfoType = exports.isPriceInfoType = void 0;
-const Utils_1 = require("../utils/Utils");
+const Utils_js_1 = require("../utils/Utils.js");
 /**
  * Type guard for PriceInfoType
  * @category Pricing
@@ -46,12 +46,12 @@ function deserializePriceInfoType(obj) {
         obj.feePPM != null && obj.swapPriceUSatPerToken != null)
         return {
             isValid: obj.isValid,
-            differencePPM: (0, Utils_1.toBigInt)(obj.differencePPM),
-            satsBaseFee: (0, Utils_1.toBigInt)(obj.satsBaseFee),
-            feePPM: (0, Utils_1.toBigInt)(obj.feePPM),
-            realPriceUSatPerToken: (0, Utils_1.toBigInt)(obj.realPriceUSatPerToken),
+            differencePPM: (0, Utils_js_1.toBigInt)(obj.differencePPM),
+            satsBaseFee: (0, Utils_js_1.toBigInt)(obj.satsBaseFee),
+            feePPM: (0, Utils_js_1.toBigInt)(obj.feePPM),
+            realPriceUSatPerToken: (0, Utils_js_1.toBigInt)(obj.realPriceUSatPerToken),
             realPriceUsdPerBitcoin: obj.realPriceUsdPerBitcoin,
-            swapPriceUSatPerToken: (0, Utils_1.toBigInt)(obj.swapPriceUSatPerToken),
+            swapPriceUSatPerToken: (0, Utils_js_1.toBigInt)(obj.swapPriceUSatPerToken),
         };
 }
 exports.deserializePriceInfoType = deserializePriceInfoType;

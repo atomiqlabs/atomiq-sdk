@@ -1,6 +1,6 @@
-import { PercentagePPM } from "./PercentagePPM";
-import { TokenAmount } from "../TokenAmount";
-import { Token } from "../Token";
+import { PercentagePPM } from "./PercentagePPM.js";
+import { TokenAmount } from "../TokenAmount.js";
+import { Token } from "../Token.js";
 /**
  * Fee represented in both, source and destination tokens, as well as providing USD valuation helpers and
  *  fee composition

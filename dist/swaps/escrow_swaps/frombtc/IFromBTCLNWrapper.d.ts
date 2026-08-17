@@ -2,18 +2,18 @@
 /// <reference types="node" />
 /// <reference types="node" />
 import { ChainType, LightningNetworkApi, LNNodeLiquidity, SwapData } from "@atomiqlabs/base";
-import { IFromBTCDefinition, IFromBTCWrapper } from "./IFromBTCWrapper";
-import { ISwapWrapperOptions, WrapperCtorTokens } from "../../ISwapWrapper";
-import { UnifiedSwapStorage } from "../../../storage/UnifiedSwapStorage";
-import { UnifiedSwapEventListener } from "../../../events/UnifiedSwapEventListener";
-import { ISwapPrice } from "../../../prices/abstract/ISwapPrice";
+import { IFromBTCDefinition, IFromBTCWrapper } from "./IFromBTCWrapper.js";
+import { ISwapWrapperOptions, WrapperCtorTokens } from "../../ISwapWrapper.js";
+import { UnifiedSwapStorage } from "../../../storage/UnifiedSwapStorage.js";
+import { UnifiedSwapEventListener } from "../../../events/UnifiedSwapEventListener.js";
+import { ISwapPrice } from "../../../prices/abstract/ISwapPrice.js";
 import { EventEmitter } from "events";
 import { Buffer } from "buffer";
-import { Intermediary } from "../../../intermediaries/Intermediary";
+import { Intermediary } from "../../../intermediaries/Intermediary.js";
 import { PaymentRequestObject, TagsObject } from "@atomiqlabs/bolt11";
-import { IEscrowSwap } from "../IEscrowSwap";
-import { LNURLWithdrawParamsWithUrl } from "../../../types/lnurl/LNURLWithdraw";
-import { IntermediaryAPI } from "../../../intermediaries/apis/IntermediaryAPI";
+import { IEscrowSwap } from "../IEscrowSwap.js";
+import { LNURLWithdrawParamsWithUrl } from "../../../types/lnurl/LNURLWithdraw.js";
+import { IntermediaryAPI } from "../../../intermediaries/apis/IntermediaryAPI.js";
 export type IFromBTCLNDefinition<T extends ChainType, W extends IFromBTCLNWrapper<T, any>, S extends IEscrowSwap<T>> = IFromBTCDefinition<T, W, S>;
 /**
  * Base class for wrappers of escrow-based Lightning -> Smart chain swaps

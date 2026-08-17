@@ -1,4 +1,4 @@
-import {ParamEncoder} from "../ParamEncoder";
+import {ParamEncoder} from "../ParamEncoder.js";
 import {Buffer} from "buffer";
 
 

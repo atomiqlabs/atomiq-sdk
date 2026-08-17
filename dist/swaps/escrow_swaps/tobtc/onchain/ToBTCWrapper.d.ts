@@ -1,19 +1,19 @@
 /// <reference types="node" />
-import { ToBTCSwap } from "./ToBTCSwap";
-import { IToBTCDefinition, IToBTCWrapper } from "../IToBTCWrapper";
+import { ToBTCSwap } from "./ToBTCSwap.js";
+import { IToBTCDefinition, IToBTCWrapper } from "../IToBTCWrapper.js";
 import { BitcoinRpc, ChainType, SwapCommitState } from "@atomiqlabs/base";
-import { Intermediary } from "../../../../intermediaries/Intermediary";
-import { ISwapPrice } from "../../../../prices/abstract/ISwapPrice";
+import { Intermediary } from "../../../../intermediaries/Intermediary.js";
+import { ISwapPrice } from "../../../../prices/abstract/ISwapPrice.js";
 import { EventEmitter } from "events";
-import { ISwapWrapperOptions, WrapperCtorTokens } from "../../../ISwapWrapper";
-import { SwapType } from "../../../../enums/SwapType";
-import { IntermediaryAPI } from "../../../../intermediaries/apis/IntermediaryAPI";
+import { ISwapWrapperOptions, WrapperCtorTokens } from "../../../ISwapWrapper.js";
+import { SwapType } from "../../../../enums/SwapType.js";
+import { IntermediaryAPI } from "../../../../intermediaries/apis/IntermediaryAPI.js";
 import { BTC_NETWORK } from "@scure/btc-signer/utils";
-import { UnifiedSwapEventListener } from "../../../../events/UnifiedSwapEventListener";
-import { UnifiedSwapStorage } from "../../../../storage/UnifiedSwapStorage";
-import { ISwap } from "../../../ISwap";
-import { AmountData } from "../../../../types/AmountData";
-import { AllOptional } from "../../../../utils/TypeUtils";
+import { UnifiedSwapEventListener } from "../../../../events/UnifiedSwapEventListener.js";
+import { UnifiedSwapStorage } from "../../../../storage/UnifiedSwapStorage.js";
+import { ISwap } from "../../../ISwap.js";
+import { AmountData } from "../../../../types/AmountData.js";
+import { AllOptional } from "../../../../utils/TypeUtils.js";
 export type ToBTCOptions = {
     /**
      * @deprecated Ignored by the LP anyway

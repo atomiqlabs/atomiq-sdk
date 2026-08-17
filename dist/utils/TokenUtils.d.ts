@@ -1,4 +1,4 @@
-import { Token } from "../types/Token";
+import { Token } from "../types/Token.js";
 /**
  * Converts a raw bigint amount to a human-readable string with decimals
  *

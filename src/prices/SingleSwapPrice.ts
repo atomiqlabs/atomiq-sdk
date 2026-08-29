@@ -1,6 +1,6 @@
-import {IPriceProvider} from "./abstract/IPriceProvider";
-import {ICachedSwapPrice} from "./abstract/ICachedSwapPrice";
-import {ChainIds, MultiChain} from "../swapper/Swapper";
+import {IPriceProvider} from "./abstract/IPriceProvider.js";
+import {ICachedSwapPrice} from "./abstract/ICachedSwapPrice.js";
+import {ChainIds, MultiChain} from "../swapper/Swapper.js";
 
 /**
  * Swap price API using a single price source

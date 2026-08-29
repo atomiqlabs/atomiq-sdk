@@ -1,5 +1,5 @@
-import {ISwapPrice} from "./ISwapPrice";
-import {ChainIds, MultiChain} from "../../swapper/Swapper";
+import {ISwapPrice} from "./ISwapPrice.js";
+import {ChainIds, MultiChain} from "../../swapper/Swapper.js";
 
 const DEFAULT_CACHE_DURATION = 10000;
 

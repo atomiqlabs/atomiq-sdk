@@ -1,4 +1,4 @@
-import {InputSchema, InputSchemaField} from "./ApiTypes";
+import {InputSchema, InputSchemaField} from "./ApiTypes.js";
 
 // Errors
 function invalidInput(path: string, expected: string, value: unknown): Error {

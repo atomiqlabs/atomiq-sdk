@@ -1,36 +1,36 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.IToBTCWrapper = void 0;
-const IToBTCSwap_1 = require("./IToBTCSwap");
-const IntermediaryError_1 = require("../../../errors/IntermediaryError");
-const IEscrowSwapWrapper_1 = require("../IEscrowSwapWrapper");
-const Utils_1 = require("../../../utils/Utils");
+const IToBTCSwap_js_1 = require("./IToBTCSwap.js");
+const IntermediaryError_js_1 = require("../../../errors/IntermediaryError.js");
+const IEscrowSwapWrapper_js_1 = require("../IEscrowSwapWrapper.js");
+const Utils_js_1 = require("../../../utils/Utils.js");
 /**
  * Base class for wrappers of escrow-based Smart chain -> Bitcoin (on-chain & lightning) swaps
  *
  * @category Swaps/Smart chain → Bitcoin
  */
-class IToBTCWrapper extends IEscrowSwapWrapper_1.IEscrowSwapWrapper {
+class IToBTCWrapper extends IEscrowSwapWrapper_js_1.IEscrowSwapWrapper {
     constructor() {
         super(...arguments);
         /**
          * @internal
          */
-        this.tickSwapState = [IToBTCSwap_1.ToBTCSwapState.CREATED, IToBTCSwap_1.ToBTCSwapState.COMMITED, IToBTCSwap_1.ToBTCSwapState.SOFT_CLAIMED];
+        this.tickSwapState = [IToBTCSwap_js_1.ToBTCSwapState.CREATED, IToBTCSwap_js_1.ToBTCSwapState.COMMITED, IToBTCSwap_js_1.ToBTCSwapState.SOFT_CLAIMED];
         /**
          * @internal
          */
         this._pendingSwapStates = [
-            IToBTCSwap_1.ToBTCSwapState.CREATED,
-            IToBTCSwap_1.ToBTCSwapState.QUOTE_SOFT_EXPIRED,
-            IToBTCSwap_1.ToBTCSwapState.COMMITED,
-            IToBTCSwap_1.ToBTCSwapState.SOFT_CLAIMED,
-            IToBTCSwap_1.ToBTCSwapState.REFUNDABLE
+            IToBTCSwap_js_1.ToBTCSwapState.CREATED,
+            IToBTCSwap_js_1.ToBTCSwapState.QUOTE_SOFT_EXPIRED,
+            IToBTCSwap_js_1.ToBTCSwapState.COMMITED,
+            IToBTCSwap_js_1.ToBTCSwapState.SOFT_CLAIMED,
+            IToBTCSwap_js_1.ToBTCSwapState.REFUNDABLE
         ];
         /**
          * @internal
          */
-        this._refundableSwapStates = [IToBTCSwap_1.ToBTCSwapState.REFUNDABLE];
+        this._refundableSwapStates = [IToBTCSwap_js_1.ToBTCSwapState.REFUNDABLE];
     }
     /**
      * Pre-fetches intermediary's reputation, doesn't throw, instead aborts via abortController and returns null
@@ -47,7 +47,7 @@ class IToBTCWrapper extends IEscrowSwapWrapper_1.IEscrowSwapWrapper {
     preFetchIntermediaryReputation(amountData, lp, abortController, contractVersion) {
         return lp.getReputation(this.chainIdentifier, this._contract(contractVersion), [amountData.token.toString()], abortController.signal).then(res => {
             if (res == null)
-                throw new IntermediaryError_1.IntermediaryError("Invalid data returned - invalid LP vault");
+                throw new IntermediaryError_js_1.IntermediaryError("Invalid data returned - invalid LP vault");
             return res;
         }).catch(e => {
             this.logger.warn("preFetchIntermediaryReputation(): Error: ", e);
@@ -68,7 +68,7 @@ class IToBTCWrapper extends IEscrowSwapWrapper_1.IEscrowSwapWrapper {
      * @internal
      */
     preFetchFeeRate(signer, amountData, claimHash, abortController, contractVersions) {
-        return (0, Utils_1.mapArrayToObject)(contractVersions, (contractVersion) => {
+        return (0, Utils_js_1.mapArrayToObject)(contractVersions, (contractVersion) => {
             return this._contract(contractVersion).getInitPayInFeeRate(signer, this._chain.randomAddress(), amountData.token, claimHash?.[contractVersion])
                 .catch(e => {
                 this.logger.warn("preFetchFeeRate(): Error: ", e);
@@ -81,8 +81,8 @@ class IToBTCWrapper extends IEscrowSwapWrapper_1.IEscrowSwapWrapper {
      * @internal
      */
     async processEventInitialize(swap, event) {
-        if (swap._state === IToBTCSwap_1.ToBTCSwapState.CREATED || swap._state === IToBTCSwap_1.ToBTCSwapState.QUOTE_SOFT_EXPIRED) {
-            swap._state = IToBTCSwap_1.ToBTCSwapState.COMMITED;
+        if (swap._state === IToBTCSwap_js_1.ToBTCSwapState.CREATED || swap._state === IToBTCSwap_js_1.ToBTCSwapState.QUOTE_SOFT_EXPIRED) {
+            swap._state = IToBTCSwap_js_1.ToBTCSwapState.COMMITED;
             return true;
         }
         return false;
@@ -91,14 +91,14 @@ class IToBTCWrapper extends IEscrowSwapWrapper_1.IEscrowSwapWrapper {
      * @internal
      */
     async processEventClaim(swap, event) {
-        if (swap._state !== IToBTCSwap_1.ToBTCSwapState.REFUNDED && swap._state !== IToBTCSwap_1.ToBTCSwapState.CLAIMED) {
+        if (swap._state !== IToBTCSwap_js_1.ToBTCSwapState.REFUNDED && swap._state !== IToBTCSwap_js_1.ToBTCSwapState.CLAIMED) {
             await swap._setPaymentResult({
                 secret: event.result,
                 txId: Buffer.from(event.result, "hex").reverse().toString("hex")
             }).catch(e => {
                 this.logger.warn(`processEventClaim(): Failed to set payment result ${event.result}: `, e);
             });
-            swap._state = IToBTCSwap_1.ToBTCSwapState.CLAIMED;
+            swap._state = IToBTCSwap_js_1.ToBTCSwapState.CLAIMED;
             return true;
         }
         return false;
@@ -107,8 +107,8 @@ class IToBTCWrapper extends IEscrowSwapWrapper_1.IEscrowSwapWrapper {
      * @internal
      */
     processEventRefund(swap, event) {
-        if (swap._state !== IToBTCSwap_1.ToBTCSwapState.CLAIMED && swap._state !== IToBTCSwap_1.ToBTCSwapState.REFUNDED) {
-            swap._state = IToBTCSwap_1.ToBTCSwapState.REFUNDED;
+        if (swap._state !== IToBTCSwap_js_1.ToBTCSwapState.CLAIMED && swap._state !== IToBTCSwap_js_1.ToBTCSwapState.REFUNDED) {
+            swap._state = IToBTCSwap_js_1.ToBTCSwapState.REFUNDED;
             return Promise.resolve(true);
         }
         return Promise.resolve(false);

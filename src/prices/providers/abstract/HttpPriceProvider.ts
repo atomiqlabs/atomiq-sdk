@@ -1,5 +1,5 @@
-import {CtorCoinTypes, IPriceProvider} from "../../abstract/IPriceProvider";
-import {MultiChain} from "../../../swapper/Swapper";
+import {CtorCoinTypes, IPriceProvider} from "../../abstract/IPriceProvider.js";
+import {MultiChain} from "../../../swapper/Swapper.js";
 
 export abstract class HttpPriceProvider<T extends MultiChain> extends IPriceProvider<T> {
 

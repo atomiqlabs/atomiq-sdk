@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.StreamParamEncoder = void 0;
-const ParamEncoder_1 = require("../ParamEncoder");
-class StreamParamEncoder extends ParamEncoder_1.ParamEncoder {
+const ParamEncoder_js_1 = require("../ParamEncoder.js");
+class StreamParamEncoder extends ParamEncoder_js_1.ParamEncoder {
     constructor() {
         let stream = new TransformStream();
         let writeStream = stream.writable.getWriter();

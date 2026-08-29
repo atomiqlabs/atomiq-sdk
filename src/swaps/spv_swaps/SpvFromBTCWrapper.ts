@@ -1,9 +1,12 @@
-import {ISwapWrapper, ISwapWrapperOptions, SwapTypeDefinition, WrapperCtorTokens} from "../ISwapWrapper";
+import {ISwapWrapper, ISwapWrapperOptions, SwapTypeDefinition, WrapperCtorTokens} from "../ISwapWrapper.js";
 import {
     BitcoinRpcWithAddressIndex, BtcBlock,
     BtcRelay,
     ChainEvent,
     ChainType,
+    isSpvVaultClaimEvent,
+    isSpvVaultCloseEvent,
+    isSpvVaultFrontEvent,
     RelaySynchronizer,
     SpvVaultClaimEvent,
     SpvVaultCloseEvent, SpvVaultData,
@@ -13,35 +16,43 @@ import {
     SpvWithdrawalFrontedState,
     SpvWithdrawalStateType
 } from "@atomiqlabs/base";
-import {SpvFromBTCSwap, SpvFromBTCSwapInit, SpvFromBTCSwapState} from "./SpvFromBTCSwap";
+import {SpvFromBTCSwap} from "./SpvFromBTCSwap.js";
 import {BTC_NETWORK, TEST_NETWORK} from "@scure/btc-signer/utils";
-import {SwapType} from "../../enums/SwapType";
-import {UnifiedSwapStorage} from "../../storage/UnifiedSwapStorage";
-import {UnifiedSwapEventListener} from "../../events/UnifiedSwapEventListener";
-import {ISwapPrice} from "../../prices/abstract/ISwapPrice";
+import {SwapType} from "../../enums/SwapType.js";
+import {UnifiedSwapStorage} from "../../storage/UnifiedSwapStorage.js";
+import {UnifiedSwapEventListener} from "../../events/UnifiedSwapEventListener.js";
+import {ISwapPrice} from "../../prices/abstract/ISwapPrice.js";
 import {EventEmitter} from "events";
-import {Intermediary} from "../../intermediaries/Intermediary";
-import {extendAbortController, mapArrayToObject, randomBytes, throwIfUndefined} from "../../utils/Utils";
+import {Intermediary} from "../../intermediaries/Intermediary.js";
+import {
+    bigIntCeilDivision,
+    extendAbortController,
+    mapArrayToObject,
+    randomBytes,
+    throwIfUndefined
+} from "../../utils/Utils.js";
 import {
     fromOutputScript,
     getDummyOutputScript,
     toCoinselectAddressType,
     toOutputScript
-} from "../../utils/BitcoinUtils";
-import {IntermediaryAPI, SpvFromBTCPrepareResponseType} from "../../intermediaries/apis/IntermediaryAPI";
-import {OutOfBoundsError, RequestError} from "../../errors/RequestError";
-import {IntermediaryError} from "../../errors/IntermediaryError";
-import {CoinselectAddressTypes} from "../../bitcoin/coinselect2";
+} from "../../utils/BitcoinUtils.js";
+import {IntermediaryAPI, SpvFromBTCPrepareResponseType} from "../../intermediaries/apis/IntermediaryAPI.js";
+import {OutOfBoundsError, RequestError} from "../../errors/RequestError.js";
+import {IntermediaryError} from "../../errors/IntermediaryError.js";
+import {CoinselectAddressTypes} from "../../bitcoin/coinselect2/index.js";
 import {OutScript, Transaction} from "@scure/btc-signer";
-import {ISwap} from "../ISwap";
-import {IClaimableSwapWrapper} from "../IClaimableSwapWrapper";
-import {AmountData} from "../../types/AmountData";
-import {tryWithRetries} from "../../utils/RetryUtils";
-import {AllOptional} from "../../utils/TypeUtils";
-import {UserError} from "../../errors/UserError";
-import {BitcoinWalletUtxo, BitcoinWalletUtxoBase, IBitcoinWallet} from "../../bitcoin/wallet/IBitcoinWallet";
-import {utils} from "../../bitcoin/coinselect2/utils";
-import {BitcoinWallet} from "../../bitcoin/wallet/BitcoinWallet";
+import {ISwap} from "../ISwap.js";
+import {IClaimableSwapWrapper} from "../IClaimableSwapWrapper.js";
+import {AmountData} from "../../types/AmountData.js";
+import {tryWithRetries} from "../../utils/RetryUtils.js";
+import {AllOptional} from "../../utils/TypeUtils.js";
+import {UserError} from "../../errors/UserError.js";
+import {BitcoinWalletUtxo, BitcoinWalletUtxoBase, IBitcoinWallet} from "../../bitcoin/wallet/IBitcoinWallet.js";
+import {utils} from "../../bitcoin/coinselect2/utils.js";
+import {BitcoinWallet} from "../../bitcoin/wallet/BitcoinWallet.js";
+import {SpvFromBTCSwapInit, SpvFromBTCSwapState} from "./SpvFromBTCSwapBase.js";
+import {MinimalBitcoinWalletInterface} from "../../types/wallets/MinimalBitcoinWalletInterface.js";
 
 export type SpvFromBTCOptions = {
     /**
@@ -83,15 +94,48 @@ export type SpvFromBTCOptions = {
      */
     stickyAddress?: boolean,
     /**
-     * A bitcoin wallet UTXOs to fully use as an input for this swap, use this option along with passing `amount` as
-     *  `undefined` when you want to swap the full BTC balance of the wallet in a single swap
-     */
-    sourceWalletUtxos?: BitcoinWalletUtxoBase[] | Promise<BitcoinWalletUtxoBase[]>,
-    /**
      * Bitcoin fee rate to use when deriving `maxAllowedBitcoinFeeRate` and when calculating the input amount based
      *  on the `sourceWalletUtxos`
      */
     bitcoinFeeRate?: Promise<number> | number,
+
+    /**
+     * Source-wallet UTXOs from which to derive an exact-input quote. This option is only valid for exact-input swaps.
+     *
+     * When `amount` is `undefined`, the quote sweeps the spendable value of these UTXOs after Bitcoin network fees.
+     * When `amount` is provided, it is the total BTC input budget including Bitcoin network fees; this also requires
+     * {@link sourceWalletAddressType} and `sourceWalletSkipDetrimentalUtxos: false`. If the supplied UTXOs do not cover
+     * that budget, the funding calculation models one additional UTXO using {@link sourceWalletCpfpAssumption}.
+     *
+     * This is a low-level funding override used by wallet-sweep and intermediate-wallet quote flows. Prefer the
+     * dedicated swapper helpers for those flows where available.
+     */
+    sourceWalletUtxos?: BitcoinWalletUtxo[] | Promise<BitcoinWalletUtxo[]>,
+    /**
+     * Whether to exclude detrimental UTXOs whose value is lower than the fee required to spend them, including any
+     * CPFP fee. Defaults to `false`.
+     *
+     * Must not be set to `true` when {@link sourceWalletUtxos} is used with a provided exact-input `amount`, because
+     * that mode calculates the quote from the complete supplied funding set.
+     */
+    sourceWalletSkipDetrimentalUtxos?: boolean,
+    /**
+     * CPFP assumptions for the transaction that creates a potential additional source-wallet UTXO when the supplied
+     * UTXOs do not cover a provided exact-input `amount`. `txVsize` is the parent transaction size in vbytes and
+     * `txEffectiveFeeRate` is its effective fee rate in sats/vB. These values affect the quote-time funding and fee
+     * calculation only for that modeled future UTXO.
+     *
+     * Defaults to `{txVsize: 200, txEffectiveFeeRate: 1}`.
+     */
+    sourceWalletCpfpAssumption?: {txVsize: number, txEffectiveFeeRate: number},
+    /**
+     * Bitcoin address type of the source wallet's change/receive address. It is used to estimate the size and dust
+     * threshold of a change output or an additional funding UTXO.
+     *
+     * Required when {@link sourceWalletUtxos} is combined with a provided exact-input `amount`; ignored for a full
+     * sweep where `amount` is `undefined`. Wallet-based helpers infer this value from the wallet's receive address.
+     */
+    sourceWalletAddressType?: CoinselectAddressTypes
 
     /**
      * @deprecated Use `maxAllowedBitcoinFeeRate` instead!
@@ -113,6 +157,26 @@ export type SpvFromBTCTypeDefinition<T extends ChainType> = SwapTypeDefinition<T
 
 export const REQUIRED_SPV_SWAP_VAULT_ADDRESS_TYPE: CoinselectAddressTypes = "p2tr";
 export const REQUIRED_SPV_SWAP_LP_ADDRESS_TYPE: CoinselectAddressTypes = "p2wpkh";
+export const DEFAULT_CPFP_ASSUMPTION = {txVsize: 200, txEffectiveFeeRate: 1};
+
+export function assertSupportedSpvFundingType(
+    type: CoinselectAddressTypes
+): asserts type is "p2wpkh" | "p2sh-p2wpkh" | "p2tr" {
+    if(type!=="p2wpkh" && type!=="p2sh-p2wpkh" && type!=="p2tr") {
+        throw new UserError(
+            `Unsupported SPV funding address type: ${type}. Supported types: p2wpkh, p2sh-p2wpkh, p2tr`
+        );
+    }
+}
+
+export type SelectedUtxosInfo = {
+    selectedUtxos: BitcoinWalletUtxoBase[],
+    skipDetrimental: boolean,
+    lpOutputAmount: bigint,
+    totalNetworkFee: bigint,
+    changeOutputAmount?: bigint,
+    additionalInputAmount?: bigint
+};
 
 /**
  * New spv vault (UTXO-controlled vault) based swaps for Bitcoin -> Smart chain swaps not requiring
@@ -323,21 +387,21 @@ export class SpvFromBTCWrapper<
         if(swap==null) return;
 
         let swapChanged: boolean = false;
-        if(event instanceof SpvVaultFrontEvent) {
+        if(isSpvVaultFrontEvent(event)) {
             swapChanged = await this.processEventFront(event, swap);
             if(event.meta?.txId!=null && swap._frontTxId!==event.meta.txId) {
                 swap._frontTxId = event.meta.txId;
                 swapChanged ||= true;
             }
         }
-        if(event instanceof SpvVaultClaimEvent) {
+        if(isSpvVaultClaimEvent(event)) {
             swapChanged = await this.processEventClaim(event, swap);
             if(event.meta?.txId!=null && swap._claimTxId!==event.meta.txId) {
                 swap._claimTxId = event.meta.txId;
                 swapChanged ||= true;
             }
         }
-        if(event instanceof SpvVaultCloseEvent) {
+        if(isSpvVaultCloseEvent(event)) {
             swapChanged = await this.processEventClose(event, swap);
         }
 
@@ -427,7 +491,7 @@ export class SpvFromBTCWrapper<
      * @param abortSignal
      * @private
      */
-    private async computeCallerFeeShare(
+    private async computeCallerFee(
         amountPrefetch: Promise<bigint | undefined>,
         totalFeeInNativeTokenPrefetch: Promise<bigint | undefined>,
         amountData: {exactIn: boolean, token: string},
@@ -435,37 +499,59 @@ export class SpvFromBTCWrapper<
         pricePrefetch: Promise<bigint | undefined>,
         nativeTokenPricePrefetch: Promise<bigint | undefined> | undefined,
         abortSignal?: AbortSignal
-    ): Promise<bigint> {
-        if(options.unsafeZeroWatchtowerFee) return 0n;
+    ): Promise<{
+        callerFee: bigint,
+        callerFeeShare: bigint
+    }> {
+        if(options.unsafeZeroWatchtowerFee) return {callerFee: 0n, callerFeeShare: 0n};
 
         const amount = await throwIfUndefined(amountPrefetch, "Cannot get swap amount!");
-        if(amount===0n) return 0n;
 
         const totalFeeInNativeToken = await throwIfUndefined(totalFeeInNativeTokenPrefetch, "Cannot get total fee in native token!");
-        const nativeTokenPrice = await nativeTokenPricePrefetch;
+        const nativeTokenPrice = (await nativeTokenPricePrefetch) ??
+            await this._prices.preFetchPrice(this.chainIdentifier, this._chain.getNativeCurrencyAddress(), abortSignal);
 
+        let callerFee: bigint;
         let payoutAmount: bigint;
         if(amountData.exactIn) {
             //Convert input amount in BTC to
             const amountInNativeToken = await this._prices.getFromBtcSwapAmount(this.chainIdentifier, amount, this._chain.getNativeCurrencyAddress(), abortSignal, nativeTokenPrice);
             payoutAmount = amountInNativeToken - totalFeeInNativeToken;
+
+            callerFee = await this._prices.getToBtcSwapAmount(this.chainIdentifier, totalFeeInNativeToken, this._chain.getNativeCurrencyAddress(), abortSignal, nativeTokenPrice);
         } else {
             if(amountData.token===this._chain.getNativeCurrencyAddress()) {
                 //Both amounts in same currency
                 payoutAmount = amount;
+
+                callerFee = totalFeeInNativeToken;
             } else {
                 //Need to convert both to native currency
-                const btcAmount = await this._prices.getToBtcSwapAmount(this.chainIdentifier, amount, amountData.token, abortSignal, await pricePrefetch);
+                const price = (await pricePrefetch) ??
+                    await this._prices.preFetchPrice(this.chainIdentifier, amountData.token, abortSignal);
+
+                const btcAmount = await this._prices.getToBtcSwapAmount(this.chainIdentifier, amount, amountData.token, abortSignal, price);
                 payoutAmount = await this._prices.getFromBtcSwapAmount(this.chainIdentifier, btcAmount, this._chain.getNativeCurrencyAddress(), abortSignal, nativeTokenPrice);
+
+                const callerFeeBtc = await this._prices.getToBtcSwapAmount(this.chainIdentifier, totalFeeInNativeToken, this._chain.getNativeCurrencyAddress(), abortSignal, nativeTokenPrice);
+                callerFee = await this._prices.getFromBtcSwapAmount(this.chainIdentifier, callerFeeBtc, amountData.token, abortSignal, price);
             }
         }
 
-        this.logger.debug("computeCallerFeeShare(): Caller fee in native token: "+totalFeeInNativeToken.toString(10)+" total payout in native token: "+payoutAmount.toString(10));
+        this.logger.debug("computeCallerFee(): Caller fee in native token: "+totalFeeInNativeToken.toString(10)
+          +" total payout in native token: "+payoutAmount.toString(10)
+          +" caller fee in quote token: "+callerFee.toString(10));
 
-        const callerFeeShare = ((totalFeeInNativeToken * 100_000n) + payoutAmount - 1n) / payoutAmount; //Make sure to round up here
-        if(callerFeeShare < 0n) return 0n;
-        if(callerFeeShare >= 2n**20n) return 2n**20n - 1n;
-        return callerFeeShare;
+        let callerFeeShare = payoutAmount > 0
+            ? bigIntCeilDivision(totalFeeInNativeToken * 100_000n, payoutAmount)
+            : 0n; //Make sure to round up here
+        if(callerFeeShare < 0n) callerFeeShare = 0n;
+        if(callerFeeShare >= 2n**20n) callerFeeShare = 2n**20n - 1n;
+
+        return {
+            callerFee,
+            callerFeeShare
+        };
     }
 
     /**
@@ -475,7 +561,7 @@ export class SpvFromBTCWrapper<
      * @param amountData
      * @param lp Intermediary
      * @param options Options as passed to the swap creation function
-     * @param callerFeeShare
+     * @param callerFee
      * @param maxBitcoinFeeRatePromise Maximum accepted fee rate from the LPs
      * @param bitcoinFeeRatePromise
      * @param abortSignal
@@ -484,19 +570,26 @@ export class SpvFromBTCWrapper<
      */
     private async verifyReturnedData(
         resp: SpvFromBTCPrepareResponseType,
-        amountData: AmountData,
+        amountData: {exactIn: boolean, amount?: bigint},
         lp: Intermediary,
         options: {
             gasAmount: bigint,
-            sourceWalletUtxos?: Promise<BitcoinWalletUtxoBase[]>
+            sourceWalletUtxos?: Promise<BitcoinWalletUtxoBase[]>,
+            sourceWalletSkipDetrimentalUtxos?: boolean,
+            sourceWalletAddressType?: CoinselectAddressTypes,
+            sourceWalletCpfpAssumption?: {txVsize: number, txEffectiveFeeRate: number}
         },
-        callerFeeShare: bigint,
+        callerFee: {
+            callerFee: bigint,
+            callerFeeShare: bigint
+        },
         maxBitcoinFeeRatePromise: Promise<number | undefined>,
         bitcoinFeeRatePromise: Promise<number | undefined> | undefined,
         abortSignal: AbortSignal
     ): Promise<{
         vault: T["SpvVaultData"],
-        vaultUtxoValue: number
+        vaultUtxoValue: number,
+        utxoSelection?: SelectedUtxosInfo
     }> {
         const btcFeeRate = await throwIfUndefined(maxBitcoinFeeRatePromise, "Bitcoin fee rate promise failed!");
         abortSignal.throwIfAborted();
@@ -536,10 +629,25 @@ export class SpvFromBTCWrapper<
 
         //TODO: For now ensure fees are at 0
         if(
-            resp.callerFeeShare!==callerFeeShare ||
             resp.frontingFeeShare!==0n ||
             resp.executionFeeShare!==0n
         ) throw new IntermediaryError("Invalid caller/fronting/execution fee returned");
+
+        if(resp.usedExactFeeCalculation) {
+            if(amountData.exactIn) {
+                //TODO: Assumes fronting and execution fees are 0!
+                const expectedCallerFeeShare = bigIntCeilDivision(callerFee.callerFee * 100_000n, resp.btcAmount - callerFee.callerFee);
+                if(resp.callerFeeShare!==expectedCallerFeeShare)
+                    throw new IntermediaryError("Invalid caller fee returned (EXACT_IN mode)");
+            } else {
+                const expectedCallerFeeShare = bigIntCeilDivision(callerFee.callerFee * 100_000n, amountData.amount!);
+                if(resp.callerFeeShare!==expectedCallerFeeShare)
+                    throw new IntermediaryError("Invalid caller fee returned (EXACT_OUT mode)");
+            }
+        } else {
+            if(resp.callerFeeShare!==callerFee.callerFeeShare)
+                throw new IntermediaryError("Invalid caller fee returned");
+        }
 
         //Check expiry
         const timeNowSeconds = Math.floor(Date.now()/1000);
@@ -549,7 +657,7 @@ export class SpvFromBTCWrapper<
         const [txId, voutStr] = utxo.split(":");
 
         const abortController = extendAbortController(abortSignal);
-        let [vault, {vaultUtxoValue, btcTx}] = await Promise.all([
+        let [{vault, utxoSelection}, {vaultUtxoValue, btcTx}] = await Promise.all([
             (async() => {
                 //Fetch vault data
                 let vault: T["SpvVaultData"] | null;
@@ -568,24 +676,30 @@ export class SpvFromBTCWrapper<
                 const tokenData = vault.getTokenData();
 
                 //Amounts - make sure the amounts match
+                let utxoSelection: SelectedUtxosInfo | undefined;
                 if(amountData.exactIn) {
-                    if(!resp.usedUtxoInputCalculation) {
+                    if(options.sourceWalletUtxos==null) {
                         //Legacy calculation
                         if(resp.btcAmount !== amountData.amount) throw new IntermediaryError("Invalid amount returned");
                     } else {
+                        if(!resp.usedUtxoInputCalculation) throw new IntermediaryError("Invalid usedUtxoInputCalculation flag returned");
                         //Implies the raw UTXOs were passed for amount derivation
                         //Verify the derivation was done correctly
-                        if(options.sourceWalletUtxos==null) throw new IntermediaryError("Invalid usedUtxoInputCalcuation return value");
                         if(bitcoinFeeRatePromise==null) throw new Error("bitcoinFeeRatePromise must be passed for UTXO-based input amount calculation checks");
                         const walletUtxos = await options.sourceWalletUtxos;
                         const bitcoinFeeRate = await throwIfUndefined(bitcoinFeeRatePromise, "Failed to fetch bitcoin fee rate!");
-                        const {balance} = BitcoinWallet.getSpendableBalance(
-                            walletUtxos, Math.max(resp.btcFeeRate, bitcoinFeeRate),
-                            this.getDummySwapPsbt(options.gasAmount!==0n), REQUIRED_SPV_SWAP_LP_ADDRESS_TYPE
+
+                        utxoSelection = await this.calculateSelectedUtxosAndAmounts(
+                            walletUtxos, Math.max(resp.btcFeeRate, bitcoinFeeRate), options.gasAmount!==0n,
+                            amountData.amount, options.sourceWalletAddressType, options.sourceWalletSkipDetrimentalUtxos,
+                            options.sourceWalletCpfpAssumption
                         );
-                        if(resp.btcAmount !== balance) throw new IntermediaryError(`Invalid amount returned, expected: ${balance.toString(10)}, got: ${resp.btcAmount.toString(10)}`);
+                        const {lpOutputAmount} = utxoSelection;
+
+                        if(resp.btcAmount !== lpOutputAmount) throw new IntermediaryError(`Invalid amount returned, expected: ${lpOutputAmount.toString(10)}, got: ${resp.btcAmount.toString(10)}`);
                     }
                 } else {
+                    if(amountData.amount==null) throw new Error("Amount must always be set for exact output swap");
                     //Check the difference between amount adjusted due to scaling to raw amount
                     const adjustedAmount = amountData.amount / tokenData[0].multiplier * tokenData[0].multiplier;
                     const adjustmentPPM = (amountData.amount - adjustedAmount)*1_000_000n / amountData.amount;
@@ -604,7 +718,7 @@ export class SpvFromBTCWrapper<
                     if(resp.totalGas !== adjustedGasAmount) throw new IntermediaryError("Invalid gas total returned");
                 }
 
-                return vault;
+                return {vault, utxoSelection};
             })(),
             (async() => {
                 //Require the vault UTXO to have at least 1 confirmation
@@ -676,7 +790,83 @@ export class SpvFromBTCWrapper<
 
         return {
             vault,
-            vaultUtxoValue
+            vaultUtxoValue,
+            utxoSelection
+        };
+    }
+
+    private async calculateSelectedUtxosAndAmounts(
+        walletUtxos: BitcoinWalletUtxoBase[],
+        bitcoinFeeRate: number,
+        includeGas: boolean,
+        amount?: bigint,
+        walletType?: CoinselectAddressTypes,
+        skipDetrimental: boolean = true,
+        cpfpAssumption?: { txVsize: number, txEffectiveFeeRate: number }
+    ): Promise<SelectedUtxosInfo> {
+        skipDetrimental ??= true;
+        cpfpAssumption ??= DEFAULT_CPFP_ASSUMPTION;
+
+        const swapPsbt = this.getDummySwapPsbt(includeGas);
+
+        if(amount!=null) {
+            const dustLimit = utils.dustThreshold({type: walletType!});
+            swapPsbt.addOutput({
+                script: getDummyOutputScript(walletType!),
+                amount: BigInt(dustLimit)
+            });
+        }
+
+        let spendableBalance = await BitcoinWallet.getSpendableBalance(
+            walletUtxos, bitcoinFeeRate,
+            swapPsbt, REQUIRED_SPV_SWAP_LP_ADDRESS_TYPE, skipDetrimental
+        );
+
+        let changeOutputAmount: bigint | undefined = undefined;
+        let additionalInputAmount: bigint | undefined = undefined;
+        if(amount!=null) {
+            const dustLimit = BigInt(utils.dustThreshold({type: walletType!}));
+            const selectedUtxosBalance = spendableBalance.selectedUtxos.reduce((previous, curr) => previous + BigInt(curr.value), 0n);
+            const difference = selectedUtxosBalance - amount;
+            if(difference < 0n) {
+                //Trying to spend too much, return the requirement of funding the wallet with another fresh UTXO
+                const swapPsbt = this.getDummySwapPsbt(includeGas);
+                additionalInputAmount = -difference;
+                if(additionalInputAmount < dustLimit) additionalInputAmount = dustLimit;
+                const syntheticUtxo = {type: walletType!, value: Number(additionalInputAmount), cpfp: cpfpAssumption};
+                spendableBalance = BitcoinWallet.getSpendableBalance(
+                    [...walletUtxos, syntheticUtxo],
+                    bitcoinFeeRate, swapPsbt, REQUIRED_SPV_SWAP_LP_ADDRESS_TYPE, skipDetrimental
+                );
+                // Remove the synthetic UTXO from the list
+                const index = spendableBalance.selectedUtxos.indexOf(syntheticUtxo);
+                if(index!==-1) spendableBalance.selectedUtxos.splice(index, 1);
+            } else if(difference < dustLimit) {
+                //Spending so big of a chunk that we cannot reasonably add a dust output, remove the change output
+                // by re-generating the swap dummy psbt
+                const swapPsbt = this.getDummySwapPsbt(includeGas);
+                spendableBalance = BitcoinWallet.getSpendableBalance(
+                    walletUtxos, bitcoinFeeRate,
+                    swapPsbt, REQUIRED_SPV_SWAP_LP_ADDRESS_TYPE, skipDetrimental
+                );
+            } else {
+                //We adjust the added output's amount to reflect the difference
+                swapPsbt.updateOutput(swapPsbt.outputsLength - 1, {amount: difference});
+                changeOutputAmount = difference;
+                spendableBalance = BitcoinWallet.getSpendableBalance(
+                    walletUtxos, bitcoinFeeRate,
+                    swapPsbt, REQUIRED_SPV_SWAP_LP_ADDRESS_TYPE, skipDetrimental
+                );
+            }
+        }
+
+        return {
+            selectedUtxos: spendableBalance.selectedUtxos,
+            skipDetrimental,
+            lpOutputAmount: spendableBalance.balance,
+            totalNetworkFee: BigInt(spendableBalance.totalFee),
+            changeOutputAmount,
+            additionalInputAmount
         };
     }
 
@@ -685,20 +875,32 @@ export class SpvFromBTCWrapper<
         bitcoinFeeRatePromise: Promise<number | undefined>,
         walletUtxosPromise: Promise<BitcoinWalletUtxoBase[]> | undefined,
         includeGas: boolean,
-        abortController: AbortController
+        abortController: AbortController,
+        walletType?: CoinselectAddressTypes,
+        skipDetrimental?: boolean,
+        sourceWalletCpfpAssumption?: {txVsize: number, txEffectiveFeeRate: number}
     ): Promise<bigint | undefined> {
-        if(amountData.amount!=null) return amountData.amount;
         try {
-            const bitcoinFeeRate = await throwIfUndefined(bitcoinFeeRatePromise, "Cannot fetch Bitcoin fee rate!");
-            if(walletUtxosPromise==null) throw new UserError("Cannot use empty amount without passing UTXOs!");
-            const walletUtxos = await walletUtxosPromise;
-            if(walletUtxos.length===0)
-                throw new UserError("Wallet doesn't have any BTC balance");
-            const spendableBalance = await BitcoinWallet.getSpendableBalance(
-                walletUtxos, bitcoinFeeRate,
-                this.getDummySwapPsbt(includeGas), REQUIRED_SPV_SWAP_LP_ADDRESS_TYPE
-            );
-            return spendableBalance.balance;
+            if(walletUtxosPromise==null) {
+                if(amountData.amount==null) throw new UserError("Amount has to be specified when not passing UTXOs!");
+                return amountData.amount;
+            } else {
+                if(amountData.amount!=null) {
+                    if(walletType==null) throw new UserError("Wallet type has to be specified when passing UTXOs and amount!");
+                }
+                const bitcoinFeeRate = await throwIfUndefined(bitcoinFeeRatePromise, "Cannot fetch Bitcoin fee rate!");
+                const walletUtxos = await walletUtxosPromise;
+
+                return (await this.calculateSelectedUtxosAndAmounts(
+                    walletUtxos,
+                    bitcoinFeeRate,
+                    includeGas,
+                    amountData.amount,
+                    walletType,
+                    skipDetrimental,
+                    sourceWalletCpfpAssumption
+                )).lpOutputAmount;
+            }
         } catch (e) {
             abortController.abort(e);
         }
@@ -746,10 +948,40 @@ export class SpvFromBTCWrapper<
         }
     }
 
+    private async initialSelectedUtxosInfoPrefetch(
+        amountData: { amount?: bigint },
+        options: {
+            gasAmount: bigint,
+            sourceWalletUtxos?: Promise<BitcoinWalletUtxoBase[]>,
+            sourceWalletAddressType?: CoinselectAddressTypes,
+            sourceWalletCpfpAssumption: {txVsize: number, txEffectiveFeeRate: number},
+        },
+        abortController: AbortController
+    ) {
+        try {
+            const utxos = await options.sourceWalletUtxos!;
+            return await this.calculateSelectedUtxosAndAmounts(
+                utxos, 0, options.gasAmount!==0n, amountData.amount,
+                options.sourceWalletAddressType, false, //Enforced as false in the previous condition
+                options.sourceWalletCpfpAssumption
+            );
+        } catch (e) {
+            abortController.abort(e);
+        }
+    }
+
     /**
-     * Returns a newly created Bitcoin -> Smart chain swap using the SPV vault (UTXO-controlled vault) swap protocol,
-     *  with the passed amount. Also allows specifying additional "gas drop" native token that the receipient receives
-     *  on the destination chain in the `options` argument.
+     * Internal creation function for Bitcoin -> Smart chain swap using the SPV vault (UTXO-controlled vault) swap protocol,
+     *  accepts three modes of operation:
+     *  - Exact output - amount has to be specified, and it creates a quote paying exactly the specified amount
+     *  - Exact input without UTXOs - amount has to be specified, specifies the clean input amount in BTC
+     *   (without network fees) for the swap
+     *  - Exact input with UTXOs - amount is optional:
+     *      - Without amount - spends the whole balance of UTXOs that are passed (optionally skipping uneconomical
+     *       utxos, controlled with the `options.sourceWalletSkipDetrimentalUtxos` option
+     *      - With amount - specifies the input amount in BTC WITH the network fees already included, in this case
+     *       all inputs are used without checking whether they are economical to spend
+     *       (`options.sourceWalletSkipDetrimentalUtxos` has to be explicitly set to `false`)
      *
      * @param recipient Recipient address on the destination smart chain
      * @param amountData Amount, token and exact input/output data for to swap
@@ -758,7 +990,7 @@ export class SpvFromBTCWrapper<
      * @param additionalParams Optional additional parameters sent to the LP when creating the swap
      * @param abortSignal Abort signal
      */
-    public create(
+    private _create(
         recipient: string,
         amountData: { amount?: bigint, token: string, exactIn: boolean },
         lps: Intermediary[],
@@ -766,7 +998,10 @@ export class SpvFromBTCWrapper<
         additionalParams?: Record<string, any>,
         abortSignal?: AbortSignal
     ): {
-        quote: Promise<SpvFromBTCSwap<T>>,
+        result: Promise<{
+            quote: SpvFromBTCSwap<T>,
+            utxoSelection?: SelectedUtxosInfo
+        }>,
         intermediary: Intermediary
     }[] {
         const _options = {
@@ -780,6 +1015,9 @@ export class SpvFromBTCWrapper<
             bitcoinFeeRate: options?.bitcoinFeeRate==undefined
                 ? undefined
                 : options?.bitcoinFeeRate instanceof Promise ? options.bitcoinFeeRate : Promise.resolve(options.bitcoinFeeRate),
+            sourceWalletSkipDetrimentalUtxos: options?.sourceWalletSkipDetrimentalUtxos ?? false,
+            sourceWalletAddressType: options?.sourceWalletAddressType,
+            sourceWalletCpfpAssumption: options?.sourceWalletCpfpAssumption ?? DEFAULT_CPFP_ASSUMPTION
         };
 
         if(
@@ -791,16 +1029,27 @@ export class SpvFromBTCWrapper<
             )
         ) throw new UserError("Cannot specify `gasAmount` for swaps to a native token!");
 
-        if(amountData.amount==null && options?.sourceWalletUtxos==null)
+        let initialSelectedUtxosInfo: Promise<SelectedUtxosInfo | undefined> | undefined;
+
+        const _abortController = extendAbortController(abortSignal);
+
+        if(amountData.amount==null && _options?.sourceWalletUtxos==null)
             throw new UserError("Source wallet UTXOs need to be passed when amount is null!");
         if(amountData.amount==null && !amountData.exactIn)
             throw new UserError("Amount can be null only for exactIn swaps!");
-        if(amountData.amount!=null && options?.sourceWalletUtxos!=null)
-            throw new UserError("Source wallet UTXOs cannot be passed while specifying an input amount!");
+        if(_options?.sourceWalletUtxos!=null && !amountData.exactIn)
+            throw new UserError("Source wallet UTXOs can only be set for exactIn swaps!");
+        //Allow amount with source wallet utxos! But require the change address type to be passed
+        if(amountData.amount!=null && _options?.sourceWalletUtxos!=null) {
+            if(_options?.sourceWalletAddressType==null)
+                throw new UserError("Source wallet address type is required when specifying an input amount with source wallet UTXOs!");
+            if(_options.sourceWalletSkipDetrimentalUtxos)
+                throw new UserError("Skip detrimental UTXOs must be set to false when specifying an input amount with source wallet UTXOs!");
+            initialSelectedUtxosInfo = this.initialSelectedUtxosInfoPrefetch(amountData, _options, _abortController);
+        }
 
         const lpVersions = Intermediary.getContractVersionsForLps(this.chainIdentifier, lps);
 
-        const _abortController = extendAbortController(abortSignal);
         const pricePrefetchPromise: Promise<bigint | undefined> = this.preFetchPrice(amountData, _abortController.signal);
         const usdPricePrefetchPromise: Promise<number | undefined> = this.preFetchUsdPrice(_abortController.signal);
         const finalizedBlockHeightPrefetchPromise: Promise<number | undefined> = this.preFetchFinalizedBlockHeight(_abortController);
@@ -813,18 +1062,19 @@ export class SpvFromBTCWrapper<
         });
         const {maxBitcoinFeeRatePromise, bitcoinFeeRatePromise} = this.bitcoinFeeRatePrefetch(_options, _abortController);
         const amountPromise = this.amountPrefetch(
-            amountData, maxBitcoinFeeRatePromise, _options.sourceWalletUtxos, _options.gasAmount!==0n, _abortController
+            amountData, maxBitcoinFeeRatePromise, _options.sourceWalletUtxos, _options.gasAmount!==0n, _abortController,
+            _options.sourceWalletAddressType, _options.sourceWalletSkipDetrimentalUtxos, _options.sourceWalletCpfpAssumption
         );
 
         return lps.map(lp => {
             return {
                 intermediary: lp,
-                quote: tryWithRetries(async () => {
+                result: tryWithRetries(async () => {
                     if(lp.services[SwapType.SPV_VAULT_FROM_BTC]==null) throw new Error("LP service for processing spv vault swaps not found!");
                     const version = lp.getContractVersion(this.chainIdentifier);
 
                     const abortController = extendAbortController(_abortController.signal);
-                    const callerFeeRatePromise = this.computeCallerFeeShare(
+                    const callerFeePromise = this.computeCallerFee(
                         amountPromise,
                         callerFeePrefetchPromise[version],
                         amountData,
@@ -845,20 +1095,36 @@ export class SpvFromBTCWrapper<
                                     exactOut: !amountData.exactIn,
                                     gasToken: nativeTokenAddress,
                                     gasAmount: _options.gasAmount,
-                                    callerFeeRate: throwIfUndefined(callerFeeRatePromise, "Caller fee prefetch failed!"),
+                                    callerFeeRate: callerFeePromise.then(val => val.callerFeeShare),
+                                    callerFee: callerFeePromise.then(val => val.callerFee),
                                     frontingFeeRate: 0n,
+                                    frontingFee: 0n,
                                     stickyAddress: options?.stickyAddress,
                                     amountUtxos: _options.sourceWalletUtxos!=null
-                                        ? _options.sourceWalletUtxos.then(utxos => {
-                                            if(utxos.length===0) return undefined;
-                                            return utxos.map(utxo => ({
+                                        ? (async() => {
+                                            const utxos = (await _options.sourceWalletUtxos!).map(utxo => ({
                                                 value: utxo.value,
                                                 vSize: utils.inputBytes({type: utxo.type}),
                                                 cpfp: utxo.cpfp==null ? undefined : {effectiveVSize: utxo.cpfp?.txVsize, effectiveFeeRate: utxo.cpfp?.txEffectiveFeeRate}
                                             }));
-                                        })
+                                            let additionalInputAmount = (await initialSelectedUtxosInfo)?.additionalInputAmount;
+                                            if(utxos.length===0 && additionalInputAmount==null) return undefined;
+                                            return utxos.concat(additionalInputAmount==null ? [] : [{
+                                                value: Number(additionalInputAmount),
+                                                vSize: utils.inputBytes({type: _options.sourceWalletAddressType!}),
+                                                cpfp: {
+                                                    effectiveVSize: _options.sourceWalletCpfpAssumption.txVsize,
+                                                    effectiveFeeRate: _options.sourceWalletCpfpAssumption.txEffectiveFeeRate
+                                                }
+                                            }]);
+                                        })()
                                         : undefined,
                                     amountFeeRate: bitcoinFeeRatePromise,
+                                    amountSkipDetrimental: _options.sourceWalletSkipDetrimentalUtxos,
+                                    amountChangeValue: initialSelectedUtxosInfo?.then(value => value?.changeOutputAmount),
+                                    amountChangeVSize: initialSelectedUtxosInfo?.then(
+                                        value => value?.changeOutputAmount!=null ? utils.outputBytes({type: _options.sourceWalletAddressType!})  : undefined
+                                    ),
                                     additionalParams
                                 },
                                 this._options.postRequestTimeout, abortController.signal, retryCount>0 ? false : undefined
@@ -867,30 +1133,29 @@ export class SpvFromBTCWrapper<
 
                         this.logger.debug("create("+lp.url+"): LP response: ", resp)
 
-                        const callerFeeShare = await callerFeeRatePromise;
-                        const amount = await throwIfUndefined(amountPromise);
+                        const callerFee = await callerFeePromise;
 
                         const [
                             pricingInfo,
                             gasPricingInfo,
-                            {vault, vaultUtxoValue}
+                            {vault, vaultUtxoValue, utxoSelection}
                         ] = await Promise.all([
                             this.verifyReturnedPrice(
                                 lp.services[SwapType.SPV_VAULT_FROM_BTC],
                                 false, resp.btcAmountSwap,
-                                resp.total * (100_000n + callerFeeShare) / 100_000n,
+                                resp.total * (100_000n + resp.callerFeeShare) / 100_000n,
                                 amountData.token, {swapFeeBtc: resp.swapFeeBtc}, pricePrefetchPromise, usdPricePrefetchPromise, abortController.signal
                             ),
                             _options.gasAmount===0n ? Promise.resolve(undefined) : this.verifyReturnedPrice(
                                 {...lp.services[SwapType.SPV_VAULT_FROM_BTC], swapBaseFee: 0}, //Base fee should be charged only on the amount, not on gas
                                 false, resp.btcAmountGas,
-                                resp.totalGas * (100_000n + callerFeeShare) / 100_000n,
+                                resp.totalGas * (100_000n + resp.callerFeeShare) / 100_000n,
                                 nativeTokenAddress, {swapFeeBtc: resp.gasSwapFeeBtc}, gasTokenPricePrefetchPromise, usdPricePrefetchPromise, abortController.signal
                             ),
                             this.verifyReturnedData(
                                 resp,
-                                {...amountData, amount},
-                                lp, _options, callerFeeShare, maxBitcoinFeeRatePromise, bitcoinFeeRatePromise, abortController.signal
+                                amountData,
+                                lp, _options, callerFee, maxBitcoinFeeRatePromise, bitcoinFeeRatePromise, abortController.signal
                             )
                         ]);
 
@@ -942,7 +1207,7 @@ export class SpvFromBTCWrapper<
                             contractVersion: version
                         };
                         const quote = new SpvFromBTCSwap<T>(this, swapInit);
-                        return quote;
+                        return {quote, utxoSelection};
                     } catch (e) {
                         if(e instanceof OutOfBoundsError) {
                             const amountResult = await amountPromise.catch(() => undefined);
@@ -956,6 +1221,89 @@ export class SpvFromBTCWrapper<
                 }, undefined, err => !(err instanceof IntermediaryError && err.recoverable), _abortController.signal)
             }
         });
+    }
+
+    public createWithUtxosExactIn(
+        recipient: string,
+        amountData: { amount?: bigint, token: string, exactIn: true },
+        lps: Intermediary[],
+        bitcoinWallet: IBitcoinWallet,
+        options?: SpvFromBTCOptions,
+        additionalParams?: Record<string, any>,
+        abortSignal?: AbortSignal
+    ): {
+        quote: Promise<SpvFromBTCSwap<T>>,
+        intermediary: Intermediary
+    }[] {
+        const receiveWalletAddressInfo = bitcoinWallet.getAddressInfo(false);
+        const sourceWalletAddressType = toCoinselectAddressType(this._options.bitcoinNetwork, receiveWalletAddressInfo.address);
+        assertSupportedSpvFundingType(sourceWalletAddressType);
+
+        let utxos = options?.sourceWalletUtxos;
+        if(utxos==null) {
+            utxos = bitcoinWallet.getUtxoPool();
+        }
+        const validatedUtxos = Promise.resolve(utxos).then(resolvedUtxos => {
+            resolvedUtxos.forEach(utxo => assertSupportedSpvFundingType(utxo.type));
+            return resolvedUtxos;
+        });
+
+        const resolvedCpfpAssumption = options?.sourceWalletCpfpAssumption ?? DEFAULT_CPFP_ASSUMPTION;
+
+        const createResult = this._create(recipient, amountData, lps, {
+            ...options,
+            sourceWalletUtxos: validatedUtxos,
+            sourceWalletCpfpAssumption: resolvedCpfpAssumption,
+            sourceWalletAddressType
+        }, additionalParams, abortSignal);
+
+        return createResult.map(createResult => ({
+            intermediary: createResult.intermediary,
+            quote: createResult.result.then(async({quote, utxoSelection}) => {
+                await quote._setSwapModeIntermediateWallet({
+                    walletAddressType: sourceWalletAddressType,
+                    selectedExistingUtxos: utxoSelection!.selectedUtxos as BitcoinWalletUtxo[],
+                    requiredDeposit: utxoSelection!.additionalInputAmount==null ? undefined : {
+                        ...receiveWalletAddressInfo,
+                        amount: utxoSelection!.additionalInputAmount,
+                        cpfpAssumptions: resolvedCpfpAssumption
+                    },
+                    changeAmount: utxoSelection!.changeOutputAmount,
+                    feeRate: quote.minimumBtcFeeRate,
+                    totalNetworkFee: utxoSelection!.totalNetworkFee
+                });
+                return quote;
+            })
+        }))
+    }
+
+    /**
+     * Returns a newly created Bitcoin -> Smart chain swap using the SPV vault (UTXO-controlled vault) swap protocol,
+     *  with the passed amount. Also allows specifying additional "gas drop" native token that the receipient receives
+     *  on the destination chain in the `options` argument.
+     *
+     * @param recipient Recipient address on the destination smart chain
+     * @param amountData Amount, token and exact input/output data for to swap
+     * @param lps An array of intermediaries (LPs) to get the quotes from
+     * @param options Optional additional quote options
+     * @param additionalParams Optional additional parameters sent to the LP when creating the swap
+     * @param abortSignal Abort signal
+     */
+    public create(
+        recipient: string,
+        amountData: { amount?: bigint, token: string, exactIn: boolean },
+        lps: Intermediary[],
+        options?: SpvFromBTCOptions,
+        additionalParams?: Record<string, any>,
+        abortSignal?: AbortSignal
+    ): {
+        quote: Promise<SpvFromBTCSwap<T>>,
+        intermediary: Intermediary
+    }[] {
+        return this._create(recipient, amountData, lps, options, additionalParams, abortSignal).map(response => ({
+            intermediary: response.intermediary,
+            quote: response.result.then(result => result.quote),
+        }));
     }
 
     /**

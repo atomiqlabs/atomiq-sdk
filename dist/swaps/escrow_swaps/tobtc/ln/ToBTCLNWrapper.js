@@ -2,25 +2,25 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ToBTCLNWrapper = void 0;
 const bolt11_1 = require("@atomiqlabs/bolt11");
-const ToBTCLNSwap_1 = require("./ToBTCLNSwap");
-const IToBTCWrapper_1 = require("../IToBTCWrapper");
-const UserError_1 = require("../../../../errors/UserError");
+const ToBTCLNSwap_js_1 = require("./ToBTCLNSwap.js");
+const IToBTCWrapper_js_1 = require("../IToBTCWrapper.js");
+const UserError_js_1 = require("../../../../errors/UserError.js");
 const base_1 = require("@atomiqlabs/base");
-const Intermediary_1 = require("../../../../intermediaries/Intermediary");
-const IntermediaryError_1 = require("../../../../errors/IntermediaryError");
-const SwapType_1 = require("../../../../enums/SwapType");
-const Utils_1 = require("../../../../utils/Utils");
-const RequestError_1 = require("../../../../errors/RequestError");
-const LNURL_1 = require("../../../../lnurl/LNURL");
-const IToBTCSwap_1 = require("../IToBTCSwap");
+const Intermediary_js_1 = require("../../../../intermediaries/Intermediary.js");
+const IntermediaryError_js_1 = require("../../../../errors/IntermediaryError.js");
+const SwapType_js_1 = require("../../../../enums/SwapType.js");
+const Utils_js_1 = require("../../../../utils/Utils.js");
+const RequestError_js_1 = require("../../../../errors/RequestError.js");
+const LNURL_js_1 = require("../../../../lnurl/LNURL.js");
+const IToBTCSwap_js_1 = require("../IToBTCSwap.js");
 const sha2_1 = require("@noble/hashes/sha2");
-const RetryUtils_1 = require("../../../../utils/RetryUtils");
+const RetryUtils_js_1 = require("../../../../utils/RetryUtils.js");
 /**
  * Escrow based (HTLC) swap for Smart chains -> Bitcoin lightning
  *
  * @category Swaps/Smart chain → Lightning
  */
-class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
+class ToBTCLNWrapper extends IToBTCWrapper_js_1.IToBTCWrapper {
     constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, versionedContracts, lpApi, options, events) {
         super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, lpApi, {
             ...options,
@@ -29,11 +29,11 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
             lightningBaseFee: options?.lightningBaseFee ?? 10,
             lightningFeePPM: options?.lightningFeePPM ?? 3000
         }, versionedContracts, events);
-        this.TYPE = SwapType_1.SwapType.TO_BTCLN;
+        this.TYPE = SwapType_js_1.SwapType.TO_BTCLN;
         /**
          * @internal
          */
-        this._swapDeserializer = ToBTCLNSwap_1.ToBTCLNSwap;
+        this._swapDeserializer = ToBTCLNSwap_js_1.ToBTCLNSwap;
     }
     toRequiredSwapOptions(amountData, options, pricePreFetchPromise, abortSignal) {
         const expirySeconds = options?.expirySeconds ?? this._options.paymentTimeoutSeconds;
@@ -75,8 +75,8 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
     async checkPaymentHashWasPaid(paymentHash) {
         const swaps = await this.unifiedStorage.query([[{ key: "type", value: this.TYPE }, { key: "paymentHash", value: paymentHash }]], (obj) => new this._swapDeserializer(this, obj));
         for (let value of swaps) {
-            if (value._state === IToBTCSwap_1.ToBTCSwapState.CLAIMED || value._state === IToBTCSwap_1.ToBTCSwapState.SOFT_CLAIMED)
-                throw new UserError_1.UserError("Lightning invoice was already paid!");
+            if (value._state === IToBTCSwap_js_1.ToBTCSwapState.CLAIMED || value._state === IToBTCSwap_js_1.ToBTCSwapState.SOFT_CLAIMED)
+                throw new UserError_js_1.UserError("Lightning invoice was already paid!");
         }
     }
     /**
@@ -112,9 +112,9 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
      */
     async verifyReturnedData(signer, resp, parsedPr, token, lp, calculatedOptions, data, requiredTotal) {
         if (resp.routingFeeSats > await calculatedOptions.maxFee)
-            throw new IntermediaryError_1.IntermediaryError("Invalid max fee sats returned");
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid max fee sats returned");
         if (requiredTotal != null && resp.total !== requiredTotal)
-            throw new IntermediaryError_1.IntermediaryError("Invalid data returned - total amount");
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid data returned - total amount");
         if (parsedPr.tagsObject.payment_hash == null)
             throw new Error("Swap invoice doesn't contain payment hash field!");
         const claimHash = this._contract(lp.getContractVersion(this.chainIdentifier)).getHashForHtlc(Buffer.from(parsedPr.tagsObject.payment_hash, "hex"));
@@ -127,7 +127,7 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
             !data.isClaimer(lp.getAddress(this.chainIdentifier)) ||
             !data.isOfferer(signer) ||
             data.getTotalDeposit() !== 0n) {
-            throw new IntermediaryError_1.IntermediaryError("Invalid data returned");
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid data returned");
         }
     }
     /**
@@ -174,20 +174,20 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
      * @private
      */
     async getIntermediaryQuote(signer, amountData, lp, pr, parsedPr, calculatedOptions, preFetches, abort, additionalParams) {
-        if (lp.services[SwapType_1.SwapType.TO_BTCLN] == null)
+        if (lp.services[SwapType_js_1.SwapType.TO_BTCLN] == null)
             throw new Error("LP service for processing to btcln swaps not found!");
         const version = lp.getContractVersion(this.chainIdentifier);
-        const abortController = abort instanceof AbortController ? abort : (0, Utils_1.extendAbortController)(abort);
+        const abortController = abort instanceof AbortController ? abort : (0, Utils_js_1.extendAbortController)(abort);
         const reputationPromise = this.preFetchIntermediaryReputation(amountData, lp, abortController, version);
         try {
-            const { signDataPromise, resp } = await (0, RetryUtils_1.tryWithRetries)(async (retryCount) => {
+            const { signDataPromise, resp } = await (0, RetryUtils_js_1.tryWithRetries)(async (retryCount) => {
                 const { signDataPrefetch, response } = this._lpApi.initToBTCLN(this.chainIdentifier, lp.url, {
                     offerer: signer,
                     pr,
                     maxFee: await calculatedOptions.maxFee,
                     expiryTimestamp: calculatedOptions.expiryTimestamp,
                     token: amountData.token,
-                    feeRate: (0, Utils_1.throwIfUndefined)(preFetches.feeRatePromise[version], "Network fee rate pre-fetch failed!"),
+                    feeRate: (0, Utils_js_1.throwIfUndefined)(preFetches.feeRatePromise[version], "Network fee rate pre-fetch failed!"),
                     additionalParams
                 }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined);
                 let signDataPromise = preFetches.signDataPrefetchPromise?.[version];
@@ -200,7 +200,7 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                     signDataPromise,
                     resp: await response
                 };
-            }, undefined, e => e instanceof RequestError_1.RequestError, abortController.signal);
+            }, undefined, e => e instanceof RequestError_js_1.RequestError, abortController.signal);
             if (parsedPr.millisatoshis == null)
                 throw new Error("Swap invoice doesn't have msat amount field!");
             const amountOut = (BigInt(parsedPr.millisatoshis) + 999n) / 1000n;
@@ -210,14 +210,14 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
             await this.verifyReturnedData(signer, resp, parsedPr, amountData.token, lp, calculatedOptions, data);
             const swapFeeBtc = resp.swapFee * amountOut / (data.getAmount() - totalFee);
             const [pricingInfo, signatureExpiry, reputation] = await Promise.all([
-                this.verifyReturnedPrice(lp.services[SwapType_1.SwapType.TO_BTCLN], true, amountOut, data.getAmount(), amountData.token, { networkFee: resp.maxFee, swapFeeBtc }, preFetches.pricePreFetchPromise, preFetches.usdPricePrefetchPromise, abortController.signal),
+                this.verifyReturnedPrice(lp.services[SwapType_js_1.SwapType.TO_BTCLN], true, amountOut, data.getAmount(), amountData.token, { networkFee: resp.maxFee, swapFeeBtc }, preFetches.pricePreFetchPromise, preFetches.usdPricePrefetchPromise, abortController.signal),
                 this.verifyReturnedSignature(signer, data, resp, preFetches.feeRatePromise[version], signDataPromise, version, abortController.signal),
                 reputationPromise
             ]);
             abortController.signal.throwIfAborted();
             if (reputation != null)
                 lp.reputation[amountData.token.toString()] = reputation;
-            const quote = new ToBTCLNSwap_1.ToBTCLNSwap(this, {
+            const quote = new ToBTCLNSwap_js_1.ToBTCLNSwap(this, {
                 pricingInfo,
                 url: lp.url,
                 expiry: signatureExpiry,
@@ -257,9 +257,9 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
     async create(signer, recipient, amountData, lps, options, additionalParams, abortSignal, preFetches) {
         const parsedPr = (0, bolt11_1.decode)(recipient);
         if (parsedPr.millisatoshis == null)
-            throw new UserError_1.UserError("Must be an invoice with amount");
+            throw new UserError_js_1.UserError("Must be an invoice with amount");
         const amountOut = (BigInt(parsedPr.millisatoshis) + 999n) / 1000n;
-        const lpVersions = Intermediary_1.Intermediary.getContractVersionsForLps(this.chainIdentifier, lps);
+        const lpVersions = Intermediary_js_1.Intermediary.getContractVersionsForLps(this.chainIdentifier, lps);
         const { expirySeconds, longExpiry } = this.getExpirySeconds(parsedPr, options);
         const _options = {
             ...this.toRequiredSwapOptions({ ...amountData, amount: amountOut }, { ...options, expirySeconds }),
@@ -268,15 +268,15 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
         if (parsedPr.tagsObject.payment_hash == null)
             throw new Error("Provided lightning invoice doesn't contain payment hash field!");
         await this.checkPaymentHashWasPaid(parsedPr.tagsObject.payment_hash);
-        const _hash = (0, Utils_1.mapArrayToObject)(lpVersions, (contractVersion) => {
+        const _hash = (0, Utils_js_1.mapArrayToObject)(lpVersions, (contractVersion) => {
             return this._contract(contractVersion).getHashForHtlc(Buffer.from(parsedPr.tagsObject.payment_hash, "hex")).toString("hex");
         });
-        const _abortController = (0, Utils_1.extendAbortController)(abortSignal);
+        const _abortController = (0, Utils_js_1.extendAbortController)(abortSignal);
         const _preFetches = preFetches ?? {
             pricePreFetchPromise: this.preFetchPrice(amountData, _abortController.signal),
             feeRatePromise: this.preFetchFeeRate(signer, amountData, _hash, _abortController, lpVersions),
             usdPricePrefetchPromise: this.preFetchUsdPrice(_abortController.signal),
-            signDataPrefetchPromise: (0, Utils_1.mapArrayToObject)(lpVersions, (contractVersion) => {
+            signDataPrefetchPromise: (0, Utils_js_1.mapArrayToObject)(lpVersions, (contractVersion) => {
                 return this._contract(contractVersion).preFetchBlockDataForSignatures == null ?
                     this.preFetchSignData(Promise.resolve(true), contractVersion) :
                     undefined;
@@ -301,11 +301,11 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
     async getLNURLPay(lnurl, abortSignal) {
         if (typeof (lnurl) !== "string")
             return lnurl;
-        const res = await LNURL_1.LNURL.getLNURL(lnurl, true, this._options.getRequestTimeout, abortSignal);
+        const res = await LNURL_js_1.LNURL.getLNURL(lnurl, true, this._options.getRequestTimeout, abortSignal);
         if (res == null)
-            throw new UserError_1.UserError("Invalid LNURL");
+            throw new UserError_js_1.UserError("Invalid LNURL");
         if (res.tag !== "payRequest")
-            throw new UserError_1.UserError("Not a LNURL-pay");
+            throw new UserError_js_1.UserError("Not a LNURL-pay");
         return res;
     }
     /**
@@ -325,13 +325,13 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
      * @private
      */
     async getIntermediaryQuoteExactIn(signer, amountData, invoiceCreateService, lp, dummyPr, calculatedOptions, preFetches, abortSignal, additionalParams) {
-        if (lp.services[SwapType_1.SwapType.TO_BTCLN] == null)
+        if (lp.services[SwapType_js_1.SwapType.TO_BTCLN] == null)
             throw new Error("LP service for processing to btcln swaps not found!");
         const version = lp.getContractVersion(this.chainIdentifier);
-        const abortController = (0, Utils_1.extendAbortController)(abortSignal);
+        const abortController = (0, Utils_js_1.extendAbortController)(abortSignal);
         const reputationPromise = this.preFetchIntermediaryReputation(amountData, lp, abortController, version);
         try {
-            const { signDataPromise, prepareResp } = await (0, RetryUtils_1.tryWithRetries)(async (retryCount) => {
+            const { signDataPromise, prepareResp } = await (0, RetryUtils_js_1.tryWithRetries)(async (retryCount) => {
                 const { signDataPrefetch, response } = this._lpApi.prepareToBTCLNExactIn(this.chainIdentifier, lp.url, {
                     token: amountData.token,
                     offerer: signer,
@@ -345,25 +345,25 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                     signDataPromise: this.preFetchSignData(signDataPrefetch, version),
                     prepareResp: await response
                 };
-            }, undefined, e => e instanceof RequestError_1.RequestError, abortController.signal);
+            }, undefined, e => e instanceof RequestError_js_1.RequestError, abortController.signal);
             if (prepareResp.amount <= 0n)
-                throw new IntermediaryError_1.IntermediaryError("Invalid amount returned (zero or negative)");
+                throw new IntermediaryError_js_1.IntermediaryError("Invalid amount returned (zero or negative)");
             if (invoiceCreateService.minMsats != null) {
                 if (prepareResp.amount < invoiceCreateService.minMsats / 1000n)
-                    throw new UserError_1.UserError("Amount less than minimum");
+                    throw new UserError_js_1.UserError("Amount less than minimum");
             }
             if (invoiceCreateService.maxMSats != null) {
                 if (prepareResp.amount > invoiceCreateService.maxMSats / 1000n)
-                    throw new UserError_1.UserError("Amount more than maximum");
+                    throw new UserError_js_1.UserError("Amount more than maximum");
             }
             const invoice = await invoiceCreateService.getInvoice(Number(prepareResp.amount), abortController.signal);
             const parsedInvoice = (0, bolt11_1.decode)(invoice);
-            const resp = await (0, RetryUtils_1.tryWithRetries)((retryCount) => this._lpApi.initToBTCLNExactIn(lp.url, {
+            const resp = await (0, RetryUtils_js_1.tryWithRetries)((retryCount) => this._lpApi.initToBTCLNExactIn(lp.url, {
                 pr: invoice,
                 reqId: prepareResp.reqId,
-                feeRate: (0, Utils_1.throwIfUndefined)(preFetches.feeRatePromise[version], "Network fee rate pre-fetch failed!"),
+                feeRate: (0, Utils_js_1.throwIfUndefined)(preFetches.feeRatePromise[version], "Network fee rate pre-fetch failed!"),
                 additionalParams
-            }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined), undefined, RequestError_1.RequestError, abortController.signal);
+            }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined), undefined, RequestError_js_1.RequestError, abortController.signal);
             if (parsedInvoice.millisatoshis == null)
                 throw new Error("Swap invoice doesn't have msat amount field!");
             const amountOut = (BigInt(parsedInvoice.millisatoshis) + 999n) / 1000n;
@@ -373,14 +373,14 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
             await this.verifyReturnedData(signer, resp, parsedInvoice, amountData.token, lp, calculatedOptions, data, amountData.amount);
             const swapFeeBtc = resp.swapFee * amountOut / (data.getAmount() - totalFee);
             const [pricingInfo, signatureExpiry, reputation] = await Promise.all([
-                this.verifyReturnedPrice(lp.services[SwapType_1.SwapType.TO_BTCLN], true, prepareResp.amount, data.getAmount(), amountData.token, { networkFee: resp.maxFee, swapFeeBtc }, preFetches.pricePreFetchPromise, preFetches.usdPricePrefetchPromise, abortSignal),
+                this.verifyReturnedPrice(lp.services[SwapType_js_1.SwapType.TO_BTCLN], true, prepareResp.amount, data.getAmount(), amountData.token, { networkFee: resp.maxFee, swapFeeBtc }, preFetches.pricePreFetchPromise, preFetches.usdPricePrefetchPromise, abortSignal),
                 this.verifyReturnedSignature(signer, data, resp, preFetches.feeRatePromise[version], signDataPromise, version, abortController.signal),
                 reputationPromise
             ]);
             abortController.signal.throwIfAborted();
             if (reputation != null)
                 lp.reputation[amountData.token.toString()] = reputation;
-            const quote = new ToBTCLNSwap_1.ToBTCLNSwap(this, {
+            const quote = new ToBTCLNSwap_js_1.ToBTCLNSwap(this, {
                 pricingInfo,
                 url: lp.url,
                 expiry: signatureExpiry,
@@ -420,12 +420,12 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
     async createViaInvoiceCreateService(signer, invoiceCreateServicePromise, amountData, lps, options, additionalParams, abortSignal) {
         if (!this.isInitialized)
             throw new Error("Not initialized, call init() first!");
-        const lpVersions = Intermediary_1.Intermediary.getContractVersionsForLps(this.chainIdentifier, lps);
-        const _abortController = (0, Utils_1.extendAbortController)(abortSignal);
+        const lpVersions = Intermediary_js_1.Intermediary.getContractVersionsForLps(this.chainIdentifier, lps);
+        const _abortController = (0, Utils_js_1.extendAbortController)(abortSignal);
         const pricePreFetchPromise = this.preFetchPrice(amountData, _abortController.signal);
         const usdPricePrefetchPromise = this.preFetchUsdPrice(_abortController.signal);
         const feeRatePromise = this.preFetchFeeRate(signer, amountData, undefined, _abortController, lpVersions);
-        const signDataPrefetchPromise = (0, Utils_1.mapArrayToObject)(lpVersions, (contractVersion) => {
+        const signDataPrefetchPromise = (0, Utils_js_1.mapArrayToObject)(lpVersions, (contractVersion) => {
             return this._contract(contractVersion).preFetchBlockDataForSignatures == null ?
                 this.preFetchSignData(Promise.resolve(true), contractVersion) :
                 undefined;
@@ -454,11 +454,11 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
             else {
                 if (invoiceCreateService.minMsats != null) {
                     if (amountData.amount < invoiceCreateService.minMsats / 1000n)
-                        throw new UserError_1.UserError("Amount less than minimum");
+                        throw new UserError_js_1.UserError("Amount less than minimum");
                 }
                 if (invoiceCreateService.maxMSats != null) {
                     if (amountData.amount > invoiceCreateService.maxMSats / 1000n)
-                        throw new UserError_1.UserError("Amount more than maximum");
+                        throw new UserError_js_1.UserError("Amount more than maximum");
                 }
                 const invoice = await invoiceCreateService.getInvoice(Number(amountData.amount), _abortController.signal);
                 return (await this.create(signer, invoice, { ...amountData, exactIn: false }, lps, options, additionalParams, _abortController.signal, {
@@ -489,15 +489,15 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
      */
     async createViaLNURL(signer, lnurl, amountData, lps, options, additionalParams, abortSignal) {
         let successActions = {};
-        const _abortController = (0, Utils_1.extendAbortController)(abortSignal);
+        const _abortController = (0, Utils_js_1.extendAbortController)(abortSignal);
         const invoiceCreateService = (async () => {
             let payRequest = await this.getLNURLPay(lnurl, _abortController.signal);
             if (options?.comment != null &&
                 (payRequest.commentAllowed == null || options.comment.length > payRequest.commentAllowed))
-                throw new UserError_1.UserError("Comment not allowed or too long");
+                throw new UserError_js_1.UserError("Comment not allowed or too long");
             return {
                 getInvoice: async (amountSats, abortSignal) => {
-                    const { invoice, successAction } = await LNURL_1.LNURL.useLNURLPay(payRequest, BigInt(amountSats), options?.comment, this._options.getRequestTimeout, abortSignal);
+                    const { invoice, successAction } = await LNURL_js_1.LNURL.useLNURLPay(payRequest, BigInt(amountSats), options?.comment, this._options.getRequestTimeout, abortSignal);
                     if (successAction != null)
                         successActions[invoice] = successAction;
                     return invoice;
@@ -560,12 +560,12 @@ class ToBTCLNWrapper extends IToBTCWrapper_1.IToBTCWrapper {
             exactIn: false,
             contractVersion
         };
-        const swap = new ToBTCLNSwap_1.ToBTCLNSwap(this, swapInit);
+        const swap = new ToBTCLNSwap_js_1.ToBTCLNSwap(this, swapInit);
         swap._commitTxId = await init.getInitTxId();
         const blockData = await init.getTxBlock();
         swap.createdAt = blockData.blockTime * 1000;
         swap._setInitiated();
-        swap._state = IToBTCSwap_1.ToBTCSwapState.COMMITED;
+        swap._state = IToBTCSwap_js_1.ToBTCSwapState.COMMITED;
         await swap._sync(false, false, state);
         await swap._save();
         return swap;

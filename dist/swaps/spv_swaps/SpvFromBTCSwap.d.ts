@@ -1,353 +1,277 @@
-import { ISwap, ISwapInit } from "../ISwap";
-import { BtcTx, ChainType, SpvWithdrawalClaimedState, SpvWithdrawalClosedState, SpvWithdrawalFrontedState } from "@atomiqlabs/base";
-import { SwapType } from "../../enums/SwapType";
-import { SpvFromBTCTypeDefinition, SpvFromBTCWrapper } from "./SpvFromBTCWrapper";
+/// <reference types="node" />
+/// <reference types="node" />
+import { ChainType } from "@atomiqlabs/base";
+import { SpvFromBTCWrapper } from "./SpvFromBTCWrapper.js";
 import { Transaction } from "@scure/btc-signer";
-import { Fee } from "../../types/fees/Fee";
-import { BitcoinWalletUtxo, IBitcoinWallet } from "../../bitcoin/wallet/IBitcoinWallet";
-import { IBTCWalletSwap } from "../IBTCWalletSwap";
-import { ISwapWithGasDrop } from "../ISwapWithGasDrop";
-import { MinimalBitcoinWalletInterface, MinimalBitcoinWalletInterfaceWithSigner } from "../../types/wallets/MinimalBitcoinWalletInterface";
-import { IClaimableSwap } from "../IClaimableSwap";
-import { FeeType } from "../../enums/FeeType";
-import { TokenAmount } from "../../types/TokenAmount";
-import { BtcToken, SCToken } from "../../types/Token";
-import { LoggerType } from "../../utils/Logger";
-import { PriceInfoType } from "../../types/PriceInfoType";
-import { SwapExecutionActionSignPSBT, SwapExecutionActionSignSmartChainTx, SwapExecutionActionWait } from "../../types/SwapExecutionAction";
-import { SwapExecutionStepPayment, SwapExecutionStepSettlement } from "../../types/SwapExecutionStep";
-import { SwapStateInfo } from "../../types/SwapStateInfo";
+import { Buffer } from "buffer";
+import { BitcoinWalletUtxo, IBitcoinWallet } from "../../bitcoin/wallet/IBitcoinWallet.js";
+import { IAddressSwap } from "../IAddressSwap.js";
+import { MinimalBitcoinWalletInterface, MinimalBitcoinWalletInterfaceWithSigner } from "../../types/wallets/MinimalBitcoinWalletInterface.js";
+import { FeeType } from "../../enums/FeeType.js";
+import { TokenAmount } from "../../types/TokenAmount.js";
+import { BtcToken, SCToken } from "../../types/Token.js";
+import { SwapExecutionActionSendToAddress, SwapExecutionActionSignPSBT } from "../../types/SwapExecutionAction.js";
+import { SwapExecutionStepPayment, SwapExecutionStepSettlement } from "../../types/SwapExecutionStep.js";
+import { CoinselectAddressTypes } from "../../bitcoin/coinselect2/utils.js";
+import { SpvFromBTCSwapBase, SpvFromBTCSwapBaseExecuteCallbacks, SpvFromBTCSwapBaseExecuteOptions, SpvFromBTCSwapInit } from "./SpvFromBTCSwapBase.js";
+import { Fee } from "../../types/fees/Fee.js";
 /**
- * State enum for SPV vault (UTXO-controlled vault) based swaps
- * @category Swaps/Bitcoin → Smart chain
+ * An external intermediate-wallet deposit that cannot fund the quoted SPV swap.
+ *
+ * @remarks
+ * `requiredAmount` and `actualAmount` are denominated in satoshis. `effectiveFeeRate` and `minimumFeeRate` are
+ * populated when `reason` is `"deposit_fee_too_low"` and are denominated in sats/vB.
  */
-export declare enum SpvFromBTCSwapState {
-    /**
-     * Catastrophic failure has occurred when processing the swap on the smart chain side,
-     *  this implies a bug in the smart contract code or the user and intermediary deliberately
-     *  creating a bitcoin transaction with invalid format unparsable by the smart contract.
-     */
-    CLOSED = -5,
-    /**
-     * Some of the bitcoin swap transaction inputs were double-spent, this means the swap
-     *  has failed and no BTC was sent
-     */
-    FAILED = -4,
-    /**
-     * The intermediary (LP) declined to co-sign the submitted PSBT, hence the swap failed
-     */
-    DECLINED = -3,
-    /**
-     * Swap has expired for good and there is no way how it can be executed anymore
-     */
-    QUOTE_EXPIRED = -2,
-    /**
-     * A swap is almost expired, and it should be presented to the user as expired, though
-     *  there is still a chance that it will be processed
-     */
-    QUOTE_SOFT_EXPIRED = -1,
-    /**
-     * Swap was created, use the {@link SpvFromBTCSwap.getFundedPsbt} or {@link SpvFromBTCSwap.getPsbt} functions
-     *  to get the bitcoin swap PSBT that should be signed by the user's wallet and then submitted via the
-     *  {@link SpvFromBTCSwap.submitPsbt} function.
-     */
-    CREATED = 0,
-    /**
-     * Swap bitcoin PSBT was submitted by the client to the SDK
-     */
-    SIGNED = 1,
-    /**
-     * Swap bitcoin PSBT sent to the intermediary (LP), waiting for the intermediary co-sign
-     *  it and broadcast. You can use the {@link SpvFromBTCSwap.waitTillClaimedOrFronted}
-     *  function to wait till the intermediary broadcasts the transaction and the transaction
-     *  confirms.
-     */
-    POSTED = 2,
-    /**
-     * Intermediary (LP) has co-signed and broadcasted the bitcoin transaction. You can use the
-     *  {@link SpvFromBTCSwap.waitTillClaimedOrFronted} function to wait till the transaction
-     *  confirms.
-     */
-    BROADCASTED = 3,
-    /**
-     * Settlement on the destination smart chain was fronted and funds were already received
-     *  by the user, even before the final settlement.
-     */
-    FRONTED = 4,
-    /**
-     * Bitcoin transaction confirmed with necessary amount of confirmations, wait for automatic
-     *  settlement by the watchtower with the {@link waitTillClaimedOrFronted} function, or settle manually
-     *  using the {@link FromBTCSwap.claim} or {@link FromBTCSwap.txsClaim} function.
-     */
-    BTC_TX_CONFIRMED = 5,
-    /**
-     * Swap settled on the smart chain and funds received
-     */
-    CLAIMED = 6
-}
-export type SpvFromBTCSwapInit = ISwapInit & {
-    quoteId: string;
-    recipient: string;
-    vaultOwner: string;
-    vaultId: bigint;
-    vaultRequiredConfirmations: number;
-    vaultTokenMultipliers: bigint[];
-    vaultBtcAddress: string;
-    vaultUtxo: string;
-    vaultUtxoValue: bigint;
-    btcDestinationAddress: string;
-    btcAmount: bigint;
-    btcAmountSwap: bigint;
-    btcAmountGas: bigint;
-    minimumBtcFeeRate: number;
-    outputTotalSwap: bigint;
-    outputSwapToken: string;
-    outputTotalGas: bigint;
-    outputGasToken: string;
-    gasSwapFeeBtc: bigint;
-    gasSwapFee: bigint;
-    callerFeeShare: bigint;
-    frontingFeeShare: bigint;
-    executionFeeShare: bigint;
-    genesisSmartChainBlockHeight: number;
-    gasPricingInfo?: PriceInfoType;
+export type SpvFromBTCExternalDepositInvalidUtxo = {
+    key: string;
+    utxo: BitcoinWalletUtxo;
+    reason: "amount_too_small" | "amount_too_large" | "deposit_fee_too_low";
+    requiredAmount: bigint;
+    actualAmount: bigint;
+    effectiveFeeRate?: number;
+    minimumFeeRate?: number;
 };
-export declare function isSpvFromBTCSwapInit(obj: any): obj is SpvFromBTCSwapInit;
+type SpvFromBTCSwapExecuteCallbacks = SpvFromBTCSwapBaseExecuteCallbacks & {
+    onExternalDepositReceived?: (depositTxId: string) => void;
+    onInvalidExternalDeposit?: (invalidDeposits: SpvFromBTCExternalDepositInvalidUtxo[]) => boolean | void | Promise<boolean | void>;
+};
+type SpvFromBTCSwapExecuteOptions = SpvFromBTCSwapBaseExecuteOptions & {
+    externalDepositCheckIntervalSeconds?: number;
+    maxWaitForExternalDepositSeconds?: number;
+};
 /**
- * New spv vault (UTXO-controlled vault) based swaps for Bitcoin -> Smart chain swaps not requiring
- *  any initiation on the destination chain, and with the added possibility for the user to receive
- *  a native token on the destination chain as part of the swap (a "gas drop" feature).
+ * Runtime mode for an SPV BTC -> smart-chain swap.
+ *
+ * `"psbt"` preserves the normal wallet-funded PSBT flow. `"intermediate_wallet"` represents an intermediate-wallet flow where
+ * callers deposit one future UTXO to a configured Bitcoin address before signing the fully funded SPV PSBT.
+ */
+export type SpvFromBTCSwapMode = "psbt" | "intermediate_wallet";
+/**
+ * Minimal persisted UTXO snapshot used by SPV external deposit mode.
+ *
+ * @remarks
+ * Full {@link BitcoinWalletUtxo} objects may be kept in memory, but serialization narrows them to this JSON-safe
+ * primitive shape so output scripts and other binary fields are not persisted.
+ */
+export type SpvExternalSelectedUtxo = {
+    /**
+     * Bitcoin transaction id containing the UTXO.
+     */
+    txId: string;
+    /**
+     * Output index inside `txId`.
+     */
+    vout: number;
+    /**
+     * UTXO value in satoshis.
+     */
+    value: number;
+    /**
+     * Address type used for coin selection and transaction-size estimation.
+     */
+    type: CoinselectAddressTypes;
+    /**
+     * Output script of the UTXO
+     */
+    outputScript: Buffer;
+    /**
+     * Public key associated with the UTXO
+     */
+    publicKey: string;
+    /**
+     * Optional quote-time CPFP metadata for unconfirmed inputs.
+     */
+    cpfp?: {
+        txVsize: number;
+        txEffectiveFeeRate: number;
+    };
+};
+/**
+ * Cached external deposit mode data stored on a public {@link SpvFromBTCSwap}.
+ *
+ * @remarks
+ * `requiredAdditionalUtxoAmount` and `totalNetworkFee` are bigint satoshi amounts so restored quotes can show the
+ * same external deposit requirement without re-estimating. `selectedExistingUtxos` may contain full wallet UTXOs in
+ * memory, but {@link SpvFromBTCSwap.serialize} persists only {@link SpvExternalSelectedUtxo} fields. `spendFully`
+ * controls whether those selected UTXOs are consumed without change (`true`) or fund the PSBT with wallet change
+ * allowed (`false`).
+ */
+export type SpvFromBTCIntermediateWalletSwapModeInfo = {
+    /**
+     * Coin selection address type inferred from `depositAddress`.
+     */
+    walletAddressType: CoinselectAddressTypes;
+    /**
+     * Existing UTXOs selected for the external quote. Full-spend mode uses the full selected set; change-aware mode
+     * treats this as the wallet funding pool for the quote.
+     */
+    selectedExistingUtxos: SpvExternalSelectedUtxo[];
+    /**
+     * Bitcoin address controlled by the intermediate wallet.
+     */
+    requiredDeposit?: {
+        address: string;
+        publicKey: string;
+        /**
+         * Satoshis still required as one future UTXO at `depositAddress`.
+         */
+        amount: bigint;
+        /**
+         * CPFP package-fee assumptions for the future incoming deposit UTXO.
+         */
+        cpfpAssumptions: {
+            txVsize: number;
+            txEffectiveFeeRate: number;
+        };
+    };
+    /**
+     * Amount to send back to the original wallet as change
+     */
+    changeAmount?: bigint;
+    /**
+     * Bitcoin fee rate in sats/vB used for the final funding transaction.
+     */
+    feeRate: number;
+    /**
+     * Estimated input-side Bitcoin network fee in satoshis.
+     */
+    totalNetworkFee: bigint;
+};
+/**
+ * Public SPV vault BTC -> smart-chain swap class.
+ *
+ * @remarks
+ * PSBT mode preserves the existing wallet-funded SPV behavior. External deposit mode is added in the subclass so
+ * restored swaps continue to deserialize through this public class while base PSBT mechanics stay reusable.
  *
  * @category Swaps/Bitcoin → Smart chain
  */
-export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFromBTCTypeDefinition<T>> implements IBTCWalletSwap, ISwapWithGasDrop<T>, IClaimableSwap<T, SpvFromBTCTypeDefinition<T>, SpvFromBTCSwapState> {
-    protected readonly currentVersion: number;
-    readonly TYPE: SwapType.SPV_VAULT_FROM_BTC;
-    /**
-     * @internal
-     */
-    protected readonly swapStateDescription: {
-        [-5]: string;
-        [-4]: string;
-        [-3]: string;
-        [-2]: string;
-        [-1]: string;
-        0: string;
-        1: string;
-        2: string;
-        3: string;
-        4: string;
-        5: string;
-        6: string;
-    };
-    /**
-     * @internal
-     */
-    protected readonly swapStateName: (state: number) => string;
-    /**
-     * @inheritDoc
-     * @internal
-     */
-    protected readonly logger: LoggerType;
-    private readonly quoteId;
-    private readonly recipient;
-    private readonly vaultOwner;
-    private readonly vaultId;
-    private readonly vaultRequiredConfirmations;
-    private readonly vaultTokenMultipliers;
-    private readonly vaultBtcAddress;
-    private readonly vaultUtxo;
-    private readonly vaultUtxoValue;
-    private readonly btcDestinationAddress;
-    private readonly btcAmount;
-    private readonly btcAmountSwap;
-    private readonly btcAmountGas;
-    private readonly outputTotalSwap;
-    private readonly outputSwapToken;
-    private readonly outputTotalGas;
-    private readonly outputGasToken;
-    private readonly gasSwapFeeBtc;
-    private readonly gasSwapFee;
-    private readonly callerFeeShare;
-    private readonly frontingFeeShare;
-    private readonly executionFeeShare;
-    private readonly gasPricingInfo?;
-    private posted?;
-    /**
-     * @internal
-     */
-    readonly _genesisSmartChainBlockHeight: number;
-    /**
-     * @internal
-     */
-    _senderAddress?: string;
-    /**
-     * @internal
-     */
-    _claimTxId?: string;
-    /**
-     * @internal
-     */
-    _frontTxId?: string;
-    /**
-     * @internal
-     */
-    _data?: T["SpvVaultWithdrawalData"];
-    /**
-     * Minimum fee rate in sats/vB that the input bitcoin transaction needs to pay
-     */
-    readonly minimumBtcFeeRate: number;
-    /**
-     * Time at which the SDK realized the bitcoin transaction was confirmed
-     * @private
-     */
-    private btcTxConfirmedAt?;
-    private _contract;
+export declare class SpvFromBTCSwap<T extends ChainType> extends SpvFromBTCSwapBase<T> implements IAddressSwap {
+    private swapMode;
+    private externalSwapModeInfo;
+    private externalDepositTxId?;
     constructor(wrapper: SpvFromBTCWrapper<T>, init: SpvFromBTCSwapInit);
     constructor(wrapper: SpvFromBTCWrapper<T>, obj: any);
+    private setExternalDepositTxId;
     /**
-     * @inheritDoc
-     * @internal
+     * Returns external mode metadata or throws a mode-specific error.
+     *
+     * @param operation Human-readable operation name included in the thrown error
+     * @returns Active external mode metadata
+     * @throws {Error} if the swap is not currently configured for external deposit mode
      */
-    protected upgradeVersion(): void;
+    private getIntermediateWalletSwapModeInfoOrThrow;
     /**
-     * @inheritDoc
-     * @internal
-     */
-    protected tryCalculateSwapFee(): void;
-    /**
-     * @inheritDoc
-     */
-    refreshPriceData(): Promise<void>;
-    /**
-     * @inheritDoc
-     * @internal
-     */
-    _getInitiator(): string;
-    /**
-     * @inheritDoc
-     * @internal
-     */
-    _getEscrowHash(): string | null;
-    /**
-     * @inheritDoc
-     */
-    getId(): string;
-    /**
-     * @inheritDoc
-     */
-    getQuoteExpiry(): number;
-    /**
-     * @inheritDoc
-     * @internal
-     */
-    _verifyQuoteDefinitelyExpired(): Promise<boolean>;
-    /**
-     * @inheritDoc
-     * @internal
-     */
-    _verifyQuoteValid(): Promise<boolean>;
-    /**
-     * @inheritDoc
-     */
-    getOutputAddress(): string | null;
-    /**
-     * @inheritDoc
-     */
-    getOutputTxId(): string | null;
-    /**
-     * @inheritDoc
-     */
-    getInputAddress(): string | null;
-    /**
-     * @inheritDoc
-     */
-    getInputTxId(): string | null;
-    /**
-     * @inheritDoc
-     */
-    requiresAction(): boolean;
-    /**
-     * @inheritDoc
-     */
-    isFinished(): boolean;
-    /**
-     * @inheritDoc
-     */
-    isClaimable(): boolean;
-    /**
-     * @inheritDoc
-     */
-    isSuccessful(): boolean;
-    /**
-     * @inheritDoc
-     */
-    isFailed(): boolean;
-    /**
-     * @inheritDoc
-     */
-    isInProgress(): boolean;
-    /**
-     * @inheritDoc
-     */
-    isQuoteExpired(): boolean;
-    /**
-     * @inheritDoc
-     */
-    isQuoteSoftExpired(): boolean;
-    /**
-     * Returns the data about used spv vault (UTXO-controlled vault) to perform the swap
-     */
-    getSpvVaultData(): {
-        owner: string;
-        vaultId: bigint;
-        utxo: string;
-    };
-    /**
-     * Returns the input BTC amount in sats without any fees
+     * Returns the network fee to be paid on the input/source network
      *
      * @internal
      */
-    protected getInputSwapAmountWithoutFee(): bigint;
+    protected getNetworkInputFee(): Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>> | null;
+    private getFinalizedCoinselect;
+    private getFundingFeeRate;
     /**
-     * Returns the input gas BTC amount in sats without any fees
+     * Serializes this swap, including external mode metadata when active.
      *
+     * @remarks
+     * In-memory `selectedExistingUtxos` may be full {@link BitcoinWalletUtxo} objects, but persistence narrows each
+     * UTXO to JSON-safe primitive fields and quote-time CPFP metadata.
+     *
+     * @returns JSON stringifiable swap data suitable for SDK storage
+     */
+    serialize(): any;
+    /**
+     * Returns the active SPV funding mode.
+     *
+     * @returns `"psbt"` for the normal wallet-funded PSBT flow or `"intermediate_wallet"` for intermediate-wallet deposit mode
+     */
+    getSwapMode(): SpvFromBTCSwapMode;
+    /**
+     * Switches this swap back to normal PSBT mode and optionally clears cached external deposit metadata.
+     *
+     * @param clearMetadata Whether to also clean the internal saved metadata for the "intermedate_wallet" swap mode
+     *  (if it was used before this function got called), if `false` is passed you can get back to "intermediate_wallet"
+     *  swap mode by calling {@link returnToIntermediateWalletSwapMode}
+     */
+    setSwapModePsbt(clearMetadata?: boolean): Promise<void>;
+    /**
+     * Returns back to the "intermediate_wallet" swap mode with the already saved and persisted mode metadata (selected
+     *  utxos, fee rate, required deposit, etc.), this is possible if the swap was previously switched from
+     *  "intermediate_wallet" swap mode to "psbt" swap mode by calling the {@link setSwapModePsbt} and passing the
+     *  `clearMetadata=false`, which retains the swap mode metadata.
+     */
+    returnToIntermediateWalletSwapMode(): Promise<void>;
+    /**
+     * Configures this SPV quote for an external intermediate-wallet deposit flow.
+     *
+     * @param intermediateWallet Intermediate Bitcoin wallet or deposit address. Wallets provide the receive address via
+     *  `getReceiveAddress()` and, when `existingUtxos` is omitted, must support `getUtxoPool()`.
+     * @param existingUtxos Optional quote-time UTXO set for `intermediateWallet`; when passed, the objects are kept in
+     *  memory as-is and only narrowed during serialization.
+     * @param feeRate Optional Bitcoin fee rate in sats/vB; normalized to at least this quote's minimum LP fee rate.
+     * @param cpfpAssumptions CPFP metadata for the future incoming UTXO; defaults to a conservative small package.
+     * @throws {Error} if the wallet cannot expose the information required for its funding plan or the fee rate is invalid
+     */
+    setSwapModeIntermediateWallet(intermediateWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, existingUtxos?: BitcoinWalletUtxo[], feeRate?: number, cpfpAssumptions?: {
+        txVsize: number;
+        txEffectiveFeeRate: number;
+    }): Promise<SpvFromBTCIntermediateWalletSwapModeInfo>;
+    /**
+     * Applies a precomputed intermediate-wallet funding plan to this swap.
+     *
+     * @param fundingPlan Verified funding plan produced while creating the quote
+     * @returns The applied intermediate-wallet mode information
      * @internal
      */
-    protected getInputGasAmountWithoutFee(): bigint;
+    _setSwapModeIntermediateWallet(fundingPlan: SpvFromBTCIntermediateWalletSwapModeInfo): Promise<SpvFromBTCIntermediateWalletSwapModeInfo>;
     /**
-     * Returns to total input BTC amount in sats without any fees (this is BTC amount for the swap + BTC amount
-     *  for the gas drop).
+     * Checks whether this swap currently exposes address-swap behavior.
      *
-     * @internal
+     * @returns `true` only in external deposit mode
      */
-    protected getInputAmountWithoutFee(): bigint;
+    isAddressSwapMode(): boolean;
     /**
-     * Returns the swap output amount without any fees, this value is therefore always higher than
-     *  the actual received output.
+     * Returns the intermediate Bitcoin deposit address for external mode.
      *
-     * @internal
+     * @returns Bitcoin address that should receive the additional future UTXO
+     * @throws {Error} if the swap is in PSBT mode
      */
-    protected getOutputWithoutFee(): TokenAmount<SCToken<T["ChainId"]>, true>;
+    getAddress(): string;
     /**
-     * Returns the swap fee charged by the intermediary (LP) on this swap
+     * Returns a BIP-21 Bitcoin URI for the external deposit address and required additional UTXO amount.
      *
-     * @internal
+     * @returns Bitcoin payment URI for QR-code display
+     * @throws {Error} if the swap is in PSBT mode
      */
-    protected getSwapFee(): Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>;
+    getHyperlink(): string;
     /**
-     * Returns the fee to be paid to watchtowers on the destination chain to automatically
-     *  process and settle this swap without requiring any user interaction
-     *
-     * @internal
+     * Returns whether the current swap in "intermediate_wallet" mode requires an additional external deposit to be made
      */
-    protected getWatchtowerFee(): Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>;
+    requiresExternalDeposit(): boolean;
+    /**
+     * Returns the required additional external deposit amount in "intermediate_wallet" mode, or `null` if not required
+     *
+     * @throws {Error} If the swap is not using the "intermediate_wallet" swap mode.
+     */
+    getExternalDepositAmount(): TokenAmount<BtcToken<false>, true> | null;
+    /**
+     * Returns the user-facing BTC input amount.
+     *
+     * @remarks
+     * PSBT mode returns the base SPV quote input. External mode includes the input-side Bitcoin network fee cached
+     * during {@link setSwapModeIntermediateWallet}.
+     *
+     * @returns Input BTC amount in satoshis wrapped as a token amount
+     */
+    getInput(): TokenAmount<BtcToken<false>, true>;
     /**
      * @inheritDoc
      */
     getFee(): Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>;
     /**
      * @inheritDoc
+     *
+     * @returns Fee breakdown with `FeeType.NETWORK_INPUT` only when external deposit mode is active
+     * @throws {Error} if pricing data is unavailable in external mode
      */
     getFeeBreakdown(): [
         {
@@ -358,80 +282,44 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
             type: FeeType.NETWORK_OUTPUT;
             fee: Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>;
         }
+    ] | [
+        {
+            type: FeeType.NETWORK_INPUT;
+            fee: Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>;
+        },
+        {
+            type: FeeType.SWAP;
+            fee: Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>;
+        },
+        {
+            type: FeeType.NETWORK_OUTPUT;
+            fee: Fee<T["ChainId"], BtcToken<false>, SCToken<T["ChainId"]>>;
+        }
     ];
     /**
-     * @inheritDoc
-     */
-    getOutputToken(): SCToken<T["ChainId"]>;
-    /**
-     * @inheritDoc
-     */
-    getOutput(): TokenAmount<SCToken<T["ChainId"]>, true>;
-    /**
-     * @inheritDoc
-     */
-    getGasDropOutput(): TokenAmount<SCToken<T["ChainId"]>, true>;
-    /**
-     * @inheritDoc
-     */
-    getInputWithoutFee(): TokenAmount<BtcToken<false>, true>;
-    /**
-     * @inheritDoc
-     */
-    getInputToken(): BtcToken<false>;
-    /**
-     * @inheritDoc
-     */
-    getInput(): TokenAmount<BtcToken<false>, true>;
-    /**
-     * @inheritDoc
-     */
-    getRequiredConfirmationsCount(): number;
-    /**
-     * Returns raw transaction details that can be used to manually create a swap PSBT. It is better to use
-     *  the {@link getPsbt} or {@link getFundedPsbt} function retrieve an already prepared PSBT.
-     */
-    getTransactionDetails(): Promise<{
-        in0txid: string;
-        in0vout: number;
-        in0sequence: number;
-        vaultAmount: bigint;
-        vaultScript: Uint8Array;
-        in1sequence: number;
-        out1script: Uint8Array;
-        out2amount: bigint;
-        out2script: Uint8Array;
-        locktime: number;
-    }>;
-    /**
-     * Returns the raw PSBT (not funded), the wallet should fund the PSBT (add its inputs) and importantly **set the nSequence field of the
-     *  2nd input** (input 1 - indexing from 0) to the value returned in `in1sequence`, sign the PSBT and then pass
-     *  it back to the swap with {@link submitPsbt} function. The transaction should use at least the returned `feeRate`
-     *  sats/vB as the transaction fee.
-     */
-    getPsbt(): Promise<{
-        psbt: Transaction;
-        psbtHex: string;
-        psbtBase64: string;
-        in1sequence: number;
-        feeRate: number;
-    }>;
-    /**
-     * Returns the PSBT that is already funded with wallet's UTXOs (runs a coin-selection algorithm to choose UTXOs to use),
-     *  also returns inputs indices that need to be signed by the wallet before submitting the PSBT back to the SDK with
-     *  {@link submitPsbt}
+     * Looks for the future external deposit UTXO matching the cached required additional amount.
      *
-     * @remarks
-     * Note that when passing the `feeRate` argument, the fee must be at least {@link minimumBtcFeeRate} sats/vB.
-     *
-     * @param _bitcoinWallet Sender's bitcoin wallet
-     * @param feeRate Optional fee rate in sats/vB for the transaction
-     * @param additionalOutputs additional outputs to add to the PSBT - can be used to collect fees from users
-     * @param utxos Pre-fetched list of UTXOs to spend from
-     * @param spendFully Instructs the wallet to spend all the passed UTXOs in the transaction without creating any
-     *  change output, if the `feeRate` is passed, it will also enforce that the feeRate in sats/vB for the resulting
-     *  transaction is not more than 50% and 10 sats/vB larger (considering also the CPFP adjustments)
+     * @param rehydratedWalletUtxos
+     * @param ignoredUtxoKeys Invalid UTXO keys already handled by the waiting callback
+     * @returns Matching fresh wallet UTXO or all newly detected invalid UTXOs
+     * @throws {Error} if the swap is not in external mode
      */
+    private getMatchingExternalDepositUtxo;
+    /**
+     * Rehydrates quote-selected external funding UTXOs with fresh signing data while preserving quote-time fee data.
+     *
+     * @param rehydratedWalletUtxos
+     * @returns Rehydrated selected wallet utxos
+     * @throws {Error} if a selected UTXO disappeared, changed value/type, or the required new deposit is missing
+     */
+    private getRehydratedSelectedExistingUtxos;
+    /**
+     * Returns fresh UTXOs for every address involved in the intermediate-wallet funding plan.
+     *
+     * A supplied wallet remains authoritative. Without one, persisted output scripts and public keys provide enough
+     * information to query the wrapper's address-index backend directly.
+     */
+    private getIntermediateWalletUtxos;
     getFundedPsbt(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number, additionalOutputs?: ({
         amount: bigint;
         outputScript: Uint8Array;
@@ -446,249 +334,89 @@ export declare class SpvFromBTCSwap<T extends ChainType> extends ISwap<T, SpvFro
         feeRate: number;
     }>;
     /**
-     * @inheritDoc
+     * @throws {InvalidBitcoinDepositError} If an invalid deposit was mode and was not consumed by the `onInvalidDeposit`
+     *  callback
+     *
+     * @private
      */
-    submitPsbt(_psbt: Transaction | string): Promise<string>;
+    private _waitForExternalDeposit;
+    /**
+     * Waits until the external deposit address receives the exact future UTXO required by this quote.
+     *
+     * @param _intermediateWallet Optional wallet used to fetch UTXOs; the configured Bitcoin RPC is used when omitted
+     * @param maxWaitTimeSeconds Optional maximum wait time before aborting
+     * @param pollIntervalSeconds Optional polling interval; defaults to five seconds
+     * @param onInvalidDeposit Optional callback invoked with all newly detected invalid UTXOs; return falsish to stop waiting
+     * @param abortSignal Optional external abort signal
+     * @returns The newly deposited UTXO matching the quote
+     * @throws {Error} if the swap is not in external mode or no additional deposit is required
+     * @throws {InvalidBitcoinDepositError} If an invalid deposit was mode and was not consumed by the `onInvalidDeposit`
+     *  callback
+     */
+    waitForExternalDeposit(_intermediateWallet?: IBitcoinWallet | MinimalBitcoinWalletInterface, maxWaitTimeSeconds?: number, pollIntervalSeconds?: number, onInvalidDeposit?: (invalidUtxos: SpvFromBTCExternalDepositInvalidUtxo[]) => boolean | void | Promise<boolean | void>, abortSignal?: AbortSignal): Promise<BitcoinWalletUtxo>;
     /**
      * @inheritDoc
      */
     estimateBitcoinFee(_bitcoinWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, feeRate?: number): Promise<TokenAmount<BtcToken<false>, true> | null>;
     /**
-     * @inheritDoc
-     */
-    sendBitcoinTransaction(wallet: IBitcoinWallet | MinimalBitcoinWalletInterfaceWithSigner, feeRate?: number, utxos?: BitcoinWalletUtxo[], spendFully?: boolean): Promise<string>;
-    /**
-     * Executes the swap with the provided bitcoin wallet
+     * Executes this swap, waiting for the quoted external deposit first when intermediate-wallet funding is active.
      *
-     * @param wallet Bitcoin wallet to use to sign the bitcoin transaction
-     * @param callbacks Callbacks to track the progress of the swap
-     * @param options Optional options for the swap like feeRate, AbortSignal, and timeouts/intervals
-     *
-     * @returns {boolean} Whether a swap was settled automatically by swap watchtowers or requires manual claim by the
-     *  user, in case `false` is returned the user should call the {@link claim} function to settle the swap on the
-     *  destination manually
+     * @param wallet Bitcoin wallet used to discover and sign the intermediate-wallet funding inputs
+     * @param callbacks Callbacks used to track the external deposit and normal SPV execution lifecycle
+     * @param options Execution polling, timeout, and cancellation options
+     * @returns Whether the swap settled automatically
+     * @throws {InvalidBitcoinDepositError} If an invalid deposit was mode and was not consumed by the `onInvalidDeposit`
+     *  callback
      */
-    execute(wallet: IBitcoinWallet | MinimalBitcoinWalletInterfaceWithSigner, callbacks?: {
-        onSourceTransactionSent?: (sourceTxId: string) => void;
-        onSourceTransactionConfirmationStatus?: (sourceTxId?: string, confirmations?: number, targetConfirations?: number, etaMs?: number) => void;
-        onSourceTransactionConfirmed?: (sourceTxId: string) => void;
-        onSwapSettled?: (destinationTxId: string) => void;
-    }, options?: {
-        feeRate?: number;
-        abortSignal?: AbortSignal;
-        btcTxCheckIntervalSeconds?: number;
-        maxWaitTillAutomaticSettlementSeconds?: number;
-        utxos?: BitcoinWalletUtxo[];
-        spendFully?: boolean;
-    }): Promise<boolean>;
+    execute(wallet: IBitcoinWallet | MinimalBitcoinWalletInterfaceWithSigner, callbacks?: SpvFromBTCSwapExecuteCallbacks, options?: SpvFromBTCSwapExecuteOptions): Promise<boolean>;
     /**
+     * Builds an address action for the future external deposit UTXO.
+     *
+     * @returns Send-to-address action that waits only for the matching UTXO to appear
+     * @throws {Error} if the swap is not in external mode
+     */
+    private _buildExternalDepositAddressAction;
+    /**
+     * Builds a funded PSBT action for signing with the external intermediate deposit wallet.
+     *
+     * @param rehydratedWalletUtxos
+     * @param bitcoinWallet
+     * @param options Additional options allow overriding the provided bitcoin wallet
+     * @returns Funded PSBT action using the quote-stable external funding set
+     * @throws {Error} if `bitcoinWallet` is missing while external mode is ready for PSBT signing
+     */
+    private _buildExternalDepositPsbtAction;
+    /**
+     * Adds external-mode staged actions on top of the base SPV execution status.
+     *
+     * @param options Optional execution action context, especially `bitcoinWallet` for funded external PSBTs
+     * @returns Execution status with SendToAddress or funded SignPSBT action while external mode is in CREATED state
      * @internal
      */
     protected _getExecutionStatus(options?: {
         bitcoinFeeRate?: number;
-        bitcoinWallet?: MinimalBitcoinWalletInterface;
+        bitcoinWallet?: MinimalBitcoinWalletInterface | IBitcoinWallet;
         manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
         maxWaitTillAutomaticSettlementSeconds?: number;
     }): Promise<{
         steps: [SwapExecutionStepPayment<"BITCOIN">, SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">];
         buildCurrentAction: (actionOptions?: {
-            bitcoinFeeRate?: number;
-            bitcoinWallet?: MinimalBitcoinWalletInterface;
-            manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
-            maxWaitTillAutomaticSettlementSeconds?: number;
-        }) => Promise<SwapExecutionActionSignPSBT | SwapExecutionActionWait<"BITCOIN_CONFS" | "SETTLEMENT"> | SwapExecutionActionSignSmartChainTx<T> | undefined>;
+            bitcoinFeeRate?: number | undefined;
+            bitcoinWallet?: IBitcoinWallet | MinimalBitcoinWalletInterface | undefined;
+            manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"] | undefined;
+            maxWaitTillAutomaticSettlementSeconds?: number | undefined;
+        } | undefined) => Promise<SwapExecutionActionSignPSBT<"FUNDED_PSBT" | "RAW_PSBT"> | SwapExecutionActionSendToAddress<false> | import("../../types/SwapExecutionAction.js").SwapExecutionActionWait<"SETTLEMENT" | "BITCOIN_CONFS"> | import("../../types/SwapExecutionAction.js").SwapExecutionActionSignSmartChainTx<T> | undefined>;
         state: number;
-    }>;
-    /**
-     * @inheritDoc
-     * @internal
-     */
-    _submitExecutionTransactions(txs: (T["SignedTXType"] | Transaction | string)[], abortSignal?: AbortSignal, requiredStates?: SpvFromBTCSwapState[], idempotent?: boolean): Promise<string[]>;
-    /**
-     * @internal
-     */
-    private _buildDepositPsbtAction;
-    /**
-     * @internal
-     */
-    private _buildWaitBitcoinConfirmationsAction;
-    /**
-     * @internal
-     */
-    private _buildWaitSettlementAction;
-    /**
-     * @internal
-     */
-    private _buildClaimSmartChainTxAction;
-    /**
-     * @inheritDoc
-     *
-     * @param options.bitcoinFeeRate Optional fee rate to use for the created Bitcoin transaction
-     * @param options.bitcoinWallet Optional bitcoin wallet address specification to return a funded PSBT,
-     *  if not provided a raw PSBT is returned instead which necessitates the implementor to manually add
-     *  inputs to the bitcoin transaction and **set the nSequence field of the 2nd input** (input 1 -
-     *  indexing from 0) to the value returned in `in1sequence`
-     * @param options.manualSettlementSmartChainSigner Optional smart chain signer to create a manual claim (settlement) transaction
-     * @param options.maxWaitTillAutomaticSettlementSeconds Maximum time to wait for an automatic settlement after
-     *  the bitcoin transaction is confirmed (defaults to 60 seconds)
-     */
-    getExecutionAction(options?: {
-        bitcoinFeeRate?: number;
-        bitcoinWallet?: MinimalBitcoinWalletInterface;
-        manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
-        maxWaitTillAutomaticSettlementSeconds?: number;
-    }): Promise<SwapExecutionActionSignPSBT | SwapExecutionActionWait<"BITCOIN_CONFS" | "SETTLEMENT"> | SwapExecutionActionSignSmartChainTx<T> | undefined>;
-    /**
-     * @inheritDoc
-     */
-    getExecutionStatus(options?: {
-        skipBuildingAction?: boolean;
-        bitcoinFeeRate?: number;
-        bitcoinWallet?: MinimalBitcoinWalletInterface;
-        manualSettlementSmartChainSigner?: string | T["Signer"] | T["NativeSigner"];
-        maxWaitTillAutomaticSettlementSeconds?: number;
-    }): Promise<{
-        steps: [
-            SwapExecutionStepPayment<"BITCOIN">,
-            SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
-        ];
-        currentAction: SwapExecutionActionSignPSBT | SwapExecutionActionWait<"BITCOIN_CONFS" | "SETTLEMENT"> | SwapExecutionActionSignSmartChainTx<T> | undefined;
-        stateInfo: SwapStateInfo<SpvFromBTCSwapState>;
     }>;
     /**
      * @inheritDoc
      */
     getExecutionSteps(options?: {
         maxWaitTillAutomaticSettlementSeconds?: number;
+        bitcoinWallet?: MinimalBitcoinWalletInterface | IBitcoinWallet;
     }): Promise<[
         SwapExecutionStepPayment<"BITCOIN">,
         SwapExecutionStepSettlement<T["ChainId"], "awaiting_automatic" | "awaiting_manual">
     ]>;
-    /**
-     * Checks whether a bitcoin payment was already made, returns the payment or null when no payment has been made.
-     * @internal
-     */
-    protected getBitcoinPayment(): Promise<{
-        txId: string;
-        confirmations: number;
-        targetConfirmations: number;
-        btcTx: BtcTx;
-        inputAddresses?: string[];
-    } | null>;
-    /**
-     * @inheritDoc
-     *
-     * @throws {Error} if in invalid state (must be {@link SpvFromBTCSwapState.POSTED} or
-     *  {@link SpvFromBTCSwapState.BROADCASTED} states)
-     */
-    waitForBitcoinTransaction(updateCallback?: (txId?: string, confirmations?: number, targetConfirmations?: number, txEtaMs?: number) => void, checkIntervalSeconds?: number, abortSignal?: AbortSignal): Promise<string>;
-    /**
-     * Returns transactions for settling (claiming) the swap if the swap requires manual settlement, you can check so
-     *  with isClaimable. After sending the transaction manually be sure to call the waitTillClaimed function to wait
-     *  till the claim transaction is observed, processed by the SDK and state of the swap properly updated.
-     *
-     * @remarks
-     * Might also return transactions necessary to sync the bitcoin light client.
-     *
-     * @param _signer Address of the signer to create the claim transactions for, can also be different to the recipient
-     *
-     * @throws {Error} If the swap is in invalid state (must be {@link SpvFromBTCSwapState.BTC_TX_CONFIRMED})
-     */
-    txsClaim(_signer?: string | T["Signer"] | T["NativeSigner"]): Promise<T["TX"][]>;
-    /**
-     * Settles the swap by claiming the funds on the destination chain if the swap requires manual settlement, you can
-     *  check so with isClaimable.
-     *
-     * @remarks
-     * Might also sync the bitcoin light client during the process.
-     *
-     * @param _signer Signer to use for signing the settlement transactions, can also be different to the recipient
-     * @param abortSignal Abort signal
-     * @param onBeforeTxSent Optional callback triggered before the claim transaction is broadcasted
-     *
-     * @throws {Error} If the swap is in invalid state (must be {@link SpvFromBTCSwapState.BTC_TX_CONFIRMED})
-     */
-    claim(_signer: T["Signer"] | T["NativeSigner"], abortSignal?: AbortSignal, onBeforeTxSent?: (txId: string) => void): Promise<string>;
-    /**
-     * Periodically checks the chain to see whether the swap was finished (claimed or refunded)
-     *
-     * @param interval How often to check (in seconds), default to 5s
-     * @param abortSignal
-     * @internal
-     */
-    protected watchdogWaitTillResult(interval?: number, abortSignal?: AbortSignal): Promise<SpvWithdrawalClaimedState | SpvWithdrawalFrontedState | SpvWithdrawalClosedState>;
-    /**
-     * Waits till the swap is successfully settled (claimed), should be called after sending the claim (settlement)
-     *  transactions manually to wait till the SDK processes the settlement and updates the swap state accordingly.
-     *
-     * @remarks
-     * This is an alias for the {@link waitTillClaimedOrFronted} function and will also resolve if the swap has
-     *  been fronted (not necessarily claimed)
-     *
-     * @param maxWaitTimeSeconds – Maximum time in seconds to wait for the swap to be settled
-     * @param abortSignal – AbortSignal
-     *
-     * @returns Whether the swap was claimed in time or not
-     */
-    waitTillClaimed(maxWaitTimeSeconds?: number, abortSignal?: AbortSignal): Promise<boolean>;
-    /**
-     * Waits till the swap is successfully fronted or settled on the destination chain
-     *
-     * @param maxWaitTimeSeconds Maximum time in seconds to wait for the swap to be settled (by default
-     *  it waits indefinitely)
-     * @param abortSignal Abort signal
-     * @param pollIntervalSeconds How often to poll via the watchdog
-     *
-     * @returns {boolean} whether the swap was claimed or fronted automatically or not, if the swap was not claimed
-     *  the user can claim manually through the {@link claim} function
-     */
-    waitTillClaimedOrFronted(maxWaitTimeSeconds?: number, abortSignal?: AbortSignal, pollIntervalSeconds?: number): Promise<boolean>;
-    /**
-     * Waits till the bitcoin transaction confirms and swap settled on the destination chain
-     *
-     * @param updateCallback Callback called when txId is found, and also called with subsequent confirmations
-     * @param checkIntervalSeconds How often to check the bitcoin transaction (5 seconds by default)
-     * @param abortSignal Abort signal
-     *
-     * @throws {Error} if in invalid state (must be {@link SpvFromBTCSwapState.POSTED} or
-     *  {@link SpvFromBTCSwapState.BROADCASTED} states)
-     */
-    waitTillExecuted(updateCallback?: (txId?: string, confirmations?: number, targetConfirmations?: number, txEtaMs?: number) => void, checkIntervalSeconds?: number, abortSignal?: AbortSignal): Promise<void>;
-    /**
-     * @inheritDoc
-     */
-    serialize(): any;
-    /**
-     * Used to set the txId of the bitcoin payment from the on-chain events listener
-     *
-     * @param txId
-     * @internal
-     */
-    _setBitcoinTxId(txId: string): Promise<void>;
-    private btcTxLastChecked?;
-    /**
-     * @internal
-     */
-    _syncStateFromBitcoin(save?: boolean): Promise<boolean>;
-    /**
-     * Checks the swap's state on-chain and compares it to its internal state, updates/changes it according to on-chain
-     *  data
-     */
-    private syncStateFromChain;
-    /**
-     * @inheritDoc
-     * @internal
-     */
-    _sync(save?: boolean): Promise<boolean>;
-    /**
-     * @inheritDoc
-     * @internal
-     */
-    _tick(save?: boolean): Promise<boolean>;
-    /**
-     * Checks whether an on-chain withdrawal state should be fetched for this specific swap
-     *
-     * @internal
-     */
-    _shouldCheckWithdrawalState(frontingAddress?: string | null, vaultDataUtxo?: string | null): Promise<boolean>;
 }
+export {};

@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ICachedSwapPrice = void 0;
-const ISwapPrice_1 = require("./ISwapPrice");
+const ISwapPrice_js_1 = require("./ISwapPrice.js");
 const DEFAULT_CACHE_DURATION = 10000;
-class ICachedSwapPrice extends ISwapPrice_1.ISwapPrice {
+class ICachedSwapPrice extends ISwapPrice_js_1.ISwapPrice {
     constructor(maxAllowedFeeDiffPPM, cacheTimeout) {
         super(maxAllowedFeeDiffPPM);
         this.cache = {};

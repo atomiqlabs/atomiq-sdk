@@ -1,11 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.parseHashValueExact32Bytes = exports.toDecimal = exports.fromDecimal = exports.getTxoHash = exports.randomBytes = exports.toBigInt = exports.bigIntCompare = exports.bigIntMax = exports.bigIntMin = exports.extendAbortController = exports.mapToArray = exports.objectMap = exports.mapArrayToObject = exports.promiseAny = exports.throwIfUndefined = void 0;
+exports.bigIntCeilDivision = exports.parseHashValueExact32Bytes = exports.toDecimal = exports.fromDecimal = exports.getTxoHash = exports.randomBytes = exports.toBigInt = exports.bigIntCompare = exports.bigIntMax = exports.bigIntMin = exports.extendAbortController = exports.mapToArray = exports.objectMap = exports.mapArrayToObject = exports.promiseAny = exports.throwIfUndefined = void 0;
 const buffer_1 = require("buffer");
 const utils_1 = require("@noble/hashes/utils");
 const sha2_1 = require("@noble/hashes/sha2");
 const base_1 = require("@atomiqlabs/base");
-const UserError_1 = require("../errors/UserError");
+const UserError_js_1 = require("../errors/UserError.js");
 /**
  * Returns a promise that rejects if the passed promise resolves to `undefined` or `null`
  *
@@ -201,14 +201,22 @@ function parseHashValueExact32Bytes(value, variableName) {
     let hash;
     if (typeof (value) === "string") {
         if (value.length !== 64)
-            throw new UserError_1.UserError(`Invalid ${variableName} length, must be exactly 64 hexadecimal characters!`);
+            throw new UserError_js_1.UserError(`Invalid ${variableName} length, must be exactly 64 hexadecimal characters!`);
         hash = buffer_1.Buffer.from(value, "hex");
     }
     else {
         hash = value;
     }
     if (hash != null && hash.length !== 32)
-        throw new UserError_1.UserError(`Invalid ${variableName} length, must be exactly 32 bytes!`);
+        throw new UserError_js_1.UserError(`Invalid ${variableName} length, must be exactly 32 bytes!`);
     return hash;
 }
 exports.parseHashValueExact32Bytes = parseHashValueExact32Bytes;
+function bigIntCeilDivision(a, b) {
+    if (b <= 0)
+        throw new Error("Division by zero or negative value!");
+    if (a < 0)
+        throw new Error("a must be non-negative!");
+    return (a + b - 1n) / b;
+}
+exports.bigIntCeilDivision = bigIntCeilDivision;

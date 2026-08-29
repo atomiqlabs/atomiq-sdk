@@ -2,17 +2,17 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.IFromBTCSelfInitSwap = void 0;
 const base_1 = require("@atomiqlabs/base");
-const IEscrowSelfInitSwap_1 = require("../IEscrowSelfInitSwap");
-const FeeType_1 = require("../../../enums/FeeType");
-const PercentagePPM_1 = require("../../../types/fees/PercentagePPM");
-const TokenAmount_1 = require("../../../types/TokenAmount");
+const IEscrowSelfInitSwap_js_1 = require("../IEscrowSelfInitSwap.js");
+const FeeType_js_1 = require("../../../enums/FeeType.js");
+const PercentagePPM_js_1 = require("../../../types/fees/PercentagePPM.js");
+const TokenAmount_js_1 = require("../../../types/TokenAmount.js");
 /**
  * Base class for legacy escrow-based Bitcoin (on-chain & lightning) -> Smart chain swaps,
  *  which require the user to manually initiate the escrow on the destination smart chain
  *
  * @category Swaps/Abstract
  */
-class IFromBTCSelfInitSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
+class IFromBTCSelfInitSwap extends IEscrowSelfInitSwap_js_1.IEscrowSelfInitSwap {
     constructor(wrapper, initOrObj) {
         super(wrapper, initOrObj);
     }
@@ -74,16 +74,16 @@ class IFromBTCSelfInitSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
         const feeWithoutBaseFee = this.swapFeeBtc - this.pricingInfo.satsBaseFee;
         const inputWithoutFee = this.getInputWithoutFee();
         const swapFeePPM = inputWithoutFee.rawAmount == null ? 0n : feeWithoutBaseFee * 1000000n / inputWithoutFee.rawAmount;
-        const amountInSrcToken = (0, TokenAmount_1.toTokenAmount)(this.swapFeeBtc, this.inputToken, this.wrapper._prices, this.pricingInfo);
+        const amountInSrcToken = (0, TokenAmount_js_1.toTokenAmount)(this.swapFeeBtc, this.inputToken, this.wrapper._prices, this.pricingInfo);
         return {
             amountInSrcToken,
-            amountInDstToken: (0, TokenAmount_1.toTokenAmount)(this.swapFee, this.wrapper._tokens[this.getSwapData().getToken()], this.wrapper._prices, this.pricingInfo),
+            amountInDstToken: (0, TokenAmount_js_1.toTokenAmount)(this.swapFee, this.wrapper._tokens[this.getSwapData().getToken()], this.wrapper._prices, this.pricingInfo),
             currentUsdValue: amountInSrcToken.currentUsdValue,
             usdValue: amountInSrcToken.usdValue,
             pastUsdValue: amountInSrcToken.pastUsdValue,
             composition: {
-                base: (0, TokenAmount_1.toTokenAmount)(this.pricingInfo.satsBaseFee, this.inputToken, this.wrapper._prices, this.pricingInfo),
-                percentage: (0, PercentagePPM_1.ppmToPercentage)(swapFeePPM)
+                base: (0, TokenAmount_js_1.toTokenAmount)(this.pricingInfo.satsBaseFee, this.inputToken, this.wrapper._prices, this.pricingInfo),
+                percentage: (0, PercentagePPM_js_1.ppmToPercentage)(swapFeePPM)
             }
         };
     }
@@ -98,7 +98,7 @@ class IFromBTCSelfInitSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
      */
     getFeeBreakdown() {
         return [{
-                type: FeeType_1.FeeType.SWAP,
+                type: FeeType_js_1.FeeType.SWAP,
                 fee: this.getSwapFee()
             }];
     }
@@ -112,7 +112,7 @@ class IFromBTCSelfInitSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
      * @inheritDoc
      */
     getOutput() {
-        return (0, TokenAmount_1.toTokenAmount)(this.getSwapData().getAmount(), this.wrapper._tokens[this.getSwapData().getToken()], this.wrapper._prices, this.pricingInfo);
+        return (0, TokenAmount_js_1.toTokenAmount)(this.getSwapData().getAmount(), this.wrapper._tokens[this.getSwapData().getToken()], this.wrapper._prices, this.pricingInfo);
     }
     /**
      * @inheritDoc
@@ -120,8 +120,8 @@ class IFromBTCSelfInitSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
     getInputWithoutFee() {
         const input = this.getInput();
         if (input.rawAmount == null)
-            return (0, TokenAmount_1.toTokenAmount)(null, this.inputToken, this.wrapper._prices, this.pricingInfo);
-        return (0, TokenAmount_1.toTokenAmount)(input.rawAmount - this.swapFeeBtc, this.inputToken, this.wrapper._prices, this.pricingInfo);
+            return (0, TokenAmount_js_1.toTokenAmount)(null, this.inputToken, this.wrapper._prices, this.pricingInfo);
+        return (0, TokenAmount_js_1.toTokenAmount)(input.rawAmount - this.swapFeeBtc, this.inputToken, this.wrapper._prices, this.pricingInfo);
     }
     /**
      * @inheritDoc
@@ -134,8 +134,8 @@ class IFromBTCSelfInitSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
         const totalFee = commitFee + this.getSwapData().getTotalDeposit();
         return {
             enoughBalance: balance >= totalFee,
-            balance: (0, TokenAmount_1.toTokenAmount)(balance, this.wrapper._getNativeToken(), this.wrapper._prices, this.pricingInfo),
-            required: (0, TokenAmount_1.toTokenAmount)(totalFee, this.wrapper._getNativeToken(), this.wrapper._prices, this.pricingInfo)
+            balance: (0, TokenAmount_js_1.toTokenAmount)(balance, this.wrapper._getNativeToken(), this.wrapper._prices, this.pricingInfo),
+            required: (0, TokenAmount_js_1.toTokenAmount)(totalFee, this.wrapper._getNativeToken(), this.wrapper._prices, this.pricingInfo)
         };
     }
     /**
@@ -144,7 +144,7 @@ class IFromBTCSelfInitSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
      *  with the swap
      */
     getSecurityDeposit() {
-        return (0, TokenAmount_1.toTokenAmount)(this.getSwapData().getSecurityDeposit(), this.wrapper._getNativeToken(), this.wrapper._prices, this.pricingInfo);
+        return (0, TokenAmount_js_1.toTokenAmount)(this.getSwapData().getSecurityDeposit(), this.wrapper._getNativeToken(), this.wrapper._prices, this.pricingInfo);
     }
     /**
      * Returns the total amount of native token of the destination chain locked up during initialization of the escrow.
@@ -152,7 +152,7 @@ class IFromBTCSelfInitSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
      *  two values.
      */
     getTotalDeposit() {
-        return (0, TokenAmount_1.toTokenAmount)(this.getSwapData().getTotalDeposit(), this.wrapper._getNativeToken(), this.wrapper._prices, this.pricingInfo);
+        return (0, TokenAmount_js_1.toTokenAmount)(this.getSwapData().getTotalDeposit(), this.wrapper._getNativeToken(), this.wrapper._prices, this.pricingInfo);
     }
     //////////////////////////////
     //// Commit
@@ -174,7 +174,7 @@ class IFromBTCSelfInitSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
             this.initiated = true;
             await this._saveAndEmit();
         }
-        return await this._contract.txsInit(this._getInitiator(), this._data, this.signatureData, skipChecks, this.feeRate).catch(e => Promise.reject(e instanceof base_1.SignatureVerificationError ? new Error("Request timed out") : e));
+        return await this._contract.txsInit(this._getInitiator(), this._data, this.signatureData, skipChecks, this.feeRate).catch(e => Promise.reject((0, base_1.isSignatureVerificationError)(e) ? new Error("Request timed out") : e));
     }
     //////////////////////////////
     //// Claim
@@ -184,7 +184,7 @@ class IFromBTCSelfInitSwap extends IEscrowSelfInitSwap_1.IEscrowSelfInitSwap {
      */
     async getClaimNetworkFee() {
         const swapContract = this._contract;
-        return (0, TokenAmount_1.toTokenAmount)(await swapContract.getClaimFee(this._getInitiator(), this.getSwapData()), this.wrapper._getNativeToken(), this.wrapper._prices);
+        return (0, TokenAmount_js_1.toTokenAmount)(await swapContract.getClaimFee(this._getInitiator(), this.getSwapData()), this.wrapper._getNativeToken(), this.wrapper._prices);
     }
 }
 exports.IFromBTCSelfInitSwap = IFromBTCSelfInitSwap;

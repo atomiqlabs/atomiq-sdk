@@ -2,16 +2,16 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UnifiedSwapEventListener = void 0;
 const base_1 = require("@atomiqlabs/base");
-const Logger_1 = require("../utils/Logger");
+const Logger_js_1 = require("../utils/Logger.js");
 function chainEventToEscrowHash(event) {
-    if (event instanceof base_1.SwapEvent)
+    if ((0, base_1.isSwapEvent)(event))
         return event.escrowHash;
-    if (event instanceof base_1.SpvVaultFrontEvent ||
-        event instanceof base_1.SpvVaultClaimEvent ||
-        event instanceof base_1.SpvVaultCloseEvent)
+    if ((0, base_1.isSpvVaultFrontEvent)(event) ||
+        (0, base_1.isSpvVaultClaimEvent)(event) ||
+        (0, base_1.isSpvVaultCloseEvent)(event))
         return event.btcTxId;
 }
-const logger = (0, Logger_1.getLogger)("UnifiedSwapEventListener: ");
+const logger = (0, Logger_js_1.getLogger)("UnifiedSwapEventListener: ");
 class UnifiedSwapEventListener {
     constructor(unifiedStorage, events) {
         this.listeners = {};
@@ -58,10 +58,11 @@ class UnifiedSwapEventListener {
                     continue;
                 }
             }
-            if (event instanceof base_1.InitializeEvent) {
+            if ((0, base_1.isInitializeEvent)(event)) {
                 if (event.swapType === base_1.ChainSwapType.HTLC) {
                     const swapData = await event.swapData();
-                    htlcCheckInitializeEvents[swapData.getClaimHash()] = event;
+                    if (swapData != null)
+                        htlcCheckInitializeEvents[swapData.getClaimHash()] = event;
                 }
             }
         }

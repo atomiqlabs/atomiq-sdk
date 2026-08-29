@@ -15,10 +15,10 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.parseApiInput = exports.toApiToken = exports.toApiLNURL = void 0;
-var ApiTypes_1 = require("./ApiTypes");
-Object.defineProperty(exports, "toApiLNURL", { enumerable: true, get: function () { return ApiTypes_1.toApiLNURL; } });
-Object.defineProperty(exports, "toApiToken", { enumerable: true, get: function () { return ApiTypes_1.toApiToken; } });
-__exportStar(require("./SwapperApi"), exports);
-__exportStar(require("./ApiEndpoints"), exports);
-var ApiParser_1 = require("./ApiParser");
-Object.defineProperty(exports, "parseApiInput", { enumerable: true, get: function () { return ApiParser_1.parseApiInput; } });
+var ApiTypes_js_1 = require("./ApiTypes.js");
+Object.defineProperty(exports, "toApiLNURL", { enumerable: true, get: function () { return ApiTypes_js_1.toApiLNURL; } });
+Object.defineProperty(exports, "toApiToken", { enumerable: true, get: function () { return ApiTypes_js_1.toApiToken; } });
+__exportStar(require("./SwapperApi.js"), exports);
+__exportStar(require("./ApiEndpoints.js"), exports);
+var ApiParser_js_1 = require("./ApiParser.js");
+Object.defineProperty(exports, "parseApiInput", { enumerable: true, get: function () { return ApiParser_js_1.parseApiInput; } });

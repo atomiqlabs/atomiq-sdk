@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.utils = exports.DUST_THRESHOLDS = void 0;
-const Logger_1 = require("../../utils/Logger");
-const logger = (0, Logger_1.getLogger)("CoinSelect: ");
+exports.utils = exports.DUST_THRESHOLDS = exports.isCoinselectAddressType = void 0;
+const Logger_js_1 = require("../../utils/Logger.js");
+const logger = (0, Logger_js_1.getLogger)("CoinSelect: ");
 // baseline estimates, used to improve performance
 const TX_EMPTY_SIZE = 4 + 1 + 1 + 4;
 const TX_INPUT_BASE = 32 + 4 + 1 + 4;
@@ -20,6 +20,10 @@ const TX_OUTPUT_P2SH_P2WPKH = 23;
 const TX_OUTPUT_P2WPKH = 22;
 const TX_OUTPUT_P2WSH = 34;
 const TX_OUTPUT_P2TR = 34;
+function isCoinselectAddressType(val) {
+    return val === "p2sh-p2wpkh" || val === "p2wpkh" || val === "p2wsh" || val === "p2tr" || val === "p2pkh";
+}
+exports.isCoinselectAddressType = isCoinselectAddressType;
 const INPUT_BYTES = {
     "p2sh-p2wpkh": TX_INPUT_P2SH_P2WPKH,
     "p2wpkh": TX_INPUT_P2WPKH,
@@ -71,7 +75,10 @@ function transactionBytes(inputs, outputs, changeType) {
     for (let output of outputs) {
         size += outputBytes(output);
     }
-    return Math.ceil(size);
+    return size;
+}
+function calculateFee(vSize, feeRate, additionalFee = 0) {
+    return Math.ceil((feeRate * Math.ceil(vSize)) + additionalFee);
 }
 function numberOrNaN(v) {
     if (typeof v !== 'number')
@@ -99,24 +106,31 @@ function sumForgiving(range) {
 function sumOrNaN(range) {
     return range.reduce((a, x) => a + uintOrNaN(x.value), 0);
 }
-function finalize(inputs, outputs, feeRate, changeType, cpfpAddFee = 0) {
-    const bytesAccum = transactionBytes(inputs, outputs, changeType ?? undefined);
+function finalize(inputs, outputs, feeRate, changeType) {
+    let changeOutputAdded = undefined;
+    let bytesAccum = transactionBytes(inputs, outputs, changeType ?? undefined);
     logger.debug("finalize(): Transaction bytes: ", bytesAccum);
+    const cpfpAddFee = inputs.reduce((sum, input) => sum + inputCpfpAdditionalFee(input, feeRate), 0);
     if (changeType != null) {
-        const feeAfterExtraOutput = (feeRate * (bytesAccum + outputBytes({ type: changeType }))) + cpfpAddFee;
+        const bytesWithChangeOutput = transactionBytes(inputs, [...outputs, { type: changeType }], changeType);
+        const feeAfterExtraOutput = calculateFee(bytesWithChangeOutput, feeRate, cpfpAddFee);
         logger.debug("finalize(): TX fee after adding change output: ", feeAfterExtraOutput);
         const remainderAfterExtraOutput = Math.floor(sumOrNaN(inputs) - (sumOrNaN(outputs) + feeAfterExtraOutput));
         logger.debug("finalize(): Leaves change (changeType=" + changeType + ") value: ", remainderAfterExtraOutput);
         // is it worth a change output?
         if (remainderAfterExtraOutput >= dustThreshold({ type: changeType })) {
-            outputs = outputs.concat({ value: remainderAfterExtraOutput, type: changeType });
+            changeOutputAdded = { value: remainderAfterExtraOutput, type: changeType };
+            outputs = outputs.concat(changeOutputAdded);
+            bytesAccum = bytesWithChangeOutput;
         }
     }
     const fee = sumOrNaN(inputs) - sumOrNaN(outputs);
     logger.debug("finalize(): Re-calculated total fee: ", fee);
-    if (!isFinite(fee) || fee < 0)
-        return { fee: (feeRate * bytesAccum) + cpfpAddFee };
-    let txVSize = exports.utils.transactionBytes(inputs, outputs);
+    if (!isFinite(fee) || fee < 0) {
+        const expectedFee = calculateFee(bytesAccum, feeRate, cpfpAddFee);
+        return { expectedFee, fee: expectedFee };
+    }
+    let txVSize = transactionBytes(inputs, outputs);
     let txFee = fee;
     const cpfpSortedInputs = [...inputs].sort((a, b) => (b.cpfp?.txEffectiveFeeRate ?? 0) - (a.cpfp?.txEffectiveFeeRate ?? 0));
     cpfpSortedInputs.forEach(input => {
@@ -129,18 +143,24 @@ function finalize(inputs, outputs, feeRate, changeType, cpfpAddFee = 0) {
         }
     });
     return {
+        expectedFee: calculateFee(bytesAccum, feeRate, cpfpAddFee),
         inputs: inputs,
         outputs: outputs,
         effectiveFeeRate: txFee / txVSize,
-        fee: fee
+        fee,
+        changeOutputAdded
     };
+}
+function inputCpfpAdditionalFee(utxo, feeRate) {
+    let cpfpFee = 0;
+    if (utxo.cpfp != null && utxo.cpfp.txEffectiveFeeRate < feeRate)
+        cpfpFee = Math.ceil(utxo.cpfp.txVsize * (feeRate - utxo.cpfp.txEffectiveFeeRate));
+    return cpfpFee;
 }
 function isDetrimentalInput(feeRate, utxo) {
     const utxoBytes = exports.utils.inputBytes(utxo);
     const utxoFee = feeRate * utxoBytes;
-    let cpfpFee = 0;
-    if (utxo.cpfp != null && utxo.cpfp.txEffectiveFeeRate < feeRate)
-        cpfpFee = Math.ceil(utxo.cpfp.txVsize * (feeRate - utxo.cpfp.txEffectiveFeeRate));
+    const cpfpFee = inputCpfpAdditionalFee(utxo, feeRate);
     // skip detrimental input
     return utxoFee + cpfpFee > utxo.value;
 }
@@ -152,7 +172,9 @@ exports.utils = {
     sumOrNaN: sumOrNaN,
     sumForgiving: sumForgiving,
     transactionBytes: transactionBytes,
+    calculateFee: calculateFee,
     uintOrNaN: uintOrNaN,
     numberOrNaN: numberOrNaN,
-    isDetrimentalInput
+    isDetrimentalInput,
+    inputCpfpAdditionalFee
 };

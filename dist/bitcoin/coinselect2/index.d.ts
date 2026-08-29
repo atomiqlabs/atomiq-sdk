@@ -1,6 +1,6 @@
 /// <reference types="node" />
 /// <reference types="node" />
-import { CoinselectAddressTypes, CoinselectTxInput, CoinselectTxOutput, DUST_THRESHOLDS } from "./utils";
+import { CoinselectAddressTypes, CoinselectTxInput, CoinselectTxOutput, DUST_THRESHOLDS } from "./utils.js";
 export { CoinselectAddressTypes, CoinselectTxInput, CoinselectTxOutput, DUST_THRESHOLDS };
 export declare function coinSelect(utxos: CoinselectTxInput[], outputs: CoinselectTxOutput[], feeRate: number, type: CoinselectAddressTypes, requiredInputs?: CoinselectTxInput[]): {
     inputs?: CoinselectTxInput[];
@@ -14,7 +14,8 @@ export declare function maxSendable(utxos: Omit<CoinselectTxInput, "txId" | "add
 }, feeRate: number, requiredInputs?: Omit<CoinselectTxInput, "txId" | "address" | "vout" | "outputScript">[], additionalOutputs?: {
     script: Buffer;
     value: number;
-}[]): {
+}[], skipDetrimental?: boolean): {
+    selectedUtxos: Omit<CoinselectTxInput, "txId" | "address" | "vout" | "outputScript">[];
     value: number;
     fee: number;
 };

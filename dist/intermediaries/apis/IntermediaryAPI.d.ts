@@ -1,7 +1,7 @@
 /// <reference types="node" />
 /// <reference types="node" />
-import { FieldTypeEnum, RequestSchema, RequestSchemaResult, RequestSchemaResultPromise } from "../../http/paramcoders/SchemaVerifier";
-import { RequestBody } from "../../http/paramcoders/client/StreamingFetchPromise";
+import { FieldTypeEnum, RequestSchema, RequestSchemaResult, RequestSchemaResultPromise } from "../../http/paramcoders/SchemaVerifier.js";
+import { RequestBody } from "../../http/paramcoders/client/StreamingFetchPromise.js";
 export type InfoHandlerResponse = {
     envelope: string;
     chains: {
@@ -236,6 +236,7 @@ declare const SpvFromBTCPrepareResponseSchema: {
     readonly frontingFeeShare: FieldTypeEnum.BigInt;
     readonly executionFeeShare: FieldTypeEnum.BigInt;
     readonly usedUtxoInputCalculation: FieldTypeEnum.BooleanOptional;
+    readonly usedExactFeeCalculation: FieldTypeEnum.BooleanOptional;
 };
 export type SpvFromBTCPrepareResponseType = RequestSchemaResult<typeof SpvFromBTCPrepareResponseSchema>;
 export type SpvFromBTCPrepare = SwapInit & {
@@ -245,7 +246,9 @@ export type SpvFromBTCPrepare = SwapInit & {
     gasToken: string;
     exactOut: boolean;
     callerFeeRate: Promise<bigint>;
+    callerFee: Promise<bigint>;
     frontingFeeRate: bigint;
+    frontingFee: bigint;
     stickyAddress?: boolean;
     amountUtxos?: Promise<{
         value: number;
@@ -256,6 +259,9 @@ export type SpvFromBTCPrepare = SwapInit & {
         };
     }[] | undefined>;
     amountFeeRate?: Promise<number | undefined>;
+    amountSkipDetrimental?: boolean;
+    amountChangeValue?: Promise<bigint | undefined>;
+    amountChangeVSize?: Promise<number | undefined>;
 };
 declare const SpvFromBTCInitResponseSchema: {
     readonly txId: FieldTypeEnum.String;

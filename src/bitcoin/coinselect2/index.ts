@@ -1,6 +1,6 @@
-import {accumulative} from "./accumulative"
-import {blackjack} from "./blackjack"
-import {CoinselectAddressTypes, CoinselectTxInput, CoinselectTxOutput, DUST_THRESHOLDS, utils} from "./utils"
+import {accumulative} from "./accumulative.js"
+import {blackjack} from "./blackjack.js"
+import {CoinselectAddressTypes, CoinselectTxInput, CoinselectTxOutput, DUST_THRESHOLDS, utils} from "./utils.js"
 
 // order by descending value, minus the inputs approximate fee
 function utxoScore (x: CoinselectTxInput, feeRate: number) {
@@ -44,15 +44,17 @@ export function maxSendable (
     feeRate: number,
     requiredInputs?: Omit<CoinselectTxInput, "txId" | "address" | "vout" | "outputScript">[],
     additionalOutputs?: {script: Buffer, value: number}[],
+    skipDetrimental?: boolean
 ): {
+    selectedUtxos: Omit<CoinselectTxInput, "txId" | "address" | "vout" | "outputScript">[],
     value: number,
     fee: number
 } {
+    skipDetrimental ??= true;
     if (!isFinite(utils.numberOrNaN(feeRate))) throw new Error("Invalid feeRate passed!");
 
     const outputs = additionalOutputs ?? [];
     const inputs = requiredInputs ?? [];
-    let bytesAccum = utils.transactionBytes(inputs, (outputs as {script: Buffer}[]).concat([output]));
     let cpfpAddFee = 0;
     let inAccum = utils.sumOrNaN(inputs);
     let outAccum = utils.sumOrNaN(outputs);
@@ -66,27 +68,31 @@ export function maxSendable (
         const utxoValue = utils.uintOrNaN(utxo.value);
 
         // skip detrimental input
-        if (utxoFee + cpfpFee > utxo.value) {
+        if (skipDetrimental && utxoFee + cpfpFee > utxo.value) {
             continue;
         }
 
-        bytesAccum += utxoBytes;
         inAccum += utxoValue;
         cpfpAddFee += cpfpFee;
         inputs.push(utxo);
     }
 
-    const fee = (feeRate * bytesAccum) + cpfpAddFee;
+    // Calculate the complete transaction size after selecting the inputs so transactionBytes()
+    // can include the SegWit marker and flag when the first selected input is a SegWit input.
+    const transactionSize = utils.transactionBytes(inputs, [...outputs, output]);
+    const fee = utils.calculateFee(transactionSize, feeRate, cpfpAddFee);
     const outputValue = inAccum - fee - outAccum;
 
     const dustThreshold = DUST_THRESHOLDS[output.type];
 
     if(outputValue<dustThreshold) return {
+        selectedUtxos: inputs,
         fee,
         value: 0
     };
 
     return {
+        selectedUtxos: inputs,
         fee,
         value: outputValue
     };

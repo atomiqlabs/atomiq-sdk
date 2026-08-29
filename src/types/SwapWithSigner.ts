@@ -1,10 +1,10 @@
-import {ISwap} from "../swaps/ISwap";
+import {ISwap} from "../swaps/ISwap.js";
 import {ChainType} from "@atomiqlabs/base";
-import {IToBTCSwap} from "../swaps/escrow_swaps/tobtc/IToBTCSwap";
-import {IFromBTCSelfInitSwap} from "../swaps/escrow_swaps/frombtc/IFromBTCSelfInitSwap";
-import {FromBTCLNSwap} from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap";
-import {FromBTCLNAutoSwap} from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap";
-import {SpvFromBTCSwap} from "../swaps/spv_swaps/SpvFromBTCSwap";
+import {IToBTCSwap} from "../swaps/escrow_swaps/tobtc/IToBTCSwap.js";
+import {IFromBTCSelfInitSwap} from "../swaps/escrow_swaps/frombtc/IFromBTCSelfInitSwap.js";
+import {FromBTCLNSwap} from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap.js";
+import {FromBTCLNAutoSwap} from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap.js";
+import {SpvFromBTCSwap} from "../swaps/spv_swaps/SpvFromBTCSwap.js";
 
 /**
  * Proxy type that auto-injects a smart chain signer into swap methods

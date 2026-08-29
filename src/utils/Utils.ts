@@ -2,8 +2,8 @@ import {Buffer} from "buffer";
 import {randomBytes as randomBytesNoble} from "@noble/hashes/utils";
 import {sha256} from "@noble/hashes/sha2";
 import {BigIntBufferUtils, ChainType} from "@atomiqlabs/base";
-import {IFromBTCLNWrapper} from "../swaps/escrow_swaps/frombtc/IFromBTCLNWrapper";
-import {UserError} from "../errors/UserError";
+import {IFromBTCLNWrapper} from "../swaps/escrow_swaps/frombtc/IFromBTCLNWrapper.js";
+import {UserError} from "../errors/UserError.js";
 
 /**
  * Returns a promise that rejects if the passed promise resolves to `undefined` or `null`
@@ -218,4 +218,10 @@ export function parseHashValueExact32Bytes(value?: Buffer | string, variableName
     if(hash!=null && hash.length!==32)
         throw new UserError(`Invalid ${variableName} length, must be exactly 32 bytes!`);
     return hash;
+}
+
+export function bigIntCeilDivision(a: bigint, b: bigint) {
+    if(b <= 0) throw new Error("Division by zero or negative value!");
+    if(a < 0) throw new Error("a must be non-negative!");
+    return (a + b - 1n) / b;
 }

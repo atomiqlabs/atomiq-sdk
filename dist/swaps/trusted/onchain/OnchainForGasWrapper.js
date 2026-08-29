@@ -1,17 +1,17 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OnchainForGasWrapper = void 0;
-const ISwapWrapper_1 = require("../../ISwapWrapper");
-const IntermediaryError_1 = require("../../../errors/IntermediaryError");
-const OnchainForGasSwap_1 = require("./OnchainForGasSwap");
-const SwapType_1 = require("../../../enums/SwapType");
+const ISwapWrapper_js_1 = require("../../ISwapWrapper.js");
+const IntermediaryError_js_1 = require("../../../errors/IntermediaryError.js");
+const OnchainForGasSwap_js_1 = require("./OnchainForGasSwap.js");
+const SwapType_js_1 = require("../../../enums/SwapType.js");
 /**
  * Trusted swap for Bitcoin -> Smart chains, to be used for minor amounts to get gas tokens on the
  *  destination chain, which is only needed for Solana, which still uses legacy swaps
  *
  * @category Swaps/Trusted Gas Swaps
  */
-class OnchainForGasWrapper extends ISwapWrapper_1.ISwapWrapper {
+class OnchainForGasWrapper extends ISwapWrapper_js_1.ISwapWrapper {
     /**
      * @param chainIdentifier
      * @param unifiedStorage Storage interface for the current environment
@@ -26,15 +26,15 @@ class OnchainForGasWrapper extends ISwapWrapper_1.ISwapWrapper {
      */
     constructor(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, btcRpc, lpApi, options, events) {
         super(chainIdentifier, unifiedStorage, unifiedChainEvents, chain, prices, tokens, lpApi, options, events);
-        this.TYPE = SwapType_1.SwapType.TRUSTED_FROM_BTC;
+        this.TYPE = SwapType_js_1.SwapType.TRUSTED_FROM_BTC;
         /**
          * @internal
          */
-        this._swapDeserializer = OnchainForGasSwap_1.OnchainForGasSwap;
+        this._swapDeserializer = OnchainForGasSwap_js_1.OnchainForGasSwap;
         /**
          * @internal
          */
-        this._pendingSwapStates = [OnchainForGasSwap_1.OnchainForGasSwapState.PR_CREATED];
+        this._pendingSwapStates = [OnchainForGasSwap_js_1.OnchainForGasSwapState.PR_CREATED];
         /**
          * @internal
          */
@@ -66,11 +66,11 @@ class OnchainForGasWrapper extends ISwapWrapper_1.ISwapWrapper {
             token
         }, this._options.getRequestTimeout);
         if (resp.total !== amount)
-            throw new IntermediaryError_1.IntermediaryError("Invalid total returned");
-        const pricingInfo = await this.verifyReturnedPrice(typeof (lpOrUrl) === "string" || lpOrUrl.services[SwapType_1.SwapType.TRUSTED_FROM_BTC] == null ?
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid total returned");
+        const pricingInfo = await this.verifyReturnedPrice(typeof (lpOrUrl) === "string" || lpOrUrl.services[SwapType_js_1.SwapType.TRUSTED_FROM_BTC] == null ?
             { swapFeePPM: 10000, swapBaseFee: 10 } :
-            lpOrUrl.services[SwapType_1.SwapType.TRUSTED_FROM_BTC], false, resp.amountSats, amount, this._chain.getNativeCurrencyAddress(), { swapFeeBtc: resp.swapFeeSats });
-        const quote = new OnchainForGasSwap_1.OnchainForGasSwap(this, {
+            lpOrUrl.services[SwapType_js_1.SwapType.TRUSTED_FROM_BTC], false, resp.amountSats, amount, this._chain.getNativeCurrencyAddress(), { swapFeeBtc: resp.swapFeeSats });
+        const quote = new OnchainForGasSwap_js_1.OnchainForGasSwap(this, {
             paymentHash: resp.paymentHash,
             sequence: resp.sequence,
             address: resp.btcAddress,

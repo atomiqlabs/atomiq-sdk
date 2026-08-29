@@ -2,22 +2,22 @@
 /// <reference types="node" />
 /// <reference types="node" />
 import { ChainType, ClaimEvent, InitializeEvent, LightningNetworkApi, Messenger, RefundEvent, SwapCommitState } from "@atomiqlabs/base";
-import { Intermediary } from "../../../../intermediaries/Intermediary";
+import { Intermediary } from "../../../../intermediaries/Intermediary.js";
 import { Buffer } from "buffer";
-import { SwapType } from "../../../../enums/SwapType";
-import { IntermediaryAPI } from "../../../../intermediaries/apis/IntermediaryAPI";
-import { ISwapPrice } from "../../../../prices/abstract/ISwapPrice";
+import { SwapType } from "../../../../enums/SwapType.js";
+import { IntermediaryAPI } from "../../../../intermediaries/apis/IntermediaryAPI.js";
+import { ISwapPrice } from "../../../../prices/abstract/ISwapPrice.js";
 import { EventEmitter } from "events";
-import { ISwapWrapperOptions, WrapperCtorTokens } from "../../../ISwapWrapper";
-import { UnifiedSwapEventListener } from "../../../../events/UnifiedSwapEventListener";
-import { UnifiedSwapStorage } from "../../../../storage/UnifiedSwapStorage";
-import { ISwap } from "../../../ISwap";
-import { FromBTCLNAutoSwap, FromBTCLNAutoSwapState } from "./FromBTCLNAutoSwap";
-import { IFromBTCLNDefinition, IFromBTCLNWrapper } from "../IFromBTCLNWrapper";
-import { IClaimableSwapWrapper } from "../../../IClaimableSwapWrapper";
-import { AmountData } from "../../../../types/AmountData";
-import { LNURLWithdrawParamsWithUrl } from "../../../../types/lnurl/LNURLWithdraw";
-import { AllOptional } from "../../../../utils/TypeUtils";
+import { ISwapWrapperOptions, WrapperCtorTokens } from "../../../ISwapWrapper.js";
+import { UnifiedSwapEventListener } from "../../../../events/UnifiedSwapEventListener.js";
+import { UnifiedSwapStorage } from "../../../../storage/UnifiedSwapStorage.js";
+import { ISwap } from "../../../ISwap.js";
+import { FromBTCLNAutoSwap, FromBTCLNAutoSwapState } from "./FromBTCLNAutoSwap.js";
+import { IFromBTCLNDefinition, IFromBTCLNWrapper } from "../IFromBTCLNWrapper.js";
+import { IClaimableSwapWrapper } from "../../../IClaimableSwapWrapper.js";
+import { AmountData } from "../../../../types/AmountData.js";
+import { LNURLWithdrawParamsWithUrl } from "../../../../types/lnurl/LNURLWithdraw.js";
+import { AllOptional } from "../../../../utils/TypeUtils.js";
 export type FromBTCLNAutoOptions = {
     /**
      * Instead of letting the SDK generate the preimage/paymentHash pair internally you can pass your computed

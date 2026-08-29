@@ -1,19 +1,38 @@
 import {decode as bolt11Decode} from "@atomiqlabs/bolt11";
 import {Address, Transaction} from "@scure/btc-signer";
-import {LNURL} from "../lnurl/LNURL";
+import {LNURL} from "../lnurl/LNURL.js";
 import {BTC_NETWORK} from "@scure/btc-signer/utils";
-import {SwapType} from "../enums/SwapType";
-import {ChainIds, MultiChain, Swapper} from "./Swapper";
-import {IBitcoinWallet} from "../bitcoin/wallet/IBitcoinWallet";
-import {SingleAddressBitcoinWallet} from "../bitcoin/wallet/SingleAddressBitcoinWallet";
+import {SwapType} from "../enums/SwapType.js";
+import {ChainIds, MultiChain, Swapper} from "./Swapper.js";
+import {IBitcoinWallet} from "../bitcoin/wallet/IBitcoinWallet.js";
+import {SingleAddressBitcoinWallet} from "../bitcoin/wallet/SingleAddressBitcoinWallet.js";
 import {BigIntBufferUtils, ChainSwapType, isAbstractSigner} from "@atomiqlabs/base";
-import {bigIntMax, fromDecimal, randomBytes} from "../utils/Utils";
-import {MinimalBitcoinWalletInterface} from "../types/wallets/MinimalBitcoinWalletInterface";
-import {TokenAmount, toTokenAmount} from "../types/TokenAmount";
-import {BitcoinTokens, SCToken} from "../types/Token";
-import {isLNURLWithdraw, LNURLWithdraw} from "../types/lnurl/LNURLWithdraw";
-import {isLNURLPay, LNURLPay} from "../types/lnurl/LNURLPay";
-import {toBitcoinWallet} from "../utils/BitcoinWalletUtils";
+import {bigIntMax, fromDecimal, randomBytes} from "../utils/Utils.js";
+import {MinimalBitcoinWalletInterface} from "../types/wallets/MinimalBitcoinWalletInterface.js";
+import {TokenAmount, toTokenAmount} from "../types/TokenAmount.js";
+import {BitcoinTokens, SCToken} from "../types/Token.js";
+import {isLNURLWithdraw, LNURLWithdraw} from "../types/lnurl/LNURLWithdraw.js";
+import {isLNURLPay, LNURLPay} from "../types/lnurl/LNURLPay.js";
+import {toBitcoinWallet} from "../utils/BitcoinWalletUtils.js";
+import {Buffer} from "buffer";
+
+/**
+ * Optional derivation and fee configuration for SDK-provided single-address Bitcoin wallets.
+ */
+type BitcoinWalletCreationOptions = {
+    /**
+     * Custom BIP32 derivation path. Defaults to the network's native SegWit account 0 path.
+     */
+    derivationPath?: string,
+    /**
+     * Multiplier applied to Bitcoin fee estimates. Defaults to the wallet's standard multiplier.
+     */
+    feeMultiplier?: number,
+    /**
+     * Fixed Bitcoin fee rate in sats/vB returned by the wallet instead of querying the configured backend.
+     */
+    feeOverride?: number
+};
 
 /**
  * Utility class providing helper methods for address parsing, token balances, serialization
@@ -29,6 +48,65 @@ export class SwapperUtils<T extends MultiChain> {
     constructor(root: Swapper<T>) {
         this.bitcoinNetwork = root._btcNetwork;
         this.root = root;
+    }
+
+    /**
+     * Generates a random mnemonic and a single-address Bitcoin wallet using this swapper's Bitcoin backend and network.
+     *
+     * @param options Optional derivation and fee configuration
+     * @returns The generated wallet and its mnemonic; callers are responsible for securely persisting the mnemonic
+     */
+    async generateBitcoinWallet(options?: BitcoinWalletCreationOptions): Promise<{
+        wallet: SingleAddressBitcoinWallet,
+        mnemonic: string
+    }> {
+        const mnemonic = SingleAddressBitcoinWallet.generateRandomMnemonic();
+        return {
+            wallet: await this.createBitcoinWalletFromMnemonic(mnemonic, options),
+            mnemonic
+        };
+    }
+
+    /**
+     * Restores a single-address Bitcoin wallet from a mnemonic using this swapper's Bitcoin backend and network.
+     *
+     * @param mnemonic Mnemonic phrase from which to derive the wallet
+     * @param options Optional derivation and fee configuration
+     * @returns Wallet derived from `mnemonic`
+     */
+    createBitcoinWalletFromMnemonic(
+        mnemonic: string,
+        options?: BitcoinWalletCreationOptions
+    ): Promise<SingleAddressBitcoinWallet> {
+        return SingleAddressBitcoinWallet.fromMnemonic(
+            this.root._bitcoinRpc,
+            this.bitcoinNetwork,
+            mnemonic,
+            options?.derivationPath,
+            options?.feeMultiplier,
+            options?.feeOverride
+        );
+    }
+
+    /**
+     * Creates a reproducible single-address Bitcoin wallet from entropy using this swapper's Bitcoin backend and network.
+     *
+     * @remarks
+     * The entropy is deterministically converted to a mnemonic before deriving the wallet. Supplying the same entropy,
+     * network, and derivation path recreates the same wallet.
+     *
+     * @param entropy At least 128 bits of reproducible entropy
+     * @param options Optional derivation and fee configuration
+     * @returns Wallet deterministically derived from `entropy`
+     */
+    createBitcoinWalletFromEntropy(
+        entropy: Uint8Array,
+        options?: BitcoinWalletCreationOptions
+    ): Promise<SingleAddressBitcoinWallet> {
+        return this.createBitcoinWalletFromMnemonic(
+            SingleAddressBitcoinWallet.mnemonicFromEntropy(Buffer.from(entropy)),
+            options
+        );
     }
 
     /**
@@ -501,8 +579,8 @@ export class SwapperUtils<T extends MultiChain> {
         if(chainIdentifier==="BITCOIN") {
             // Return random p2wkh address
             return Address(this.bitcoinNetwork).encode({
-                type: "wpkh",
-                hash: randomBytes(20)
+                type: "wsh",
+                hash: randomBytes(32)
             });
         }
         if(this.root._chains[chainIdentifier]==null) throw new Error("Invalid chain identifier! Unknown chain: "+chainIdentifier);

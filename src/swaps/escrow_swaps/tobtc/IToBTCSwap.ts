@@ -1,9 +1,12 @@
-import {IToBTCDefinition, IToBTCWrapper} from "./IToBTCWrapper";
+import {ToBTCSwapState} from "./ToBTCSwapState.js";
+import {IToBTCDefinition, IToBTCWrapper} from "./IToBTCWrapper.js";
+import {ISwap} from "../../ISwap.js";
+import {SwapType} from "../../../enums/SwapType.js";
 import {
     ChainType,
     isAbstractSigner,
+    isSignatureVerificationError,
     SignatureData,
-    SignatureVerificationError,
     SwapCommitState,
     SwapCommitStateType,
     SwapData
@@ -12,25 +15,25 @@ import {
     IntermediaryAPI,
     RefundAuthorizationResponse,
     RefundAuthorizationResponseCodes
-} from "../../../intermediaries/apis/IntermediaryAPI";
-import {IntermediaryError} from "../../../errors/IntermediaryError";
-import {extendAbortController, toBigInt} from "../../../utils/Utils";
-import {Fee} from "../../../types/fees/Fee";
-import {IEscrowSelfInitSwap, IEscrowSelfInitSwapInit, isIEscrowSelfInitSwapInit} from "../IEscrowSelfInitSwap";
-import {IRefundableSwap} from "../../IRefundableSwap";
-import {FeeType} from "../../../enums/FeeType";
-import {ppmToPercentage} from "../../../types/fees/PercentagePPM";
-import {TokenAmount, toTokenAmount} from "../../../types/TokenAmount";
-import {BtcToken, SCToken} from "../../../types/Token";
-import {timeoutPromise} from "../../../utils/TimeoutUtils";
-import {SwapExecutionActionSignSmartChainTx, SwapExecutionActionWait} from "../../../types/SwapExecutionAction";
+} from "../../../intermediaries/apis/IntermediaryAPI.js";
+import {IntermediaryError} from "../../../errors/IntermediaryError.js";
+import {extendAbortController, toBigInt} from "../../../utils/Utils.js";
+import {Fee} from "../../../types/fees/Fee.js";
+import {IEscrowSelfInitSwap, IEscrowSelfInitSwapInit, isIEscrowSelfInitSwapInit} from "../IEscrowSelfInitSwap.js";
+import {IRefundableSwap} from "../../IRefundableSwap.js";
+import {FeeType} from "../../../enums/FeeType.js";
+import {ppmToPercentage} from "../../../types/fees/PercentagePPM.js";
+import {TokenAmount, toTokenAmount} from "../../../types/TokenAmount.js";
+import {BtcToken, SCToken} from "../../../types/Token.js";
+import {timeoutPromise} from "../../../utils/TimeoutUtils.js";
+import {SwapExecutionActionSignSmartChainTx, SwapExecutionActionWait} from "../../../types/SwapExecutionAction.js";
 import {
     SwapExecutionStep,
     SwapExecutionStepPayment,
     SwapExecutionStepRefund,
     SwapExecutionStepSettlement
-} from "../../../types/SwapExecutionStep";
-import {SwapStateInfo} from "../../../types/SwapStateInfo";
+} from "../../../types/SwapExecutionStep.js";
+import {SwapStateInfo} from "../../../types/SwapStateInfo.js";
 
 export type IToBTCSwapInit<T extends SwapData> = IEscrowSelfInitSwapInit<T> & {
     signatureData?: SignatureData,
@@ -52,52 +55,7 @@ export function isIToBTCSwapInit<T extends SwapData>(obj: any): obj is IToBTCSwa
         isIEscrowSelfInitSwapInit<T>(obj);
 }
 
-/**
- * State enum for escrow-based Smart chain -> Bitcoin (on-chain & lightning) swaps
- *
- * @category Swaps/Smart chain → Bitcoin
- */
-export enum ToBTCSwapState {
-    /**
-     * Intermediary (LP) was unable to process the swap and the funds were refunded on the
-     *  source chain
-     */
-    REFUNDED = -3,
-    /**
-     * Swap has expired for good and there is no way how it can be executed anymore
-     */
-    QUOTE_EXPIRED = -2,
-    /**
-     * A swap is almost expired, and it should be presented to the user as expired, though
-     *  there is still a chance that it will be processed
-     */
-    QUOTE_SOFT_EXPIRED = -1,
-    /**
-     * Swap was created, use the {@link IToBTCSwap.commit} or {@link IToBTCSwap.txsCommit} to
-     *  initiate it by creating the swap escrow on the source chain
-     */
-    CREATED = 0,
-    /**
-     * Swap escrow was initiated (committed) on the source chain, the intermediary (LP) will
-     *  now process the swap. You can wait till that happens with the {@link IToBTCSwap.waitForPayment}
-     *  function.
-     */
-    COMMITED = 1,
-    /**
-     * The intermediary (LP) has processed the transaction and sent out the funds on the destination chain,
-     *  but hasn't yet settled the escrow on the source chain.
-     */
-    SOFT_CLAIMED = 2,
-    /**
-     * Swap was successfully settled by the intermediary (LP) on the source chain
-     */
-    CLAIMED = 3,
-    /**
-     * Intermediary (LP) was unable to process the swap and the swap escrow on the source chain
-     *  is refundable, call {@link IToBTCSwap.refund} or {@link IToBTCSwap.txsRefund} to refund
-     */
-    REFUNDABLE = 4
-}
+export {ToBTCSwapState};
 
 const ToBTCSwapStateDescription = {
     [ToBTCSwapState.REFUNDED]: "Intermediary (LP) was unable to process the swap and the funds were refunded on the source chain",
@@ -812,7 +770,7 @@ export abstract class IToBTCSwap<
 
         return await this._contract.txsInit(
             this._getInitiator(), this._data, this.signatureData, skipChecks, this.feeRate
-        ).catch(e => Promise.reject(e instanceof SignatureVerificationError ? new Error("Request timed out") : e));
+        ).catch(e => Promise.reject(isSignatureVerificationError(e) ? new Error("Request timed out") : e));
     }
 
     /**

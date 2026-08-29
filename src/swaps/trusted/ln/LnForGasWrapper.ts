@@ -1,10 +1,10 @@
-import {LnForGasSwap, LnForGasSwapInit, LnForGasSwapState} from "./LnForGasSwap";
-import {ISwapWrapper, SwapTypeDefinition} from "../../ISwapWrapper";
+import {LnForGasSwap, LnForGasSwapInit, LnForGasSwapState} from "./LnForGasSwap.js";
+import {ISwapWrapper, SwapTypeDefinition} from "../../ISwapWrapper.js";
 import {decode as bolt11Decode} from "@atomiqlabs/bolt11";
-import {IntermediaryError} from "../../../errors/IntermediaryError";
+import {IntermediaryError} from "../../../errors/IntermediaryError.js";
 import {ChainType} from "@atomiqlabs/base";
-import {Intermediary} from "../../../intermediaries/Intermediary";
-import {SwapType} from "../../../enums/SwapType";
+import {Intermediary} from "../../../intermediaries/Intermediary.js";
+import {SwapType} from "../../../enums/SwapType.js";
 
 export type LnForGasSwapTypeDefinition<T extends ChainType> = SwapTypeDefinition<T, LnForGasWrapper<T>, LnForGasSwap<T>>;
 

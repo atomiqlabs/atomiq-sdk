@@ -1,5 +1,5 @@
-import {FeeType} from "../../enums/FeeType";
-import {Fee} from "./Fee";
+import {FeeType} from "../../enums/FeeType.js";
+import {Fee} from "./Fee.js";
 
 /**
  * Breakdown of fees by type (swap fee, network fee, etc.)

@@ -1,16 +1,16 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.IFromBTCWrapper = void 0;
-const IntermediaryError_1 = require("../../../errors/IntermediaryError");
-const Utils_1 = require("../../../utils/Utils");
+const IntermediaryError_js_1 = require("../../../errors/IntermediaryError.js");
+const Utils_js_1 = require("../../../utils/Utils.js");
 const base_1 = require("@atomiqlabs/base");
-const IEscrowSwapWrapper_1 = require("../IEscrowSwapWrapper");
+const IEscrowSwapWrapper_js_1 = require("../IEscrowSwapWrapper.js");
 /**
  * Base class for wrappers of escrow-based Bitcoin (on-chain & lightning) -> Smart chain swaps
  *
  * @category Swaps/Abstract
  */
-class IFromBTCWrapper extends IEscrowSwapWrapper_1.IEscrowSwapWrapper {
+class IFromBTCWrapper extends IEscrowSwapWrapper_js_1.IEscrowSwapWrapper {
     /**
      * Returns a random sequence to be used for swaps
      *
@@ -19,7 +19,7 @@ class IFromBTCWrapper extends IEscrowSwapWrapper_1.IEscrowSwapWrapper {
      * @internal
      */
     getRandomSequence() {
-        return base_1.BigIntBufferUtils.fromBuffer((0, Utils_1.randomBytes)(8));
+        return base_1.BigIntBufferUtils.fromBuffer((0, Utils_js_1.randomBytes)(8));
     }
     /**
      * Pre-fetches smart chain fee rate for initiating a swap escrow on the smart chain side
@@ -35,7 +35,7 @@ class IFromBTCWrapper extends IEscrowSwapWrapper_1.IEscrowSwapWrapper {
      * @internal
      */
     preFetchFeeRate(signer, amountData, claimHash, abortController, contractVersions) {
-        return (0, Utils_1.mapArrayToObject)(contractVersions, (contractVersion) => {
+        return (0, Utils_js_1.mapArrayToObject)(contractVersions, (contractVersion) => {
             return this._contract(contractVersion).getInitFeeRate(this._chain.randomAddress(), signer, amountData.token, claimHash?.[contractVersion])
                 .catch(e => {
                 this.logger.warn("preFetchFeeRate(): Error: ", e);
@@ -76,7 +76,7 @@ class IFromBTCWrapper extends IEscrowSwapWrapper_1.IEscrowSwapWrapper {
     async verifyIntermediaryLiquidity(amount, liquidityPromise) {
         const liquidity = await liquidityPromise;
         if (liquidity < amount)
-            throw new IntermediaryError_1.IntermediaryError("Intermediary doesn't have enough liquidity");
+            throw new IntermediaryError_js_1.IntermediaryError("Intermediary doesn't have enough liquidity");
     }
 }
 exports.IFromBTCWrapper = IFromBTCWrapper;

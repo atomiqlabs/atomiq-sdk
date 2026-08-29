@@ -3,16 +3,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SwapperUtils = void 0;
 const bolt11_1 = require("@atomiqlabs/bolt11");
 const btc_signer_1 = require("@scure/btc-signer");
-const LNURL_1 = require("../lnurl/LNURL");
-const SwapType_1 = require("../enums/SwapType");
-const SingleAddressBitcoinWallet_1 = require("../bitcoin/wallet/SingleAddressBitcoinWallet");
+const LNURL_js_1 = require("../lnurl/LNURL.js");
+const SwapType_js_1 = require("../enums/SwapType.js");
+const SingleAddressBitcoinWallet_js_1 = require("../bitcoin/wallet/SingleAddressBitcoinWallet.js");
 const base_1 = require("@atomiqlabs/base");
-const Utils_1 = require("../utils/Utils");
-const TokenAmount_1 = require("../types/TokenAmount");
-const Token_1 = require("../types/Token");
-const LNURLWithdraw_1 = require("../types/lnurl/LNURLWithdraw");
-const LNURLPay_1 = require("../types/lnurl/LNURLPay");
-const BitcoinWalletUtils_1 = require("../utils/BitcoinWalletUtils");
+const Utils_js_1 = require("../utils/Utils.js");
+const TokenAmount_js_1 = require("../types/TokenAmount.js");
+const Token_js_1 = require("../types/Token.js");
+const LNURLWithdraw_js_1 = require("../types/lnurl/LNURLWithdraw.js");
+const LNURLPay_js_1 = require("../types/lnurl/LNURLPay.js");
+const BitcoinWalletUtils_js_1 = require("../utils/BitcoinWalletUtils.js");
+const buffer_1 = require("buffer");
 /**
  * Utility class providing helper methods for address parsing, token balances, serialization
  *  and other miscellaneous things.
@@ -23,6 +24,43 @@ class SwapperUtils {
     constructor(root) {
         this.bitcoinNetwork = root._btcNetwork;
         this.root = root;
+    }
+    /**
+     * Generates a random mnemonic and a single-address Bitcoin wallet using this swapper's Bitcoin backend and network.
+     *
+     * @param options Optional derivation and fee configuration
+     * @returns The generated wallet and its mnemonic; callers are responsible for securely persisting the mnemonic
+     */
+    async generateBitcoinWallet(options) {
+        const mnemonic = SingleAddressBitcoinWallet_js_1.SingleAddressBitcoinWallet.generateRandomMnemonic();
+        return {
+            wallet: await this.createBitcoinWalletFromMnemonic(mnemonic, options),
+            mnemonic
+        };
+    }
+    /**
+     * Restores a single-address Bitcoin wallet from a mnemonic using this swapper's Bitcoin backend and network.
+     *
+     * @param mnemonic Mnemonic phrase from which to derive the wallet
+     * @param options Optional derivation and fee configuration
+     * @returns Wallet derived from `mnemonic`
+     */
+    createBitcoinWalletFromMnemonic(mnemonic, options) {
+        return SingleAddressBitcoinWallet_js_1.SingleAddressBitcoinWallet.fromMnemonic(this.root._bitcoinRpc, this.bitcoinNetwork, mnemonic, options?.derivationPath, options?.feeMultiplier, options?.feeOverride);
+    }
+    /**
+     * Creates a reproducible single-address Bitcoin wallet from entropy using this swapper's Bitcoin backend and network.
+     *
+     * @remarks
+     * The entropy is deterministically converted to a mnemonic before deriving the wallet. Supplying the same entropy,
+     * network, and derivation path recreates the same wallet.
+     *
+     * @param entropy At least 128 bits of reproducible entropy
+     * @param options Optional derivation and fee configuration
+     * @returns Wallet deterministically derived from `entropy`
+     */
+    createBitcoinWalletFromEntropy(entropy, options) {
+        return this.createBitcoinWalletFromMnemonic(SingleAddressBitcoinWallet_js_1.SingleAddressBitcoinWallet.mnemonicFromEntropy(buffer_1.Buffer.from(entropy)), options);
     }
     /**
      * Checks whether a passed address is a valid address on the smart chain
@@ -89,7 +127,7 @@ class SwapperUtils {
      * @param address Address to check
      */
     isValidLNURL(address) {
-        return LNURL_1.LNURL.isLNURL(address);
+        return LNURL_js_1.LNURL.isLNURL(address);
     }
     /**
      * Returns type and data about an LNURL
@@ -98,7 +136,7 @@ class SwapperUtils {
      * @param shouldRetry Optional whether HTTP requests should retried on failure
      */
     getLNURLTypeAndData(lnurl, shouldRetry) {
-        return LNURL_1.LNURL.getLNURLType(lnurl, shouldRetry);
+        return LNURL_js_1.LNURL.getLNURLType(lnurl, shouldRetry);
     }
     /**
      * Returns satoshi value of BOLT11 bitcoin lightning invoice WITH AMOUNT, returns null otherwise
@@ -122,7 +160,7 @@ class SwapperUtils {
                 const key = arr2[0];
                 const value = decodeURIComponent(arr2[1]);
                 if (key === "amount") {
-                    _amount = (0, Utils_1.fromDecimal)(parseFloat(value).toFixed(8), 8);
+                    _amount = (0, Utils_js_1.fromDecimal)(parseFloat(value).toFixed(8), 8);
                 }
             }
         }
@@ -130,8 +168,8 @@ class SwapperUtils {
             return {
                 address: resultText,
                 type: "BITCOIN",
-                swapType: SwapType_1.SwapType.TO_BTC,
-                amount: _amount == null ? undefined : (0, TokenAmount_1.toTokenAmount)(_amount, Token_1.BitcoinTokens.BTC, this.root.prices)
+                swapType: SwapType_js_1.SwapType.TO_BTC,
+                amount: _amount == null ? undefined : (0, TokenAmount_js_1.toTokenAmount)(_amount, Token_js_1.BitcoinTokens.BTC, this.root.prices)
             };
         }
         return null;
@@ -152,7 +190,7 @@ class SwapperUtils {
                 const result = await this.getLNURLTypeAndData(resultText);
                 if (result == null)
                     throw new Error("Invalid LNURL specified!");
-                const swapType = (0, LNURLPay_1.isLNURLPay)(result) ? SwapType_1.SwapType.TO_BTCLN : (0, LNURLWithdraw_1.isLNURLWithdraw)(result) ? SwapType_1.SwapType.FROM_BTCLN : null;
+                const swapType = (0, LNURLPay_js_1.isLNURLPay)(result) ? SwapType_js_1.SwapType.TO_BTCLN : (0, LNURLWithdraw_js_1.isLNURLWithdraw)(result) ? SwapType_js_1.SwapType.FROM_BTCLN : null;
                 if (swapType == null)
                     return null;
                 const response = {
@@ -164,14 +202,14 @@ class SwapperUtils {
                 if (result.min === result.max) {
                     return {
                         ...response,
-                        amount: result.min == null ? undefined : (0, TokenAmount_1.toTokenAmount)(result.min, Token_1.BitcoinTokens.BTCLN, this.root.prices)
+                        amount: result.min == null ? undefined : (0, TokenAmount_js_1.toTokenAmount)(result.min, Token_js_1.BitcoinTokens.BTCLN, this.root.prices)
                     };
                 }
                 else {
                     return {
                         ...response,
-                        min: result.min == null ? undefined : (0, TokenAmount_1.toTokenAmount)(result.min, Token_1.BitcoinTokens.BTCLN, this.root.prices),
-                        max: result.min == null ? undefined : (0, TokenAmount_1.toTokenAmount)(result.max, Token_1.BitcoinTokens.BTCLN, this.root.prices)
+                        min: result.min == null ? undefined : (0, TokenAmount_js_1.toTokenAmount)(result.min, Token_js_1.BitcoinTokens.BTCLN, this.root.prices),
+                        max: result.min == null ? undefined : (0, TokenAmount_js_1.toTokenAmount)(result.max, Token_js_1.BitcoinTokens.BTCLN, this.root.prices)
                     };
                 }
             }
@@ -190,8 +228,8 @@ class SwapperUtils {
                 return {
                     address: resultText,
                     type: "LIGHTNING",
-                    swapType: SwapType_1.SwapType.TO_BTCLN,
-                    amount: (0, TokenAmount_1.toTokenAmount)(amount, Token_1.BitcoinTokens.BTCLN, this.root.prices)
+                    swapType: SwapType_js_1.SwapType.TO_BTCLN,
+                    amount: (0, TokenAmount_js_1.toTokenAmount)(amount, Token_js_1.BitcoinTokens.BTCLN, this.root.prices)
                 };
             }
             else {
@@ -309,7 +347,7 @@ class SwapperUtils {
      * @param includeGasToken Whether to return the PSBT also with the gas token amount (increases the vSize by 8)
      */
     getRandomSpvVaultPsbt(chainIdentifier, includeGasToken) {
-        const wrapper = this.root._chains[chainIdentifier].wrappers[SwapType_1.SwapType.SPV_VAULT_FROM_BTC];
+        const wrapper = this.root._chains[chainIdentifier].wrappers[SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC];
         if (wrapper == null)
             throw new Error("Chain doesn't support spv vault swaps!");
         return wrapper.getDummySwapPsbt(includeGasToken);
@@ -326,23 +364,23 @@ class SwapperUtils {
     async getBitcoinSpendableBalance(wallet, targetChain, options) {
         let bitcoinWallet;
         if (typeof (wallet) === "string") {
-            bitcoinWallet = new SingleAddressBitcoinWallet_1.SingleAddressBitcoinWallet(this.root._bitcoinRpc, this.bitcoinNetwork, { address: wallet, publicKey: "" });
+            bitcoinWallet = new SingleAddressBitcoinWallet_js_1.SingleAddressBitcoinWallet(this.root._bitcoinRpc, this.bitcoinNetwork, { address: wallet, publicKey: "" });
         }
         else {
-            bitcoinWallet = (0, BitcoinWalletUtils_1.toBitcoinWallet)(wallet, this.root._bitcoinRpc, this.bitcoinNetwork);
+            bitcoinWallet = (0, BitcoinWalletUtils_js_1.toBitcoinWallet)(wallet, this.root._bitcoinRpc, this.bitcoinNetwork);
         }
         let feeRate = options?.feeRate ?? await bitcoinWallet.getFeeRate();
         if (options?.minFeeRate != null)
             feeRate = Math.max(feeRate, options.minFeeRate);
         let result;
-        if (targetChain != null && this.root.supportsSwapType(targetChain, SwapType_1.SwapType.SPV_VAULT_FROM_BTC)) {
+        if (targetChain != null && this.root.supportsSwapType(targetChain, SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC)) {
             result = await bitcoinWallet.getSpendableBalance(this.getRandomSpvVaultPsbt(targetChain, options?.gasDrop), feeRate);
         }
         else {
             result = await bitcoinWallet.getSpendableBalance(undefined, feeRate);
         }
         return {
-            balance: (0, TokenAmount_1.toTokenAmount)(result.balance, Token_1.BitcoinTokens.BTC, this.root.prices),
+            balance: (0, TokenAmount_js_1.toTokenAmount)(result.balance, Token_js_1.BitcoinTokens.BTC, this.root.prices),
             feeRate: result.feeRate
         };
     }
@@ -372,14 +410,14 @@ class SwapperUtils {
                 chainInterface.getBalance(signer, token.address),
                 swapContract.getCommitFee(signer, 
                 //Use large amount, such that the fee for wrapping more tokens is always included!
-                await swapContract.createSwapData(base_1.ChainSwapType.HTLC, signer, chainInterface.randomAddress(), token.address, 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffn, swapContract.getHashForHtlc((0, Utils_1.randomBytes)(32)).toString("hex"), base_1.BigIntBufferUtils.fromBuffer((0, Utils_1.randomBytes)(8)), BigInt(Math.floor(Date.now() / 1000)), true, false, base_1.BigIntBufferUtils.fromBuffer((0, Utils_1.randomBytes)(2)), base_1.BigIntBufferUtils.fromBuffer((0, Utils_1.randomBytes)(2))), options?.feeRate)
+                await swapContract.createSwapData(base_1.ChainSwapType.HTLC, signer, chainInterface.randomAddress(), token.address, 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffn, swapContract.getHashForHtlc((0, Utils_js_1.randomBytes)(32)).toString("hex"), base_1.BigIntBufferUtils.fromBuffer((0, Utils_js_1.randomBytes)(8)), BigInt(Math.floor(Date.now() / 1000)), true, false, base_1.BigIntBufferUtils.fromBuffer((0, Utils_js_1.randomBytes)(2)), base_1.BigIntBufferUtils.fromBuffer((0, Utils_js_1.randomBytes)(2))), options?.feeRate)
             ]);
             if (options?.feeMultiplier != null) {
                 commitFee = commitFee * (BigInt(Math.floor(options.feeMultiplier * 1000000))) / 1000000n;
             }
-            finalBalance = (0, Utils_1.bigIntMax)(balance - commitFee, 0n);
+            finalBalance = (0, Utils_js_1.bigIntMax)(balance - commitFee, 0n);
         }
-        return (0, TokenAmount_1.toTokenAmount)(finalBalance, token, this.root.prices);
+        return (0, TokenAmount_js_1.toTokenAmount)(finalBalance, token, this.root.prices);
     }
     /**
      * Returns the address of the native currency of the smart chain
@@ -421,8 +459,8 @@ class SwapperUtils {
         if (chainIdentifier === "BITCOIN") {
             // Return random p2wkh address
             return (0, btc_signer_1.Address)(this.bitcoinNetwork).encode({
-                type: "wpkh",
-                hash: (0, Utils_1.randomBytes)(20)
+                type: "wsh",
+                hash: (0, Utils_js_1.randomBytes)(32)
             });
         }
         if (this.root._chains[chainIdentifier] == null)

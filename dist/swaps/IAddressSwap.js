@@ -9,6 +9,7 @@ exports.isIAddressSwap = void 0;
 function isIAddressSwap(obj) {
     return obj != null &&
         typeof (obj.getAddress) === "function" &&
-        typeof (obj.getHyperlink) === "function";
+        typeof (obj.getHyperlink) === "function" &&
+        (typeof (obj.isAddressSwapMode) !== "function" || obj.isAddressSwapMode());
 }
 exports.isIAddressSwap = isIAddressSwap;

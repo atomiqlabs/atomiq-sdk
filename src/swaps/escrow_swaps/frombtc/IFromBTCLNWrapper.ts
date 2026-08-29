@@ -1,21 +1,21 @@
 import {ChainType, LightningNetworkApi, LNNodeLiquidity, SwapData} from "@atomiqlabs/base";
-import {IFromBTCDefinition, IFromBTCWrapper} from "./IFromBTCWrapper";
-import {ISwapWrapperOptions, WrapperCtorTokens} from "../../ISwapWrapper";
-import {UnifiedSwapStorage} from "../../../storage/UnifiedSwapStorage";
-import {UnifiedSwapEventListener} from "../../../events/UnifiedSwapEventListener";
-import {ISwapPrice} from "../../../prices/abstract/ISwapPrice";
+import {IFromBTCDefinition, IFromBTCWrapper} from "./IFromBTCWrapper.js";
+import {ISwapWrapperOptions, WrapperCtorTokens} from "../../ISwapWrapper.js";
+import {UnifiedSwapStorage} from "../../../storage/UnifiedSwapStorage.js";
+import {UnifiedSwapEventListener} from "../../../events/UnifiedSwapEventListener.js";
+import {ISwapPrice} from "../../../prices/abstract/ISwapPrice.js";
 import {EventEmitter} from "events";
 import {Buffer} from "buffer";
-import {randomBytes} from "../../../utils/Utils";
-import {Intermediary} from "../../../intermediaries/Intermediary";
+import {randomBytes} from "../../../utils/Utils.js";
+import {Intermediary} from "../../../intermediaries/Intermediary.js";
 import {PaymentRequestObject, TagsObject} from "@atomiqlabs/bolt11";
-import {IntermediaryError} from "../../../errors/IntermediaryError";
-import {LNURL} from "../../../lnurl/LNURL";
-import {UserError} from "../../../errors/UserError";
+import {IntermediaryError} from "../../../errors/IntermediaryError.js";
+import {LNURL} from "../../../lnurl/LNURL.js";
+import {UserError} from "../../../errors/UserError.js";
 import { sha256 } from "@noble/hashes/sha256";
-import {IEscrowSwap} from "../IEscrowSwap";
-import {LNURLWithdrawParamsWithUrl} from "../../../types/lnurl/LNURLWithdraw";
-import {IntermediaryAPI} from "../../../intermediaries/apis/IntermediaryAPI";
+import {IEscrowSwap} from "../IEscrowSwap.js";
+import {LNURLWithdrawParamsWithUrl} from "../../../types/lnurl/LNURLWithdraw.js";
+import {IntermediaryAPI} from "../../../intermediaries/apis/IntermediaryAPI.js";
 
 export type IFromBTCLNDefinition<T extends ChainType, W extends IFromBTCLNWrapper<T, any>, S extends IEscrowSwap<T>> = IFromBTCDefinition<T, W, S>;
 

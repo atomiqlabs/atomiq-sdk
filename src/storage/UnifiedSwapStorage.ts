@@ -1,8 +1,8 @@
 import {ChainType} from "@atomiqlabs/base";
-import {IUnifiedStorage, QueryParams} from "./IUnifiedStorage";
-import {ISwap} from "../swaps/ISwap";
+import {IUnifiedStorage, QueryParams} from "./IUnifiedStorage.js";
+import {ISwap} from "../swaps/ISwap.js";
 
-import {getLogger} from "../utils/Logger";
+import {getLogger} from "../utils/Logger.js";
 
 const logger = getLogger("UnifiedSwapStorage: ");
 

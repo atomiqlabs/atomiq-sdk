@@ -1,13 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CustomPriceProvider = void 0;
-const IPriceProvider_1 = require("../abstract/IPriceProvider");
+const IPriceProvider_js_1 = require("../abstract/IPriceProvider.js");
 /**
  * Price provider using custom pricing function
  *
  * @category Pricing
  */
-class CustomPriceProvider extends IPriceProvider_1.IPriceProvider {
+class CustomPriceProvider extends IPriceProvider_js_1.IPriceProvider {
     /**
      * @param coinsMap Mapping of token tickers to token addresses
      * @param getUsdPriceFn Pricing function, used to retrieve USD prices of the tokens

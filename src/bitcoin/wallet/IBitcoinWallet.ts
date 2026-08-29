@@ -1,6 +1,6 @@
 import {Address, Transaction} from "@scure/btc-signer";
 import {BTC_NETWORK} from "@scure/btc-signer/utils";
-import {CoinselectAddressTypes} from "../coinselect2";
+import {CoinselectAddressTypes} from "../coinselect2/index.js";
 
 /**
  * UTXO data structure for Bitcoin wallets
@@ -14,6 +14,7 @@ export type BitcoinWalletUtxo = {
     type: CoinselectAddressTypes,
     outputScript: Buffer,
     address: string,
+    publicKey: string,
     cpfp?: {
         txVsize: number,
         txEffectiveFeeRate: number
@@ -27,7 +28,7 @@ export type BitcoinWalletUtxo = {
  *
  * @category Bitcoin
  */
-export type BitcoinWalletUtxoBase = Omit<BitcoinWalletUtxo, "txId" | "vout" | "outputScript" | "address" | "confirmed">;
+export type BitcoinWalletUtxoBase = Omit<BitcoinWalletUtxo, "txId" | "vout" | "outputScript" | "address" | "confirmed" | "publicKey">;
 
 /**
  * Type guard to check if an object implements {@link IBitcoinWallet}
@@ -111,6 +112,18 @@ export interface IBitcoinWallet {
     getReceiveAddress(): string;
 
     /**
+     * Returns the bitcoin address suitable for receiving change from existing txs
+     */
+    getChangeAddress?(): string;
+
+    /**
+     * Returns information (address and public key) about the current wallet address (either change or receiving)
+     *
+     * @param change Whether to get the address for receiving funds or for receiving change
+     */
+    getAddressInfo(change: boolean): {address: string, publicKey: string};
+
+    /**
      * Returns confirmed and unconfirmed balance in satoshis of the wallet
      */
     getBalance(): Promise<{
@@ -123,10 +136,10 @@ export interface IBitcoinWallet {
      *
      * @param psbt A PSBT to which additional inputs from wallet's UTXO set will be added and fee estimated
      * @param feeRate Optional fee rate in sats/vB to use for the transaction
-     * @param outputAddressType Expected output address type, if known
+     * @param outputAddressTypeOrAddress Expected output address type, or the exact output address, if known
      * @param utxos Optional pre-fetched UTXOs
      */
-    getSpendableBalance(psbt?: Transaction, feeRate?: number, outputAddressType?: CoinselectAddressTypes, utxos?: BitcoinWalletUtxoBase[]): Promise<{
+    getSpendableBalance(psbt?: Transaction, feeRate?: number, outputAddressTypeOrAddress?: CoinselectAddressTypes | string, utxos?: BitcoinWalletUtxoBase[]): Promise<{
         balance: bigint,
         feeRate: number,
         totalFee: number
@@ -135,6 +148,6 @@ export interface IBitcoinWallet {
     /**
      * Returns a list of available UTXOs for the wallet
      */
-    getUtxoPool?(): Promise<BitcoinWalletUtxo[]>;
+    getUtxoPool(): Promise<BitcoinWalletUtxo[]>;
 
 }

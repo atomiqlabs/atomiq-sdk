@@ -1,15 +1,15 @@
 /// <reference types="node" />
 /// <reference types="node" />
-import { ToBTCLNDefinition, ToBTCLNWrapper } from "./ToBTCLNWrapper";
-import { IToBTCSwap, IToBTCSwapInit } from "../IToBTCSwap";
-import { SwapType } from "../../../../enums/SwapType";
+import { ToBTCLNDefinition, ToBTCLNWrapper } from "./ToBTCLNWrapper.js";
+import { IToBTCSwap, IToBTCSwapInit } from "../IToBTCSwap.js";
+import { SwapType } from "../../../../enums/SwapType.js";
 import { ChainType, SwapData } from "@atomiqlabs/base";
 import { Buffer } from "buffer";
-import { LNURLPaySuccessAction } from "../../../../lnurl/LNURL";
-import { TokenAmount } from "../../../../types/TokenAmount";
-import { BtcToken } from "../../../../types/Token";
-import { LoggerType } from "../../../../utils/Logger";
-import { LNURLDecodedSuccessAction } from "../../../../types/lnurl/LNURLPay";
+import { LNURLPaySuccessAction } from "../../../../lnurl/LNURL.js";
+import { TokenAmount } from "../../../../types/TokenAmount.js";
+import { BtcToken } from "../../../../types/Token.js";
+import { LoggerType } from "../../../../utils/Logger.js";
+import { LNURLDecodedSuccessAction } from "../../../../types/lnurl/LNURLPay.js";
 export type ToBTCLNSwapInit<T extends SwapData> = IToBTCSwapInit<T> & {
     confidence: number;
     pr?: string;

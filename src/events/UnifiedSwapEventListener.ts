@@ -1,26 +1,27 @@
 import {
+    EventListener,
     ChainEvent,
     ChainSwapType,
     ChainType,
     InitializeEvent,
-    SpvVaultClaimEvent,
-    SpvVaultCloseEvent,
-    SpvVaultFrontEvent,
-    SwapEvent
+    isInitializeEvent,
+    isSpvVaultClaimEvent,
+    isSpvVaultCloseEvent,
+    isSpvVaultFrontEvent,
+    isSwapEvent
 } from "@atomiqlabs/base";
-import {ISwap} from "../swaps/ISwap";
-import {EventListener} from "@atomiqlabs/base/src/events/ChainEvents";
-import {SwapType} from "../enums/SwapType";
-import {UnifiedSwapStorage} from "../storage/UnifiedSwapStorage";
+import {ISwap} from "../swaps/ISwap.js";
+import {SwapType} from "../enums/SwapType.js";
+import {UnifiedSwapStorage} from "../storage/UnifiedSwapStorage.js";
 
-import {getLogger} from "../utils/Logger";
+import {getLogger} from "../utils/Logger.js";
 
 function chainEventToEscrowHash(event: ChainEvent<any>): string | undefined {
-    if(event instanceof SwapEvent) return event.escrowHash;
+    if(isSwapEvent(event)) return event.escrowHash;
     if(
-        event instanceof SpvVaultFrontEvent ||
-        event instanceof SpvVaultClaimEvent ||
-        event instanceof SpvVaultCloseEvent
+        isSpvVaultFrontEvent(event) ||
+        isSpvVaultClaimEvent(event) ||
+        isSpvVaultCloseEvent(event)
     ) return event.btcTxId;
 }
 
@@ -92,10 +93,10 @@ export class UnifiedSwapEventListener<
                     continue;
                 }
             }
-            if(event instanceof InitializeEvent) {
+            if(isInitializeEvent<T["Data"]>(event)) {
                 if(event.swapType===ChainSwapType.HTLC) {
-                    const swapData: T["Data"] = await event.swapData();
-                    htlcCheckInitializeEvents[swapData.getClaimHash()] = event;
+                    const swapData = await event.swapData();
+                    if(swapData!=null) htlcCheckInitializeEvents[swapData.getClaimHash()] = event;
                 }
             }
         }

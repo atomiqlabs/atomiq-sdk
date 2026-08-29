@@ -1,13 +1,13 @@
-import {MultiChain, Swapper} from "../swapper/Swapper";
-import {ApiEndpoint, createApiEndpoint, toApiAmount, toApiLNURL, toApiToken} from "./ApiTypes";
-import {ISwap} from "../swaps/ISwap";
-import {serializeAction} from "./SerializedAction";
-import {FeeType} from "../enums/FeeType";
-import {SwapSide} from "../enums/SwapSide";
-import {SwapType} from "../enums/SwapType";
-import {MinimalBitcoinWalletInterface} from "../types/wallets/MinimalBitcoinWalletInterface";
-import {FromBTCLNSwap, FromBTCLNSwapState} from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap";
-import {FromBTCLNAutoSwap, FromBTCLNAutoSwapState} from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap";
+import {MultiChain, Swapper} from "../swapper/Swapper.js";
+import {ApiEndpoint, createApiEndpoint, toApiAmount, toApiLNURL, toApiToken} from "./ApiTypes.js";
+import {ISwap} from "../swaps/ISwap.js";
+import {serializeAction} from "./SerializedAction.js";
+import {FeeType} from "../enums/FeeType.js";
+import {SwapSide} from "../enums/SwapSide.js";
+import {SwapType} from "../enums/SwapType.js";
+import {MinimalBitcoinWalletInterface} from "../types/wallets/MinimalBitcoinWalletInterface.js";
+import {FromBTCLNSwap, FromBTCLNSwapState} from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap.js";
+import {FromBTCLNAutoSwap, FromBTCLNAutoSwapState} from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap.js";
 import {
     CreateSwapInput,
     CreateSwapOutput,
@@ -33,12 +33,12 @@ import {
     SubmitTransactionInput,
     SubmitTransactionOutput,
     SwapOutputBase
-} from "./ApiEndpoints";
-import {SwapExecutionStep} from "../types/SwapExecutionStep";
-import {SwapStateInfo} from "../types/SwapStateInfo";
-import {IEscrowSwap} from "../swaps/escrow_swaps/IEscrowSwap";
-import {ToBTCLNSwap} from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNSwap";
-import {isSwapType} from "../utils/SwapUtils";
+} from "./ApiEndpoints.js";
+import {SwapExecutionStep} from "../types/SwapExecutionStep.js";
+import {SwapStateInfo} from "../types/SwapStateInfo.js";
+import {IEscrowSwap} from "../swaps/escrow_swaps/IEscrowSwap.js";
+import {ToBTCLNSwap} from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNSwap.js";
+import {isSwapType} from "../utils/SwapUtils.js";
 
 function requiresSecretRevealForApi(swap: ISwap, state: number): boolean | undefined {
     if(swap instanceof FromBTCLNSwap) {

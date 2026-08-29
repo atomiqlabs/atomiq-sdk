@@ -1,14 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.streamingFetchPromise = void 0;
-const SchemaVerifier_1 = require("../SchemaVerifier");
-const RequestError_1 = require("../../../errors/RequestError");
-const Utils_1 = require("../../../utils/Utils");
-const StreamParamEncoder_1 = require("./StreamParamEncoder");
-const ResponseParamDecoder_1 = require("./ResponseParamDecoder");
-const Logger_1 = require("../../../utils/Logger");
-const TimeoutUtils_1 = require("../../../utils/TimeoutUtils");
-const logger = (0, Logger_1.getLogger)("StreamingFetch: ");
+const SchemaVerifier_js_1 = require("../SchemaVerifier.js");
+const RequestError_js_1 = require("../../../errors/RequestError.js");
+const Utils_js_1 = require("../../../utils/Utils.js");
+const StreamParamEncoder_js_1 = require("./StreamParamEncoder.js");
+const ResponseParamDecoder_js_1 = require("./ResponseParamDecoder.js");
+const Logger_js_1 = require("../../../utils/Logger.js");
+const TimeoutUtils_js_1 = require("../../../utils/TimeoutUtils.js");
+const logger = (0, Logger_js_1.getLogger)("StreamingFetch: ");
 //https://developer.chrome.com/docs/capabilities/web-apis/fetch-streaming-requests#feature_detection
 const supportsRequestStreams = (() => {
     try {
@@ -46,7 +46,7 @@ async function streamingFetchPromise(url, body, schema, timeout, signal, streamR
     if (streamRequest == null)
         streamRequest = supportsRequestStreams;
     if (timeout != null)
-        signal = (0, TimeoutUtils_1.timeoutSignal)(timeout, new Error("Network request timed out"), signal);
+        signal = (0, TimeoutUtils_js_1.timeoutSignal)(timeout, new Error("Network request timed out"), signal);
     const headers = { ..._headers };
     const init = {
         method: "POST",
@@ -80,7 +80,7 @@ async function streamingFetchPromise(url, body, schema, timeout, signal, streamR
         headers['content-type'] = "application/json";
     }
     else {
-        const outputStream = new StreamParamEncoder_1.StreamParamEncoder();
+        const outputStream = new StreamParamEncoder_js_1.StreamParamEncoder();
         let hasPromiseInBody = false;
         for (let key in body) {
             if (body[key] instanceof Promise) {
@@ -102,7 +102,7 @@ async function streamingFetchPromise(url, body, schema, timeout, signal, streamR
             init.duplex = "half";
             logger.debug(url + ": Sending request (" + (Date.now() - startTime) + "ms) (streaming): ", immediateValues);
             promises.push(outputStream.writeParams(immediateValues));
-            const abortController = (0, Utils_1.extendAbortController)(signal);
+            const abortController = (0, Utils_js_1.extendAbortController)(signal);
             signal = abortController.signal;
             Promise.all(promises).then(() => outputStream.end()).catch(e => {
                 e._inputPromiseError = true;
@@ -136,16 +136,16 @@ async function streamingFetchPromise(url, body, schema, timeout, signal, streamR
             respTxt = await resp.text();
         }
         catch (e) {
-            throw new RequestError_1.RequestError(resp.statusText, resp.status);
+            throw new RequestError_js_1.RequestError(resp.statusText, resp.status);
         }
-        throw new RequestError_1.RequestError(respTxt, resp.status);
+        throw new RequestError_js_1.RequestError(respTxt, resp.status);
     }
     if (resp.headers.get("content-type") !== "application/x-multiple-json") {
         const respBody = await resp.json();
         logger.debug(url + ": Response read (" + (Date.now() - startTime) + "ms) (non streaming resp): ", respBody);
-        return (0, Utils_1.objectMap)(schema, (schemaValue, key) => {
+        return (0, Utils_js_1.objectMap)(schema, (schemaValue, key) => {
             const value = respBody[key];
-            const result = (0, SchemaVerifier_1.verifyField)(schemaValue, value);
+            const result = (0, SchemaVerifier_js_1.verifyField)(schemaValue, value);
             if (result === undefined) {
                 return Promise.reject(new Error("Invalid field value"));
             }
@@ -155,14 +155,14 @@ async function streamingFetchPromise(url, body, schema, timeout, signal, streamR
         });
     }
     else {
-        const decoder = new ResponseParamDecoder_1.ResponseParamDecoder(resp, init.signal ?? undefined);
-        return (0, Utils_1.objectMap)(schema, (schemaValue, key) => decoder.getParam(key).catch(e => {
-            if ((0, SchemaVerifier_1.isOptionalField)(schemaValue))
+        const decoder = new ResponseParamDecoder_js_1.ResponseParamDecoder(resp, init.signal ?? undefined);
+        return (0, Utils_js_1.objectMap)(schema, (schemaValue, key) => decoder.getParam(key).catch(e => {
+            if ((0, SchemaVerifier_js_1.isOptionalField)(schemaValue))
                 return undefined;
             throw e;
         }).then(value => {
             logger.debug(url + ": Response frame read (" + (Date.now() - startTime) + "ms) (streaming resp): ", { [key]: value });
-            const result = (0, SchemaVerifier_1.verifyField)(schemaValue, value);
+            const result = (0, SchemaVerifier_js_1.verifyField)(schemaValue, value);
             if (result === undefined) {
                 return Promise.reject(new Error("Invalid field value"));
             }

@@ -7,6 +7,7 @@
  * @category Bitcoin
  */
 export type CoinselectAddressTypes = "p2sh-p2wpkh" | "p2wpkh" | "p2wsh" | "p2tr" | "p2pkh";
+export declare function isCoinselectAddressType(val: any): val is CoinselectAddressTypes;
 export type CoinselectTxInput = {
     script?: Buffer;
     txId: string;
@@ -15,6 +16,7 @@ export type CoinselectTxInput = {
     value: number;
     outputScript?: Buffer;
     address?: string;
+    publicKey?: string;
     cpfp?: {
         txVsize: number;
         txEffectiveFeeRate: number;
@@ -52,6 +54,7 @@ declare function transactionBytes(inputs: {
     script?: Buffer;
     type?: CoinselectAddressTypes;
 }[], changeType?: CoinselectAddressTypes): number;
+declare function calculateFee(vSize: number, feeRate: number, additionalFee?: number): number;
 declare function numberOrNaN(v: number): number;
 declare function uintOrNaN(v: number): number;
 declare function sumForgiving(range: {
@@ -60,12 +63,22 @@ declare function sumForgiving(range: {
 declare function sumOrNaN(range: {
     value: number;
 }[]): number;
-declare function finalize<T extends Omit<CoinselectTxInput, "txId" | "address" | "vout" | "outputScript">>(inputs: T[], outputs: CoinselectTxOutput[], feeRate: number, changeType: CoinselectAddressTypes | null, cpfpAddFee?: number): {
+declare function finalize<T extends Omit<CoinselectTxInput, "txId" | "address" | "vout" | "outputScript">>(inputs: T[], outputs: CoinselectTxOutput[], feeRate: number, changeType: CoinselectAddressTypes | null): {
     inputs?: T[];
     outputs?: CoinselectTxOutput[];
     effectiveFeeRate?: number;
+    changeOutputAdded?: CoinselectTxOutput;
     fee: number;
+    expectedFee: number;
 };
+declare function inputCpfpAdditionalFee(utxo: {
+    script?: Buffer;
+    type?: CoinselectAddressTypes;
+    cpfp?: {
+        txVsize: number;
+        txEffectiveFeeRate: number;
+    };
+}, feeRate: number): number;
 declare function isDetrimentalInput(feeRate: number, utxo: Omit<CoinselectTxInput, "txId" | "address" | "vout" | "outputScript">): boolean;
 export declare const utils: {
     dustThreshold: typeof dustThreshold;
@@ -75,8 +88,10 @@ export declare const utils: {
     sumOrNaN: typeof sumOrNaN;
     sumForgiving: typeof sumForgiving;
     transactionBytes: typeof transactionBytes;
+    calculateFee: typeof calculateFee;
     uintOrNaN: typeof uintOrNaN;
     numberOrNaN: typeof numberOrNaN;
     isDetrimentalInput: typeof isDetrimentalInput;
+    inputCpfpAdditionalFee: typeof inputCpfpAdditionalFee;
 };
 export {};

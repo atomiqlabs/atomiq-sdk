@@ -1,4 +1,4 @@
-import {CoinselectAddressTypes, CoinselectTxInput, CoinselectTxOutput, utils} from "./utils";
+import {CoinselectAddressTypes, CoinselectTxInput, CoinselectTxOutput, utils} from "./utils.js";
 
 // add inputs until we reach or surpass the target value (or deplete)
 // worst-case: O(n)
@@ -26,10 +26,9 @@ export function blackjack (
     for (let i = 0; i < utxos.length; ++i) {
         const input = utxos[i];
         const inputBytes = utils.inputBytes(input);
-        let cpfpFee = 0;
-        if(input.cpfp!=null && input.cpfp.txEffectiveFeeRate<feeRate) cpfpFee = Math.ceil(input.cpfp.txVsize * (feeRate - input.cpfp.txEffectiveFeeRate));
+        const cpfpFee = utils.inputCpfpAdditionalFee(input, feeRate);
 
-        const fee = Math.ceil((feeRate * (bytesAccum + inputBytes)) + cpfpAddFee + cpfpFee);
+        const fee = utils.calculateFee(bytesAccum + inputBytes, feeRate, cpfpAddFee + cpfpFee);
         const inputValue = utils.uintOrNaN(input.value);
 
         // would it waste value?
@@ -43,8 +42,8 @@ export function blackjack (
         // go again?
         if (inAccum < outAccum + fee) continue;
 
-        return utils.finalize(inputs, outputs, feeRate, type, cpfpAddFee);
+        return utils.finalize(inputs, outputs, feeRate, type);
     }
 
-    return { fee: (feeRate * bytesAccum) + cpfpAddFee };
+    return { fee: utils.calculateFee(bytesAccum, feeRate, cpfpAddFee) };
 }

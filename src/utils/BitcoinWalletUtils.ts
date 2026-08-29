@@ -1,6 +1,6 @@
-import {IBitcoinWallet, isIBitcoinWallet} from "../bitcoin/wallet/IBitcoinWallet";
+import {IBitcoinWallet, isIBitcoinWallet} from "../bitcoin/wallet/IBitcoinWallet.js";
 import {BTC_NETWORK} from "@scure/btc-signer/utils";
-import {SingleAddressBitcoinWallet} from "../bitcoin/wallet/SingleAddressBitcoinWallet";
+import {SingleAddressBitcoinWallet} from "../bitcoin/wallet/SingleAddressBitcoinWallet.js";
 import {BitcoinNetwork, BitcoinRpcWithAddressIndex} from "@atomiqlabs/base";
 
 export function toBitcoinWallet(

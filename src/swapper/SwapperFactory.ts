@@ -5,17 +5,17 @@ import {
     StorageObject,
     IStorageManager, Messenger, ChainInitializer, BtcRelay
 } from "@atomiqlabs/base";
-import {SmartChainAssets, SmartChainAssetTickers} from "../SmartChainAssets";
+import {SmartChainAssets, SmartChainAssetTickers} from "../SmartChainAssets.js";
 import {NostrMessenger} from "@atomiqlabs/messenger-nostr";
-import {Swapper, SwapperOptions} from "./Swapper";
-import {CustomPriceProvider} from "../prices/providers/CustomPriceProvider";
-import {BitcoinTokens, BtcToken, SCToken, Token} from "../types/Token";
-import {SwapType} from "../enums/SwapType";
-import {SwapTypeMapping} from "../utils/SwapUtils";
-import {RedundantSwapPrice, RedundantSwapPriceAssets} from "../prices/RedundantSwapPrice";
-import {LocalStorageManager} from "../storage-browser/LocalStorageManager";
-import {SingleSwapPrice} from "../prices/SingleSwapPrice";
-import {CustomPriceFunction} from "../types/CustomPriceFunction";
+import {Swapper, SwapperOptions} from "./Swapper.js";
+import {CustomPriceProvider} from "../prices/providers/CustomPriceProvider.js";
+import {BitcoinTokens, BtcToken, SCToken, Token} from "../types/Token.js";
+import {SwapType} from "../enums/SwapType.js";
+import {SwapTypeMapping} from "../utils/SwapUtils.js";
+import {RedundantSwapPrice, RedundantSwapPriceAssets} from "../prices/RedundantSwapPrice.js";
+import {LocalStorageManager} from "../storage-browser/LocalStorageManager.js";
+import {SingleSwapPrice} from "../prices/SingleSwapPrice.js";
+import {CustomPriceFunction} from "../types/CustomPriceFunction.js";
 import {MempoolApi, MempoolBitcoinRpc, MempoolBtcRelaySynchronizer} from "@atomiqlabs/btc-mempool";
 
 //Helper types

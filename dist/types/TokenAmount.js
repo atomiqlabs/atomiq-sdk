@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.toTokenAmount = exports.isTokenAmount = void 0;
-const Token_1 = require("./Token");
-const Utils_1 = require("../utils/Utils");
+const Token_js_1 = require("./Token.js");
+const Utils_js_1 = require("../utils/Utils.js");
 /**
  * Type guard for {@link TokenAmount}
  *
@@ -19,7 +19,7 @@ function isTokenAmount(obj, token, known) {
         typeof (obj) === "object" &&
         typeof (obj.amount) === "string" &&
         typeof (obj._amount) === "number" &&
-        (token == null ? (0, Token_1.isToken)(obj.token) : token.equals(obj.token)) &&
+        (token == null ? (0, Token_js_1.isToken)(obj.token) : token.equals(obj.token)) &&
         typeof (obj.currentUsdValue) === "function" &&
         typeof (obj.usdValue) === "function" &&
         (obj.pastUsdValue == null || typeof (obj.pastUsdValue) === "number") &&
@@ -46,7 +46,7 @@ function toTokenAmount(amount, token, prices, pricingInfo) {
             toString: () => "??? " + token.ticker,
             isUnknown: true
         };
-    const amountStr = (0, Utils_1.toDecimal)(amount, token.decimals, undefined, token.displayDecimals);
+    const amountStr = (0, Utils_js_1.toDecimal)(amount, token.decimals, undefined, token.displayDecimals);
     const _amount = parseFloat(amountStr);
     let usdValue = undefined;
     if (pricingInfo != null) {

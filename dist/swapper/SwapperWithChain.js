@@ -1,11 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SwapperWithChain = void 0;
-const SwapType_1 = require("../enums/SwapType");
-const SwapPriceWithChain_1 = require("../prices/SwapPriceWithChain");
-const SwapperWithSigner_1 = require("./SwapperWithSigner");
-const UserError_1 = require("../errors/UserError");
-const Token_1 = require("../types/Token");
+const SwapType_js_1 = require("../enums/SwapType.js");
+const SwapPriceWithChain_js_1 = require("../prices/SwapPriceWithChain.js");
+const SwapperWithSigner_js_1 = require("./SwapperWithSigner.js");
+const UserError_js_1 = require("../errors/UserError.js");
+const Token_js_1 = require("../types/Token.js");
 /**
  * Chain-specific wrapper around Swapper for a particular blockchain
  *
@@ -42,7 +42,7 @@ class SwapperWithChain {
     constructor(swapper, chainIdentifier) {
         this.swapper = swapper;
         this.chainIdentifier = chainIdentifier;
-        this.prices = new SwapPriceWithChain_1.SwapPriceWithChain(swapper.prices, chainIdentifier);
+        this.prices = new SwapPriceWithChain_js_1.SwapPriceWithChain(swapper.prices, chainIdentifier);
     }
     /**
      * Creates Smart chain -> Bitcoin ({@link SwapType.TO_BTC}) swap
@@ -316,17 +316,17 @@ class SwapperWithChain {
     getToken(tickerOrAddress) {
         //Btc tokens - BTC, BTCLN, BTC-LN
         if (tickerOrAddress === "BTC" || tickerOrAddress === "BITCOIN-BTC")
-            return Token_1.BitcoinTokens.BTC;
+            return Token_js_1.BitcoinTokens.BTC;
         if (tickerOrAddress === "BTCLN" || tickerOrAddress === "BTC-LN" || tickerOrAddress === "LIGHTNING-BTC")
-            return Token_1.BitcoinTokens.BTCLN;
+            return Token_js_1.BitcoinTokens.BTCLN;
         //Check if the ticker is in format <chainId>-<ticker>, i.e. SOLANA-USDC, STARKNET-WBTC
         if (tickerOrAddress.includes("-")) {
             const [chainId, ticker] = tickerOrAddress.split("-");
             if (chainId !== this.chainIdentifier)
-                throw new UserError_1.UserError(`Invalid chainId specified in ticker: ${chainId}, swapper chainId: ${this.chainIdentifier}`);
+                throw new UserError_js_1.UserError(`Invalid chainId specified in ticker: ${chainId}, swapper chainId: ${this.chainIdentifier}`);
             const token = this.swapper._tokensByTicker[this.chainIdentifier]?.[ticker];
             if (token == null)
-                throw new UserError_1.UserError(`Not found ticker: ${ticker} for chainId: ${chainId}`);
+                throw new UserError_js_1.UserError(`Not found ticker: ${ticker} for chainId: ${chainId}`);
             return token;
         }
         const chain = this.swapper._chains[this.chainIdentifier];
@@ -342,7 +342,7 @@ class SwapperWithChain {
             if (token != null)
                 return token;
         }
-        throw new UserError_1.UserError(`Specified token address or ticker ${tickerOrAddress} not found for chainId: ${this.chainIdentifier}!`);
+        throw new UserError_js_1.UserError(`Specified token address or ticker ${tickerOrAddress} not found for chainId: ${this.chainIdentifier}!`);
     }
     /**
      * Returns whether the SDK supports a given swap type on this chain based on currently known LPs
@@ -379,10 +379,10 @@ class SwapperWithChain {
         const tokens = [];
         this.intermediaryDiscovery.intermediaries.forEach(lp => {
             let swapType = _swapType;
-            if (swapType === SwapType_1.SwapType.FROM_BTCLN && this.supportsSwapType(SwapType_1.SwapType.FROM_BTCLN_AUTO))
-                swapType = SwapType_1.SwapType.FROM_BTCLN_AUTO;
-            if (swapType === SwapType_1.SwapType.FROM_BTC && this.supportsSwapType(SwapType_1.SwapType.SPV_VAULT_FROM_BTC))
-                swapType = SwapType_1.SwapType.SPV_VAULT_FROM_BTC;
+            if (swapType === SwapType_js_1.SwapType.FROM_BTCLN && this.supportsSwapType(SwapType_js_1.SwapType.FROM_BTCLN_AUTO))
+                swapType = SwapType_js_1.SwapType.FROM_BTCLN_AUTO;
+            if (swapType === SwapType_js_1.SwapType.FROM_BTC && this.supportsSwapType(SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC))
+                swapType = SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC;
             const chainTokens = lp.services[swapType]?.chainTokens?.[this.chainIdentifier];
             if (chainTokens == null)
                 return;
@@ -414,26 +414,26 @@ class SwapperWithChain {
      *  or tokens that you can swap from (if input=false) to a given token
      */
     getSwapCounterTokens(token, input) {
-        if ((0, Token_1.isSCToken)(token)) {
+        if ((0, Token_js_1.isSCToken)(token)) {
             const result = [];
             if (input) {
                 //TO_BTC or TO_BTCLN
-                if (this.getSupportedTokenAddresses(SwapType_1.SwapType.TO_BTCLN).has(token.address)) {
-                    result.push(Token_1.BitcoinTokens.BTCLN);
+                if (this.getSupportedTokenAddresses(SwapType_js_1.SwapType.TO_BTCLN).has(token.address)) {
+                    result.push(Token_js_1.BitcoinTokens.BTCLN);
                 }
-                if (this.getSupportedTokenAddresses(SwapType_1.SwapType.TO_BTC).has(token.address)) {
-                    result.push(Token_1.BitcoinTokens.BTC);
+                if (this.getSupportedTokenAddresses(SwapType_js_1.SwapType.TO_BTC).has(token.address)) {
+                    result.push(Token_js_1.BitcoinTokens.BTC);
                 }
             }
             else {
                 //FROM_BTC or FROM_BTCLN
-                const fromLightningSwapType = this.supportsSwapType(SwapType_1.SwapType.FROM_BTCLN_AUTO) ? SwapType_1.SwapType.FROM_BTCLN_AUTO : SwapType_1.SwapType.FROM_BTCLN;
+                const fromLightningSwapType = this.supportsSwapType(SwapType_js_1.SwapType.FROM_BTCLN_AUTO) ? SwapType_js_1.SwapType.FROM_BTCLN_AUTO : SwapType_js_1.SwapType.FROM_BTCLN;
                 if (this.getSupportedTokenAddresses(fromLightningSwapType).has(token.address)) {
-                    result.push(Token_1.BitcoinTokens.BTCLN);
+                    result.push(Token_js_1.BitcoinTokens.BTCLN);
                 }
-                const fromOnchainSwapType = this.supportsSwapType(SwapType_1.SwapType.SPV_VAULT_FROM_BTC) ? SwapType_1.SwapType.SPV_VAULT_FROM_BTC : SwapType_1.SwapType.FROM_BTC;
+                const fromOnchainSwapType = this.supportsSwapType(SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC) ? SwapType_js_1.SwapType.SPV_VAULT_FROM_BTC : SwapType_js_1.SwapType.FROM_BTC;
                 if (this.getSupportedTokenAddresses(fromOnchainSwapType).has(token.address)) {
-                    result.push(Token_1.BitcoinTokens.BTC);
+                    result.push(Token_js_1.BitcoinTokens.BTC);
                 }
             }
             return result;
@@ -441,18 +441,18 @@ class SwapperWithChain {
         else {
             if (input) {
                 if (token.lightning) {
-                    return this.getSupportedTokens(SwapType_1.SwapType.FROM_BTCLN);
+                    return this.getSupportedTokens(SwapType_js_1.SwapType.FROM_BTCLN);
                 }
                 else {
-                    return this.getSupportedTokens(SwapType_1.SwapType.FROM_BTC);
+                    return this.getSupportedTokens(SwapType_js_1.SwapType.FROM_BTC);
                 }
             }
             else {
                 if (token.lightning) {
-                    return this.getSupportedTokens(SwapType_1.SwapType.TO_BTCLN);
+                    return this.getSupportedTokens(SwapType_js_1.SwapType.TO_BTCLN);
                 }
                 else {
-                    return this.getSupportedTokens(SwapType_1.SwapType.TO_BTC);
+                    return this.getSupportedTokens(SwapType_js_1.SwapType.TO_BTC);
                 }
             }
         }
@@ -463,7 +463,7 @@ class SwapperWithChain {
      * @param signer Signer to use for the new swapper instance
      */
     withSigner(signer) {
-        return new SwapperWithSigner_1.SwapperWithSigner(this, signer);
+        return new SwapperWithSigner_js_1.SwapperWithSigner(this, signer);
     }
 }
 exports.SwapperWithChain = SwapperWithChain;

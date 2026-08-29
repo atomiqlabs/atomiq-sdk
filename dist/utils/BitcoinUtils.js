@@ -1,10 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getSenderAddress = exports.getVoutIndex = exports.parsePsbtTransaction = exports.getDummyAddress = exports.getDummyOutputScript = exports.toCoinselectAddressType = exports.toOutputScript = exports.fromOutputScript = void 0;
+exports.toUtxoSet = exports.toUtxoMap = exports.getUtxoKey = exports.addPsbtInputs = exports.getSenderAddress = exports.getVoutIndex = exports.parsePsbtTransaction = exports.getDummyAddress = exports.getDummyOutputScript = exports.getWalletAddressUtxos = exports.toCoinselectAddressType = exports.toOutputScript = exports.fromOutputScript = void 0;
 const utils_1 = require("@scure/btc-signer/utils");
 const buffer_1 = require("buffer");
 const btc_signer_1 = require("@scure/btc-signer");
-const Utils_1 = require("./Utils");
+const Utils_js_1 = require("./Utils.js");
 function fromOutputScript(network, outputScriptHex) {
     return (0, btc_signer_1.Address)(network).encode(btc_signer_1.OutScript.decode(buffer_1.Buffer.from(outputScriptHex, "hex")));
 }
@@ -55,8 +55,10 @@ function toOutputScript(network, address) {
     throw new Error(`Unrecognized output script type: ${outputScript.type}`);
 }
 exports.toOutputScript = toOutputScript;
-function toCoinselectAddressType(outputScript) {
-    const data = btc_signer_1.OutScript.decode(outputScript);
+function toCoinselectAddressType(outputScriptOrNetwork, address) {
+    const data = address == null
+        ? btc_signer_1.OutScript.decode(outputScriptOrNetwork)
+        : (0, btc_signer_1.Address)(outputScriptOrNetwork).decode(address);
     switch (data.type) {
         case "pkh":
             return "p2pkh";
@@ -72,27 +74,61 @@ function toCoinselectAddressType(outputScript) {
     throw new Error("Unrecognized address type!");
 }
 exports.toCoinselectAddressType = toCoinselectAddressType;
+/**
+ * Fetches and converts all UTXOs for a Bitcoin address into the SDK wallet UTXO shape.
+ *
+ * @param bitcoinRpc Bitcoin RPC/address-index backend used for UTXO and CPFP lookups
+ * @param network Bitcoin network used to decode the address and output script
+ * @param address Bitcoin address whose current UTXOs should be returned
+ * @param publicKey
+ * @param addressType Optional precomputed address type; inferred from `address` when omitted
+ * @returns Full wallet UTXOs suitable for wallet funding and SPV external deposit execution
+ */
+async function getWalletAddressUtxos(bitcoinRpc, network, address, publicKey, addressType) {
+    const resolvedAddressType = addressType ?? toCoinselectAddressType(network, address);
+    const utxos = await bitcoinRpc.getAddressUTXOs(address);
+    const outputScript = toOutputScript(network, address);
+    return await Promise.all(utxos.map(async (utxo) => ({
+        vout: utxo.vout,
+        txId: utxo.txid,
+        value: Number(utxo.value),
+        type: resolvedAddressType,
+        outputScript,
+        address,
+        publicKey,
+        cpfp: !utxo.confirmed ? await bitcoinRpc.getCPFPData(utxo.txid).then(result => {
+            if (result == null)
+                return undefined;
+            return {
+                txVsize: result.adjustedVsize,
+                txEffectiveFeeRate: result.effectiveFeePerVsize
+            };
+        }) : undefined,
+        confirmed: utxo.confirmed
+    })));
+}
+exports.getWalletAddressUtxos = getWalletAddressUtxos;
 function getDummySpec(type) {
     switch (type) {
         case "p2pkh":
             return {
                 type: "pkh",
-                hash: (0, Utils_1.randomBytes)(20)
+                hash: (0, Utils_js_1.randomBytes)(20)
             };
         case "p2sh-p2wpkh":
             return {
                 type: "sh",
-                hash: (0, Utils_1.randomBytes)(20)
+                hash: (0, Utils_js_1.randomBytes)(20)
             };
         case "p2wpkh":
             return {
                 type: "wpkh",
-                hash: (0, Utils_1.randomBytes)(20)
+                hash: (0, Utils_js_1.randomBytes)(20)
             };
         case "p2wsh":
             return {
                 type: "wsh",
-                hash: (0, Utils_1.randomBytes)(32)
+                hash: (0, Utils_js_1.randomBytes)(32)
             };
         case "p2tr":
             return {
@@ -172,3 +208,69 @@ function getSenderAddress(psbt, network, inputIndex = 0) {
     }
 }
 exports.getSenderAddress = getSenderAddress;
+async function addPsbtInputs(psbt, inputs, rpc, network) {
+    const formattedInputs = await Promise.all(inputs.map(async (input) => {
+        switch (input.type) {
+            case "p2tr":
+                const parsed = (0, btc_signer_1.p2tr)(buffer_1.Buffer.from(input.publicKey, "hex"));
+                return {
+                    txid: input.txId,
+                    index: input.vout,
+                    witnessUtxo: {
+                        script: input.outputScript,
+                        amount: BigInt(input.value)
+                    },
+                    tapInternalKey: parsed.tapInternalKey,
+                    tapMerkleRoot: parsed.tapMerkleRoot,
+                    tapLeafScript: parsed.tapLeafScript
+                };
+            case "p2wpkh":
+                return {
+                    txid: input.txId,
+                    index: input.vout,
+                    witnessUtxo: {
+                        script: input.outputScript,
+                        amount: BigInt(input.value)
+                    },
+                    sighashType: 0x01
+                };
+            case "p2sh-p2wpkh":
+                return {
+                    txid: input.txId,
+                    index: input.vout,
+                    witnessUtxo: {
+                        script: input.outputScript,
+                        amount: BigInt(input.value)
+                    },
+                    redeemScript: (0, btc_signer_1.p2wpkh)(buffer_1.Buffer.from(input.publicKey, "hex"), network).script,
+                    sighashType: 0x01
+                };
+            case "p2pkh":
+                const tx = await rpc.getTransaction(input.txId);
+                if (tx == null)
+                    throw new Error("Cannot fetch existing tx " + input.txId);
+                return {
+                    txid: input.txId,
+                    index: input.vout,
+                    nonWitnessUtxo: tx.raw,
+                    sighashType: 0x01
+                };
+            default:
+                throw new Error("Invalid input type: " + input.type);
+        }
+    }));
+    formattedInputs.forEach(input => psbt.addInput(input));
+}
+exports.addPsbtInputs = addPsbtInputs;
+function getUtxoKey(utxo) {
+    return `${utxo.txId}:${utxo.vout}`;
+}
+exports.getUtxoKey = getUtxoKey;
+function toUtxoMap(utxos) {
+    return new Map(utxos.map(utxo => ([getUtxoKey(utxo), utxo])));
+}
+exports.toUtxoMap = toUtxoMap;
+function toUtxoSet(utxos) {
+    return new Set(utxos.map(utxo => getUtxoKey(utxo)));
+}
+exports.toUtxoSet = toUtxoSet;

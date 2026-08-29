@@ -1,0 +1,32 @@
+import { utils } from "./utils.js";
+// add inputs until we reach or surpass the target value (or deplete)
+// worst-case: O(n)
+export function blackjack(utxos, outputs, feeRate, type, requiredInputs) {
+    if (!isFinite(utils.numberOrNaN(feeRate)))
+        throw new Error("Invalid feeRate passed!");
+    const inputs = requiredInputs == null ? [] : [...requiredInputs];
+    let bytesAccum = utils.transactionBytes(inputs, outputs, type);
+    let inAccum = utils.sumOrNaN(inputs);
+    let cpfpAddFee = 0;
+    const outAccum = utils.sumOrNaN(outputs);
+    const threshold = utils.dustThreshold({ type });
+    for (let i = 0; i < utxos.length; ++i) {
+        const input = utxos[i];
+        const inputBytes = utils.inputBytes(input);
+        const cpfpFee = utils.inputCpfpAdditionalFee(input, feeRate);
+        const fee = utils.calculateFee(bytesAccum + inputBytes, feeRate, cpfpAddFee + cpfpFee);
+        const inputValue = utils.uintOrNaN(input.value);
+        // would it waste value?
+        if ((inAccum + inputValue) > (outAccum + fee + threshold))
+            continue;
+        bytesAccum += inputBytes;
+        inAccum += inputValue;
+        cpfpAddFee += cpfpFee;
+        inputs.push(input);
+        // go again?
+        if (inAccum < outAccum + fee)
+            continue;
+        return utils.finalize(inputs, outputs, feeRate, type);
+    }
+    return { fee: utils.calculateFee(bytesAccum, feeRate, cpfpAddFee) };
+}

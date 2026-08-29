@@ -2,14 +2,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SwapperFactory = void 0;
 const base_1 = require("@atomiqlabs/base");
-const SmartChainAssets_1 = require("../SmartChainAssets");
+const SmartChainAssets_js_1 = require("../SmartChainAssets.js");
 const messenger_nostr_1 = require("@atomiqlabs/messenger-nostr");
-const Swapper_1 = require("./Swapper");
-const CustomPriceProvider_1 = require("../prices/providers/CustomPriceProvider");
-const Token_1 = require("../types/Token");
-const RedundantSwapPrice_1 = require("../prices/RedundantSwapPrice");
-const LocalStorageManager_1 = require("../storage-browser/LocalStorageManager");
-const SingleSwapPrice_1 = require("../prices/SingleSwapPrice");
+const Swapper_js_1 = require("./Swapper.js");
+const CustomPriceProvider_js_1 = require("../prices/providers/CustomPriceProvider.js");
+const Token_js_1 = require("../types/Token.js");
+const RedundantSwapPrice_js_1 = require("../prices/RedundantSwapPrice.js");
+const LocalStorageManager_js_1 = require("../storage-browser/LocalStorageManager.js");
+const SingleSwapPrice_js_1 = require("../prices/SingleSwapPrice.js");
 const btc_mempool_1 = require("@atomiqlabs/btc-mempool");
 const registries = {
     [base_1.BitcoinNetwork.MAINNET]: "https://api.github.com/repos/adambor/SolLightning-registry/contents/registry-mainnet.json?ref=main",
@@ -58,7 +58,7 @@ class SwapperFactory {
          * All available tokens for the atomiq SDK
          */
         this.Tokens = {
-            BITCOIN: Token_1.BitcoinTokens
+            BITCOIN: Token_js_1.BitcoinTokens
         };
         /**
          * Token resolvers for various smart chains supported by the SDK, allow fetching tokens based on their addresses
@@ -75,7 +75,7 @@ class SwapperFactory {
                     chain: "SC",
                     chainId: initializer.chainId,
                     ticker,
-                    name: SmartChainAssets_1.SmartChainAssets[ticker]?.name ?? ticker,
+                    name: SmartChainAssets_js_1.SmartChainAssets[ticker]?.name ?? ticker,
                     decimals: assetData.decimals,
                     displayDecimals: assetData.displayDecimals,
                     address: assetData.address,
@@ -115,13 +115,13 @@ class SwapperFactory {
             bitcoinRpc = new btc_mempool_1.MempoolBitcoinRpc(urls, options.bitcoinNetwork);
         }
         const pricingAssets = [];
-        Object.keys(SmartChainAssets_1.SmartChainAssets).forEach((ticker) => {
+        Object.keys(SmartChainAssets_js_1.SmartChainAssets).forEach((ticker) => {
             const chains = {};
             for (let { tokens, chainId } of this.initializers) {
                 if (tokens[ticker] != null)
                     chains[chainId] = tokens[ticker];
             }
-            const assetData = SmartChainAssets_1.SmartChainAssets[ticker];
+            const assetData = SmartChainAssets_js_1.SmartChainAssets[ticker];
             pricingAssets.push({
                 ...assetData.pricing,
                 chains,
@@ -129,7 +129,7 @@ class SwapperFactory {
                 name: assetData.name
             });
         });
-        options.chainStorageCtor ??= (name) => new LocalStorageManager_1.LocalStorageManager(name);
+        options.chainStorageCtor ??= (name) => new LocalStorageManager_js_1.LocalStorageManager(name);
         const chains = {};
         for (let { initializer, chainId } of this.initializers) {
             const chainOptions = options.chains[chainId];
@@ -138,14 +138,14 @@ class SwapperFactory {
             chains[chainId] = initializer(chainOptions, bitcoinRpc, options.bitcoinNetwork, options.chainStorageCtor);
         }
         const swapPricing = options.getPriceFn != null ?
-            new SingleSwapPrice_1.SingleSwapPrice(options.pricingFeeDifferencePPM ?? 10000n, new CustomPriceProvider_1.CustomPriceProvider(pricingAssets.map(val => {
+            new SingleSwapPrice_js_1.SingleSwapPrice(options.pricingFeeDifferencePPM ?? 10000n, new CustomPriceProvider_js_1.CustomPriceProvider(pricingAssets.map(val => {
                 return {
                     coinId: val.ticker,
                     chains: val.chains
                 };
             }), options.getPriceFn)) :
-            RedundantSwapPrice_1.RedundantSwapPrice.createFromTokenMap(options.pricingFeeDifferencePPM ?? 10000n, pricingAssets);
-        return new Swapper_1.Swapper(bitcoinRpc, bitcoinRpc, (btcRelay) => new btc_mempool_1.MempoolBtcRelaySynchronizer(btcRelay, bitcoinRpc), chains, swapPricing, this.smartChainTokens, options.messenger, options);
+            RedundantSwapPrice_js_1.RedundantSwapPrice.createFromTokenMap(options.pricingFeeDifferencePPM ?? 10000n, pricingAssets);
+        return new Swapper_js_1.Swapper(bitcoinRpc, bitcoinRpc, (btcRelay) => new btc_mempool_1.MempoolBtcRelaySynchronizer(btcRelay, bitcoinRpc), chains, swapPricing, this.smartChainTokens, options.messenger, options);
     }
     /**
      * Returns a new and already initialized swapper instance with the passed options. There is no need

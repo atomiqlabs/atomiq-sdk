@@ -1,47 +1,47 @@
 /// <reference types="node" />
-import { ISwapPrice } from "../prices/abstract/ISwapPrice";
+import { ISwapPrice } from "../prices/abstract/ISwapPrice.js";
 import { BitcoinNetwork, BitcoinRpcWithAddressIndex, BtcBlock, BtcRelay, ChainData, ChainType, LightningNetworkApi, Messenger, RelaySynchronizer } from "@atomiqlabs/base";
-import { ToBTCLNOptions, ToBTCLNWrapper } from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNWrapper";
-import { ToBTCOptions, ToBTCWrapper } from "../swaps/escrow_swaps/tobtc/onchain/ToBTCWrapper";
-import { FromBTCLNOptions, FromBTCLNWrapper } from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNWrapper";
-import { FromBTCOptions, FromBTCWrapper } from "../swaps/escrow_swaps/frombtc/onchain/FromBTCWrapper";
-import { IntermediaryDiscovery } from "../intermediaries/IntermediaryDiscovery";
-import { ISwap } from "../swaps/ISwap";
-import { SwapType } from "../enums/SwapType";
-import { FromBTCLNSwap } from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap";
-import { FromBTCSwap } from "../swaps/escrow_swaps/frombtc/onchain/FromBTCSwap";
-import { ToBTCLNSwap } from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNSwap";
-import { ToBTCSwap } from "../swaps/escrow_swaps/tobtc/onchain/ToBTCSwap";
-import { LnForGasWrapper } from "../swaps/trusted/ln/LnForGasWrapper";
-import { LnForGasSwap } from "../swaps/trusted/ln/LnForGasSwap";
+import { ToBTCLNOptions, ToBTCLNWrapper } from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNWrapper.js";
+import { ToBTCOptions, ToBTCWrapper } from "../swaps/escrow_swaps/tobtc/onchain/ToBTCWrapper.js";
+import { FromBTCLNOptions, FromBTCLNWrapper } from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNWrapper.js";
+import { FromBTCOptions, FromBTCWrapper } from "../swaps/escrow_swaps/frombtc/onchain/FromBTCWrapper.js";
+import { IntermediaryDiscovery } from "../intermediaries/IntermediaryDiscovery.js";
+import { ISwap } from "../swaps/ISwap.js";
+import { SwapType } from "../enums/SwapType.js";
+import { FromBTCLNSwap } from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap.js";
+import { FromBTCSwap } from "../swaps/escrow_swaps/frombtc/onchain/FromBTCSwap.js";
+import { ToBTCLNSwap } from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNSwap.js";
+import { ToBTCSwap } from "../swaps/escrow_swaps/tobtc/onchain/ToBTCSwap.js";
+import { LnForGasWrapper } from "../swaps/trusted/ln/LnForGasWrapper.js";
+import { LnForGasSwap } from "../swaps/trusted/ln/LnForGasSwap.js";
 import { EventEmitter } from "events";
-import { Intermediary } from "../intermediaries/Intermediary";
-import { SwapperWithChain } from "./SwapperWithChain";
-import { OnchainForGasSwap } from "../swaps/trusted/onchain/OnchainForGasSwap";
-import { OnchainForGasWrapper } from "../swaps/trusted/onchain/OnchainForGasWrapper";
+import { Intermediary } from "../intermediaries/Intermediary.js";
+import { SwapperWithChain } from "./SwapperWithChain.js";
+import { OnchainForGasSwap } from "../swaps/trusted/onchain/OnchainForGasSwap.js";
+import { OnchainForGasWrapper } from "../swaps/trusted/onchain/OnchainForGasWrapper.js";
 import { BTC_NETWORK } from "@scure/btc-signer/utils";
-import { IUnifiedStorage } from "../storage/IUnifiedStorage";
-import { UnifiedSwapStorage, UnifiedSwapStorageCompositeIndexes, UnifiedSwapStorageIndexes } from "../storage/UnifiedSwapStorage";
-import { UnifiedSwapEventListener } from "../events/UnifiedSwapEventListener";
-import { IToBTCSwap } from "../swaps/escrow_swaps/tobtc/IToBTCSwap";
-import { SpvFromBTCOptions, SpvFromBTCWrapper } from "../swaps/spv_swaps/SpvFromBTCWrapper";
-import { SpvFromBTCSwap } from "../swaps/spv_swaps/SpvFromBTCSwap";
-import { SwapperUtils } from "./SwapperUtils";
-import { FromBTCLNAutoOptions, FromBTCLNAutoWrapper } from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoWrapper";
-import { FromBTCLNAutoSwap } from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap";
-import { SwapAmountType } from "../enums/SwapAmountType";
-import { IClaimableSwap } from "../swaps/IClaimableSwap";
-import { SwapTypeMapping } from "../utils/SwapUtils";
-import { TokenAmount } from "../types/TokenAmount";
-import { BtcToken, SCToken, Token } from "../types/Token";
-import { LNURLWithdraw } from "../types/lnurl/LNURLWithdraw";
-import { LNURLPay } from "../types/lnurl/LNURLPay";
-import { NotNever } from "../utils/TypeUtils";
-import { LightningInvoiceCreateService } from "../types/wallets/LightningInvoiceCreateService";
-import { SwapSide } from "../enums/SwapSide";
-import { IntermediaryAPI } from "../intermediaries/apis/IntermediaryAPI";
-import { BitcoinWalletUtxo, IBitcoinWallet } from "../bitcoin/wallet/IBitcoinWallet";
-import { MinimalBitcoinWalletInterface } from "../types/wallets/MinimalBitcoinWalletInterface";
+import { IUnifiedStorage } from "../storage/IUnifiedStorage.js";
+import { UnifiedSwapStorage, UnifiedSwapStorageCompositeIndexes, UnifiedSwapStorageIndexes } from "../storage/UnifiedSwapStorage.js";
+import { UnifiedSwapEventListener } from "../events/UnifiedSwapEventListener.js";
+import { IToBTCSwap } from "../swaps/escrow_swaps/tobtc/IToBTCSwap.js";
+import { SpvFromBTCOptions, SpvFromBTCWrapper } from "../swaps/spv_swaps/SpvFromBTCWrapper.js";
+import { SpvFromBTCSwap } from "../swaps/spv_swaps/SpvFromBTCSwap.js";
+import { SwapperUtils } from "./SwapperUtils.js";
+import { FromBTCLNAutoOptions, FromBTCLNAutoWrapper } from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoWrapper.js";
+import { FromBTCLNAutoSwap } from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap.js";
+import { SwapAmountType } from "../enums/SwapAmountType.js";
+import { IClaimableSwap } from "../swaps/IClaimableSwap.js";
+import { SwapTypeMapping } from "../utils/SwapUtils.js";
+import { TokenAmount } from "../types/TokenAmount.js";
+import { BtcToken, SCToken, Token } from "../types/Token.js";
+import { LNURLWithdraw } from "../types/lnurl/LNURLWithdraw.js";
+import { LNURLPay } from "../types/lnurl/LNURLPay.js";
+import { NotNever } from "../utils/TypeUtils.js";
+import { LightningInvoiceCreateService } from "../types/wallets/LightningInvoiceCreateService.js";
+import { SwapSide } from "../enums/SwapSide.js";
+import { IntermediaryAPI } from "../intermediaries/apis/IntermediaryAPI.js";
+import { IBitcoinWallet } from "../bitcoin/wallet/IBitcoinWallet.js";
+import { MinimalBitcoinWalletInterface } from "../types/wallets/MinimalBitcoinWalletInterface.js";
 /**
  * Configuration options for the Swapper
  * @category Core
@@ -369,8 +369,21 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
      * @param exactOut Whether to use a exact out instead of exact in
      * @param additionalParams Additional parameters sent to the LP when creating the swap
      * @param options Additional options for the swap
+     * @param postQuoteCreateCallback
      */
-    createFromBTCSwapNew<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier, recipient: string, tokenAddress: string, amount: bigint | null, exactOut?: boolean, additionalParams?: Record<string, any> | undefined, options?: SpvFromBTCOptions): Promise<SpvFromBTCSwap<T[ChainIdentifier]>>;
+    createFromBTCSwapNew<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier, recipient: string, tokenAddress: string, amount: bigint | null, exactOut?: boolean, additionalParams?: Record<string, any> | undefined, options?: SpvFromBTCOptions, postQuoteCreateCallback?: (quote: SpvFromBTCSwap<T[ChainIdentifier]>) => Promise<SpvFromBTCSwap<T[ChainIdentifier]>>): Promise<SpvFromBTCSwap<T[ChainIdentifier]>>;
+    /**
+     * Creates Bitcoin -> Smart chain ({@link SwapType.SPV_VAULT_FROM_BTC}) swap
+     *
+     * @param chainIdentifier Chain identifier string of the destination smart chain
+     * @param intermediateWallet The intermediate wallet to use for the swap
+     * @param recipient Recipient address on the destination chain
+     * @param tokenAddress Token address to receive
+     * @param amount Amount to send in satoshis (if `exactOut=false`) or receive in token based units (if `exactOut=true`)
+     * @param additionalParams Additional parameters sent to the LP when creating the swap
+     * @param options Additional options for the swap
+     */
+    createFromBTCSwapNewWithUtxosExactIn<ChainIdentifier extends ChainIds<T>>(chainIdentifier: ChainIdentifier, intermediateWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, recipient: string, tokenAddress: string, amount: bigint | null, additionalParams?: Record<string, any> | undefined, options?: SpvFromBTCOptions): Promise<SpvFromBTCSwap<T[ChainIdentifier]>>;
     /**
      * Creates LEGACY Bitcoin -> Smart chain ({@link SwapType.FROM_BTC}) swap
      *
@@ -498,7 +511,7 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
     /**
      * @internal
      */
-    swap<C extends ChainIds<T>>(srcToken: BtcToken<false> | "BTC" | "BITCOIN-BTC", dstToken: SCToken<C> | string, amount: bigint | string, exactIn: boolean | SwapAmountType, src: undefined | string, dstSmartchainWallet: string, options?: (SupportsSwapType<T[C], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCOptions : FromBTCOptions)): Promise<(SupportsSwapType<T[C], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCSwap<T[C]> : FromBTCSwap<T[C]>)>;
+    swap<C extends ChainIds<T>>(srcToken: BtcToken<false> | "BTC" | "BITCOIN-BTC", dstToken: SCToken<C> | string, amount: bigint | string | undefined, exactIn: boolean | SwapAmountType, src: undefined | string | IBitcoinWallet | MinimalBitcoinWalletInterface, dstSmartchainWallet: string, options?: (SupportsSwapType<T[C], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCOptions : FromBTCOptions)): Promise<(SupportsSwapType<T[C], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCSwap<T[C]> : FromBTCSwap<T[C]>)>;
     /**
      * @internal
      */
@@ -526,47 +539,9 @@ export declare class Swapper<T extends MultiChain> extends EventEmitter<{
      * @param dst Destination smart chain address, bitcoin on-chain address, lightning invoice, LNURL-pay
      * @param options Options for the swap
      */
-    swap<C extends ChainIds<T>>(srcToken: Token<C> | string, dstToken: Token<C> | string, amount: bigint | string | undefined, exactIn: boolean | SwapAmountType, src: undefined | string | LNURLWithdraw, dst: string | LNURLPay | LightningInvoiceCreateService, options?: FromBTCLNOptions | SpvFromBTCOptions | FromBTCOptions | ToBTCOptions | (ToBTCLNOptions & {
+    swap<C extends ChainIds<T>>(srcToken: Token<C> | string, dstToken: Token<C> | string, amount: bigint | string | undefined, exactIn: boolean | SwapAmountType, src: undefined | string | LNURLWithdraw | IBitcoinWallet | MinimalBitcoinWalletInterface, dst: string | LNURLPay | LightningInvoiceCreateService, options?: FromBTCLNOptions | SpvFromBTCOptions | FromBTCOptions | ToBTCOptions | (ToBTCLNOptions & {
         comment?: string;
     }) | FromBTCLNAutoOptions): Promise<ISwap<T[C]>>;
-    /**
-     * A helper function to sweep all the funds from a given wallet in a single swap, after getting the quote you can
-     *  execute the swap by passing the returned `feeRate` and `utxos` to the {@link SpvFromBTCSwap.execute},
-     *  {@link SpvFromBTCSwap.getFundedPsbt} or {@link SpvFromBTCSwap.sendBitcoinTransaction} functions along
-     *  with `spendFully=true`.
-     *
-     * @example
-     * Create the swap first using this function
-     * ```ts
-     * const {swap, utxos, btcFeeRate} = await swapper.sweepBitcoinWallet(wallet, Tokens.CITREA.CBTC, dstAddress);
-     * ```
-     * Then execute it using one of these execution paths - ensure that you supply the returned `utxos`, `btcFeeRate`
-     *  params and also set `spendFully` to `true`!
-     *
-     * a) Execute and pass the returned utxos and btcFeeRate:
-     * ```ts
-     * await swap.execute(wallet, undefined, {feeRate: btcFeeRate, utxos: utxos, spendFully: true});
-     * ```
-     *
-     * b) Get funded PSBT to sign externally:
-     * ```ts
-     * const {psbt, psbtHex, psbtBase64, signInputs} = await swap.getFundedPsbt(wallet, btcFeeRate, undefined, utxos, true);
-     * // Sign the psbt at the specified signInputs indices
-     * const signedPsbt = ...;
-     * // Then submit back to the SDK
-     * await swap.submitPsbt(signedPsbt);
-     * ```
-     *
-     * c) Only sign and send the signed PSBT with the provided wallet:
-     * ```ts
-     * await swap.sendBitcoinTransaction(wallet, btcFeeRate, utxos, true);
-     * ```
-     */
-    sweepBitcoinWallet<C extends ChainIds<T>>(srcWallet: IBitcoinWallet | MinimalBitcoinWalletInterface, _dstToken: SCToken<C> | string, dstAddress: string, options?: SpvFromBTCOptions): Promise<{
-        swap: SpvFromBTCSwap<T[C]>;
-        utxos: BitcoinWalletUtxo[];
-        btcFeeRate: number;
-    }>;
     /**
      * Returns all swaps
      */

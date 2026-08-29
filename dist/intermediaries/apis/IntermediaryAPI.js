@@ -1,12 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.IntermediaryAPI = exports.TrustedAddressStatusResponseCodes = exports.TrustedInvoiceStatusResponseCodes = exports.InvoiceStatusResponseCodes = exports.PaymentAuthorizationResponseCodes = exports.RefundAuthorizationResponseCodes = void 0;
-const RequestError_1 = require("../../errors/RequestError");
-const SchemaVerifier_1 = require("../../http/paramcoders/SchemaVerifier");
-const StreamingFetchPromise_1 = require("../../http/paramcoders/client/StreamingFetchPromise");
-const Utils_1 = require("../../utils/Utils");
-const HttpUtils_1 = require("../../http/HttpUtils");
-const RetryUtils_1 = require("../../utils/RetryUtils");
+const RequestError_js_1 = require("../../errors/RequestError.js");
+const SchemaVerifier_js_1 = require("../../http/paramcoders/SchemaVerifier.js");
+const StreamingFetchPromise_js_1 = require("../../http/paramcoders/client/StreamingFetchPromise.js");
+const Utils_js_1 = require("../../utils/Utils.js");
+const HttpUtils_js_1 = require("../../http/HttpUtils.js");
+const RetryUtils_js_1 = require("../../utils/RetryUtils.js");
 var RefundAuthorizationResponseCodes;
 (function (RefundAuthorizationResponseCodes) {
     RefundAuthorizationResponseCodes[RefundAuthorizationResponseCodes["EXPIRED"] = 20010] = "EXPIRED";
@@ -31,103 +31,104 @@ var InvoiceStatusResponseCodes;
     InvoiceStatusResponseCodes[InvoiceStatusResponseCodes["PENDING"] = 10003] = "PENDING";
 })(InvoiceStatusResponseCodes = exports.InvoiceStatusResponseCodes || (exports.InvoiceStatusResponseCodes = {}));
 const SwapResponseSchema = {
-    data: SchemaVerifier_1.FieldTypeEnum.Any,
-    prefix: SchemaVerifier_1.FieldTypeEnum.String,
-    timeout: SchemaVerifier_1.FieldTypeEnum.String,
-    signature: SchemaVerifier_1.FieldTypeEnum.String
+    data: SchemaVerifier_js_1.FieldTypeEnum.Any,
+    prefix: SchemaVerifier_js_1.FieldTypeEnum.String,
+    timeout: SchemaVerifier_js_1.FieldTypeEnum.String,
+    signature: SchemaVerifier_js_1.FieldTypeEnum.String
 };
 /////////////////////////
 ///// To BTC
 const ToBTCResponseSchema = {
-    amount: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    address: SchemaVerifier_1.FieldTypeEnum.String,
-    satsPervByte: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    networkFee: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    swapFee: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    totalFee: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    total: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    minRequiredExpiry: SchemaVerifier_1.FieldTypeEnum.BigInt,
+    amount: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    address: SchemaVerifier_js_1.FieldTypeEnum.String,
+    satsPervByte: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    networkFee: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    swapFee: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    totalFee: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    total: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    minRequiredExpiry: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
     ...SwapResponseSchema
 };
 /////////////////////////
 ///// To BTCLN
 const ToBTCLNResponseSchema = {
-    maxFee: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    swapFee: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    total: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    confidence: SchemaVerifier_1.FieldTypeEnum.Number,
-    address: SchemaVerifier_1.FieldTypeEnum.String,
-    routingFeeSats: SchemaVerifier_1.FieldTypeEnum.BigInt,
+    maxFee: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    swapFee: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    total: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    confidence: SchemaVerifier_js_1.FieldTypeEnum.Number,
+    address: SchemaVerifier_js_1.FieldTypeEnum.String,
+    routingFeeSats: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
     ...SwapResponseSchema
 };
 const ToBTCLNPrepareExactInSchema = {
-    amount: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    reqId: SchemaVerifier_1.FieldTypeEnum.String
+    amount: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    reqId: SchemaVerifier_js_1.FieldTypeEnum.String
 };
 /////////////////////////
 ///// From BTC
 const FromBTCResponseSchema = {
-    amount: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    btcAddress: SchemaVerifier_1.FieldTypeEnum.String,
-    address: SchemaVerifier_1.FieldTypeEnum.String,
-    swapFee: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    total: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    confirmations: SchemaVerifier_1.FieldTypeEnum.Number,
+    amount: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    btcAddress: SchemaVerifier_js_1.FieldTypeEnum.String,
+    address: SchemaVerifier_js_1.FieldTypeEnum.String,
+    swapFee: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    total: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    confirmations: SchemaVerifier_js_1.FieldTypeEnum.Number,
     ...SwapResponseSchema
 };
 /////////////////////////
 ///// From BTCLN
 const FromBTCLNResponseSchema = {
-    pr: SchemaVerifier_1.FieldTypeEnum.String,
-    swapFee: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    total: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    intermediaryKey: SchemaVerifier_1.FieldTypeEnum.String,
-    securityDeposit: SchemaVerifier_1.FieldTypeEnum.BigInt
+    pr: SchemaVerifier_js_1.FieldTypeEnum.String,
+    swapFee: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    total: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    intermediaryKey: SchemaVerifier_js_1.FieldTypeEnum.String,
+    securityDeposit: SchemaVerifier_js_1.FieldTypeEnum.BigInt
 };
 /////////////////////////
 ///// From BTCLN Auto
 const FromBTCLNAutoResponseSchema = {
-    intermediaryKey: SchemaVerifier_1.FieldTypeEnum.String,
-    pr: SchemaVerifier_1.FieldTypeEnum.String,
-    btcAmountSwap: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    btcAmountGas: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    total: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    totalGas: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    totalFeeBtc: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    swapFeeBtc: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    swapFee: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    gasSwapFeeBtc: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    gasSwapFee: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    claimerBounty: SchemaVerifier_1.FieldTypeEnum.BigInt
+    intermediaryKey: SchemaVerifier_js_1.FieldTypeEnum.String,
+    pr: SchemaVerifier_js_1.FieldTypeEnum.String,
+    btcAmountSwap: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    btcAmountGas: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    total: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    totalGas: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    totalFeeBtc: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    swapFeeBtc: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    swapFee: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    gasSwapFeeBtc: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    gasSwapFee: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    claimerBounty: SchemaVerifier_js_1.FieldTypeEnum.BigInt
 };
 /////////////////////////
 ///// Spv vault from BTC
 const SpvFromBTCPrepareResponseSchema = {
-    quoteId: SchemaVerifier_1.FieldTypeEnum.String,
-    expiry: SchemaVerifier_1.FieldTypeEnum.Number,
-    address: SchemaVerifier_1.FieldTypeEnum.String,
-    vaultId: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    vaultBtcAddress: SchemaVerifier_1.FieldTypeEnum.String,
-    btcAddress: SchemaVerifier_1.FieldTypeEnum.String,
-    btcUtxo: SchemaVerifier_1.FieldTypeEnum.String,
-    btcFeeRate: SchemaVerifier_1.FieldTypeEnum.Number,
-    btcAmount: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    btcAmountSwap: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    btcAmountGas: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    total: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    totalGas: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    totalFeeBtc: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    swapFeeBtc: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    swapFee: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    gasSwapFeeBtc: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    gasSwapFee: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    callerFeeShare: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    frontingFeeShare: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    executionFeeShare: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    usedUtxoInputCalculation: SchemaVerifier_1.FieldTypeEnum.BooleanOptional
+    quoteId: SchemaVerifier_js_1.FieldTypeEnum.String,
+    expiry: SchemaVerifier_js_1.FieldTypeEnum.Number,
+    address: SchemaVerifier_js_1.FieldTypeEnum.String,
+    vaultId: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    vaultBtcAddress: SchemaVerifier_js_1.FieldTypeEnum.String,
+    btcAddress: SchemaVerifier_js_1.FieldTypeEnum.String,
+    btcUtxo: SchemaVerifier_js_1.FieldTypeEnum.String,
+    btcFeeRate: SchemaVerifier_js_1.FieldTypeEnum.Number,
+    btcAmount: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    btcAmountSwap: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    btcAmountGas: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    total: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    totalGas: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    totalFeeBtc: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    swapFeeBtc: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    swapFee: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    gasSwapFeeBtc: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    gasSwapFee: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    callerFeeShare: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    frontingFeeShare: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    executionFeeShare: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    usedUtxoInputCalculation: SchemaVerifier_js_1.FieldTypeEnum.BooleanOptional,
+    usedExactFeeCalculation: SchemaVerifier_js_1.FieldTypeEnum.BooleanOptional
 };
 const SpvFromBTCInitResponseSchema = {
-    txId: SchemaVerifier_1.FieldTypeEnum.String
+    txId: SchemaVerifier_js_1.FieldTypeEnum.String
 };
 /////////////////////////
 ///// Trusted from BTCLN
@@ -140,10 +141,10 @@ var TrustedInvoiceStatusResponseCodes;
     TrustedInvoiceStatusResponseCodes[TrustedInvoiceStatusResponseCodes["TX_SENT"] = 10012] = "TX_SENT";
 })(TrustedInvoiceStatusResponseCodes = exports.TrustedInvoiceStatusResponseCodes || (exports.TrustedInvoiceStatusResponseCodes = {}));
 const TrustedFromBTCLNResponseSchema = {
-    pr: SchemaVerifier_1.FieldTypeEnum.String,
-    swapFee: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    swapFeeSats: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    total: SchemaVerifier_1.FieldTypeEnum.BigInt
+    pr: SchemaVerifier_js_1.FieldTypeEnum.String,
+    swapFee: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    swapFeeSats: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    total: SchemaVerifier_js_1.FieldTypeEnum.BigInt
 };
 /////////////////////////
 ///// Trusted from BTC
@@ -160,16 +161,16 @@ var TrustedAddressStatusResponseCodes;
     TrustedAddressStatusResponseCodes[TrustedAddressStatusResponseCodes["REFUNDABLE"] = 10016] = "REFUNDABLE";
 })(TrustedAddressStatusResponseCodes = exports.TrustedAddressStatusResponseCodes || (exports.TrustedAddressStatusResponseCodes = {}));
 const TrustedFromBTCResponseSchema = {
-    paymentHash: SchemaVerifier_1.FieldTypeEnum.String,
-    sequence: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    btcAddress: SchemaVerifier_1.FieldTypeEnum.String,
-    amountSats: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    swapFeeSats: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    swapFee: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    total: SchemaVerifier_1.FieldTypeEnum.BigInt,
-    intermediaryKey: SchemaVerifier_1.FieldTypeEnum.String,
-    recommendedFee: SchemaVerifier_1.FieldTypeEnum.Number,
-    expiresAt: SchemaVerifier_1.FieldTypeEnum.Number
+    paymentHash: SchemaVerifier_js_1.FieldTypeEnum.String,
+    sequence: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    btcAddress: SchemaVerifier_js_1.FieldTypeEnum.String,
+    amountSats: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    swapFeeSats: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    swapFee: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    total: SchemaVerifier_js_1.FieldTypeEnum.BigInt,
+    intermediaryKey: SchemaVerifier_js_1.FieldTypeEnum.String,
+    recommendedFee: SchemaVerifier_js_1.FieldTypeEnum.Number,
+    expiresAt: SchemaVerifier_js_1.FieldTypeEnum.Number
 };
 class IntermediaryAPI {
     constructor(requestHeaders) {
@@ -177,15 +178,15 @@ class IntermediaryAPI {
     }
     httpGet(url, timeout, abortSignal, allowNon200 = false) {
         const headers = this.requestHeaders == null ? {} : this.requestHeaders("GET", url);
-        return (0, HttpUtils_1.httpGet)(url, timeout, abortSignal, allowNon200, headers);
+        return (0, HttpUtils_js_1.httpGet)(url, timeout, abortSignal, allowNon200, headers);
     }
     httpPost(url, body, timeout, abortSignal) {
         const headers = this.requestHeaders == null ? {} : this.requestHeaders("POST", url, body);
-        return (0, HttpUtils_1.httpPost)(url, body, timeout, abortSignal, headers);
+        return (0, HttpUtils_js_1.httpPost)(url, body, timeout, abortSignal, headers);
     }
     streamingFetchPromise(url, body, schema, timeout, signal, streamRequest) {
         const headers = this.requestHeaders == null ? {} : this.requestHeaders("POST", url);
-        return (0, StreamingFetchPromise_1.streamingFetchPromise)(url, body, schema, timeout, signal, streamRequest, headers);
+        return (0, StreamingFetchPromise_js_1.streamingFetchPromise)(url, body, schema, timeout, signal, streamRequest, headers);
     }
     /**
      * Returns the information about a specific intermediary
@@ -198,8 +199,8 @@ class IntermediaryAPI {
      * @throws {Error} If the supplied nonce doesn't match the response
      */
     async getIntermediaryInfo(baseUrl, timeout, abortSignal) {
-        const nonce = (0, Utils_1.randomBytes)(32).toString("hex");
-        const abortController = (0, Utils_1.extendAbortController)(abortSignal);
+        const nonce = (0, Utils_js_1.randomBytes)(32).toString("hex");
+        const abortController = (0, Utils_js_1.extendAbortController)(abortSignal);
         //We don't know whether the node supports only POST or also has GET info support enabled
         // here we try both, and abort when the first one returns (which should be GET)
         const response = await Promise.any([
@@ -226,9 +227,9 @@ class IntermediaryAPI {
      * @throws {RequestError} If non-200 http response code is returned
      */
     async getRefundAuthorization(url, paymentHash, sequence, timeout, abortSignal) {
-        return (0, RetryUtils_1.tryWithRetries)(() => this.httpGet(url + "/getRefundAuthorization" +
+        return (0, RetryUtils_js_1.tryWithRetries)(() => this.httpGet(url + "/getRefundAuthorization" +
             "?paymentHash=" + encodeURIComponent(paymentHash) +
-            "&sequence=" + encodeURIComponent(sequence.toString(10)), timeout, abortSignal), undefined, RequestError_1.RequestError, abortSignal);
+            "&sequence=" + encodeURIComponent(sequence.toString(10)), timeout, abortSignal), undefined, RequestError_js_1.RequestError, abortSignal);
     }
     /**
      * Returns the information about the payment of the From BTCLN swaps
@@ -241,8 +242,8 @@ class IntermediaryAPI {
      * @throws {RequestError} If non-200 http response code is returned
      */
     async getPaymentAuthorization(url, paymentHash, timeout, abortSignal) {
-        return (0, RetryUtils_1.tryWithRetries)(() => this.httpGet(url + "/getInvoicePaymentAuth" +
-            "?paymentHash=" + encodeURIComponent(paymentHash), timeout, abortSignal), undefined, RequestError_1.RequestError, abortSignal);
+        return (0, RetryUtils_js_1.tryWithRetries)(() => this.httpGet(url + "/getInvoicePaymentAuth" +
+            "?paymentHash=" + encodeURIComponent(paymentHash), timeout, abortSignal), undefined, RequestError_js_1.RequestError, abortSignal);
     }
     /**
      * Returns the status of the payment of the From BTCLN swaps
@@ -255,8 +256,8 @@ class IntermediaryAPI {
      * @throws {RequestError} If non-200 http response code is returned
      */
     async getInvoiceStatus(url, paymentHash, timeout, abortSignal) {
-        return (0, RetryUtils_1.tryWithRetries)(() => this.httpGet(url + "/getInvoiceStatus" +
-            "?paymentHash=" + encodeURIComponent(paymentHash), timeout, abortSignal), undefined, RequestError_1.RequestError, abortSignal);
+        return (0, RetryUtils_js_1.tryWithRetries)(() => this.httpGet(url + "/getInvoiceStatus" +
+            "?paymentHash=" + encodeURIComponent(paymentHash), timeout, abortSignal), undefined, RequestError_js_1.RequestError, abortSignal);
     }
     /**
      * Initiate To BTC swap with an intermediary
@@ -283,10 +284,10 @@ class IntermediaryAPI {
             offerer: init.offerer,
             feeRate: init.feeRate
         }, {
-            code: SchemaVerifier_1.FieldTypeEnum.Number,
-            msg: SchemaVerifier_1.FieldTypeEnum.String,
-            data: SchemaVerifier_1.FieldTypeEnum.AnyOptional,
-            signDataPrefetch: SchemaVerifier_1.FieldTypeEnum.AnyOptional
+            code: SchemaVerifier_js_1.FieldTypeEnum.Number,
+            msg: SchemaVerifier_js_1.FieldTypeEnum.String,
+            data: SchemaVerifier_js_1.FieldTypeEnum.AnyOptional,
+            signDataPrefetch: SchemaVerifier_js_1.FieldTypeEnum.AnyOptional
         }, timeout, abortSignal, streamRequest);
         return {
             signDataPrefetch: responseBodyPromise.then(responseBody => responseBody.signDataPrefetch),
@@ -296,11 +297,11 @@ class IntermediaryAPI {
                 responseBody.data,
             ])).then(([code, msg, data]) => {
                 if (code !== 20000) {
-                    throw RequestError_1.RequestError.parse(JSON.stringify({ code, msg, data }), 400);
+                    throw RequestError_js_1.RequestError.parse(JSON.stringify({ code, msg, data }), 400);
                 }
-                const result = (0, SchemaVerifier_1.verifySchema)(data, ToBTCResponseSchema);
+                const result = (0, SchemaVerifier_js_1.verifySchema)(data, ToBTCResponseSchema);
                 if (result == null)
-                    throw new RequestError_1.RequestError("Cannot parse the response with the expected schema", 200);
+                    throw new RequestError_js_1.RequestError("Cannot parse the response with the expected schema", 200);
                 return result;
             })
         };
@@ -337,10 +338,10 @@ class IntermediaryAPI {
             }),
             feeRate: init.feeRate
         }, {
-            code: SchemaVerifier_1.FieldTypeEnum.Number,
-            msg: SchemaVerifier_1.FieldTypeEnum.String,
-            data: SchemaVerifier_1.FieldTypeEnum.AnyOptional,
-            signDataPrefetch: SchemaVerifier_1.FieldTypeEnum.AnyOptional
+            code: SchemaVerifier_js_1.FieldTypeEnum.Number,
+            msg: SchemaVerifier_js_1.FieldTypeEnum.String,
+            data: SchemaVerifier_js_1.FieldTypeEnum.AnyOptional,
+            signDataPrefetch: SchemaVerifier_js_1.FieldTypeEnum.AnyOptional
         }, timeout, abortSignal, streamRequest);
         return {
             signDataPrefetch: responseBodyPromise.then(responseBody => responseBody.signDataPrefetch),
@@ -350,11 +351,11 @@ class IntermediaryAPI {
                 responseBody.data,
             ])).then(([code, msg, data]) => {
                 if (code !== 20000) {
-                    throw RequestError_1.RequestError.parse(JSON.stringify({ code, msg, data }), 400);
+                    throw RequestError_js_1.RequestError.parse(JSON.stringify({ code, msg, data }), 400);
                 }
-                const result = (0, SchemaVerifier_1.verifySchema)(data, FromBTCResponseSchema);
+                const result = (0, SchemaVerifier_js_1.verifySchema)(data, FromBTCResponseSchema);
                 if (result == null)
-                    throw new RequestError_1.RequestError("Cannot parse the response with the expected schema", 200);
+                    throw new RequestError_js_1.RequestError("Cannot parse the response with the expected schema", 200);
                 return result;
             })
         };
@@ -384,10 +385,10 @@ class IntermediaryAPI {
             exactOut: init.exactOut,
             feeRate: init.feeRate
         }, {
-            code: SchemaVerifier_1.FieldTypeEnum.Number,
-            msg: SchemaVerifier_1.FieldTypeEnum.String,
-            data: SchemaVerifier_1.FieldTypeEnum.AnyOptional,
-            lnPublicKey: SchemaVerifier_1.FieldTypeEnum.StringOptional
+            code: SchemaVerifier_js_1.FieldTypeEnum.Number,
+            msg: SchemaVerifier_js_1.FieldTypeEnum.String,
+            data: SchemaVerifier_js_1.FieldTypeEnum.AnyOptional,
+            lnPublicKey: SchemaVerifier_js_1.FieldTypeEnum.StringOptional
         }, timeout, abortSignal, streamRequest);
         return {
             lnPublicKey: responseBodyPromise.then(responseBody => responseBody.lnPublicKey),
@@ -397,11 +398,11 @@ class IntermediaryAPI {
                 responseBody.data,
             ])).then(([code, msg, data]) => {
                 if (code !== 20000) {
-                    throw RequestError_1.RequestError.parse(JSON.stringify({ code, msg, data }), 400);
+                    throw RequestError_js_1.RequestError.parse(JSON.stringify({ code, msg, data }), 400);
                 }
-                const result = (0, SchemaVerifier_1.verifySchema)(data, FromBTCLNResponseSchema);
+                const result = (0, SchemaVerifier_js_1.verifySchema)(data, FromBTCLNResponseSchema);
                 if (result == null)
-                    throw new RequestError_1.RequestError("Cannot parse the response with the expected schema", 200);
+                    throw new RequestError_js_1.RequestError("Cannot parse the response with the expected schema", 200);
                 return result;
             })
         };
@@ -432,10 +433,10 @@ class IntermediaryAPI {
             gasAmount: init.gasAmount?.toString(10) ?? "0",
             claimerBounty: init.claimerBounty?.then(val => val.toString(10)) ?? "0"
         }, {
-            code: SchemaVerifier_1.FieldTypeEnum.Number,
-            msg: SchemaVerifier_1.FieldTypeEnum.String,
-            data: SchemaVerifier_1.FieldTypeEnum.AnyOptional,
-            lnPublicKey: SchemaVerifier_1.FieldTypeEnum.StringOptional
+            code: SchemaVerifier_js_1.FieldTypeEnum.Number,
+            msg: SchemaVerifier_js_1.FieldTypeEnum.String,
+            data: SchemaVerifier_js_1.FieldTypeEnum.AnyOptional,
+            lnPublicKey: SchemaVerifier_js_1.FieldTypeEnum.StringOptional
         }, timeout, abortSignal, streamRequest);
         return {
             lnPublicKey: responseBodyPromise.then(responseBody => responseBody.lnPublicKey),
@@ -445,11 +446,11 @@ class IntermediaryAPI {
                 responseBody.data,
             ])).then(([code, msg, data]) => {
                 if (code !== 20000) {
-                    throw RequestError_1.RequestError.parse(JSON.stringify({ code, msg, data }), 400);
+                    throw RequestError_js_1.RequestError.parse(JSON.stringify({ code, msg, data }), 400);
                 }
-                const result = (0, SchemaVerifier_1.verifySchema)(data, FromBTCLNAutoResponseSchema);
+                const result = (0, SchemaVerifier_js_1.verifySchema)(data, FromBTCLNAutoResponseSchema);
                 if (result == null)
-                    throw new RequestError_1.RequestError("Cannot parse the response with the expected schema", 200);
+                    throw new RequestError_js_1.RequestError("Cannot parse the response with the expected schema", 200);
                 return result;
             })
         };
@@ -478,10 +479,10 @@ class IntermediaryAPI {
             feeRate: init.feeRate,
             amount: null
         }, {
-            code: SchemaVerifier_1.FieldTypeEnum.Number,
-            msg: SchemaVerifier_1.FieldTypeEnum.String,
-            data: SchemaVerifier_1.FieldTypeEnum.AnyOptional,
-            signDataPrefetch: SchemaVerifier_1.FieldTypeEnum.AnyOptional
+            code: SchemaVerifier_js_1.FieldTypeEnum.Number,
+            msg: SchemaVerifier_js_1.FieldTypeEnum.String,
+            data: SchemaVerifier_js_1.FieldTypeEnum.AnyOptional,
+            signDataPrefetch: SchemaVerifier_js_1.FieldTypeEnum.AnyOptional
         }, timeout, abortSignal, streamRequest);
         return {
             signDataPrefetch: responseBodyPromise.then(responseBody => responseBody.signDataPrefetch),
@@ -491,11 +492,11 @@ class IntermediaryAPI {
                 responseBody.data,
             ])).then(([code, msg, data]) => {
                 if (code !== 20000) {
-                    throw RequestError_1.RequestError.parse(JSON.stringify({ code, msg, data }), 400);
+                    throw RequestError_js_1.RequestError.parse(JSON.stringify({ code, msg, data }), 400);
                 }
-                const result = (0, SchemaVerifier_1.verifySchema)(data, ToBTCLNResponseSchema);
+                const result = (0, SchemaVerifier_js_1.verifySchema)(data, ToBTCLNResponseSchema);
                 if (result == null)
-                    throw new RequestError_1.RequestError("Cannot parse the response with the expected schema", 200);
+                    throw new RequestError_js_1.RequestError("Cannot parse the response with the expected schema", 200);
                 return result;
             })
         };
@@ -518,9 +519,9 @@ class IntermediaryAPI {
             reqId: init.reqId,
             feeRate: init.feeRate
         }, {
-            code: SchemaVerifier_1.FieldTypeEnum.Number,
-            msg: SchemaVerifier_1.FieldTypeEnum.String,
-            data: SchemaVerifier_1.FieldTypeEnum.AnyOptional
+            code: SchemaVerifier_js_1.FieldTypeEnum.Number,
+            msg: SchemaVerifier_js_1.FieldTypeEnum.String,
+            data: SchemaVerifier_js_1.FieldTypeEnum.AnyOptional
         }, timeout, abortSignal, streamRequest);
         const [code, msg, data] = await Promise.all([
             responseBody.code,
@@ -528,10 +529,10 @@ class IntermediaryAPI {
             responseBody.data,
         ]);
         if (code !== 20000)
-            throw RequestError_1.RequestError.parse(JSON.stringify({ code, msg, data }), 400);
-        const result = (0, SchemaVerifier_1.verifySchema)(data, ToBTCLNResponseSchema);
+            throw RequestError_js_1.RequestError.parse(JSON.stringify({ code, msg, data }), 400);
+        const result = (0, SchemaVerifier_js_1.verifySchema)(data, ToBTCLNResponseSchema);
         if (result == null)
-            throw new RequestError_1.RequestError("Cannot parse the response with the expected schema", 200);
+            throw new RequestError_js_1.RequestError("Cannot parse the response with the expected schema", 200);
         return result;
     }
     /**
@@ -557,10 +558,10 @@ class IntermediaryAPI {
             offerer: init.offerer,
             amount: init.amount.toString(10)
         }, {
-            code: SchemaVerifier_1.FieldTypeEnum.Number,
-            msg: SchemaVerifier_1.FieldTypeEnum.String,
-            data: SchemaVerifier_1.FieldTypeEnum.AnyOptional,
-            signDataPrefetch: SchemaVerifier_1.FieldTypeEnum.AnyOptional
+            code: SchemaVerifier_js_1.FieldTypeEnum.Number,
+            msg: SchemaVerifier_js_1.FieldTypeEnum.String,
+            data: SchemaVerifier_js_1.FieldTypeEnum.AnyOptional,
+            signDataPrefetch: SchemaVerifier_js_1.FieldTypeEnum.AnyOptional
         }, timeout, abortSignal, streamRequest);
         return {
             signDataPrefetch: responseBodyPromise.then(responseBody => responseBody.signDataPrefetch),
@@ -570,11 +571,11 @@ class IntermediaryAPI {
                 responseBody.data,
             ])).then(([code, msg, data]) => {
                 if (code !== 20000) {
-                    throw RequestError_1.RequestError.parse(JSON.stringify({ code, msg, data }), 400);
+                    throw RequestError_js_1.RequestError.parse(JSON.stringify({ code, msg, data }), 400);
                 }
-                const result = (0, SchemaVerifier_1.verifySchema)(data, ToBTCLNPrepareExactInSchema);
+                const result = (0, SchemaVerifier_js_1.verifySchema)(data, ToBTCLNPrepareExactInSchema);
                 if (result == null)
-                    throw new RequestError_1.RequestError("Cannot parse the response with the expected schema", 200);
+                    throw new RequestError_js_1.RequestError("Cannot parse the response with the expected schema", 200);
                 return result;
             })
         };
@@ -601,6 +602,12 @@ class IntermediaryAPI {
                 await init.amountUtxos;
             if (init.amountFeeRate != null)
                 await init.amountFeeRate;
+            if (init.amountChangeValue != null)
+                await init.amountChangeValue;
+            if (init.amountChangeVSize != null)
+                await init.amountChangeVSize;
+            if (init.callerFee != null)
+                await init.callerFee;
             const amount = await init.amount;
             return amount.toString(10);
         })();
@@ -613,14 +620,19 @@ class IntermediaryAPI {
             gasAmount: init.gasAmount.toString(10),
             gasToken: init.gasToken,
             frontingFeeRate: init.frontingFeeRate.toString(10),
+            frontingFee: init.frontingFee.toString(10),
             callerFeeRate: init.callerFeeRate.then(val => val.toString(10)),
+            callerFee: init.callerFee.then(val => val.toString(10)),
             stickyAddress: init.stickyAddress,
             amountUtxos: init.amountUtxos,
-            amountFeeRate: init.amountFeeRate
+            amountFeeRate: init.amountFeeRate,
+            amountSkipDetrimental: init.amountSkipDetrimental,
+            amountChangeValue: init.amountChangeValue?.then(val => val?.toString(10)),
+            amountChangeVSize: init.amountChangeVSize
         }, {
-            code: SchemaVerifier_1.FieldTypeEnum.Number,
-            msg: SchemaVerifier_1.FieldTypeEnum.String,
-            data: SchemaVerifier_1.FieldTypeEnum.AnyOptional
+            code: SchemaVerifier_js_1.FieldTypeEnum.Number,
+            msg: SchemaVerifier_js_1.FieldTypeEnum.String,
+            data: SchemaVerifier_js_1.FieldTypeEnum.AnyOptional
         }, timeout, abortSignal, streamRequest);
         return responseBodyPromise.then((responseBody) => Promise.all([
             responseBody.code,
@@ -628,11 +640,11 @@ class IntermediaryAPI {
             responseBody.data,
         ])).then(([code, msg, data]) => {
             if (code !== 20000) {
-                throw RequestError_1.RequestError.parse(JSON.stringify({ code, msg, data }), 400);
+                throw RequestError_js_1.RequestError.parse(JSON.stringify({ code, msg, data }), 400);
             }
-            const result = (0, SchemaVerifier_1.verifySchema)(data, SpvFromBTCPrepareResponseSchema);
+            const result = (0, SchemaVerifier_js_1.verifySchema)(data, SpvFromBTCPrepareResponseSchema);
             if (result == null)
-                throw new RequestError_1.RequestError("Cannot parse the response with the expected schema", 200);
+                throw new RequestError_js_1.RequestError("Cannot parse the response with the expected schema", 200);
             return result;
         });
     }
@@ -653,9 +665,9 @@ class IntermediaryAPI {
             quoteId: init.quoteId,
             psbtHex: init.psbtHex
         }, {
-            code: SchemaVerifier_1.FieldTypeEnum.Number,
-            msg: SchemaVerifier_1.FieldTypeEnum.String,
-            data: SchemaVerifier_1.FieldTypeEnum.AnyOptional
+            code: SchemaVerifier_js_1.FieldTypeEnum.Number,
+            msg: SchemaVerifier_js_1.FieldTypeEnum.String,
+            data: SchemaVerifier_js_1.FieldTypeEnum.AnyOptional
         }, timeout, abortSignal, streamRequest);
         return responseBodyPromise.then((responseBody) => Promise.all([
             responseBody.code,
@@ -663,11 +675,11 @@ class IntermediaryAPI {
             responseBody.data,
         ])).then(([code, msg, data]) => {
             if (code !== 20000) {
-                throw RequestError_1.RequestError.parse(JSON.stringify({ code, msg, data }), 400);
+                throw RequestError_js_1.RequestError.parse(JSON.stringify({ code, msg, data }), 400);
             }
-            const result = (0, SchemaVerifier_1.verifySchema)(data, SpvFromBTCInitResponseSchema);
+            const result = (0, SchemaVerifier_js_1.verifySchema)(data, SpvFromBTCInitResponseSchema);
             if (result == null)
-                throw new RequestError_1.RequestError("Cannot parse the response with the expected schema", 200);
+                throw new RequestError_js_1.RequestError("Cannot parse the response with the expected schema", 200);
             return result;
         });
     }
@@ -681,7 +693,7 @@ class IntermediaryAPI {
      * @throws {RequestError} if non-200 http response is returned
      */
     async getTrustedInvoiceStatus(url, paymentHash, timeout, abortSignal) {
-        return (0, RetryUtils_1.tryWithRetries)(() => this.httpGet(url + "/getInvoiceStatus?paymentHash=" + encodeURIComponent(paymentHash), timeout, abortSignal), undefined, RequestError_1.RequestError, abortSignal);
+        return (0, RetryUtils_js_1.tryWithRetries)(() => this.httpGet(url + "/getInvoiceStatus?paymentHash=" + encodeURIComponent(paymentHash), timeout, abortSignal), undefined, RequestError_js_1.RequestError, abortSignal);
     }
     /**
      * Initiate a trusted swap from BTCLN to SC native currency, retries!
@@ -694,14 +706,14 @@ class IntermediaryAPI {
      * @throws {RequestError} If the response is non-200
      */
     async initTrustedFromBTCLN(chainIdentifier, baseUrl, init, timeout, abortSignal) {
-        const resp = await (0, RetryUtils_1.tryWithRetries)(() => this.httpGet(baseUrl + "/lnforgas/createInvoice" +
+        const resp = await (0, RetryUtils_js_1.tryWithRetries)(() => this.httpGet(baseUrl + "/lnforgas/createInvoice" +
             "?address=" + encodeURIComponent(init.address) +
             "&amount=" + encodeURIComponent(init.amount.toString(10)) +
             "&chain=" + encodeURIComponent(chainIdentifier) +
-            "&token=" + encodeURIComponent(init.token), timeout, abortSignal), undefined, RequestError_1.RequestError, abortSignal);
+            "&token=" + encodeURIComponent(init.token), timeout, abortSignal), undefined, RequestError_js_1.RequestError, abortSignal);
         if (resp.code !== 10000)
-            throw RequestError_1.RequestError.parse(JSON.stringify(resp), 400);
-        const res = (0, SchemaVerifier_1.verifySchema)(resp.data, TrustedFromBTCLNResponseSchema);
+            throw RequestError_js_1.RequestError.parse(JSON.stringify(resp), 400);
+        const res = (0, SchemaVerifier_js_1.verifySchema)(resp.data, TrustedFromBTCLNResponseSchema);
         if (res == null)
             throw new Error("Invalid response returned from LP");
         return res;
@@ -717,7 +729,7 @@ class IntermediaryAPI {
      * @throws {RequestError} if non-200 http response is returned
      */
     async getTrustedAddressStatus(url, paymentHash, sequence, timeout, abortSignal) {
-        return (0, RetryUtils_1.tryWithRetries)(() => this.httpGet(url + "/getAddressStatus?paymentHash=" + encodeURIComponent(paymentHash) + "&sequence=" + encodeURIComponent(sequence.toString(10)), timeout, abortSignal), undefined, RequestError_1.RequestError, abortSignal);
+        return (0, RetryUtils_js_1.tryWithRetries)(() => this.httpGet(url + "/getAddressStatus?paymentHash=" + encodeURIComponent(paymentHash) + "&sequence=" + encodeURIComponent(sequence.toString(10)), timeout, abortSignal), undefined, RequestError_js_1.RequestError, abortSignal);
     }
     /**
      * Sets the refund address for an on-chain gas swap
@@ -731,10 +743,10 @@ class IntermediaryAPI {
      * @throws {RequestError} if non-200 http response is returned
      */
     async setTrustedRefundAddress(url, paymentHash, sequence, refundAddress, timeout, abortSignal) {
-        return (0, RetryUtils_1.tryWithRetries)(() => this.httpGet(url + "/setRefundAddress" +
+        return (0, RetryUtils_js_1.tryWithRetries)(() => this.httpGet(url + "/setRefundAddress" +
             "?paymentHash=" + encodeURIComponent(paymentHash) +
             "&sequence=" + encodeURIComponent(sequence.toString(10)) +
-            "&refundAddress=" + encodeURIComponent(refundAddress), timeout, abortSignal), undefined, RequestError_1.RequestError, abortSignal);
+            "&refundAddress=" + encodeURIComponent(refundAddress), timeout, abortSignal), undefined, RequestError_js_1.RequestError, abortSignal);
     }
     /**
      * Initiate a trusted swap from BTC to SC native currency, retries!
@@ -747,15 +759,15 @@ class IntermediaryAPI {
      * @throws {RequestError} If the response is non-200
      */
     async initTrustedFromBTC(chainIdentifier, baseUrl, init, timeout, abortSignal) {
-        const resp = await (0, RetryUtils_1.tryWithRetries)(() => this.httpGet(baseUrl + "/frombtc_trusted/getAddress?chain=" + encodeURIComponent(chainIdentifier) +
+        const resp = await (0, RetryUtils_js_1.tryWithRetries)(() => this.httpGet(baseUrl + "/frombtc_trusted/getAddress?chain=" + encodeURIComponent(chainIdentifier) +
             "&address=" + encodeURIComponent(init.address) +
             "&amount=" + encodeURIComponent(init.amount.toString(10)) +
             (init.refundAddress == null ? "" : "&refundAddress=" + encodeURIComponent(init.refundAddress)) +
             "&exactIn=true" +
-            "&token=" + encodeURIComponent(init.token), timeout, abortSignal), undefined, RequestError_1.RequestError, abortSignal);
+            "&token=" + encodeURIComponent(init.token), timeout, abortSignal), undefined, RequestError_js_1.RequestError, abortSignal);
         if (resp.code !== 10000)
-            throw RequestError_1.RequestError.parse(JSON.stringify(resp), 400);
-        const res = (0, SchemaVerifier_1.verifySchema)(resp.data, TrustedFromBTCResponseSchema);
+            throw RequestError_js_1.RequestError.parse(JSON.stringify(resp), 400);
+        const res = (0, SchemaVerifier_js_1.verifySchema)(resp.data, TrustedFromBTCResponseSchema);
         if (res == null)
             throw new Error("Invalid response returned from LP");
         return res;

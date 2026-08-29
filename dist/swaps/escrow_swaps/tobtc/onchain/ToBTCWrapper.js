@@ -1,25 +1,25 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ToBTCWrapper = void 0;
-const ToBTCSwap_1 = require("./ToBTCSwap");
-const IToBTCWrapper_1 = require("../IToBTCWrapper");
+const ToBTCSwap_js_1 = require("./ToBTCSwap.js");
+const IToBTCWrapper_js_1 = require("../IToBTCWrapper.js");
 const base_1 = require("@atomiqlabs/base");
-const Intermediary_1 = require("../../../../intermediaries/Intermediary");
-const UserError_1 = require("../../../../errors/UserError");
-const IntermediaryError_1 = require("../../../../errors/IntermediaryError");
-const SwapType_1 = require("../../../../enums/SwapType");
-const Utils_1 = require("../../../../utils/Utils");
-const BitcoinUtils_1 = require("../../../../utils/BitcoinUtils");
-const RequestError_1 = require("../../../../errors/RequestError");
+const Intermediary_js_1 = require("../../../../intermediaries/Intermediary.js");
+const UserError_js_1 = require("../../../../errors/UserError.js");
+const IntermediaryError_js_1 = require("../../../../errors/IntermediaryError.js");
+const SwapType_js_1 = require("../../../../enums/SwapType.js");
+const Utils_js_1 = require("../../../../utils/Utils.js");
+const BitcoinUtils_js_1 = require("../../../../utils/BitcoinUtils.js");
+const RequestError_js_1 = require("../../../../errors/RequestError.js");
 const utils_1 = require("@scure/btc-signer/utils");
-const RetryUtils_1 = require("../../../../utils/RetryUtils");
-const IToBTCSwap_1 = require("../IToBTCSwap");
+const RetryUtils_js_1 = require("../../../../utils/RetryUtils.js");
+const IToBTCSwap_js_1 = require("../IToBTCSwap.js");
 /**
  * Escrow based (PrTLC) swap for Smart chains -> Bitcoin
  *
  * @category Swaps/Smart chain → Bitcoin
  */
-class ToBTCWrapper extends IToBTCWrapper_1.IToBTCWrapper {
+class ToBTCWrapper extends IToBTCWrapper_js_1.IToBTCWrapper {
     /**
      * @param chainIdentifier
      * @param unifiedStorage Storage interface for the current environment
@@ -43,11 +43,11 @@ class ToBTCWrapper extends IToBTCWrapper_1.IToBTCWrapper {
             maxExpectedOnchainSendSafetyFactor: options?.maxExpectedOnchainSendSafetyFactor ?? 4,
             maxExpectedOnchainSendGracePeriodBlocks: options?.maxExpectedOnchainSendGracePeriodBlocks ?? 12,
         }, versionedContracts, events);
-        this.TYPE = SwapType_1.SwapType.TO_BTC;
+        this.TYPE = SwapType_js_1.SwapType.TO_BTC;
         /**
          * @internal
          */
-        this._swapDeserializer = ToBTCSwap_1.ToBTCSwap;
+        this._swapDeserializer = ToBTCSwap_js_1.ToBTCSwap;
         this._btcRpc = btcRpc;
     }
     /**
@@ -59,7 +59,7 @@ class ToBTCWrapper extends IToBTCWrapper_1.IToBTCWrapper {
      */
     getRandomNonce() {
         const firstPart = BigInt(Math.floor((Date.now() / 1000)) - 700000000);
-        return (firstPart << 24n) | base_1.BigIntBufferUtils.fromBuffer((0, Utils_1.randomBytes)(3));
+        return (firstPart << 24n) | base_1.BigIntBufferUtils.fromBuffer((0, Utils_js_1.randomBytes)(3));
     }
     /**
      * Converts bitcoin address to its corresponding output script
@@ -73,10 +73,10 @@ class ToBTCWrapper extends IToBTCWrapper_1.IToBTCWrapper {
      */
     btcAddressToOutputScript(addr) {
         try {
-            return (0, BitcoinUtils_1.toOutputScript)(this._options.bitcoinNetwork, addr);
+            return (0, BitcoinUtils_js_1.toOutputScript)(this._options.bitcoinNetwork, addr);
         }
         catch (e) {
-            throw new UserError_1.UserError("Invalid address specified");
+            throw new UserError_js_1.UserError("Invalid address specified");
         }
     }
     /**
@@ -96,14 +96,14 @@ class ToBTCWrapper extends IToBTCWrapper_1.IToBTCWrapper {
      */
     verifyReturnedData(signer, resp, amountData, lp, options, data, hash) {
         if (resp.totalFee !== (resp.swapFee + resp.networkFee))
-            throw new IntermediaryError_1.IntermediaryError("Invalid totalFee returned");
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid totalFee returned");
         if (amountData.exactIn) {
             if (resp.total !== amountData.amount)
-                throw new IntermediaryError_1.IntermediaryError("Invalid total returned");
+                throw new IntermediaryError_js_1.IntermediaryError("Invalid total returned");
         }
         else {
             if (resp.amount !== amountData.amount)
-                throw new IntermediaryError_1.IntermediaryError("Invalid amount returned");
+                throw new IntermediaryError_js_1.IntermediaryError("Invalid amount returned");
         }
         const maxAllowedBlockDelta = BigInt(options.confirmations +
             options.confirmationTarget +
@@ -114,7 +114,7 @@ class ToBTCWrapper extends IToBTCWrapper_1.IToBTCWrapper {
         const currentTimestamp = BigInt(Math.floor(Date.now() / 1000));
         const maxAllowedExpiryTimestamp = currentTimestamp + maxAllowedExpiryDelta;
         if (data.getExpiry() > maxAllowedExpiryTimestamp) {
-            throw new IntermediaryError_1.IntermediaryError("Expiry time returned too high!");
+            throw new IntermediaryError_js_1.IntermediaryError("Expiry time returned too high!");
         }
         if (data.getAmount() !== resp.total ||
             data.getClaimHash() !== hash ||
@@ -124,7 +124,7 @@ class ToBTCWrapper extends IToBTCWrapper_1.IToBTCWrapper {
             !data.isClaimer(lp.getAddress(this.chainIdentifier)) ||
             !data.isOfferer(signer) ||
             data.getTotalDeposit() !== 0n) {
-            throw new IntermediaryError_1.IntermediaryError("Invalid data returned");
+            throw new IntermediaryError_js_1.IntermediaryError("Invalid data returned");
         }
     }
     /**
@@ -146,19 +146,19 @@ class ToBTCWrapper extends IToBTCWrapper_1.IToBTCWrapper {
             confirmationTarget: options?.confirmationTarget ?? 3,
             confirmations: options?.confirmations ?? 2
         };
-        const lpVersions = Intermediary_1.Intermediary.getContractVersionsForLps(this.chainIdentifier, lps);
+        const lpVersions = Intermediary_js_1.Intermediary.getContractVersionsForLps(this.chainIdentifier, lps);
         const nonce = this.getRandomNonce();
         const outputScript = this.btcAddressToOutputScript(recipient);
         const _hash = !amountData.exactIn ?
-            (0, Utils_1.mapArrayToObject)(lpVersions, (contractVersion) => {
+            (0, Utils_js_1.mapArrayToObject)(lpVersions, (contractVersion) => {
                 return this._contract(contractVersion).getHashForOnchain(outputScript, amountData.amount, _options.confirmations, nonce).toString("hex");
             }) :
             undefined;
-        const _abortController = (0, Utils_1.extendAbortController)(abortSignal);
+        const _abortController = (0, Utils_js_1.extendAbortController)(abortSignal);
         const pricePreFetchPromise = this.preFetchPrice(amountData, _abortController.signal);
         const usdPricePrefetchPromise = this.preFetchUsdPrice(_abortController.signal);
         const feeRatePromise = this.preFetchFeeRate(signer, amountData, _hash, _abortController, lpVersions);
-        const _signDataPromise = (0, Utils_1.mapArrayToObject)(lpVersions, (contractVersion) => {
+        const _signDataPromise = (0, Utils_js_1.mapArrayToObject)(lpVersions, (contractVersion) => {
             return this._contract(contractVersion).preFetchBlockDataForSignatures == null ?
                 this.preFetchSignData(Promise.resolve(true), contractVersion) :
                 undefined;
@@ -167,13 +167,13 @@ class ToBTCWrapper extends IToBTCWrapper_1.IToBTCWrapper {
             return {
                 intermediary: lp,
                 quote: (async () => {
-                    if (lp.services[SwapType_1.SwapType.TO_BTC] == null)
+                    if (lp.services[SwapType_js_1.SwapType.TO_BTC] == null)
                         throw new Error("LP service for processing to btc swaps not found!");
                     const version = lp.getContractVersion(this.chainIdentifier);
-                    const abortController = (0, Utils_1.extendAbortController)(_abortController.signal);
+                    const abortController = (0, Utils_js_1.extendAbortController)(_abortController.signal);
                     const reputationPromise = this.preFetchIntermediaryReputation(amountData, lp, abortController, version);
                     try {
-                        const { signDataPromise, resp } = await (0, RetryUtils_1.tryWithRetries)(async (retryCount) => {
+                        const { signDataPromise, resp } = await (0, RetryUtils_js_1.tryWithRetries)(async (retryCount) => {
                             const { signDataPrefetch, response } = this._lpApi.initToBTC(this.chainIdentifier, lp.url, {
                                 btcAddress: recipient,
                                 amount: amountData.amount,
@@ -183,7 +183,7 @@ class ToBTCWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                                 token: amountData.token,
                                 offerer: signer,
                                 exactIn: amountData.exactIn,
-                                feeRate: (0, Utils_1.throwIfUndefined)(feeRatePromise[version], "Network fee rate pre-fetch failed!"),
+                                feeRate: (0, Utils_js_1.throwIfUndefined)(feeRatePromise[version], "Network fee rate pre-fetch failed!"),
                                 additionalParams
                             }, this._options.postRequestTimeout, abortController.signal, retryCount > 0 ? false : undefined);
                             let signDataPromise = _signDataPromise[version];
@@ -196,7 +196,7 @@ class ToBTCWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                                 signDataPromise,
                                 resp: await response
                             };
-                        }, undefined, RequestError_1.RequestError, abortController.signal);
+                        }, undefined, RequestError_js_1.RequestError, abortController.signal);
                         let hash = _hash?.[version] ?? this._contract(version).getHashForOnchain(outputScript, resp.amount, _options.confirmations, nonce).toString("hex");
                         const data = new (this._swapDataDeserializer(version))(resp.data);
                         data.setOfferer(signer);
@@ -205,14 +205,14 @@ class ToBTCWrapper extends IToBTCWrapper_1.IToBTCWrapper {
                         const networkFeeBtc = resp.networkFee * resp.amount / inputWithoutFees;
                         this.verifyReturnedData(signer, resp, amountData, lp, _options, data, hash);
                         const [pricingInfo, signatureExpiry, reputation] = await Promise.all([
-                            this.verifyReturnedPrice(lp.services[SwapType_1.SwapType.TO_BTC], true, resp.amount, data.getAmount(), amountData.token, { networkFee: resp.networkFee, swapFeeBtc }, pricePreFetchPromise, usdPricePrefetchPromise, abortController.signal),
+                            this.verifyReturnedPrice(lp.services[SwapType_js_1.SwapType.TO_BTC], true, resp.amount, data.getAmount(), amountData.token, { networkFee: resp.networkFee, swapFeeBtc }, pricePreFetchPromise, usdPricePrefetchPromise, abortController.signal),
                             this.verifyReturnedSignature(signer, data, resp, feeRatePromise[version], signDataPromise, version, abortController.signal),
                             reputationPromise
                         ]);
                         abortController.signal.throwIfAborted();
                         if (reputation != null)
                             lp.reputation[amountData.token.toString()] = reputation;
-                        const quote = new ToBTCSwap_1.ToBTCSwap(this, {
+                        const quote = new ToBTCSwap_js_1.ToBTCSwap(this, {
                             pricingInfo,
                             url: lp.url,
                             expiry: signatureExpiry,
@@ -272,12 +272,12 @@ class ToBTCWrapper extends IToBTCWrapper_1.IToBTCWrapper {
             exactIn: true,
             contractVersion
         };
-        const swap = new ToBTCSwap_1.ToBTCSwap(this, swapInit);
+        const swap = new ToBTCSwap_js_1.ToBTCSwap(this, swapInit);
         swap._commitTxId = await init.getInitTxId();
         const blockData = await init.getTxBlock();
         swap.createdAt = blockData.blockTime * 1000;
         swap._setInitiated();
-        swap._state = IToBTCSwap_1.ToBTCSwapState.COMMITED;
+        swap._state = IToBTCSwap_js_1.ToBTCSwapState.COMMITED;
         await swap._sync(false, false, state);
         await swap._save();
         return swap;

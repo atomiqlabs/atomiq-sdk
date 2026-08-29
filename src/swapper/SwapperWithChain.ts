@@ -1,39 +1,41 @@
-import {IntermediaryDiscovery, SwapBounds} from "../intermediaries/IntermediaryDiscovery";
-import {SwapType} from "../enums/SwapType";
-import {LnForGasSwap} from "../swaps/trusted/ln/LnForGasSwap";
-import {ISwap} from "../swaps/ISwap";
-import {IToBTCSwap} from "../swaps/escrow_swaps/tobtc/IToBTCSwap";
-import {ChainIds, MultiChain, SupportsSwapType, Swapper} from "./Swapper";
-import {FromBTCLNSwap} from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap";
-import {FromBTCSwap} from "../swaps/escrow_swaps/frombtc/onchain/FromBTCSwap";
-import {ToBTCLNSwap} from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNSwap";
-import {ToBTCSwap} from "../swaps/escrow_swaps/tobtc/onchain/ToBTCSwap";
-import {SwapPriceWithChain} from "../prices/SwapPriceWithChain";
+import {IntermediaryDiscovery, SwapBounds} from "../intermediaries/IntermediaryDiscovery.js";
+import {SwapType} from "../enums/SwapType.js";
+import {LnForGasSwap} from "../swaps/trusted/ln/LnForGasSwap.js";
+import {ISwap} from "../swaps/ISwap.js";
+import {IToBTCSwap} from "../swaps/escrow_swaps/tobtc/IToBTCSwap.js";
+import {ChainIds, MultiChain, SupportsSwapType, Swapper} from "./Swapper.js";
+import {FromBTCLNSwap} from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNSwap.js";
+import {FromBTCSwap} from "../swaps/escrow_swaps/frombtc/onchain/FromBTCSwap.js";
+import {ToBTCLNSwap} from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNSwap.js";
+import {ToBTCSwap} from "../swaps/escrow_swaps/tobtc/onchain/ToBTCSwap.js";
+import {SwapPriceWithChain} from "../prices/SwapPriceWithChain.js";
 import {BTC_NETWORK} from "@scure/btc-signer/utils";
-import {ToBTCOptions} from "../swaps/escrow_swaps/tobtc/onchain/ToBTCWrapper";
-import {ToBTCLNOptions} from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNWrapper";
-import {FromBTCOptions} from "../swaps/escrow_swaps/frombtc/onchain/FromBTCWrapper";
-import {FromBTCLNOptions} from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNWrapper";
-import {SwapperUtils} from "./SwapperUtils";
-import {SpvFromBTCOptions} from "../swaps/spv_swaps/SpvFromBTCWrapper";
-import {SpvFromBTCSwap} from "../swaps/spv_swaps/SpvFromBTCSwap";
-import {OnchainForGasSwap} from "../swaps/trusted/onchain/OnchainForGasSwap";
-import {SwapperWithSigner} from "./SwapperWithSigner";
-import {FromBTCLNAutoOptions} from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoWrapper";
-import {FromBTCLNAutoSwap} from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap";
-import {SwapAmountType} from "../enums/SwapAmountType";
-import {UserError} from "../errors/UserError";
-import {IClaimableSwap} from "../swaps/IClaimableSwap";
-import {TokenAmount} from "../types/TokenAmount";
-import {BitcoinTokens, BtcToken, isSCToken, SCToken, Token} from "../types/Token";
-import {LNURLWithdraw} from "../types/lnurl/LNURLWithdraw";
-import {LNURLPay} from "../types/lnurl/LNURLPay";
+import {ToBTCOptions} from "../swaps/escrow_swaps/tobtc/onchain/ToBTCWrapper.js";
+import {ToBTCLNOptions} from "../swaps/escrow_swaps/tobtc/ln/ToBTCLNWrapper.js";
+import {FromBTCOptions} from "../swaps/escrow_swaps/frombtc/onchain/FromBTCWrapper.js";
+import {FromBTCLNOptions} from "../swaps/escrow_swaps/frombtc/ln/FromBTCLNWrapper.js";
+import {SwapperUtils} from "./SwapperUtils.js";
+import {SpvFromBTCOptions} from "../swaps/spv_swaps/SpvFromBTCWrapper.js";
+import {SpvFromBTCSwap} from "../swaps/spv_swaps/SpvFromBTCSwap.js";
+import {OnchainForGasSwap} from "../swaps/trusted/onchain/OnchainForGasSwap.js";
+import {SwapperWithSigner} from "./SwapperWithSigner.js";
+import {FromBTCLNAutoOptions} from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoWrapper.js";
+import {FromBTCLNAutoSwap} from "../swaps/escrow_swaps/frombtc/ln_auto/FromBTCLNAutoSwap.js";
+import {SwapAmountType} from "../enums/SwapAmountType.js";
+import {UserError} from "../errors/UserError.js";
+import {IClaimableSwap} from "../swaps/IClaimableSwap.js";
+import {TokenAmount} from "../types/TokenAmount.js";
+import {BitcoinTokens, BtcToken, isSCToken, SCToken, Token} from "../types/Token.js";
+import {LNURLWithdraw} from "../types/lnurl/LNURLWithdraw.js";
+import {LNURLPay} from "../types/lnurl/LNURLPay.js";
 import {MempoolApi, MempoolBitcoinRpc} from "@atomiqlabs/btc-mempool";
-import {LightningInvoiceCreateService} from "../types/wallets/LightningInvoiceCreateService";
+import {LightningInvoiceCreateService} from "../types/wallets/LightningInvoiceCreateService.js";
 import {Messenger} from "@atomiqlabs/base";
-import {Intermediary} from "../intermediaries/Intermediary";
-import {SwapTypeMapping} from "../utils/SwapUtils";
-import {SwapSide} from "../enums/SwapSide";
+import {Intermediary} from "../intermediaries/Intermediary.js";
+import {SwapTypeMapping} from "../utils/SwapUtils.js";
+import {IBitcoinWallet} from "../bitcoin/wallet/IBitcoinWallet.js";
+import {MinimalBitcoinWalletInterface} from "../types/wallets/MinimalBitcoinWalletInterface.js";
+import {SwapSide} from "../enums/SwapSide.js";
 
 /**
  * Chain-specific wrapper around Swapper for a particular blockchain
@@ -391,7 +393,7 @@ export class SwapperWithChain<T extends MultiChain, ChainIdentifier extends Chai
     /**
      * @internal
      */
-    swap(srcToken: BtcToken<false> | "BTC" | "BITCOIN-BTC", dstToken: SCToken<ChainIdentifier>, amount: bigint | string, exactIn: boolean | SwapAmountType, src: undefined | string, dstSmartchainWallet: string, options?: (SupportsSwapType<T[ChainIdentifier], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCOptions : FromBTCOptions)): Promise<(SupportsSwapType<T[ChainIdentifier], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCSwap<T[ChainIdentifier]> : FromBTCSwap<T[ChainIdentifier]>)>;
+    swap(srcToken: BtcToken<false> | "BTC" | "BITCOIN-BTC", dstToken: SCToken<ChainIdentifier>, amount: bigint | string | undefined, exactIn: boolean | SwapAmountType, src: undefined | string | IBitcoinWallet | MinimalBitcoinWalletInterface, dstSmartchainWallet: string, options?: (SupportsSwapType<T[ChainIdentifier], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCOptions : FromBTCOptions)): Promise<(SupportsSwapType<T[ChainIdentifier], SwapType.SPV_VAULT_FROM_BTC> extends true ? SpvFromBTCSwap<T[ChainIdentifier]> : FromBTCSwap<T[ChainIdentifier]>)>;
     /**
      * @internal
      */
@@ -417,7 +419,7 @@ export class SwapperWithChain<T extends MultiChain, ChainIdentifier extends Chai
      * @param dst Destination smart chain address, bitcoin on-chain address, lightning invoice, LNURL-pay
      * @param options Options for the swap
      */
-    swap(srcToken: Token<ChainIdentifier> | string, dstToken: Token<ChainIdentifier> | string, amount: bigint | string | undefined, exactIn: boolean | SwapAmountType, src: undefined | string | LNURLWithdraw, dst: string | LNURLPay | LightningInvoiceCreateService, options?: FromBTCLNOptions | SpvFromBTCOptions | FromBTCOptions | ToBTCOptions | (ToBTCLNOptions & {comment?: string}) | FromBTCLNAutoOptions): Promise<ISwap<T[ChainIdentifier]>>;
+    swap(srcToken: Token<ChainIdentifier> | string, dstToken: Token<ChainIdentifier> | string, amount: bigint | string | undefined, exactIn: boolean | SwapAmountType, src: undefined | string | LNURLWithdraw | IBitcoinWallet | MinimalBitcoinWalletInterface, dst: string | LNURLPay | LightningInvoiceCreateService, options?: FromBTCLNOptions | SpvFromBTCOptions | FromBTCOptions | ToBTCOptions | (ToBTCLNOptions & {comment?: string}) | FromBTCLNAutoOptions): Promise<ISwap<T[ChainIdentifier]>>;
     /**
      * Creates a swap from srcToken to dstToken, of a specific token amount, either specifying input amount (exactIn=true)
      *  or output amount (exactIn=false), NOTE: For regular SmartChain -> BTC-LN (lightning) swaps the passed amount is ignored and
@@ -436,7 +438,7 @@ export class SwapperWithChain<T extends MultiChain, ChainIdentifier extends Chai
         dstToken: Token<ChainIdentifier> | string,
         amount: bigint | string | undefined,
         exactIn: boolean | SwapAmountType,
-        src: undefined | string | LNURLWithdraw,
+        src: undefined | string | LNURLWithdraw | IBitcoinWallet | MinimalBitcoinWalletInterface,
         dst: string |  LNURLPay | LightningInvoiceCreateService,
         options?: FromBTCLNOptions | SpvFromBTCOptions | FromBTCOptions | ToBTCOptions | ToBTCLNOptions | FromBTCLNAutoOptions
     ): Promise<ISwap<T[ChainIdentifier]>> {

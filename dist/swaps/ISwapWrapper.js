@@ -3,10 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ISwapWrapper = exports.DEFAULT_MAX_PARALLEL_SWAP_SYNCS = exports.DEFAULT_MAX_PARALLEL_SWAP_TICKS = void 0;
 const base_1 = require("@atomiqlabs/base");
 const events_1 = require("events");
-const IntermediaryError_1 = require("../errors/IntermediaryError");
-const Logger_1 = require("../utils/Logger");
-const TokenUtils_1 = require("../utils/TokenUtils");
-const UserError_1 = require("../errors/UserError");
+const IntermediaryError_js_1 = require("../errors/IntermediaryError.js");
+const Logger_js_1 = require("../utils/Logger.js");
+const TokenUtils_js_1 = require("../utils/TokenUtils.js");
+const UserError_js_1 = require("../errors/UserError.js");
 exports.DEFAULT_MAX_PARALLEL_SWAP_TICKS = 50;
 exports.DEFAULT_MAX_PARALLEL_SWAP_SYNCS = 50;
 /**
@@ -20,7 +20,7 @@ class ISwapWrapper {
          * Logger instance
          * @internal
          */
-        this.logger = (0, Logger_1.getLogger)(this.constructor.name + ": ");
+        this.logger = (0, Logger_js_1.getLogger)(this.constructor.name + ": ");
         /**
          * In-memory mapping of pending (not initiated) swaps, utilizing weak references to automatically
          *  free memory when swaps are dereferenced in not initiated state
@@ -57,9 +57,9 @@ class ISwapWrapper {
     parseGasAmount(gasAmount) {
         let result;
         if (typeof (gasAmount) === "string") {
-            result = (0, TokenUtils_1.fromHumanReadableString)(gasAmount, this._getNativeToken());
+            result = (0, TokenUtils_js_1.fromHumanReadableString)(gasAmount, this._getNativeToken());
             if (result == null)
-                throw new UserError_1.UserError("Invalid `gasAmount` option provided, not a numerical string!");
+                throw new UserError_js_1.UserError("Invalid `gasAmount` option provided, not a numerical string!");
         }
         else {
             result = gasAmount;
@@ -125,7 +125,7 @@ class ISwapWrapper {
             })
         ]);
         if (!isValidAmount.isValid)
-            throw new IntermediaryError_1.IntermediaryError("Fee too high");
+            throw new IntermediaryError_js_1.IntermediaryError("Fee too high");
         isValidAmount.realPriceUsdPerBitcoin = usdPrice;
         return isValidAmount;
     }

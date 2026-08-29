@@ -1,22 +1,25 @@
-import {ISwapWrapper, ISwapWrapperOptions, SwapTypeDefinition, WrapperCtorTokens} from "../ISwapWrapper";
+import {ISwapWrapper, ISwapWrapperOptions, SwapTypeDefinition, WrapperCtorTokens} from "../ISwapWrapper.js";
 import {
     ChainType,
     ClaimEvent,
     InitializeEvent,
+    isClaimEvent,
+    isInitializeEvent,
+    isRefundEvent,
     RefundEvent,
     SignatureData,
     SwapCommitState,
     SwapEvent
 } from "@atomiqlabs/base";
-import {ISwap} from "../ISwap";
-import {UnifiedSwapStorage} from "../../storage/UnifiedSwapStorage";
-import {UnifiedSwapEventListener} from "../../events/UnifiedSwapEventListener";
-import {ISwapPrice} from "../../prices/abstract/ISwapPrice";
+import {ISwap} from "../ISwap.js";
+import {UnifiedSwapStorage} from "../../storage/UnifiedSwapStorage.js";
+import {UnifiedSwapEventListener} from "../../events/UnifiedSwapEventListener.js";
+import {ISwapPrice} from "../../prices/abstract/ISwapPrice.js";
 import {EventEmitter} from "events";
-import {SwapType} from "../../enums/SwapType";
-import {IEscrowSwap} from "./IEscrowSwap";
-import {Intermediary} from "../../intermediaries/Intermediary";
-import {IntermediaryAPI} from "../../intermediaries/apis/IntermediaryAPI";
+import {SwapType} from "../../enums/SwapType.js";
+import {IEscrowSwap} from "./IEscrowSwap.js";
+import {Intermediary} from "../../intermediaries/Intermediary.js";
+import {IntermediaryAPI} from "../../intermediaries/apis/IntermediaryAPI.js";
 
 export type IEscrowSwapDefinition<T extends ChainType, W extends IEscrowSwapWrapper<T, any>, S extends IEscrowSwap<T>> = SwapTypeDefinition<T, W, S>;
 
@@ -173,21 +176,21 @@ export abstract class IEscrowSwapWrapper<
         if(swap==null) return;
 
         let swapChanged: boolean = false;
-        if(event instanceof InitializeEvent) {
+        if(isInitializeEvent<T["Data"]>(event)) {
             swapChanged = await this.processEventInitialize(swap, event);
             if(event.meta?.txId!=null && swap._commitTxId!==event.meta.txId) {
                 swap._commitTxId = event.meta.txId;
                 swapChanged ||= true;
             }
         }
-        if(event instanceof ClaimEvent) {
+        if(isClaimEvent<T["Data"]>(event)) {
             swapChanged = await this.processEventClaim(swap, event);
             if(event.meta?.txId!=null && swap._claimTxId!==event.meta.txId) {
                 swap._claimTxId = event.meta.txId;
                 swapChanged ||= true;
             }
         }
-        if(event instanceof RefundEvent) {
+        if(isRefundEvent<T["Data"]>(event)) {
             swapChanged = await this.processEventRefund(swap, event);
             if(event.meta?.txId!=null && swap._refundTxId!==event.meta.txId) {
                 swap._refundTxId = event.meta.txId;

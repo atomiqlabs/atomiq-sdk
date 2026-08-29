@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createApiEndpoint = exports.toApiLNURL = exports.toApiToken = exports.toApiAmount = void 0;
-const Token_1 = require("../types/Token");
-const TokenAmount_1 = require("../types/TokenAmount");
-const ApiParser_1 = require("./ApiParser");
+const Token_js_1 = require("../types/Token.js");
+const TokenAmount_js_1 = require("../types/TokenAmount.js");
+const ApiParser_js_1 = require("./ApiParser.js");
 /**
  * Converts a TokenAmount to the serializable ApiAmount format
  *
@@ -44,8 +44,8 @@ function toApiLNURL(lnurl, swapper) {
     if (lnurl.type === "pay") {
         return {
             type: "pay",
-            min: toApiAmount((0, TokenAmount_1.toTokenAmount)(lnurl.min, Token_1.BitcoinTokens.BTCLN, swapper.prices)),
-            max: toApiAmount((0, TokenAmount_1.toTokenAmount)(lnurl.max, Token_1.BitcoinTokens.BTCLN, swapper.prices)),
+            min: toApiAmount((0, TokenAmount_js_1.toTokenAmount)(lnurl.min, Token_js_1.BitcoinTokens.BTCLN, swapper.prices)),
+            max: toApiAmount((0, TokenAmount_js_1.toTokenAmount)(lnurl.max, Token_js_1.BitcoinTokens.BTCLN, swapper.prices)),
             commentMaxLength: lnurl.commentMaxLength,
             ...(lnurl.shortDescription != null ? { shortDescription: lnurl.shortDescription } : {}),
             ...(lnurl.longDescription != null ? { longDescription: lnurl.longDescription } : {}),
@@ -55,8 +55,8 @@ function toApiLNURL(lnurl, swapper) {
     }
     return {
         type: "withdraw",
-        min: toApiAmount((0, TokenAmount_1.toTokenAmount)(lnurl.min, Token_1.BitcoinTokens.BTCLN, swapper.prices)),
-        max: toApiAmount((0, TokenAmount_1.toTokenAmount)(lnurl.max, Token_1.BitcoinTokens.BTCLN, swapper.prices)),
+        min: toApiAmount((0, TokenAmount_js_1.toTokenAmount)(lnurl.min, Token_js_1.BitcoinTokens.BTCLN, swapper.prices)),
+        max: toApiAmount((0, TokenAmount_js_1.toTokenAmount)(lnurl.max, Token_js_1.BitcoinTokens.BTCLN, swapper.prices)),
         params: lnurl.params
     };
 }
@@ -68,7 +68,7 @@ function createApiEndpoint(type, description, callback, inputSchema) {
         callback,
         inputSchema,
         callbackRaw: (input, abortSignal) => {
-            return callback((0, ApiParser_1.parseApiInput)(inputSchema, input), abortSignal);
+            return callback((0, ApiParser_js_1.parseApiInput)(inputSchema, input), abortSignal);
         }
     };
 }

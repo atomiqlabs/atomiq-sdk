@@ -1,6 +1,6 @@
-import {RequestError} from "../errors/RequestError";
+import {RequestError} from "../errors/RequestError.js";
 
-import {timeoutSignal} from "../utils/TimeoutUtils";
+import {timeoutSignal} from "../utils/TimeoutUtils.js";
 
 /**
  * Mimics fetch API byt adds a timeout to the request

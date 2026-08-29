@@ -1,0 +1,260 @@
+import { isBytes, PubT, validatePubkey } from "@scure/btc-signer/utils";
+import { Buffer } from "buffer";
+import { Address, OutScript, p2tr, p2wpkh, Transaction } from "@scure/btc-signer";
+import { randomBytes } from "./Utils.js";
+export function fromOutputScript(network, outputScriptHex) {
+    return Address(network).encode(OutScript.decode(Buffer.from(outputScriptHex, "hex")));
+}
+export function toOutputScript(network, address) {
+    const outputScript = Address(network).decode(address);
+    switch (outputScript.type) {
+        case "pkh":
+        case "sh":
+        case "wpkh":
+        case "wsh":
+            return Buffer.from(OutScript.encode({
+                type: outputScript.type,
+                hash: outputScript.hash
+            }));
+        case "tr":
+            try {
+                return Buffer.from(OutScript.encode({
+                    type: "tr",
+                    pubkey: outputScript.pubkey
+                }));
+            }
+            catch (e) {
+                let msg = "";
+                if (e.name != null)
+                    msg += ": " + e.name;
+                if (e.message != null)
+                    msg += ": " + e.message;
+                if (typeof (e) === "string")
+                    msg += ": " + e;
+                msg += ", isBytes: " + isBytes(outputScript.pubkey);
+                try {
+                    validatePubkey(outputScript.pubkey, PubT.schnorr);
+                    msg += ", validatePubkey: success";
+                }
+                catch (e) {
+                    msg += ", validatePubkeyError: ";
+                    if (e.name != null)
+                        msg += ": " + e.name;
+                    if (e.message != null)
+                        msg += ": " + e.message;
+                    if (typeof (e) === "string")
+                        msg += ": " + e;
+                }
+                throw new Error(msg);
+            }
+    }
+    throw new Error(`Unrecognized output script type: ${outputScript.type}`);
+}
+export function toCoinselectAddressType(outputScriptOrNetwork, address) {
+    const data = address == null
+        ? OutScript.decode(outputScriptOrNetwork)
+        : Address(outputScriptOrNetwork).decode(address);
+    switch (data.type) {
+        case "pkh":
+            return "p2pkh";
+        case "sh":
+            return "p2sh-p2wpkh";
+        case "wpkh":
+            return "p2wpkh";
+        case "wsh":
+            return "p2wsh";
+        case "tr":
+            return "p2tr";
+    }
+    throw new Error("Unrecognized address type!");
+}
+/**
+ * Fetches and converts all UTXOs for a Bitcoin address into the SDK wallet UTXO shape.
+ *
+ * @param bitcoinRpc Bitcoin RPC/address-index backend used for UTXO and CPFP lookups
+ * @param network Bitcoin network used to decode the address and output script
+ * @param address Bitcoin address whose current UTXOs should be returned
+ * @param publicKey
+ * @param addressType Optional precomputed address type; inferred from `address` when omitted
+ * @returns Full wallet UTXOs suitable for wallet funding and SPV external deposit execution
+ */
+export async function getWalletAddressUtxos(bitcoinRpc, network, address, publicKey, addressType) {
+    const resolvedAddressType = addressType ?? toCoinselectAddressType(network, address);
+    const utxos = await bitcoinRpc.getAddressUTXOs(address);
+    const outputScript = toOutputScript(network, address);
+    return await Promise.all(utxos.map(async (utxo) => ({
+        vout: utxo.vout,
+        txId: utxo.txid,
+        value: Number(utxo.value),
+        type: resolvedAddressType,
+        outputScript,
+        address,
+        publicKey,
+        cpfp: !utxo.confirmed ? await bitcoinRpc.getCPFPData(utxo.txid).then(result => {
+            if (result == null)
+                return undefined;
+            return {
+                txVsize: result.adjustedVsize,
+                txEffectiveFeeRate: result.effectiveFeePerVsize
+            };
+        }) : undefined,
+        confirmed: utxo.confirmed
+    })));
+}
+function getDummySpec(type) {
+    switch (type) {
+        case "p2pkh":
+            return {
+                type: "pkh",
+                hash: randomBytes(20)
+            };
+        case "p2sh-p2wpkh":
+            return {
+                type: "sh",
+                hash: randomBytes(20)
+            };
+        case "p2wpkh":
+            return {
+                type: "wpkh",
+                hash: randomBytes(20)
+            };
+        case "p2wsh":
+            return {
+                type: "wsh",
+                hash: randomBytes(32)
+            };
+        case "p2tr":
+            return {
+                type: "tr",
+                pubkey: Buffer.from("0101010101010101010101010101010101010101010101010101010101010101", "hex")
+            };
+    }
+    throw new Error("Unrecognized address type!");
+}
+export function getDummyOutputScript(type) {
+    return OutScript.encode(getDummySpec(type));
+}
+export function getDummyAddress(network, type) {
+    return Address(network).encode(getDummySpec(type));
+}
+/**
+ * General parsers for PSBTs, can parse hex or base64 encoded PSBTs
+ * @param _psbt
+ */
+export function parsePsbtTransaction(_psbt) {
+    if (typeof (_psbt) === "string") {
+        let rawPsbt;
+        if (/^(?:[0-9a-fA-F]{2})+$/.test(_psbt)) {
+            //Hex
+            rawPsbt = Buffer.from(_psbt, "hex");
+        }
+        else if (/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(_psbt)) {
+            //Base64
+            rawPsbt = Buffer.from(_psbt, "base64");
+        }
+        else {
+            throw new Error("Provided psbt string not base64 nor hex encoded!");
+        }
+        return Transaction.fromPSBT(rawPsbt, {
+            allowUnknownOutputs: true,
+            allowUnknownInputs: true,
+            allowLegacyWitnessUtxo: true,
+        });
+    }
+    else {
+        return _psbt;
+    }
+}
+export function getVoutIndex(psbt, network, address, amount) {
+    const script = toOutputScript(network, address);
+    for (let i = 0; i < psbt.outputsLength; i++) {
+        const output = psbt.getOutput(i);
+        if (output.amount === amount &&
+            output.script != null &&
+            script.equals(Buffer.from(output.script))) {
+            return i;
+        }
+    }
+}
+export function getSenderAddress(psbt, network, inputIndex = 0) {
+    if (psbt.inputsLength <= inputIndex)
+        return undefined;
+    const input = psbt.getInput(inputIndex);
+    let script;
+    if (input.witnessUtxo?.script != null) {
+        script = input.witnessUtxo.script;
+    }
+    else if (input.nonWitnessUtxo != null && input.index != null) {
+        script = input.nonWitnessUtxo.outputs[input.index]?.script;
+    }
+    if (script == null)
+        return undefined;
+    try {
+        return Address(network).encode(OutScript.decode(script));
+    }
+    catch (e) {
+        return Buffer.from(script).toString("hex");
+    }
+}
+export async function addPsbtInputs(psbt, inputs, rpc, network) {
+    const formattedInputs = await Promise.all(inputs.map(async (input) => {
+        switch (input.type) {
+            case "p2tr":
+                const parsed = p2tr(Buffer.from(input.publicKey, "hex"));
+                return {
+                    txid: input.txId,
+                    index: input.vout,
+                    witnessUtxo: {
+                        script: input.outputScript,
+                        amount: BigInt(input.value)
+                    },
+                    tapInternalKey: parsed.tapInternalKey,
+                    tapMerkleRoot: parsed.tapMerkleRoot,
+                    tapLeafScript: parsed.tapLeafScript
+                };
+            case "p2wpkh":
+                return {
+                    txid: input.txId,
+                    index: input.vout,
+                    witnessUtxo: {
+                        script: input.outputScript,
+                        amount: BigInt(input.value)
+                    },
+                    sighashType: 0x01
+                };
+            case "p2sh-p2wpkh":
+                return {
+                    txid: input.txId,
+                    index: input.vout,
+                    witnessUtxo: {
+                        script: input.outputScript,
+                        amount: BigInt(input.value)
+                    },
+                    redeemScript: p2wpkh(Buffer.from(input.publicKey, "hex"), network).script,
+                    sighashType: 0x01
+                };
+            case "p2pkh":
+                const tx = await rpc.getTransaction(input.txId);
+                if (tx == null)
+                    throw new Error("Cannot fetch existing tx " + input.txId);
+                return {
+                    txid: input.txId,
+                    index: input.vout,
+                    nonWitnessUtxo: tx.raw,
+                    sighashType: 0x01
+                };
+            default:
+                throw new Error("Invalid input type: " + input.type);
+        }
+    }));
+    formattedInputs.forEach(input => psbt.addInput(input));
+}
+export function getUtxoKey(utxo) {
+    return `${utxo.txId}:${utxo.vout}`;
+}
+export function toUtxoMap(utxos) {
+    return new Map(utxos.map(utxo => ([getUtxoKey(utxo), utxo])));
+}
+export function toUtxoSet(utxos) {
+    return new Set(utxos.map(utxo => getUtxoKey(utxo)));
+}

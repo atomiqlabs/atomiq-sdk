@@ -1,13 +1,13 @@
-import {RequestError} from "../../errors/RequestError";
+import {RequestError} from "../../errors/RequestError.js";
 import {
     FieldTypeEnum, RequestSchema,
     RequestSchemaResult, RequestSchemaResultPromise,
     verifySchema
-} from "../../http/paramcoders/SchemaVerifier";
-import {RequestBody, streamingFetchPromise} from "../../http/paramcoders/client/StreamingFetchPromise";
-import {extendAbortController, randomBytes} from "../../utils/Utils";
-import {httpGet, httpPost} from "../../http/HttpUtils";
-import {tryWithRetries} from "../../utils/RetryUtils";
+} from "../../http/paramcoders/SchemaVerifier.js";
+import {RequestBody, streamingFetchPromise} from "../../http/paramcoders/client/StreamingFetchPromise.js";
+import {extendAbortController, randomBytes} from "../../utils/Utils.js";
+import {httpGet, httpPost} from "../../http/HttpUtils.js";
+import {tryWithRetries} from "../../utils/RetryUtils.js";
 
 export type InfoHandlerResponse = {
     envelope: string,
@@ -300,7 +300,8 @@ const SpvFromBTCPrepareResponseSchema = {
     frontingFeeShare: FieldTypeEnum.BigInt,
     executionFeeShare: FieldTypeEnum.BigInt,
 
-    usedUtxoInputCalculation: FieldTypeEnum.BooleanOptional
+    usedUtxoInputCalculation: FieldTypeEnum.BooleanOptional,
+    usedExactFeeCalculation: FieldTypeEnum.BooleanOptional
 } as const;
 
 export type SpvFromBTCPrepareResponseType = RequestSchemaResult<typeof SpvFromBTCPrepareResponseSchema>;
@@ -312,10 +313,15 @@ export type SpvFromBTCPrepare = SwapInit & {
     gasToken: string,
     exactOut: boolean,
     callerFeeRate: Promise<bigint>,
+    callerFee: Promise<bigint>,
     frontingFeeRate: bigint,
+    frontingFee: bigint,
     stickyAddress?: boolean,
     amountUtxos?: Promise<{ value: number, vSize: number, cpfp?: { effectiveVSize: number, effectiveFeeRate: number }}[] | undefined>,
-    amountFeeRate?: Promise<number | undefined>
+    amountFeeRate?: Promise<number | undefined>,
+    amountSkipDetrimental?: boolean,
+    amountChangeValue?: Promise<bigint | undefined>,
+    amountChangeVSize?: Promise<number | undefined>
 }
 
 const SpvFromBTCInitResponseSchema = {
@@ -1021,6 +1027,9 @@ export class IntermediaryAPI {
         const amountPromise = (async () => {
             if(init.amountUtxos!=null) await init.amountUtxos;
             if(init.amountFeeRate!=null) await init.amountFeeRate;
+            if(init.amountChangeValue!=null) await init.amountChangeValue;
+            if(init.amountChangeVSize!=null) await init.amountChangeVSize;
+            if(init.callerFee!=null) await init.callerFee;
             const amount = await init.amount;
             return amount.toString(10);
         })();
@@ -1033,10 +1042,15 @@ export class IntermediaryAPI {
             gasAmount: init.gasAmount.toString(10),
             gasToken: init.gasToken,
             frontingFeeRate: init.frontingFeeRate.toString(10),
+            frontingFee: init.frontingFee.toString(10),
             callerFeeRate: init.callerFeeRate.then(val => val.toString(10)),
+            callerFee: init.callerFee.then(val => val.toString(10)),
             stickyAddress: init.stickyAddress,
             amountUtxos: init.amountUtxos,
-            amountFeeRate: init.amountFeeRate
+            amountFeeRate: init.amountFeeRate,
+            amountSkipDetrimental: init.amountSkipDetrimental,
+            amountChangeValue: init.amountChangeValue?.then(val => val?.toString(10)),
+            amountChangeVSize: init.amountChangeVSize
         }, {
             code: FieldTypeEnum.Number,
             msg: FieldTypeEnum.String,

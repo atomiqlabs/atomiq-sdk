@@ -1,12 +1,12 @@
 /// <reference types="node" />
 /// <reference types="node" />
-import { CoinselectAddressTypes } from "../coinselect2";
+import { CoinselectAddressTypes } from "../coinselect2/index.js";
 import { BTC_NETWORK } from "@scure/btc-signer/utils";
 import { Transaction } from "@scure/btc-signer";
 import { Buffer } from "buffer";
-import { BitcoinWallet } from "./BitcoinWallet";
+import { BitcoinWallet } from "./BitcoinWallet.js";
 import { BitcoinNetwork, BitcoinRpcWithAddressIndex } from "@atomiqlabs/base";
-import { BitcoinWalletUtxo, BitcoinWalletUtxoBase } from "./IBitcoinWallet";
+import { BitcoinWalletUtxo, BitcoinWalletUtxoBase } from "./IBitcoinWallet.js";
 /**
  * Bitcoin wallet implementation deriving a single address from a WIF encoded private key
  *
@@ -14,7 +14,7 @@ import { BitcoinWalletUtxo, BitcoinWalletUtxoBase } from "./IBitcoinWallet";
  */
 export declare class SingleAddressBitcoinWallet extends BitcoinWallet {
     protected readonly privKey?: Uint8Array;
-    protected readonly pubkey: Uint8Array;
+    protected readonly pubkey: Buffer;
     protected readonly address: string;
     protected readonly addressType: CoinselectAddressTypes;
     constructor(mempoolApi: BitcoinRpcWithAddressIndex<any>, _network: BitcoinNetwork | BTC_NETWORK, addressDataOrWIF: string | {
@@ -56,6 +56,13 @@ export declare class SingleAddressBitcoinWallet extends BitcoinWallet {
      */
     getReceiveAddress(): string;
     /**
+     * @inheritDoc
+     */
+    getAddressInfo(change: boolean): {
+        address: string;
+        publicKey: string;
+    };
+    /**
      * Returns the public key of the wallet
      */
     getPublicKey(): string;
@@ -69,7 +76,7 @@ export declare class SingleAddressBitcoinWallet extends BitcoinWallet {
     /**
      * @inheritDoc
      */
-    getSpendableBalance(psbt?: Transaction, feeRate?: number, outputAddressType?: CoinselectAddressTypes, utxos?: BitcoinWalletUtxoBase[]): Promise<{
+    getSpendableBalance(psbt?: Transaction, feeRate?: number, outputAddressTypeOrAddress?: CoinselectAddressTypes | string, utxos?: BitcoinWalletUtxoBase[]): Promise<{
         balance: bigint;
         feeRate: number;
         totalFee: number;
@@ -103,4 +110,18 @@ export declare class SingleAddressBitcoinWallet extends BitcoinWallet {
      * @param derivationPath Optional custom derivation path to use for deriving the wallet
      */
     static mnemonicToPrivateKey(mnemonic: string, network?: BitcoinNetwork | BTC_NETWORK, derivationPath?: string): Promise<string>;
+    /**
+     * Creates a single-address wallet from a mnemonic using the same async derivation as
+     * {@link SingleAddressBitcoinWallet.mnemonicToPrivateKey}.
+     *
+     * @param mempoolApi Bitcoin RPC/address-index backend used for wallet balance, UTXO and broadcast operations
+     * @param network Bitcoin network used for derivation defaults and address encoding
+     * @param mnemonic Mnemonic phrase to derive the wallet private key from
+     * @param derivationPath Optional BIP32 derivation path; defaults to native segwit account 0 for the network
+     * @param feeMultiplier Optional multiplier applied to backend fee estimates
+     * @param feeOverride Optional fixed fee rate in sats/vB returned by this wallet
+     * @returns Wallet derived from the mnemonic at `derivationPath`
+     * @throws {Error} if the mnemonic cannot derive a private key for the selected path
+     */
+    static fromMnemonic(mempoolApi: BitcoinRpcWithAddressIndex<any>, network: BitcoinNetwork | BTC_NETWORK, mnemonic: string, derivationPath?: string, feeMultiplier?: number, feeOverride?: number): Promise<SingleAddressBitcoinWallet>;
 }

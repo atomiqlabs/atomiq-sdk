@@ -1,13 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ISwap = exports.isISwapInit = void 0;
-const SwapType_1 = require("../enums/SwapType");
+const SwapType_js_1 = require("../enums/SwapType.js");
 const events_1 = require("events");
-const Utils_1 = require("../utils/Utils");
-const SwapDirection_1 = require("../enums/SwapDirection");
-const PercentagePPM_1 = require("../types/fees/PercentagePPM");
-const Token_1 = require("../types/Token");
-const PriceInfoType_1 = require("../types/PriceInfoType");
+const Utils_js_1 = require("../utils/Utils.js");
+const SwapDirection_js_1 = require("../enums/SwapDirection.js");
+const PercentagePPM_js_1 = require("../types/fees/PercentagePPM.js");
+const Token_js_1 = require("../types/Token.js");
+const PriceInfoType_js_1 = require("../types/PriceInfoType.js");
 /**
  * Type guard to check if an object is an ISwapInit
  *
@@ -16,7 +16,7 @@ const PriceInfoType_1 = require("../types/PriceInfoType");
 function isISwapInit(obj) {
     return typeof obj === 'object' &&
         obj != null &&
-        (0, PriceInfoType_1.isPriceInfoType)(obj.pricingInfo) &&
+        (0, PriceInfoType_js_1.isPriceInfoType)(obj.pricingInfo) &&
         (obj.url == null || typeof obj.url === 'string') &&
         typeof obj.expiry === 'number' &&
         typeof (obj.swapFee) === "bigint" &&
@@ -72,7 +72,7 @@ class ISwap {
             this.exactIn = swapInitOrObj.exactIn;
             this.version = this.currentVersion;
             this.createdAt = Date.now();
-            this._randomNonce = (0, Utils_1.randomBytes)(16).toString("hex");
+            this._randomNonce = (0, Utils_js_1.randomBytes)(16).toString("hex");
             this._contractVersion = swapInitOrObj.contractVersion;
         }
         else {
@@ -86,13 +86,13 @@ class ISwap {
                     differencePPM: BigInt(swapInitOrObj._differencePPM),
                     satsBaseFee: BigInt(swapInitOrObj._satsBaseFee),
                     feePPM: BigInt(swapInitOrObj._feePPM),
-                    realPriceUSatPerToken: (0, Utils_1.toBigInt)(swapInitOrObj._realPriceUSatPerToken),
+                    realPriceUSatPerToken: (0, Utils_js_1.toBigInt)(swapInitOrObj._realPriceUSatPerToken),
                     realPriceUsdPerBitcoin: swapInitOrObj._realPriceUsdPerBitcoin,
                     swapPriceUSatPerToken: BigInt(swapInitOrObj._swapPriceUSatPerToken),
                 };
             }
-            this.swapFee = (0, Utils_1.toBigInt)(swapInitOrObj.swapFee);
-            this.swapFeeBtc = (0, Utils_1.toBigInt)(swapInitOrObj.swapFeeBtc);
+            this.swapFee = (0, Utils_js_1.toBigInt)(swapInitOrObj.swapFee);
+            this.swapFeeBtc = (0, Utils_js_1.toBigInt)(swapInitOrObj.swapFeeBtc);
             this.version = swapInitOrObj.version;
             this.initiated = swapInitOrObj.initiated;
             this.exactIn = swapInitOrObj.exactIn;
@@ -150,11 +150,11 @@ class ISwap {
             const output = this.getOutput();
             if (input.isUnknown || output.isUnknown)
                 return;
-            if ((0, Token_1.isSCToken)(input.token) && this.getDirection() === SwapDirection_1.SwapDirection.TO_BTC) {
+            if ((0, Token_js_1.isSCToken)(input.token) && this.getDirection() === SwapDirection_js_1.SwapDirection.TO_BTC) {
                 this.pricingInfo = this.wrapper._prices.recomputePriceInfoSend(this.chainIdentifier, output.rawAmount, this.pricingInfo.satsBaseFee, this.pricingInfo.feePPM, input.rawAmount, input.token.address);
                 this.pricingInfo.realPriceUsdPerBitcoin = priceUsdPerBtc;
             }
-            else if ((0, Token_1.isSCToken)(output.token) && this.getDirection() === SwapDirection_1.SwapDirection.FROM_BTC) {
+            else if ((0, Token_js_1.isSCToken)(output.token) && this.getDirection() === SwapDirection_js_1.SwapDirection.FROM_BTC) {
                 this.pricingInfo = this.wrapper._prices.recomputePriceInfoReceive(this.chainIdentifier, input.rawAmount, this.pricingInfo.satsBaseFee, this.pricingInfo.feePPM, output.rawAmount, output.token.address);
                 this.pricingInfo.realPriceUsdPerBitcoin = priceUsdPerBtc;
             }
@@ -182,14 +182,14 @@ class ISwap {
         const output = this.getOutput();
         if (output.isUnknown)
             return;
-        if ((0, Token_1.isSCToken)(this.getInputToken()) && this.getDirection() === SwapDirection_1.SwapDirection.TO_BTC) {
+        if ((0, Token_js_1.isSCToken)(this.getInputToken()) && this.getDirection() === SwapDirection_js_1.SwapDirection.TO_BTC) {
             const input = this.getInputWithoutFee();
             if (input.isUnknown)
                 return;
             this.pricingInfo = await this.wrapper._prices.isValidAmountSend(this.chainIdentifier, output.rawAmount, this.pricingInfo.satsBaseFee, this.pricingInfo.feePPM, input.rawAmount + this.swapFee, input.token.address, undefined, undefined, this.swapFeeBtc);
             this.pricingInfo.realPriceUsdPerBitcoin = priceUsdPerBtc;
         }
-        else if ((0, Token_1.isSCToken)(output.token) && this.getDirection() === SwapDirection_1.SwapDirection.FROM_BTC) {
+        else if ((0, Token_js_1.isSCToken)(output.token) && this.getDirection() === SwapDirection_js_1.SwapDirection.FROM_BTC) {
             const input = this.getInput();
             if (input.isUnknown)
                 return;
@@ -211,18 +211,18 @@ class ISwap {
     getPriceInfo() {
         if (this.pricingInfo == null)
             throw new Error("Pricing info not provided and not known!");
-        const swapPrice = this.getDirection() === SwapDirection_1.SwapDirection.TO_BTC ?
+        const swapPrice = this.getDirection() === SwapDirection_js_1.SwapDirection.TO_BTC ?
             100000000000000 / Number(this.pricingInfo.swapPriceUSatPerToken) :
             Number(this.pricingInfo.swapPriceUSatPerToken) / 100000000000000;
         let marketPrice;
         if (this.pricingInfo.realPriceUSatPerToken != null)
-            marketPrice = this.getDirection() === SwapDirection_1.SwapDirection.TO_BTC ?
+            marketPrice = this.getDirection() === SwapDirection_js_1.SwapDirection.TO_BTC ?
                 100000000000000 / Number(this.pricingInfo.realPriceUSatPerToken) :
                 Number(this.pricingInfo.realPriceUSatPerToken) / 100000000000000;
         return {
             marketPrice,
             swapPrice,
-            difference: (0, PercentagePPM_1.ppmToPercentage)(this.pricingInfo.differencePPM)
+            difference: (0, PercentagePPM_js_1.ppmToPercentage)(this.pricingInfo.differencePPM)
         };
     }
     //////////////////////////////
@@ -282,7 +282,7 @@ class ISwap {
      * Returns the direction of the swap
      */
     getDirection() {
-        return this.TYPE === SwapType_1.SwapType.TO_BTC || this.TYPE === SwapType_1.SwapType.TO_BTCLN ? SwapDirection_1.SwapDirection.TO_BTC : SwapDirection_1.SwapDirection.FROM_BTC;
+        return this.TYPE === SwapType_js_1.SwapType.TO_BTC || this.TYPE === SwapType_js_1.SwapType.TO_BTCLN ? SwapDirection_js_1.SwapDirection.TO_BTC : SwapDirection_js_1.SwapDirection.FROM_BTC;
     }
     /**
      * Returns the current state of the swap

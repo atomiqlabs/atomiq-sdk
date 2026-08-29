@@ -1,13 +1,13 @@
-import {Intermediary, ServicesType} from "./Intermediary";
-import {SwapType} from "../enums/SwapType";
+import {Intermediary, ServicesType} from "./Intermediary.js";
+import {SwapType} from "../enums/SwapType.js";
 import {SpvVaultContract, SwapContract} from "@atomiqlabs/base";
 import {EventEmitter} from "events";
 import {Buffer} from "buffer";
-import {bigIntMax, bigIntMin, extendAbortController} from "../utils/Utils";
-import {IntermediaryAPI} from "./apis/IntermediaryAPI";
-import {getLogger} from "../utils/Logger";
-import {httpGet} from "../http/HttpUtils";
-import {tryWithRetries} from "../utils/RetryUtils";
+import {bigIntMax, bigIntMin, extendAbortController} from "../utils/Utils.js";
+import {IntermediaryAPI} from "./apis/IntermediaryAPI.js";
+import {getLogger} from "../utils/Logger.js";
+import {httpGet} from "../http/HttpUtils.js";
+import {tryWithRetries} from "../utils/RetryUtils.js";
 
 /**
  * Swap handler type mapping for intermediary communication

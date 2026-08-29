@@ -1,6 +1,6 @@
-import {CoinselectAddressTypes, CoinselectTxInput, CoinselectTxOutput, utils} from "./utils";
+import {CoinselectAddressTypes, CoinselectTxInput, CoinselectTxOutput, utils} from "./utils.js";
 
-import {getLogger} from "../../utils/Logger";
+import {getLogger} from "../../utils/Logger.js";
 
 const logger = getLogger("CoinSelect: ");
 
@@ -22,7 +22,7 @@ export function accumulative (
 
     const inputs = requiredInputs==null ? [] : [...requiredInputs];
     let bytesAccum = utils.transactionBytes(inputs, outputs, type);
-    let fee = feeRate * bytesAccum;
+    let fee = utils.calculateFee(bytesAccum, feeRate);
     let cpfpAddFee = 0;
     let inAccum = utils.sumOrNaN(inputs);
     const outAccum = utils.sumOrNaN(outputs);
@@ -35,13 +35,14 @@ export function accumulative (
         const utxoFee = feeRate * utxoBytes;
         const utxoValue = utils.uintOrNaN(utxo.value);
 
-        let cpfpFee = 0;
-        if(utxo.cpfp!=null && utxo.cpfp.txEffectiveFeeRate<feeRate) cpfpFee = Math.ceil(utxo.cpfp.txVsize * (feeRate - utxo.cpfp.txEffectiveFeeRate));
+        const cpfpFee = utils.inputCpfpAdditionalFee(utxo, feeRate);
 
         // skip detrimental input
         if (utxoFee + cpfpFee > utxo.value) {
             logger.debug("accumulative("+i+"): Skipping detrimental output, cpfpFee: "+cpfpFee+" utxoFee: "+utxoFee+" value: "+utxo.value);
-            if (i === utxos.length - 1) return { fee: (feeRate * (bytesAccum + utxoBytes)) + cpfpAddFee + cpfpFee };
+            if (i === utxos.length - 1) return {
+                fee: utils.calculateFee(bytesAccum + utxoBytes, feeRate, cpfpAddFee + cpfpFee)
+            };
             continue
         }
 
@@ -50,7 +51,7 @@ export function accumulative (
         cpfpAddFee += cpfpFee;
         inputs.push(utxo);
 
-        fee = Math.ceil((feeRate * bytesAccum) + cpfpAddFee);
+        fee = utils.calculateFee(bytesAccum, feeRate, cpfpAddFee);
 
         logger.debug("accumulative("+i+"): total fee: ", fee);
         logger.debug("accumulative("+i+"): input value: ", inAccum);
@@ -62,7 +63,7 @@ export function accumulative (
         logger.debug("accumulative("+i+"): Finalizing transaction, inputs: ", inputs);
         logger.debug("accumulative("+i+"): Finalizing transaction, outputs: ", outputs);
         logger.debug("accumulative("+i+"): Finalizing transaction, feeRate: ", feeRate);
-        return utils.finalize(inputs, outputs, feeRate, type, cpfpAddFee);
+        return utils.finalize(inputs, outputs, feeRate, type);
     }
 
     return { fee };
